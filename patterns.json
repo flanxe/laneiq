@@ -1,0 +1,30 @@
+[
+  {
+    "key": "chameleon",
+    "name": "Chameleon",
+    "series": "PBA Animal",
+    "lengthFt": 39,
+    "volumeMl": 25.29,
+    "ratio": 2.47,
+    "note": "2021 World Series of Bowling version; PBA revises patterns, verify against the current PBA sheet",
+    "source": {
+      "kind": "reviewer",
+      "url": "https://www.flobowling.com/articles/6918534-pattern-breakdown-analyzing-the-six-2021-world-series-of-bowling-patterns",
+      "retrievedOn": "2026-10-19"
+    }
+  },
+  {
+    "key": "cheetah",
+    "name": "Cheetah",
+    "series": "PBA Animal",
+    "lengthFt": 35,
+    "volumeMl": 20.59,
+    "ratio": 1.32,
+    "note": "2021 World Series of Bowling version; PBA revises patterns, verify against the current PBA sheet",
+    "source": {
+      "kind": "reviewer",
+      "url": "https://www.flobowling.com/articles/6918534-pattern-breakdown-analyzing-the-six-2021-world-series-of-bowling-patterns",
+      "retrievedOn": "2026-10-19"
+    }
+  }
+]
