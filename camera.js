@@ -2362,12 +2362,14 @@
   var LINK_KEY = "laneiq.appLink";
   var PENDING_KEY = "laneiq.pendingHash";
   var baseUrl = () => new URL(".", location.href).href.replace(/\/+$/, "");
+  var PUBLIC_APP = "https://flanxe.github.io/laneiq";
   function appLink() {
     try {
-      return (localStorage.getItem(LINK_KEY) || baseUrl()).replace(/\/+$/, "");
+      const stored = localStorage.getItem(LINK_KEY);
+      if (stored) return stored.replace(/\/+$/, "");
     } catch {
-      return baseUrl();
     }
+    return isPrivateHost(baseUrl()) ? PUBLIC_APP : baseUrl();
   }
   function setAppLink(v) {
     try {
@@ -2377,7 +2379,9 @@
     } catch {
     }
   }
-  var isPrivateHost = (link) => /tailscale|\.ts\.net|localhost|127\.0\.0\.1|^https?:\/\/(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(link);
+  function isPrivateHost(link) {
+    return /tailscale|\.ts\.net|localhost|127\.0\.0\.1|^https?:\/\/(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(link);
+  }
   async function shareLink(title, text, url) {
     const nav = navigator;
     try {
@@ -2675,6 +2679,19 @@ ${url}`);
     { id: "compete", label: "Compete" },
     { id: "fun", label: "Just for fun" }
   ];
+  function inviteBanner() {
+    let h = "";
+    try {
+      h = sessionStorage.getItem("laneiq.pendingHash") ?? "";
+    } catch {
+    }
+    const m = /^#(invite|reply|session)=(.+)$/.exec(h);
+    if (!m) return "";
+    if (m[1] === "session") return `<div class="invitebox"><b>A friend shared a session with you</b><div class="note">Set up your profile first. Then you can compare their shots with yours on the same lane.</div></div>`;
+    const inv = decodeInvite(m[2]);
+    if (!inv) return "";
+    return `<div class="invitebox"><b>${esc(inv.name)} invited you</b><div class="note">${m[1] === "invite" ? "Set up your profile first, then you'll see their friend request and can compare shots on the same lane." : "Set up your profile first, then you can add them back."}</div></div>`;
+  }
   function showQuiz(mode2, onDone) {
     const el = $("onboard");
     const base = mode2 === "retake" && S.profile?.quiz ? { ...S.profile.quiz } : defaultAnswers(mode2 === "retake" ? S.profile?.name : "");
@@ -2686,7 +2703,7 @@ ${url}`);
     const body = () => {
       switch (step) {
         case 0:
-          return `<h2>What should I call you?</h2><div class="note">A few quick questions so the app understands how you bowl before your first shot. Everything stays on this phone.</div>
+          return `<div class="welcome"><div class="logo">Lane<b style="background:linear-gradient(90deg,#46e6ff,#ff4fd8);-webkit-background-clip:text;background-clip:text;color:transparent">IQ</b></div><div class="note">Your bowling coach, using your phone's camera</div></div>${inviteBanner()}<h2>What should I call you?</h2><div class="note">A few quick questions so the app understands how you bowl before your first shot. Everything stays on this phone.</div>
           <div class="field"><label>Your name</label><input id="q-name" value="${esc(a.name)}" placeholder="Name" autocomplete="off"></div>`;
         case 1:
           return `<h2>How do you bowl?</h2><div class="note">This changes what the app expects from your ball and what it suggests.</div>` + STYLES.map((s) => `<button class="opt ${a.style === s.id ? "sel" : ""}" data-k="style" data-v="${s.id}"><b>${esc(s.label)}</b><span>${esc(s.blurb)}</span></button>`).join("");
@@ -4512,6 +4529,10 @@ ${url}`);
     renderResult(void 0);
     renderLane();
   }
+  window.addEventListener("hashchange", () => {
+    captureIncomingHash();
+    void handleIncoming();
+  });
   (async () => {
     captureIncomingHash();
     initTabs();
