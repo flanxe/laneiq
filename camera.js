@@ -6812,6 +6812,7 @@ ${url}`);
     await video.play();
     overlay.width = video.videoWidth;
     overlay.height = video.videoHeight;
+    await setupZoom();
     GH = Math.round(GW * video.videoHeight / video.videoWidth);
     work.width = GW;
     work.height = GH;
@@ -6853,13 +6854,14 @@ ${url}`);
     status.textContent = `Lane locked (${how}). Ready: just bowl, every shot is tracked automatically.`;
     renderScan();
     try {
-      localStorage.setItem(CAL_KEY, JSON.stringify({ n: corners.map((p) => ({ x: p.x / video.videoWidth, y: p.y / video.videoHeight })) }));
+      localStorage.setItem(CAL_KEY, JSON.stringify({ z: zoomCaps ? zoomNow : 1, n: corners.map((p) => ({ x: p.x / video.videoWidth, y: p.y / video.videoHeight })) }));
     } catch {
     }
   }
   function savedCalibration() {
     try {
       const raw = JSON.parse(localStorage.getItem(CAL_KEY) ?? "null");
+      if (raw?.n?.length === 4 && Math.abs((raw.z ?? 1) - (zoomCaps ? zoomNow : 1)) > 0.01) return null;
       if (raw?.n?.length === 4) return raw.n.map((p) => ({ x: p.x * video.videoWidth, y: p.y * video.videoHeight }));
     } catch {
     }
@@ -7340,8 +7342,8 @@ ${url}`);
     full.toBlob((b) => b && dl(b, `laneiq-frame-${stamp}.jpg`), "image/jpeg", 0.92);
     status.textContent = "Saved the frame and the detector's results to your downloads.";
   };
-  $("reset").onclick = () => {
-    markRedone();
+  function relock(logMiss = true) {
+    if (logMiss) markRedone();
     $("confirm").classList.add("hide");
     $("manualbtn").classList.add("hide");
     pending = null;
@@ -7370,7 +7372,60 @@ ${url}`);
     bg = null;
     laneMask = null;
     armed = false;
-  };
+  }
+  $("reset").onclick = () => relock();
+  var ZOOM_KEY = "laneiq.zoom";
+  var zoomCaps = null;
+  var zoomNow = 1;
+  var zoomLevels = [1];
+  function drawZoomBar() {
+    const bar = $("zoombar");
+    bar.innerHTML = zoomLevels.map((z) => `<button class="seg ${Math.abs(z - zoomNow) < 0.01 ? "on" : ""}" data-z="${z}">${z}\xD7</button>`).join("");
+    bar.querySelectorAll("button").forEach((b) => b.onclick = () => void setZoom(Number(b.dataset.z)));
+  }
+  async function setupZoom() {
+    const track = stream?.getVideoTracks()[0];
+    const caps = track?.getCapabilities?.() ?? {};
+    zoomCaps = caps.zoom && caps.zoom.max > caps.zoom.min ? { min: caps.zoom.min, max: caps.zoom.max } : null;
+    zoomLevels = zoomCaps ? [0.5, 1, 2, 3, 5, 8].filter((z) => z >= zoomCaps.min - 1e-6 && z <= zoomCaps.max + 1e-6) : [1, 1.5, 2, 3];
+    if (!zoomLevels.includes(1)) zoomLevels.unshift(Math.max(zoomCaps?.min ?? 1, 1));
+    let saved = 1;
+    try {
+      saved = Number(localStorage.getItem(ZOOM_KEY) ?? 1) || 1;
+    } catch {
+    }
+    zoomNow = zoomLevels.includes(saved) ? saved : zoomLevels[0];
+    await setZoom(zoomNow, false);
+  }
+  async function setZoom(z, dropLock = true) {
+    zoomNow = z;
+    const track = stream?.getVideoTracks()[0];
+    if (zoomCaps && track) {
+      try {
+        await track.applyConstraints({ advanced: [{ zoom: z }] });
+      } catch {
+        status.textContent = "This phone would not change the camera zoom.";
+      }
+      video.style.transform = overlay.style.transform = "";
+      if (dropLock && (H || pending)) {
+        relock(false);
+        status.textContent = `Zoom ${z}\xD7: looking for the lane again at this zoom\u2026`;
+      }
+    } else {
+      const c = corners.length === 4 ? centerOf(corners) : { x: video.videoWidth / 2, y: video.videoHeight / 2 };
+      const origin = `${c.x / Math.max(1, video.videoWidth) * 100}% ${c.y / Math.max(1, video.videoHeight) * 100}%`;
+      for (const el of [video, overlay]) {
+        el.style.transformOrigin = origin;
+        el.style.transform = z === 1 ? "" : `scale(${z})`;
+      }
+      if (z !== 1) status.textContent = `Zoom ${z}\xD7 (on screen only: this phone does not let the app zoom the lens, so detection still uses the whole picture).`;
+    }
+    try {
+      localStorage.setItem(ZOOM_KEY, String(z));
+    } catch {
+    }
+    drawZoomBar();
+  }
   $("vt-lane").onclick = () => setMode("lane");
   $("vt-raw").onclick = () => setMode("raw");
   $("vt-3d").onclick = () => setMode("3d");
