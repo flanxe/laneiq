@@ -205,6 +205,20 @@
   var LANE_LEN = 60;
   var newDiag = () => ({ edgePixels: 0, leftLines: 0, rightLines: 0, pairs: 0, guess: null, foulRow: null, pitRow: null, hint: "" });
   function detectLanes(gray, w, h, maxCandidates = 3, seed, diag) {
+    const first = detectLanesOnce(gray, w, h, maxCandidates, seed, diag);
+    if (first.length && first.some(isSolid)) return first;
+    const inv = new Uint8ClampedArray(w * h);
+    for (let i = 0; i < inv.length; i++) inv[i] = 255 - gray[i];
+    const dg2 = diag ? newDiag() : void 0;
+    const second = detectLanesOnce(inv, w, h, maxCandidates, seed, dg2);
+    const best = (l) => l.reduce((m, d) => Math.max(m, d.confidence), 0);
+    if (best(second) > best(first)) {
+      if (diag && dg2) Object.assign(diag, dg2);
+      return second;
+    }
+    return first;
+  }
+  function detectLanesOnce(gray, w, h, maxCandidates = 3, seed, diag) {
     const dbg = (m) => globalThis.__laneDbg?.push(m);
     const sm = new Float32Array(w * h);
     for (let y = 1; y < h - 1; y++)
@@ -474,9 +488,9 @@
           const right = xr + wid * 0.2 > w - 2 ? NaN : rowMean(y, xr + wid * 0.08, xr + wid * 0.3);
           if (!Number.isFinite(left) && !Number.isFinite(right)) continue;
           rowsN++;
-          if ((!Number.isFinite(left) || inside - left > 10) && (!Number.isFinite(right) || inside - right > 10)) good++;
+          if ((!Number.isFinite(left) || inside - left > 6) && (!Number.isFinite(right) || inside - right > 6)) good++;
         }
-        if (rowsN < 5 || good / rowsN < 0.55) {
+        if (rowsN < 5 || good / rowsN < 0.45) {
           why.contrast++;
           continue;
         }
@@ -550,8 +564,50 @@
       };
       const topRows = (arr) => Array.from({ length: h }, (_, y) => y).filter((y) => y >= yStart && y < h - 4).sort((p, q) => arr[q] - arr[p]).slice(0, 6).map((y) => `${y}:${arr[y].toFixed(2)}`).join(" ");
       dbg(`profile peaks (density): ${topRows(prof)} | pit step peaks: ${topRows(up)} thr ${thr.toFixed(1)}`);
+      const prow = new Float32Array(h).fill(NaN);
+      for (let y = yStart; y < h - 3; y++) {
+        const wid = xAt(R2, y) - xAt(L, y);
+        if (wid < 6) continue;
+        const a = Math.max(2, Math.ceil(xAt(L, y) + 0.2 * wid));
+        const b2 = Math.min(w - 3, Math.floor(xAt(R2, y) - 0.2 * wid));
+        if (b2 - a < 3) continue;
+        const vals = [];
+        for (let x = a; x <= b2; x++) vals.push(sm[y * w + x]);
+        vals.sort((p, q) => p - q);
+        prow[y] = vals[vals.length >> 1];
+      }
+      const pAvg = (ya, yb, y) => {
+        let s = 0, n = 0;
+        for (let k2 = ya; k2 <= yb; k2++) {
+          const v = prow[Math.round(y + k2)];
+          if (Number.isFinite(v)) {
+            s += v;
+            n++;
+          }
+        }
+        return n >= Math.max(1, (yb - ya + 1) / 2) ? s / n : NaN;
+      };
       const foulCands = localMax(prof, 0.2, 8, Math.floor(t + h * 0.05), h - 4);
       const pitCands = localMax(up, 0.3, 6, Math.floor(t - 14), Math.floor(t + 18));
+      {
+        const dip = new Float32Array(h);
+        const stp = new Float32Array(h);
+        for (let y = yStart + 11; y < h - 12; y++) {
+          const a = pAvg(-9, -4, y), b2 = pAvg(4, 9, y), m = pAvg(-1, 1, y);
+          if (Number.isFinite(a) && Number.isFinite(b2) && Number.isFinite(m)) {
+            dip[y] = Math.max(Math.min(a, b2) - m, m - Math.max(a, b2));
+            stp[y] = Math.abs(a - b2) - 0.5 * Math.max(0, Math.max(Math.min(a, b2) - m, m - Math.max(a, b2)));
+          }
+        }
+        const peaks = (arr, min, k2, from, to) => {
+          const out = [];
+          for (let y = Math.max(from, yStart + 12); y < Math.min(to, h - 13); y++) if (arr[y] >= min && arr[y] >= arr[y - 1] && arr[y] >= arr[y + 1]) out.push(y);
+          return out.sort((p, q) => arr[q] - arr[p]).slice(0, k2);
+        };
+        for (const y of peaks(dip, 2.5, 8, Math.floor(t + h * 0.05), h - 4)) if (!foulCands.some((c2) => Math.abs(c2 - y) <= 2)) foulCands.push(y);
+        for (const y of peaks(stp, 6, 6, Math.floor(t - 14), Math.floor(t + 18))) if (!pitCands.some((c2) => Math.abs(c2 - y) <= 2)) pitCands.push(y);
+        for (const y of peaks(stp, 4, 4, Math.floor(b - 0.05 * h), Math.floor(b + 0.05 * h))) if (!foulCands.some((c2) => Math.abs(c2 - y) <= 2)) foulCands.push(y);
+      }
       const supported = (y) => (L.rows[y] || L.rows[y - 1] || L.rows[y + 1] || L.rows[y - 2] || L.rows[y + 2]) && (R2.rows[y] || R2.rows[y - 1] || R2.rows[y + 1] || R2.rows[y - 2] || R2.rows[y + 2]);
       const bandMean = (ya, yb, y) => {
         let s = 0, n = 0;
@@ -568,25 +624,30 @@
         }
         return n ? s / n : NaN;
       };
-      const isThinDarkLine = (f) => {
-        const above = bandMean(-8, -4, f);
-        const below = bandMean(4, 8, f);
-        const mid = bandMean(-1, 1, f);
+      const isThinLine = (f) => {
+        const above = pAvg(-9, -4, f);
+        const below = pAvg(4, 9, f);
+        const mid = pAvg(-1, 1, f);
         dbg(`thin? f${f}: above ${above.toFixed(0)} mid ${mid.toFixed(0)} below ${below.toFixed(0)}`);
         if (![above, below, mid].every(Number.isFinite)) return false;
-        const around = (above + below) / 2;
-        return mid < around * 0.965 && around - mid > 3 && Math.abs(above - below) < around * 0.3;
+        const margin = Math.max(2.5, (above + below) / 2 * 0.03);
+        return mid < Math.min(above, below) - margin || mid > Math.max(above, below) + margin;
+      };
+      const isLaneToApproach = (f) => {
+        const a = pAvg(-9, -4, f);
+        const c2 = pAvg(4, 9, f);
+        return Number.isFinite(a) && Number.isFinite(c2) && Math.abs(a - c2) > Math.max(5, Math.max(a, c2) * 0.07);
       };
       const isPitStep = (p) => {
-        const above = bandMean(-9, -4, p);
-        const below = bandMean(4, 9, p);
+        const above = pAvg(-10, -4, p);
+        const below = pAvg(4, 10, p);
         dbg(`pit? p${p}: above ${above.toFixed(0)} below ${below.toFixed(0)}`);
-        return Number.isFinite(above) && Number.isFinite(below) && above < below * 0.75;
+        return Number.isFinite(above) && Number.isFinite(below) && Math.abs(above - below) > Math.max(6, Math.max(above, below) * 0.12);
       };
       let best = null;
       const tried = [];
       for (const f of foulCands) {
-        if (!isThinDarkLine(f)) continue;
+        if (!isThinLine(f) && !(Math.abs(f - b) <= 0.05 * h && isLaneToApproach(f))) continue;
         for (const p of pitCands) {
           if (f - p < h * 0.06 || !isPitStep(p)) continue;
           const rho = (p - yv) / (f - yv);
@@ -599,12 +660,14 @@
           }
           tried.push(`f${f}/p${p}:cov${n ? (cov / n).toFixed(2) : "-"}`);
           if (!n || cov / n < 0.5) continue;
-          const score = cov / n * 1 + prof[f] * 0.5 + Math.min(1, up[p]) * 0.5;
+          const nearB = Math.max(0, 1 - Math.abs(f - b) / (0.06 * h));
+          const nearT = Math.max(0, 1 - Math.abs(p - t) / (0.05 * h));
+          const score = cov / n * 1 + prof[f] * 0.5 + Math.min(1, up[p]) * 0.5 + 1.2 * nearB + 0.6 * nearT;
           if (!best || score > best.score) best = { pit: p, foul: f, score };
         }
       }
       if (!best && diag && !diag.hint) diag.hint = "I found both lane edges but not the foul line and the end of the lane together. Tilt the phone so the foul line, the arrows and the pins are all in view.";
-      if (!best) return (seed ? fallback(L, R2, t, b, yv, up, notes) : null) ?? (dbg(`reject: no foul/pit pair foul ${foulCands.join(",")} pit ${pitCands.join(",")} yv ${yv.toFixed(1)} t ${t} b ${b} | ${tried.slice(0, 8).join(" ")} | L(${L.xa.toFixed(0)},${L.xb.toFixed(0)}) R(${R2.xa.toFixed(0)},${R2.xb.toFixed(0)})`), null);
+      if (!best) return fallback(L, R2, t, b, yv, up, notes) ?? (dbg(`reject: no foul/pit pair foul ${foulCands.join(",")} pit ${pitCands.join(",")} yv ${yv.toFixed(1)} t ${t} b ${b} | ${tried.slice(0, 8).join(" ")} | L(${L.xa.toFixed(0)},${L.xb.toFixed(0)}) R(${R2.xa.toFixed(0)},${R2.xb.toFixed(0)})`), null);
       const centroid = (arr, y, r, base) => {
         let sw = 0;
         let sy = 0;
@@ -615,8 +678,8 @@
         }
         return sw > 0 ? sy / sw : y;
       };
-      const foul = centroid(prof, best.foul, 4, prof[best.foul] * 0.4);
-      const pit = centroid(up, best.pit, 3, up[best.pit] * 0.3);
+      const foul = prof[best.foul] > 0.05 ? centroid(prof, best.foul, 4, prof[best.foul] * 0.4) : best.foul;
+      const pit = up[best.pit] > 0.1 ? centroid(up, best.pit, 3, up[best.pit] * 0.3) : best.pit;
       if (diag && !diag.foulRow) {
         diag.foulRow = foul;
         diag.pitRow = pit;
@@ -680,8 +743,9 @@
       const distFromWidth = fPx * (41.5 / 12) / Math.max(1, wFoul);
       const rhoMid = (pit - yv) / (fy - yv);
       const distFromRows = LANE_END_FT * rhoMid / (1 - rhoMid);
+      const impliedHfov = 2 * Math.atan(w / 2 * (41.5 / 12) / (Math.max(1, wFoul) * distFromRows)) * 180 / Math.PI;
+      if (!(impliedHfov > 30 && impliedHfov < 118)) return dbg(`reject: the rows and the lane width imply a ${impliedHfov.toFixed(0)} degree field of view`), null;
       const agree = distFromWidth / distFromRows;
-      if (!(agree > 0.62 && agree < 1.6)) return dbg(`reject: distance disagrees: width says ${distFromWidth.toFixed(1)} ft, rows say ${distFromRows.toFixed(1)} ft`), null;
       const wBot = corners2[1].x - corners2[0].x;
       const wTop = corners2[2].x - corners2[3].x;
       if (!(wBot > 6 && wTop > 0.3 && wTop < wBot)) return dbg(`reject: widths ${wBot.toFixed(1)} ${wTop.toFixed(1)}`), null;
@@ -6727,7 +6791,17 @@ ${url}`);
     const mean3 = sum / n;
     const sd3 = Math.sqrt(Math.max(0, sq / n - mean3 * mean3));
     frameHint = mean3 < 38 ? "It's too dark to see the lane. Add light or move the phone toward the lights." : mean3 > 232 ? "The picture is washed out by glare. Angle the phone away from the bright reflections." : sd3 < 14 ? "The picture looks flat or out of focus. Wipe the lens and check the phone is focused on the lane." : "";
-    return { g, w: dcanvas.width, h: dcanvas.height, k: video.videoWidth / dcanvas.width };
+    return { g, w: dcanvas.width, h: dcanvas.height, k: video.videoWidth / dcanvas.width, px };
+  }
+  function chromaChannels(px, n) {
+    const a = new Uint8ClampedArray(n);
+    const b = new Uint8ClampedArray(n);
+    for (let i = 0; i < n; i++) {
+      const r = px[i * 4], g = px[i * 4 + 1], bl = px[i * 4 + 2];
+      a[i] = 128 + (r - bl) * 0.9;
+      b[i] = 128 + (g - (r + bl) / 2) * 1.6;
+    }
+    return [a, b];
   }
   var frameHint = "";
   var diagView = null;
@@ -6753,7 +6827,18 @@ ${url}`);
   function detectNow2() {
     const f = grabGray();
     const dg = newDiag();
-    lastCandidates = detectLanes(f.g, f.w, f.h, 4, void 0, dg).map((d) => scaled(d, f.k));
+    let found = detectLanes(f.g, f.w, f.h, 4, void 0, dg);
+    if (!found.some(solid)) {
+      for (const ch of chromaChannels(f.px, f.g.length)) {
+        const dg2 = newDiag();
+        const alt = detectLanes(ch, f.w, f.h, 4, void 0, dg2);
+        if (alt.length && alt.reduce((m, d) => Math.max(m, d.confidence), 0) > found.reduce((m, d) => Math.max(m, d.confidence), 0)) {
+          found = alt;
+          Object.assign(dg, dg2);
+        }
+      }
+    }
+    lastCandidates = found.map((d) => scaled(d, f.k));
     const k2 = f.k;
     const seg = (s) => ({ x0: s.x0 * k2, y0: s.y0 * k2, x1: s.x1 * k2, y1: s.y1 * k2 });
     diagView = { ...dg, guess: dg.guess ? { left: seg(dg.guess.left), right: seg(dg.guess.right) } : null, foulRow: dg.foulRow === null ? null : dg.foulRow * k2, pitRow: dg.pitRow === null ? null : dg.pitRow * k2 };
@@ -6934,8 +7019,10 @@ ${url}`);
     if (chooseSeen >= 2) return enterChoose(ch.choices.map((c) => c.corners));
     const d = ch.pick ?? lastCandidates[0] ?? null;
     pill("SCANNING\u2026", "scan");
-    const tol = video.videoWidth * 0.015;
+    const tol = video.videoWidth * 0.03;
     if (d && solid(d)) {
+      pending = null;
+      $("confirm").classList.add("hide");
       candidate = d.corners;
       locks.push(d.corners);
       locks = locks.slice(-3);
@@ -6951,11 +7038,20 @@ ${url}`);
       locks = [];
       candidate = d ? d.corners : null;
       setStep(0);
-      const hint = frameHint || diagView?.hint || "Scanning for the lane. Keep both gutters, the foul line and the pins in view.";
-      status.textContent = hint;
+      let hint = frameHint || diagView?.hint || "Scanning for the lane. Keep both gutters, the foul line and the pins in view.";
+      if (d && d.confidence >= 0.4 && now - detectStartedAt > 5e3) {
+        pending = d;
+        $("confirm").classList.remove("hide");
+        hint = d.rows.foul === null ? "Is this your lane? The dashed outline is my best guess (distances will be approximate: I can't see the foul line). Confirm it, or keep scanning." : "Is this your lane? The dashed outline is my best guess. Confirm it, or keep scanning.";
+        status.textContent = hint;
+      } else {
+        pending = null;
+        $("confirm").classList.add("hide");
+        status.textContent = hint;
+      }
       renderScan(hint);
     }
-    if (now - detectStartedAt > 12e3) enterTap("Couldn't lock on automatically.");
+    if (now - detectStartedAt > (pending ? 25e3 : 12e3)) enterTap("Couldn't lock on automatically.");
   }
   var lastDriftCheck = 0;
   function driftCheck(now) {
