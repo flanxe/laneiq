@@ -3075,13 +3075,13 @@
         return cs;
       };
       const fg = kmeans(sample2((d) => d < R0 * 0.45), 4);
-      const bg2 = kmeans(sample2((d) => d > R0 * 1.55), 5);
-      if (fg.length && bg2.length) {
+      const bg = kmeans(sample2((d) => d > R0 * 1.55), 5);
+      if (fg.length && bg.length) {
         fgScore = new Float32Array(sw * sh);
         const near = (cs, p) => Math.sqrt(Math.min(...cs.map((c) => (c[0] - p[0]) ** 2 + (c[1] - p[1]) ** 2 + (c[2] - p[2]) ** 2)));
         for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) {
           const p = px(x, y);
-          fgScore[y * sw + x] = near(bg2, p) - near(fg, p);
+          fgScore[y * sw + x] = near(bg, p) - near(fg, p);
         }
       }
       traceCache = { gray, rgb, w, h, shrunk: { g, w: sw, h: sh, k: k2 }, fgScore };
@@ -5700,11 +5700,11 @@ ${url}`);
       cv.width = cw;
       cv.height = ch;
       const cx = cv.getContext("2d", { willReadFrequently: true });
-      const t02 = v.currentTime;
+      const t0 = v.currentTime;
       const N2 = 6;
       const frames = [];
       for (let k2 = 0; k2 < N2; k2++) {
-        await seek(t02 + k2 / fps);
+        await seek(t0 + k2 / fps);
         cx.drawImage(v, 0, 0, cw, ch);
         const px = cx.getImageData(0, 0, cw, ch).data;
         const g = new Float32Array(cw * ch);
@@ -6137,9 +6137,9 @@ ${url}`);
     };
     const replay3D = () => {
       cancelAnimationFrame(play3dRaf);
-      const t02 = performance.now();
+      const t0 = performance.now();
       const tick = () => {
-        const t = (performance.now() - t02) / 1e3;
+        const t = (performance.now() - t0) / 1e3;
         review3d?.setPaths(paths3D(Math.min(t, endT)));
         if (t < endT) play3dRaf = requestAnimationFrame(tick);
       };
@@ -6673,6 +6673,218 @@ ${url}`);
     $("gd-close").onclick = () => (el.classList.remove("on"), el.innerHTML = "");
   }
 
+  // core/src/track.ts
+  var BALL_RADIUS_IN = 4.25;
+  var INCH_PER_X = 41.5 / 39;
+  var BallTracker = class {
+    bg = null;
+    path = [];
+    /** ball positions in picture pixels, for drawing */
+    trail = [];
+    confirmed = false;
+    /** last blob (grid pixels) and its speed per frame */
+    last = null;
+    lost = 0;
+    /** the ball's expected radius at the last position, in grid pixels */
+    lastR = 0;
+    t0 = 0;
+    lanePrev = -1;
+    sampleIdx = [];
+    fgAge = new Uint8Array(0);
+    s;
+    constructor(setup) {
+      this.s = setup;
+      for (let i = 0; i < setup.mask.length; i += 5) if (setup.mask[i]) this.sampleIdx.push(i);
+    }
+    reset(keepBackground = true) {
+      this.path = [];
+      this.trail = [];
+      this.confirmed = false;
+      this.last = null;
+      this.lost = 0;
+      this.lanePrev = -1;
+      if (!keepBackground) this.bg = null;
+    }
+    /** Learn the empty lane again (after a shot, or when the lighting has changed). */
+    forgetBackground() {
+      this.bg = null;
+    }
+    lane(x, y) {
+      return applyHomography(this.s.H, { x: x * this.s.scale, y: y * this.s.scale });
+    }
+    /** How big a ball looks, in grid pixels (radius), at a spot on the lane. */
+    expectedRadius(laneX, laneY) {
+      const r = BALL_RADIUS_IN / INCH_PER_X;
+      const a = applyHomography(this.s.Hinv, { x: laneX - r, y: laneY });
+      const b = applyHomography(this.s.Hinv, { x: laneX + r, y: laneY });
+      return Math.max(1.2, Math.hypot(b.x - a.x, b.y - a.y) / 2 / this.s.scale);
+    }
+    blobs(fg) {
+      const { w, h } = this.s;
+      const seen = new Uint8Array(w * h);
+      const out = [];
+      const stack = [];
+      for (let i = 0; i < fg.length; i++) {
+        if (!fg[i] || seen[i]) continue;
+        let sx = 0, sy = 0, n = 0;
+        let x0 = w, x1 = 0, y0 = h, y1 = 0;
+        stack.push(i);
+        seen[i] = 1;
+        while (stack.length) {
+          const k2 = stack.pop();
+          const x = k2 % w;
+          const y = k2 / w | 0;
+          sx += x;
+          sy += y;
+          n++;
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+          for (const q of [k2 - 1, k2 + 1, k2 - w, k2 + w]) {
+            if (q < 0 || q >= fg.length || !fg[q] || seen[q]) continue;
+            if (q === k2 - 1 && x === 0 || q === k2 + 1 && x === w - 1) continue;
+            seen[q] = 1;
+            stack.push(q);
+          }
+        }
+        out.push({ x: sx / n, y: sy / n, area: n, w: x1 - x0 + 1, h: y1 - y0 + 1 });
+      }
+      return out;
+    }
+    /** Feed one frame (grayscale, grid size). `t` is the frame's time in seconds. */
+    step(gray, t) {
+      const { w, h, mask } = this.s;
+      if (!this.bg) {
+        this.bg = gray.slice();
+        return "idle";
+      }
+      const bg = this.bg;
+      const d = this.sampleIdx.map((i) => gray[i] - bg[i]).sort((a, b) => a - b);
+      const off = d.length ? d[d.length >> 1] : 0;
+      const mad = d.length ? [...d].map((v) => Math.abs(v - off)).sort((a, b) => a - b)[d.length >> 1] * 1.4826 : 4;
+      const thr = Math.max(18, 4.5 * mad);
+      const fg = new Uint8Array(w * h);
+      for (let i = 0; i < gray.length; i++) if (mask[i] && Math.abs(gray[i] - off - bg[i]) > thr) fg[i] = 1;
+      if (this.fgAge.length !== fg.length) this.fgAge = new Uint8Array(fg.length);
+      if (this.last) this.fgAge.fill(0);
+      else
+        for (let i = 0; i < fg.length; i++) {
+          if (!fg[i]) this.fgAge[i] = 0;
+          else if (++this.fgAge[i] >= 24) {
+            bg[i] = gray[i] - off;
+            this.fgAge[i] = 0;
+            fg[i] = 0;
+          }
+        }
+      const cands = [];
+      for (const b of this.blobs(fg)) {
+        if (b.area < 2) continue;
+        const l0 = this.lane(b.x, b.y);
+        const cy = Math.min(h - 1, b.y + 0.95 * this.expectedRadius(l0.x, l0.y));
+        if (!mask[Math.round(cy) * w + Math.round(b.x)]) continue;
+        const l = this.lane(b.x, cy);
+        if (l.y < -4 || l.y > 66 || l.x < -1 || l.x > 40) continue;
+        const er = this.expectedRadius(l.x, l.y);
+        const r = Math.sqrt(b.area / Math.PI);
+        const ratio = r / er;
+        if (ratio < 0.3 || ratio > 2.6) continue;
+        const aspect = b.h / Math.max(1, b.w);
+        if (aspect > 3.5 || aspect < 0.25) continue;
+        const fill = b.area / (b.w * b.h);
+        if (fill < 0.28) continue;
+        cands.push({ ...b, y: b.y, lx: l.x, ly: l.y, er, q: Math.abs(Math.log(ratio)) + Math.abs(Math.log(Math.max(0.3, Math.min(3, aspect)))) * 0.4 });
+      }
+      let best;
+      if (this.last) {
+        const px = this.last.x + this.last.vx;
+        const py = this.last.y + this.last.vy;
+        const reach = Math.max(7, 2.4 * Math.hypot(this.last.vx, this.last.vy) + 2.5 * (cands[0]?.er ?? 3));
+        best = cands.filter((c) => Math.hypot(c.x - px, c.y - py) < reach && c.ly >= this.lanePrev - 1.2).sort((a, b) => Math.hypot(a.x - px, a.y - py) + 6 * a.q - (Math.hypot(b.x - px, b.y - py) + 6 * b.q))[0];
+      } else {
+        best = cands.filter((c) => c.ly < 48).sort((a, b) => a.q - b.q || a.ly - b.ly)[0];
+      }
+      if (best) {
+        this.lost = 0;
+        const prev = this.last;
+        this.last = { x: best.x, y: best.y, vx: prev ? 0.6 * (best.x - prev.x) + 0.4 * prev.vx : 0, vy: prev ? 0.6 * (best.y - prev.y) + 0.4 * prev.vy : 0 };
+        this.lanePrev = Math.max(this.lanePrev, best.ly);
+        this.lastR = best.er;
+        if (!this.path.length) this.t0 = t;
+        this.path.push({ t: t - this.t0, x: best.lx, y: best.ly });
+        this.trail.push({ x: best.x * this.s.scale, y: best.y * this.s.scale });
+        for (let i = 0; i < bg.length; i++) if (!fg[i]) bg[i] += (gray[i] - off - bg[i]) * 0.01 + 0;
+        let event = "tracking";
+        if (!this.confirmed && this.path.length >= 5) {
+          const a = this.path[0];
+          const b = this.path[this.path.length - 1];
+          const mph = (b.y - a.y) / Math.max(1e-6, b.t - a.t) * (3600 / 5280);
+          if (mph >= 6 && mph <= 35) {
+            this.confirmed = true;
+            event = "confirmed";
+          } else if (this.path.length >= 8) {
+            this.reset();
+            return "reset";
+          }
+        }
+        if (best.ly > 56) return this.confirmed ? "finished" : (this.reset(), "reset");
+        return event;
+      }
+      if (this.last) {
+        this.last = { x: this.last.x + this.last.vx, y: this.last.y + this.last.vy, vx: this.last.vx, vy: this.last.vy };
+        const limit = this.lanePrev > 45 ? 10 : 40;
+        if (++this.lost > limit) {
+          if (this.confirmed && this.lanePrev > 30) return "finished";
+          this.reset();
+          return "reset";
+        }
+        return "tracking";
+      }
+      for (let i = 0; i < bg.length; i++) bg[i] += (gray[i] - off - bg[i]) * 0.04;
+      return "idle";
+    }
+  };
+  function edgeMap(gray, w, h) {
+    const g = new Float32Array(w * h);
+    for (let y = 1; y < h - 1; y++)
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        g[i] = Math.abs(gray[i + 1] - gray[i - 1]) + Math.abs(gray[i + w] - gray[i - w]);
+      }
+    return g;
+  }
+  function measureShift(ref, cur, w, h, box, range = 10) {
+    const x0 = Math.max(range + 1, Math.floor(box.x0));
+    const x1 = Math.min(w - range - 2, Math.ceil(box.x1));
+    const y0 = Math.max(range + 1, Math.floor(box.y0));
+    const y1 = Math.min(h - range - 2, Math.ceil(box.y1));
+    let energy = 0;
+    let n = 0;
+    for (let y = y0; y < y1; y += 2) for (let x = x0; x < x1; x += 2) energy += ref[y * w + x], n++;
+    energy = n ? energy / n : 0;
+    const score = (dx, dy) => {
+      let s = 0;
+      let c = 0;
+      for (let y = y0; y < y1; y += 2)
+        for (let x = x0; x < x1; x += 2) {
+          s += Math.abs(ref[y * w + x] - cur[(y + dy) * w + x + dx]);
+          c++;
+        }
+      return c ? s / c : Infinity;
+    };
+    const none = score(0, 0);
+    let best = none;
+    let bdx = 0;
+    let bdy = 0;
+    for (let dy = -range; dy <= range; dy++)
+      for (let dx = -range; dx <= range; dx++) {
+        if (!dx && !dy) continue;
+        const v = score(dx, dy);
+        if (v < best) best = v, bdx = dx, bdy = dy;
+      }
+    return { dx: bdx, dy: bdy, best, none, energy, atLimit: Math.max(Math.abs(bdx), Math.abs(bdy)) >= range };
+  }
+
   // core/src/pins.ts
   var PIN_INCHES = [
     [0, 0],
@@ -6686,17 +6898,17 @@ ${url}`);
     [6, 31.177],
     [18, 31.177]
   ];
-  var INCH_PER_X = 41.5 / 39;
+  var INCH_PER_X2 = 41.5 / 39;
   var PIN_W = 4.766;
   var PIN_H2 = 15;
   var COLS = 5;
   var ROWS = 9;
   function pinBoxes(P) {
     return PIN_INCHES.map(([lat, behind], i) => {
-      const x = 19.5 + lat / INCH_PER_X;
+      const x = 19.5 + lat / INCH_PER_X2;
       const y = 60 + behind / 12;
       const base = P(x, y);
-      const r = PIN_W / 2 / INCH_PER_X;
+      const r = PIN_W / 2 / INCH_PER_X2;
       const wpx = Math.abs(P(x + r, y).x - P(x - r, y).x);
       const hpx = wpx * (PIN_H2 / PIN_W) * 0.95;
       return { id: i + 1, x0: base.x - wpx * 0.45, x1: base.x + wpx * 0.45, y0: base.y - hpx, y1: base.y };
@@ -6769,8 +6981,8 @@ ${url}`);
   var overlay = $("o");
   var ctx = overlay.getContext("2d");
   var status = $("status");
-  var GW = 192;
-  var GH = 108;
+  var GW = 640;
+  var GH = 360;
   var work = document.createElement("canvas");
   var wctx = work.getContext("2d", { willReadFrequently: true });
   var CORNER_PROMPTS = ["Tap the LEFT edge of the lane at the foul line", "Tap the RIGHT edge of the lane at the foul line", "Tap the RIGHT edge of the lane at the pins end", "Tap the LEFT edge of the lane at the pins end"];
@@ -6786,13 +6998,12 @@ ${url}`);
   var Hinv = null;
   var trail = [];
   var lastShot = null;
-  var bg = null;
+  var tracker = null;
   var laneMask = null;
   var armed = false;
   var path = [];
   var lastBlob = null;
   var lost = 0;
-  var t0 = 0;
   var viewMode = "lane";
   var view3d = null;
   var host3d = null;
@@ -6831,22 +7042,26 @@ ${url}`);
   var lastDetectAt = 0;
   var locks = [];
   var candidate = null;
-  var driftCount = 0;
   var verifyUntil = 0;
   var MAX_DW = 1280;
   var pending = null;
   var lastCandidates = [];
   var dcanvas = document.createElement("canvas");
   var dctx = dcanvas.getContext("2d", { willReadFrequently: true });
-  var CAL_KEY = "laneiq.calibration";
+  var laneNo = "";
+  var calKey = () => laneNo ? `laneiq.calibration.${laneNo}` : "laneiq.calibration";
   var lastLockConf = null;
   function applyCalibration(c, how) {
     logLock({ how, secs: /saved setup/.test(how) || !detectStartedAt ? null : Math.round((performance.now() - detectStartedAt) / 100) / 10, confidence: lastLockConf, foulSeen: lastCandidates[0] ? lastCandidates[0].rows.foul !== null : null });
     corners = c;
+    lastLockHow = how;
+    driftRef = null;
+    driftBad = 0;
+    lastDriftCheck = performance.now();
     H = solveHomography(corners, LANE_CORNERS);
     Hinv = solveHomography(LANE_CORNERS, corners);
     buildMask();
-    bg = null;
+    tracker = null;
     armed = true;
     candidate = null;
     setStep(4);
@@ -6854,13 +7069,13 @@ ${url}`);
     status.textContent = `Lane locked (${how}). Ready: just bowl, every shot is tracked automatically.`;
     renderScan();
     try {
-      localStorage.setItem(CAL_KEY, JSON.stringify({ z: zoomCaps ? zoomNow : 1, n: corners.map((p) => ({ x: p.x / video.videoWidth, y: p.y / video.videoHeight })) }));
+      localStorage.setItem(calKey(), JSON.stringify({ z: zoomCaps ? zoomNow : 1, n: corners.map((p) => ({ x: p.x / video.videoWidth, y: p.y / video.videoHeight })) }));
     } catch {
     }
   }
   function savedCalibration() {
     try {
-      const raw = JSON.parse(localStorage.getItem(CAL_KEY) ?? "null");
+      const raw = JSON.parse(localStorage.getItem(calKey()) ?? "null");
       if (raw?.n?.length === 4 && Math.abs((raw.z ?? 1) - (zoomCaps ? zoomNow : 1)) > 0.01) return null;
       if (raw?.n?.length === 4) return raw.n.map((p) => ({ x: p.x * video.videoWidth, y: p.y * video.videoHeight }));
     } catch {
@@ -6922,11 +7137,11 @@ ${url}`);
   var dragIx = -1;
   var detectMs = 0;
   function detectNow() {
-    const t02 = performance.now();
+    const t0 = performance.now();
     try {
       return detectNow2();
     } finally {
-      detectMs = performance.now() - t02;
+      detectMs = performance.now() - t0;
     }
   }
   function detectNow2() {
@@ -7172,22 +7387,79 @@ ${url}`);
     }
     if (now - detectStartedAt > (pending ? 25e3 : 12e3)) enterTap("Couldn't lock on automatically.");
   }
+  var lastLockHow = "";
+  var driftRef = null;
+  var driftBad = 0;
   var lastDriftCheck = 0;
+  function gridGray() {
+    wctx.drawImage(video, 0, 0, GW, GH);
+    const px = wctx.getImageData(0, 0, GW, GH).data;
+    const g = new Float32Array(GW * GH);
+    for (let i = 0; i < g.length; i++) g[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+    return g;
+  }
+  function laneBoxGrid() {
+    const k2 = GW / video.videoWidth;
+    return { x0: Math.min(...corners.map((p) => p.x)) * k2, x1: Math.max(...corners.map((p) => p.x)) * k2, y0: Math.min(...corners.map((p) => p.y)) * k2, y1: Math.max(...corners.map((p) => p.y)) * k2 };
+  }
+  function lockFits(e) {
+    const k2 = GW / video.videoWidth;
+    const b = laneBoxGrid();
+    let energy = 0;
+    let n = 0;
+    for (let y = Math.max(1, Math.floor(b.y0)); y < Math.min(GH - 1, b.y1); y += 3) for (let x = Math.max(1, Math.floor(b.x0)); x < Math.min(GW - 1, b.x1); x += 3) energy += e[y * GW + x], n++;
+    energy = n ? energy / n : 0;
+    let hit = 0;
+    let tot = 0;
+    for (const [a, c] of [[corners[0], corners[3]], [corners[1], corners[2]]])
+      for (let t = 0.08; t <= 0.9; t += 0.04) {
+        const x = (a.x + (c.x - a.x) * t) * k2;
+        const y = (a.y + (c.y - a.y) * t) * k2;
+        let m = 0;
+        for (let dx = -4; dx <= 4; dx++) {
+          const xi = Math.round(x + dx);
+          const yi = Math.round(y);
+          if (xi > 0 && xi < GW - 1 && yi > 0 && yi < GH - 1) m = Math.max(m, e[yi * GW + xi]);
+        }
+        tot++;
+        if (m > 1.8 * energy) hit++;
+      }
+    return tot > 0 && hit / tot >= 0.5;
+  }
   function driftCheck(now) {
-    const every = now < verifyUntil ? 1500 : 4e3;
-    if (!H || mode !== "auto" || path.length || now < cooldownUntil || now - lastDriftCheck < every) return;
+    if (!H || mode !== "auto" || path.length || now < cooldownUntil || now - lastDriftCheck < 2500) return;
     lastDriftCheck = now;
-    detectNow();
-    const here = centerOf(corners);
-    const d = lastCandidates.filter(solid).sort((a, b) => Math.hypot(centerOf(a.corners).x - here.x, centerOf(a.corners).y - here.y) - Math.hypot(centerOf(b.corners).x - here.x, centerOf(b.corners).y - here.y))[0];
-    if (!d) return;
-    if (detectionsAgree(corners, d.corners, video.videoWidth * 0.06)) {
-      driftCount = 0;
-      if (now < verifyUntil) status.textContent = "Lane locked and verified. Ready: just bowl.";
-    } else if (++driftCount >= (now < verifyUntil ? 2 : 3)) {
-      driftCount = 0;
-      applyCalibration(d.corners, "re-locked, the phone moved");
+    const cur = edgeMap(gridGray(), GW, GH);
+    if (!driftRef) {
+      if (/saved setup/.test(lastLockHow) && !lockFits(cur)) {
+        relock(false);
+        status.textContent = "Your saved lane doesn't match what the camera sees now (the phone has moved). Looking for the lane again\u2026";
+        return;
+      }
+      driftRef = cur;
+      return;
     }
+    const m = measureShift(driftRef, cur, GW, GH, laneBoxGrid(), 12);
+    const moved = (m.dx !== 0 || m.dy !== 0) && m.best < 0.85 * m.none && m.best < 0.7 * m.energy && !m.atLimit;
+    if (moved) {
+      const k2 = video.videoWidth / GW;
+      corners = corners.map((p) => ({ x: p.x + m.dx * k2, y: p.y + m.dy * k2 }));
+      H = solveHomography(corners, LANE_CORNERS);
+      Hinv = solveHomography(LANE_CORNERS, corners);
+      buildMask();
+      tracker = null;
+      driftRef = cur;
+      driftBad = 0;
+      try {
+        localStorage.setItem(calKey(), JSON.stringify({ z: zoomCaps ? zoomNow : 1, n: corners.map((p) => ({ x: p.x / video.videoWidth, y: p.y / video.videoHeight })) }));
+      } catch {
+      }
+      status.textContent = "The phone shifted a little: I moved the lane lock with it.";
+      return;
+    }
+    if (m.atLimit || m.best > 0.9 * m.energy) {
+      if (++driftBad === 4) status.textContent = "The picture looks different from when the lane was locked. If the phone moved, tap Re-lock; otherwise ignore this.";
+    } else driftBad = 0;
   }
   var overlayPt = (e) => {
     const r = overlay.getBoundingClientRect();
@@ -7361,7 +7633,7 @@ ${url}`);
     chooseSeen = 0;
     verifyUntil = 0;
     try {
-      localStorage.removeItem(CAL_KEY);
+      localStorage.removeItem(calKey());
     } catch {
     }
     setStep(0);
@@ -7369,7 +7641,7 @@ ${url}`);
     status.textContent = "Looking for the lane again\u2026";
     pill("SCANNING\u2026", "scan");
     renderScan();
-    bg = null;
+    tracker = null;
     laneMask = null;
     armed = false;
   }
@@ -7468,35 +7740,6 @@ ${url}`);
     const sy = video.videoHeight / GH;
     laneMask = new Uint8Array(GW * GH);
     for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) laneMask[y * GW + x] = inPolygon({ x: (x + 0.5) * sx, y: (y + 0.5) * sy }, corners) ? 1 : 0;
-  }
-  function findBlobs(fg) {
-    const seen = new Uint8Array(GW * GH);
-    const blobs = [];
-    const stack = [];
-    for (let i = 0; i < fg.length; i++) {
-      if (!fg[i] || seen[i]) continue;
-      let sx = 0;
-      let sy = 0;
-      let area = 0;
-      stack.push(i);
-      seen[i] = 1;
-      while (stack.length) {
-        const k2 = stack.pop();
-        const x = k2 % GW;
-        const y = k2 / GW | 0;
-        sx += x;
-        sy += y;
-        area++;
-        for (const n of [k2 - 1, k2 + 1, k2 - GW, k2 + GW]) {
-          if (n < 0 || n >= fg.length || !fg[n] || seen[n]) continue;
-          if (n === k2 - 1 && x === 0 || n === k2 + 1 && x === GW - 1) continue;
-          seen[n] = 1;
-          stack.push(n);
-        }
-      }
-      blobs.push({ gx: sx / area, gy: sy / area, area });
-    }
-    return blobs;
   }
   var sigAcc = new Array(SIG_LEN).fill(0);
   var CROP = 24;
@@ -7617,6 +7860,7 @@ ${url}`);
   var confirmed = false;
   var cooldownUntil = 0;
   function resetTrack() {
+    tracker?.reset();
     sigAcc = new Array(SIG_LEN).fill(0);
     path = [];
     trail = [];
@@ -7636,48 +7880,22 @@ ${url}`);
     const px = wctx.getImageData(0, 0, GW, GH).data;
     const gray = new Float32Array(GW * GH);
     for (let i = 0; i < gray.length; i++) gray[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
-    if (!bg) {
-      bg = gray.slice();
-      return;
-    }
+    if (!tracker) tracker = new BallTracker({ w: GW, h: GH, mask: laneMask, H, Hinv, scale: video.videoWidth / GW });
     if (now < cooldownUntil) return;
-    const fg = new Uint8Array(GW * GH);
-    for (let i = 0; i < gray.length; i++) if (laneMask[i] && Math.abs(gray[i] - bg[i]) > 28) fg[i] = 1;
-    const sy = overlay.height / GH;
-    const sx = overlay.width / GW;
-    const cands = findBlobs(fg).filter((b) => b.area >= 2 && b.area <= 260);
-    let best;
-    if (lastBlob) {
-      const d = (b) => Math.hypot(b.gx - lastBlob.gx, b.gy - lastBlob.gy);
-      best = cands.filter((b) => d(b) < 14).sort((a, b) => d(a) - d(b))[0];
-    } else {
-      best = cands.map((b) => ({ b, l: applyHomography(H, { x: b.gx * sx, y: b.gy * sy }) })).filter((c) => c.l.y < 20).sort((a, b) => a.l.y - b.l.y)[0]?.b;
+    const ev = tracker.step(gray, meta.mediaTime);
+    path = tracker.path;
+    trail = tracker.trail;
+    lastBlob = tracker.last ? { gx: tracker.last.x, gy: tracker.last.y } : null;
+    confirmed = tracker.confirmed;
+    if (ev === "tracking" || ev === "confirmed") {
+      const here = path[path.length - 1];
+      if (here && here.y < 30 && trail.length) captureBall(trail[trail.length - 1].x, trail[trail.length - 1].y, tracker.lastR * (video.videoWidth / GW));
     }
-    if (best) {
-      lost = 0;
-      lastBlob = best;
-      const lane = applyHomography(H, { x: best.gx * sx, y: best.gy * sy });
-      if (!path.length) t0 = meta.mediaTime;
-      path.push({ t: meta.mediaTime - t0, x: lane.x, y: lane.y });
-      trail.push({ x: best.gx * sx, y: best.gy * sy });
-      if (lane.y < 30) captureBall(best.gx * sx, best.gy * sy, Math.sqrt(best.area / Math.PI) * sx);
-      if (!confirmed && path.length >= 5) {
-        const a = path[0];
-        const b = path[path.length - 1];
-        const mph = (b.y - a.y) / (b.t - a.t) * (3600 / 5280);
-        if (mph >= 6 && mph <= 35) {
-          confirmed = true;
-          status.textContent = "Ball detected, tracking\u2026";
-          startRecording(b.t);
-        } else if (path.length >= 8) resetTrack();
-      }
-      if (lane.y > 56) void finish();
-    } else if (lastBlob && ++lost > 10) {
-      if (confirmed) void finish();
-      else resetTrack();
-    } else if (!lastBlob) {
-      for (let i = 0; i < bg.length; i++) bg[i] += (gray[i] - bg[i]) * 0.02;
-    }
+    if (ev === "confirmed") {
+      status.textContent = "Ball detected, tracking\u2026";
+      startRecording(path[path.length - 1].t);
+    } else if (ev === "finished") void finish();
+    else if (ev === "reset") resetTrack();
   }
   var idleDeck = null;
   var fullDeck = null;
@@ -7757,7 +7975,7 @@ ${url}`);
     const savedTrail = trail;
     const sig = sigAcc.some((x) => x > 0) ? normalize(sigAcc) : null;
     resetTrack();
-    bg = null;
+    tracker?.forgetBackground();
     cooldownUntil = performance.now() + 3e3;
     const clipP = stopRecording(1200);
     if (!a) {
@@ -7780,6 +7998,7 @@ ${url}`);
       cal: corners.map((p) => ({ ...p })),
       vw: video.videoWidth,
       vh: video.videoHeight,
+      lane: laneNo || void 0,
       recStartT: clip?.startT ?? 0,
       hasClip: !!clip,
       sig
@@ -7788,7 +8007,51 @@ ${url}`);
     await registerShot(shot);
     void readPinfall(shot, startDeck, fullRack);
   }
-  $("start").onclick = () => startCamera().catch((e) => status.textContent = `Camera error: ${e.message}. Camera needs an https:// address.`);
+  function askLane() {
+    return new Promise((resolve) => {
+      const dlg = $("lanedlg");
+      const input = $("lanedlg-in");
+      const go = $("lanedlg-go");
+      let last = "";
+      try {
+        last = localStorage.getItem("laneiq.laneNo") ?? "";
+      } catch {
+      }
+      input.value = last;
+      const ok = () => /^[0-9]{1,3}$/.test(input.value.trim()) && Number(input.value) > 0;
+      go.disabled = !ok();
+      input.oninput = () => {
+        input.value = input.value.replace(/[^0-9]/g, "");
+        go.disabled = !ok();
+      };
+      const done = () => {
+        if (!ok()) return;
+        laneNo = String(Number(input.value.trim()));
+        try {
+          localStorage.setItem("laneiq.laneNo", laneNo);
+        } catch {
+        }
+        dlg.style.display = "none";
+        const badge = $("laneno");
+        badge.style.display = "";
+        badge.textContent = `Lane ${laneNo}`;
+        resolve();
+      };
+      go.onclick = done;
+      input.onkeydown = (e) => e.key === "Enter" && done();
+      dlg.style.display = "flex";
+      setTimeout(() => input.focus(), 50);
+    });
+  }
+  $("laneno").onclick = () => {
+    askLane().then(() => {
+      const saved = savedCalibration();
+      if (saved) applyCalibration(saved, "your saved setup, verifying");
+      else relock(false);
+      status.textContent = `Lane ${laneNo}: ${saved ? "using your saved lock for it." : "looking for it."}`;
+    });
+  };
+  $("start").onclick = () => askLane().then(() => startCamera()).catch((e) => status.textContent = `Camera error: ${e.message}. Camera needs an https:// address.`);
   function synthPath(startX, bp, entryX, speedFtS) {
     const out = [];
     const mid = startX + 3;
