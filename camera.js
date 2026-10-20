@@ -2075,7 +2075,7 @@
     const el = $("result-card");
     if (!s) return void (el.innerHTML = `<div class="u">Waiting for your first shot</div>`);
     const cur = s.result?.pinsDown;
-    el.innerHTML = `<div class="u">How many pins did this shot knock down? This is how the app learns what costs you strikes.</div><div class="chips">` + [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((n) => `<button class="chip ${cur === n ? "sel" : n === 10 ? "x" : ""}" data-n="${n}">${n === 10 ? "Strike" : n}</button>`).join("") + `</div>`;
+    el.innerHTML = `<div class="u">${s.result?.auto ? `Read from the camera: ${cur === 10 ? "a strike" : `${cur} down${s.result.leave?.length ? `, leaving the ${s.result.leave.join("-")}` : ""}`}. Tap a number if that is wrong.` : "How many pins did this shot knock down? This is how the app learns what costs you strikes."}</div><div class="chips">` + [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((n) => `<button class="chip ${cur === n ? "sel" : n === 10 ? "x" : ""}" data-n="${n}">${n === 10 ? "Strike" : n}</button>`).join("") + `</div>`;
     el.querySelectorAll("button[data-n]").forEach((b) => {
       b.onclick = async () => {
         s.result = { pinsDown: Number(b.dataset.n) };
@@ -6673,6 +6673,97 @@ ${url}`);
     $("gd-close").onclick = () => (el.classList.remove("on"), el.innerHTML = "");
   }
 
+  // core/src/pins.ts
+  var PIN_INCHES = [
+    [0, 0],
+    [-6, 10.392],
+    [6, 10.392],
+    [-12, 20.785],
+    [0, 20.785],
+    [12, 20.785],
+    [-18, 31.177],
+    [-6, 31.177],
+    [6, 31.177],
+    [18, 31.177]
+  ];
+  var INCH_PER_X = 41.5 / 39;
+  var PIN_W = 4.766;
+  var PIN_H2 = 15;
+  var COLS = 5;
+  var ROWS = 9;
+  function pinBoxes(P) {
+    return PIN_INCHES.map(([lat, behind], i) => {
+      const x = 19.5 + lat / INCH_PER_X;
+      const y = 60 + behind / 12;
+      const base = P(x, y);
+      const r = PIN_W / 2 / INCH_PER_X;
+      const wpx = Math.abs(P(x + r, y).x - P(x - r, y).x);
+      const hpx = wpx * (PIN_H2 / PIN_W) * 0.95;
+      return { id: i + 1, x0: base.x - wpx * 0.45, x1: base.x + wpx * 0.45, y0: base.y - hpx, y1: base.y };
+    });
+  }
+  function deckRegion(boxes) {
+    const wide = Math.max(...boxes.map((b) => b.x1 - b.x0));
+    return {
+      x0: Math.min(...boxes.map((b) => b.x0)) - wide * 1.2,
+      x1: Math.max(...boxes.map((b) => b.x1)) + wide * 1.2,
+      y0: Math.min(...boxes.map((b) => b.y0)) - wide * 0.5,
+      y1: Math.max(...boxes.map((b) => b.y1)) + wide * 0.5
+    };
+  }
+  function samplePins(gray, w, h, boxes, ox = 0, oy = 0) {
+    const mean3 = (x0, y0, x1, y1) => {
+      const a = Math.max(0, Math.floor(x0 - ox));
+      const b = Math.min(w - 1, Math.ceil(x1 - ox) - 1);
+      const c = Math.max(0, Math.floor(y0 - oy));
+      const d = Math.min(h - 1, Math.ceil(y1 - oy) - 1);
+      if (b < a || d < c) return NaN;
+      let s = 0;
+      let n = 0;
+      for (let y = c; y <= d; y++) for (let x = a; x <= b; x++) s += gray[y * w + x], n++;
+      return n ? s / n : NaN;
+    };
+    const wide = Math.max(...boxes.map((b) => b.x1 - b.x0));
+    const cx0 = Math.min(...boxes.map((b) => b.x0));
+    const cx1 = Math.max(...boxes.map((b) => b.x1));
+    const cy0 = Math.min(...boxes.map((b) => b.y0));
+    const cy1 = Math.max(...boxes.map((b) => b.y1));
+    const left = mean3(cx0 - wide * 2.4, cy0, cx0 - wide * 0.5, cy1);
+    const right = mean3(cx1 + wide * 0.5, cy0, cx1 + wide * 2.4, cy1);
+    const ref = Number.isFinite(left) && Number.isFinite(right) ? (left + right) / 2 : Number.isFinite(left) ? left : right;
+    return boxes.map((bx) => {
+      const bw = bx.x1 - bx.x0;
+      const bh = bx.y1 - bx.y0;
+      const cells = [];
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) cells.push(mean3(bx.x0 + bw * c / COLS, bx.y0 + bh * r / ROWS, bx.x0 + bw * (c + 1) / COLS, bx.y0 + bh * (r + 1) / ROWS));
+      const m = cells.reduce((s, v) => s + v, 0) / cells.length;
+      return { id: bx.id, cells, mean: m, ref, ok: cells.every(Number.isFinite) && Number.isFinite(ref) };
+    });
+  }
+  var pinContrast = (s) => s.ok ? Math.abs(s.mean - s.ref) : 0;
+  function pinsReadable(base) {
+    return base.filter((s) => pinContrast(s) >= 8).length >= 8;
+  }
+  function readPins(base, now) {
+    const standing = base.map((b, i) => {
+      const n = now[i];
+      const c = pinContrast(b);
+      if (!n || !n.ok || c < 8) return null;
+      const shift = n.ref - b.ref;
+      let d = 0;
+      for (let k2 = 0; k2 < b.cells.length; k2++) d += Math.abs(n.cells[k2] - shift - b.cells[k2]);
+      d /= b.cells.length;
+      return d < 0.4 * c + 2;
+    });
+    const readable = standing.filter((s) => s !== null).length;
+    return { standing, down: standing.filter((s) => s === false).length, readable };
+  }
+  function settledCount(counts) {
+    const c = counts.filter((v) => v !== null);
+    for (let i = 0; i + 1 < c.length; i++) if (c[i] === c[i + 1]) return c[i];
+    return c.length ? c[Math.floor(c.length / 2)] : null;
+  }
+
   // camera/camera.ts
   var video = $("v");
   var overlay = $("o");
@@ -6866,6 +6957,8 @@ ${url}`);
     const el = $("scan");
     const show = document.body.classList.contains("live") && !H && mode !== "manual";
     el.classList.toggle("hide", !show);
+    $("tracebtn").classList.toggle("hide", !(document.body.classList.contains("live") && !H && mode !== "manual"));
+    $("snapbtn").classList.toggle("hide", !(show && adjusted && pending));
     if (!show) return;
     if (mode === "choose") {
       el.innerHTML = `<span class="sc ask">\u261D Tap your lane</span><div class="note" style="flex-basis:100%">${hint || "I can see more than one lane. Tap the one you are bowling on."}</div>`;
@@ -7121,6 +7214,7 @@ ${url}`);
       if (bi >= 0) {
         dragIx = bi;
         adjusted = true;
+        renderScan();
         overlay.setPointerCapture?.(e.pointerId);
         status.textContent = "Drag each corner onto the lane: the two nearest corners onto the foul line at the gutter edges, the two far ones onto the lane at the pins. Then Confirm.";
         return;
@@ -7184,6 +7278,48 @@ ${url}`);
     adjusted = false;
   };
   $("manualbtn").onclick = () => enterManual("Placing the corners yourself.");
+  $("tracebtn").onclick = () => {
+    const W = video.videoWidth;
+    const Hh = video.videoHeight;
+    if (!W) return;
+    const start = lastCandidates[0]?.corners ?? [
+      { x: W * 0.22, y: Hh * 0.92 },
+      { x: W * 0.78, y: Hh * 0.92 },
+      { x: W * 0.55, y: Hh * 0.36 },
+      { x: W * 0.45, y: Hh * 0.36 }
+    ];
+    chooseList = [];
+    chooseSeen = 0;
+    mode = "auto";
+    locks = [];
+    pending = { corners: start.map((p) => ({ ...p })), confidence: 0.3, notes: [], rows: { foul: null, pit: null, vanishing: null } };
+    candidate = pending.corners;
+    adjusted = true;
+    $("confirm").classList.remove("hide");
+    $("manualbtn").classList.add("hide");
+    status.textContent = "Drag the four white dots onto the lane: the two near ones on the foul line at the edges of the lane (inside the gutters), the two far ones where the lane reaches the pins. Tap Snap to edges to tighten it, then Confirm lane.";
+    pill("TRACE YOUR LANE", "ask");
+    renderScan();
+  };
+  $("snapbtn").onclick = () => {
+    if (!pending) return;
+    const f = grabGray();
+    const c = pending.corners;
+    const mid = { x: (c[0].x + c[1].x + c[2].x + c[3].x) / 4, y: (c[0].y + c[1].y + c[2].y + c[3].y) / 4 };
+    let d = detectLaneAt(f.g, f.w, f.h, mid.x / f.k, mid.y / f.k);
+    if (!d) {
+      const alts = detectLanes(f.g, f.w, f.h, 4).map((x) => scaled(x, f.k));
+      const near = alts.sort((a, b) => Math.hypot(centerOf(a.corners).x - mid.x, centerOf(a.corners).y - mid.y) - Math.hypot(centerOf(b.corners).x - mid.x, centerOf(b.corners).y - mid.y))[0];
+      if (near) d = { ...near, corners: near.corners.map((p) => ({ x: p.x / f.k, y: p.y / f.k })) };
+    }
+    if (!d) {
+      status.textContent = "I couldn't find clear lane edges there. Drag the corners onto the lane yourself, then Confirm.";
+      return;
+    }
+    pending = scaled(d, f.k);
+    candidate = pending.corners;
+    status.textContent = "Snapped to the lane edges. If it sits right, Confirm lane; otherwise drag a corner to fix it.";
+  };
   $("saveframe").onclick = async () => {
     const f = grabGray();
     const full = document.createElement("canvas");
@@ -7439,7 +7575,7 @@ ${url}`);
     drawOverlay(now);
     enrollTick(now);
     if (!H) autoDetectTick(now);
-    else if (armed) driftCheck(now);
+    else if (armed) driftCheck(now), pinWatch(now);
     if (!H || !laneMask || !armed || enrolling) return;
     wctx.drawImage(video, 0, 0, GW, GH);
     const px = wctx.getImageData(0, 0, GW, GH).data;
@@ -7488,7 +7624,78 @@ ${url}`);
       for (let i = 0; i < bg.length; i++) bg[i] += (gray[i] - bg[i]) * 0.02;
     }
   }
+  var idleDeck = null;
+  var fullDeck = null;
+  var deckCand = null;
+  var lastPinLook = 0;
+  var pinCanvas = document.createElement("canvas");
+  var pinCtx = pinCanvas.getContext("2d", { willReadFrequently: true });
+  function lookAtPins() {
+    if (!Hinv || S.demo || !video.videoWidth) return null;
+    const boxes = pinBoxes(laneToPx);
+    const r = deckRegion(boxes);
+    const x0 = Math.max(0, Math.floor(r.x0));
+    const y0 = Math.max(0, Math.floor(r.y0));
+    const w = Math.min(video.videoWidth, Math.ceil(r.x1)) - x0;
+    const h = Math.min(video.videoHeight, Math.ceil(r.y1)) - y0;
+    if (w < 24 || h < 8 || w > 1e3 || h > 600) return null;
+    pinCanvas.width = w;
+    pinCanvas.height = h;
+    pinCtx.drawImage(video, x0, y0, w, h, 0, 0, w, h);
+    const px = pinCtx.getImageData(0, 0, w, h).data;
+    const g = new Uint8ClampedArray(w * h);
+    for (let i = 0; i < g.length; i++) g[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+    return samplePins(g, w, h, boxes, x0, y0);
+  }
+  function pinWatch(now) {
+    if (path.length || lastBlob || now < cooldownUntil || now - lastPinLook < 1200) return;
+    lastPinLook = now;
+    const cur = lookAtPins();
+    if (!cur) return;
+    if (deckCand && readPins(deckCand, cur).readable >= 6 && readPins(deckCand, cur).down === 0) {
+      idleDeck = cur;
+      if (pinsReadable(cur)) fullDeck = cur;
+    }
+    deckCand = cur;
+  }
+  function pinfallNow(start, full, now) {
+    if (start && readPins(start, now).readable >= 5 && !(full && pinsReadable(full) && readPins(full, start).down >= 5)) {
+      const r = readPins(start, now);
+      return { down: r.down, standing: full ? readPins(full, now).standing : r.standing };
+    }
+    if (full && start) {
+      const before = readPins(full, start).standing;
+      const after = readPins(full, now).standing;
+      return { down: after.filter((s, i) => before[i] === true && s === false).length, standing: after };
+    }
+    return null;
+  }
+  var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function readPinfall(shot, start, full) {
+    if (!start && !full) return;
+    const counts = [];
+    const stands = [];
+    for (const wait of [900, 400, 400, 400, 400, 400]) {
+      await sleep(wait);
+      const cur = lookAtPins();
+      const r = cur ? pinfallNow(start, full, cur) : null;
+      counts.push(r ? r.down : null);
+      stands.push(r ? r.standing : []);
+      if (counts.length >= 2 && counts[counts.length - 1] !== null && counts[counts.length - 1] === counts[counts.length - 2]) break;
+    }
+    const n = settledCount(counts);
+    if (n === null || shot.result) return;
+    const at = counts.findIndex((c, i) => c === n && (counts[i + 1] === n || i === counts.length - 1));
+    const standing = stands[Math.max(0, at)] ?? [];
+    const leave = n === 10 ? [] : standing.map((s, i) => s ? i + 1 : 0).filter(Boolean);
+    shot.result = { pinsDown: n, auto: true, ...leave.length ? { leave } : {} };
+    await updateShot(shot);
+    renderResult(shot);
+    status.textContent = n === 10 ? "Strike, read from the camera." : `${n} pins down, read from the camera.`;
+  }
   async function finish() {
+    const startDeck = idleDeck;
+    const fullRack = fullDeck;
     const points = path.length;
     const a = analyzeShot(path);
     const saved = path;
@@ -7524,6 +7731,7 @@ ${url}`);
     };
     if (clip) await saveClip(shot.id, clip.blob).catch(() => shot.hasClip = false);
     await registerShot(shot);
+    void readPinfall(shot, startDeck, fullRack);
   }
   $("start").onclick = () => startCamera().catch((e) => status.textContent = `Camera error: ${e.message}. Camera needs an https:// address.`);
   function synthPath(startX, bp, entryX, speedFtS) {
