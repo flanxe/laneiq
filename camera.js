@@ -6782,6 +6782,15 @@ ${url}`);
     const px = dctx.getImageData(0, 0, dcanvas.width, dcanvas.height).data;
     const g = new Uint8ClampedArray(dcanvas.width * dcanvas.height);
     for (let i = 0; i < g.length; i++) g[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+    if (prevGray && prevGray.length === g.length && !H) {
+      let d = 0, c = 0;
+      for (let i = 0; i < g.length; i += 31) {
+        d += Math.abs(g[i] - prevGray[i]);
+        c++;
+      }
+      if (d / c < 7) for (let i = 0; i < g.length; i++) g[i] = g[i] + prevGray[i] >> 1;
+    }
+    prevGray = Uint8ClampedArray.from(g);
     let sum = 0, sq = 0, n = 0;
     for (let i = 0; i < g.length; i += 23) {
       sum += g[i];
@@ -6804,6 +6813,7 @@ ${url}`);
     return [a, b];
   }
   var frameHint = "";
+  var prevGray = null;
   var diagView = null;
   var scaled = (d, k2) => ({ ...d, corners: d.corners.map((p) => ({ x: p.x * k2, y: p.y * k2 })) });
   var solid = isSolid;
@@ -6815,6 +6825,8 @@ ${url}`);
     return inside;
   };
   var centerOf = (c) => ({ x: c.reduce((s, p) => s + p.x, 0) / c.length, y: c.reduce((s, p) => s + p.y, 0) / c.length });
+  var adjusted = false;
+  var dragIx = -1;
   var detectMs = 0;
   function detectNow() {
     const t02 = performance.now();
@@ -6957,6 +6969,17 @@ ${url}`);
       ctx.fillText(String(i + 1), m.x, m.y + 8 * s);
       ctx.textAlign = "start";
     });
+    if (pending) {
+      pending.corners.forEach((p, i) => {
+        ctx.fillStyle = adjusted ? "rgba(90,255,176,1)" : "rgba(255,255,255,.95)";
+        ctx.strokeStyle = "rgba(0,0,0,.7)";
+        ctx.lineWidth = 3 * s;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, (i === dragIx ? 17 : 13) * s, 0, 7);
+        ctx.fill();
+        ctx.stroke();
+      });
+    }
     if (candidate) {
       ctx.setLineDash([10 * s, 8 * s]);
       ctx.strokeStyle = "rgba(90,255,176,.9)";
@@ -7010,6 +7033,7 @@ ${url}`);
   function autoDetectTick(now) {
     if (mode !== "auto") return;
     if (!detectStartedAt) detectStartedAt = now;
+    if (adjusted && pending) return;
     if (now - lastDetectAt < Math.max(400, detectMs * 2)) return;
     lastDetectAt = now;
     detectNow();
@@ -7070,8 +7094,38 @@ ${url}`);
       applyCalibration(d.corners, "re-locked, the phone moved");
     }
   }
+  var overlayPt = (e) => {
+    const r = overlay.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width * overlay.width, y: (e.clientY - r.top) / r.height * overlay.height };
+  };
+  overlay.addEventListener("pointermove", (e) => {
+    if (dragIx < 0 || !pending) return;
+    const p = overlayPt(e);
+    pending.corners[dragIx] = { x: Math.max(0, Math.min(overlay.width, p.x)), y: Math.max(0, Math.min(overlay.height, p.y)) };
+    candidate = pending.corners;
+  });
+  var endDrag = () => dragIx = -1;
+  overlay.addEventListener("pointerup", endDrag);
+  overlay.addEventListener("pointercancel", endDrag);
   overlay.addEventListener("pointerdown", (e) => {
     if (H) return;
+    if (pending && (mode === "auto" || mode === "tap")) {
+      const p = overlayPt(e);
+      const reach = 46 * (overlay.width / 1280);
+      let bi = -1;
+      let bd = reach;
+      pending.corners.forEach((c, i) => {
+        const d = Math.hypot(c.x - p.x, c.y - p.y);
+        if (d < bd) bd = d, bi = i;
+      });
+      if (bi >= 0) {
+        dragIx = bi;
+        adjusted = true;
+        overlay.setPointerCapture?.(e.pointerId);
+        status.textContent = "Drag each corner onto the lane: the two nearest corners onto the foul line at the gutter edges, the two far ones onto the lane at the pins. Then Confirm.";
+        return;
+      }
+    }
     if (mode === "choose") {
       const r1 = overlay.getBoundingClientRect();
       const px = (e.clientX - r1.left) / r1.width * overlay.width;
@@ -7125,8 +7179,9 @@ ${url}`);
     if (!pending) return;
     $("confirm").classList.add("hide");
     $("manualbtn").classList.add("hide");
-    applyCalibration(pending.corners, pending.rows.foul === null ? "one tap, approximate" : "one tap");
+    applyCalibration(pending.corners, adjusted ? "placed by hand from my guess" : pending.rows.foul === null ? "one tap, approximate" : "one tap");
     pending = null;
+    adjusted = false;
   };
   $("manualbtn").onclick = () => enterManual("Placing the corners yourself.");
   $("saveframe").onclick = async () => {
@@ -7154,6 +7209,7 @@ ${url}`);
     $("confirm").classList.add("hide");
     $("manualbtn").classList.add("hide");
     pending = null;
+    adjusted = false;
     corners = [];
     H = null;
     Hinv = null;
