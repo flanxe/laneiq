@@ -43,6 +43,12 @@
   body.live .hud{display:flex}
   #status{font-size:13px;line-height:1.3;flex:1}
   #ready{font-size:11px;font-weight:800;letter-spacing:.1em;padding:5px 10px;border-radius:99px;border:1px solid var(--gold);color:var(--gold);white-space:nowrap}
+  #ready.scan{border-color:var(--cy);color:var(--cy);animation:pulse 1.2s infinite}
+  #ready.ask{border-color:var(--mg);color:var(--mg);animation:pulse 1.2s infinite}
+  .scanbox{margin:8px 12px 0;display:flex;gap:6px;flex-wrap:wrap}
+  .sc{font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;border:1px solid var(--line);color:var(--dim);background:var(--glass)}
+  .sc.ok{border-color:var(--mint);color:var(--mint)}
+  .sc.ask{border-color:var(--mg);color:var(--mg)}
   #ready.go{border-color:var(--mint);color:var(--mint);box-shadow:0 0 14px rgba(90,255,176,.35)}
   .dots{display:flex;gap:5px}
   .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.18);transition:.25s}
@@ -140,8 +146,9 @@
     <div id="viewtoggle"><button class="seg on" id="vt-lane">Lane view</button><button class="seg" id="vt-raw">Raw</button><button class="seg" id="vt-3d">3D</button></div>
     <div id="hero">
       <h1>Point. Lock.<br>Bowl.</h1>
-      <p>Set your phone behind the approach, centered on the lane, with the whole lane in view. It finds the lane by itself.</p>
+      <p>Set your phone behind the approach or off to one side, with the whole lane in view. It finds the lane by itself.</p>
       <button class="btn" id="start">Start camera</button>
+      <button class="chip" id="guide-open">How to get a good lock</button>
     </div>
   </div>
   <div class="hud">
@@ -150,9 +157,11 @@
     <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
     <button class="btn ghost hide" id="confirm">Confirm lane</button>
     <button class="btn ghost hide" id="manualbtn">Place corners</button>
+    <button class="btn ghost" id="guide-hud" title="How to set up for the best lock">?</button>
     <button class="btn ghost" id="saveframe" title="Save the current frame and what the detector saw">Save frame</button>
     <button class="btn ghost" id="reset">Re-lock</button>
   </div>
+  <div class="scanbox hide" id="scan"></div>
   <main>
     <div class="grid">
       <div class="card hero"><div class="k">Ball speed</div><div class="row"><div class="v"><span id="c-speed">--</span><small style="font-size:18px;color:var(--dim)"> mph</small></div><div class="u" id="c-speed-u"></div></div>
@@ -180,6 +189,7 @@
 <section id="tab-shots" class="tab"><div class="page" id="shots-page"></div></section>
 <section id="tab-insights" class="tab"><div class="page" id="insights-page"></div></section>
 <section id="tab-arsenal" class="tab"><div class="page" id="arsenal-page"></div></section>
+<section id="tab-proshop" class="tab"><div class="page" id="proshop-page"></div></section>
 <section id="tab-me" class="tab"><div class="page" id="me-page"></div></section>
 
 <datalist id="catalog-list"></datalist>
@@ -189,14 +199,19 @@
 <div class="sheet" id="report"></div>
 <div class="sheet" id="scanlab"></div>
 <div class="sheet" id="friends"></div>
+<div class="sheet" id="guide"></div>
+<div class="sheet" id="lab"></div>
+<div class="sheet" id="layoutscan"></div>
+<div class="sheet" id="playbook"></div>
 
 <nav class="tabbar">
   <button class="tb on" data-tab="live"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/></svg>Live</button>
   <button class="tb" data-tab="shots"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/></svg>Shots</button>
   <button class="tb" data-tab="insights"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-8M22 19H2"/></svg>Insights</button>
   <button class="tb" data-tab="arsenal"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="10" cy="9" r=".8"/><circle cx="14" cy="9" r=".8"/><circle cx="12" cy="12.5" r=".8"/></svg>Arsenal</button>
+  <button class="tb" data-tab="proshop"><svg viewBox="0 0 24 24"><path d="M14.5 5.5a4 4 0 0 0-5 5L4 16l4 4 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5z"/></svg>Pro shop</button>
   <button class="tb" data-tab="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/></svg>Me</button>
 </nav>
-<script src="camera.js"></script>
+<script src="camera.js?v=mvgowjas"></script>
 </body>
 </html>

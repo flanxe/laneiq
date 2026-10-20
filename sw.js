@@ -1,6 +1,6 @@
 // Offline support: precache the shell on install, then network-first (fresh when online) with cache fallback.
 // Paths are relative to where this file is served, so the app works at a site root or in a subfolder.
-const CACHE = "laneiq-v8";
+const CACHE = "laneiq-v9";
 const SCOPE = self.registration.scope;
 const SHELL = ["./", "camera.js", "manifest.webmanifest", "balls.json", "patterns.json", "icon-180.png", "icon-192.png", "icon-512.png"].map((u) => new URL(u, SCOPE).href);
 
@@ -47,7 +47,7 @@ self.addEventListener("fetch", (event) => {
     (async () => {
       const cache = await caches.open(CACHE);
       try {
-        const res = await Promise.race([fetch(req), new Promise((_, rej) => setTimeout(() => rej(new Error("slow")), 4000))]);
+        const res = await Promise.race([fetch(req, { cache: "no-cache" }), new Promise((_, rej) => setTimeout(() => rej(new Error("slow")), 4000))]);
         if (res.ok) cache.put(req, res.clone());
         return res;
       } catch {
