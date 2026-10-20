@@ -204,13 +204,13 @@
   var ASSUMED_HFOV_DEG = 63;
   var LANE_LEN = 60;
   var newDiag = () => ({ edgePixels: 0, leftLines: 0, rightLines: 0, pairs: 0, guess: null, foulRow: null, pitRow: null, hint: "" });
-  function detectLanes(gray2, w, h, maxCandidates = 3, seed, diag) {
+  function detectLanes(gray, w, h, maxCandidates = 3, seed, diag) {
     const dbg = (m) => globalThis.__laneDbg?.push(m);
     const sm = new Float32Array(w * h);
     for (let y = 1; y < h - 1; y++)
       for (let x = 1; x < w - 1; x++) {
         const i = y * w + x;
-        sm[i] = (4 * gray2[i] + 2 * (gray2[i - 1] + gray2[i + 1] + gray2[i - w] + gray2[i + w]) + gray2[i - w - 1] + gray2[i - w + 1] + gray2[i + w - 1] + gray2[i + w + 1]) / 16;
+        sm[i] = (4 * gray[i] + 2 * (gray[i - 1] + gray[i + 1] + gray[i - w] + gray[i + w]) + gray[i - w - 1] + gray[i - w + 1] + gray[i + w - 1] + gray[i + w + 1]) / 16;
       }
     const gx = new Float32Array(w * h);
     const gy = new Float32Array(w * h);
@@ -724,8 +724,8 @@
     if (off(ranked[0]) < 0.12 && off(ranked[1]) - off(ranked[0]) > 0.1) return { pick: ranked[0], choices: solid2 };
     return { pick: null, choices: ranked };
   }
-  function detectLaneAt(gray2, w, h, x, y) {
-    return detectLanes(gray2, w, h, 1, { x, y })[0] ?? null;
+  function detectLaneAt(gray, w, h, x, y) {
+    return detectLanes(gray, w, h, 1, { x, y })[0] ?? null;
   }
   function detectionsAgree(a, b, tol) {
     return a.every((p, i) => Math.hypot(p.x - b[i].x, p.y - b[i].y) <= tol);
@@ -2321,7 +2321,7 @@
     const s = Array.from(document.scripts).map((x) => x.src).find((x) => /camera\.js\?v=/.test(x));
     return s ? s.split("?v=")[1] ?? null : null;
   }
-  function watchForUpdates(show) {
+  function watchForUpdates(show, idle = () => false) {
     const mine = runningVersion();
     if (!mine) return;
     let shown = false;
@@ -2332,6 +2332,19 @@
         if (!r.ok) return;
         const v = await r.json();
         if (v.version && v.version !== mine) {
+          let tried = "";
+          try {
+            tried = sessionStorage.getItem("laneiq.autoUpdated") ?? "";
+          } catch {
+          }
+          if (idle() && tried !== v.version) {
+            try {
+              sessionStorage.setItem("laneiq.autoUpdated", v.version);
+            } catch {
+            }
+            location.reload();
+            return;
+          }
           shown = true;
           show("A newer version of LaneIQ is ready.", () => location.reload());
         }
@@ -2595,6 +2608,18 @@
     }
     return { pinToPap: a, valAngle, pinBuffer, pinToGrip: surfDist(pin, N), papToGrip: surfDist(P, N), pinPlacement: { up: pinUp, over: pinOver, label: classifyPin(pinUp, pinOver, fingerY, grip) }, drilling, psaToPap, points: { pap: P, pin, psa, q, valUp } };
   }
+  function measureMark(pin, mark, pap, hand, grip = DEFAULT_GRIP) {
+    const { hs } = gripFrame(grip, hand);
+    const { pap: P } = papPoint(pap, hs);
+    const toPap = tangentToward(pin, P);
+    const toMark = tangentToward(pin, mark);
+    const angle = deg(Math.acos(clamp(dot(toPap, toMark))));
+    const mirrored = unit(sub(scale(toPap, 2 * dot(toMark, toPap)), toMark));
+    const outward = (d) => hs * walk(pin, d, QUARTER)[0];
+    const upIn = R * Math.asin(clamp(dot(mark, UP)));
+    const overIn = R * Math.asin(clamp(dot(mark, [hs, 0, 0]) / Math.max(1e-9, Math.cos(Math.asin(clamp(dot(mark, UP)))))));
+    return { fromPin: surfDist(pin, mark), toPap: surfDist(mark, P), angleAtPin: outward(toMark) >= outward(mirrored) ? angle : -angle, up: upIn, over: overIn };
+  }
 
   // core/src/flare.ts
   function deriv(w, i) {
@@ -2821,20 +2846,20 @@
     let s = seed || 1;
     return () => (s = s * 16807 % 2147483647) / 2147483647;
   }
-  function shrink(gray2, w, h, maxW) {
+  function shrink(gray, w, h, maxW) {
     const k2 = Math.max(1, Math.floor(w / maxW));
     const nw = Math.floor(w / k2), nh = Math.floor(h / k2);
     const out = new Float32Array(nw * nh);
     for (let y = 0; y < nh; y++)
       for (let x = 0; x < nw; x++) {
         let s = 0;
-        for (let j = 0; j < k2; j++) for (let i = 0; i < k2; i++) s += gray2[(y * k2 + j) * w + x * k2 + i];
+        for (let j = 0; j < k2; j++) for (let i = 0; i < k2; i++) s += gray[(y * k2 + j) * w + x * k2 + i];
         out[y * nw + x] = s / (k2 * k2);
       }
     return { g: out, w: nw, h: nh, k: k2 };
   }
-  function detectBall(gray2, w, h) {
-    const { g, w: sw, h: sh, k: k2 } = shrink(gray2, w, h, 360);
+  function detectBall(gray, w, h, hint = {}) {
+    const { g, w: sw, h: sh, k: k2 } = shrink(gray, w, h, 360);
     const gx = new Float32Array(sw * sh), gy = new Float32Array(sw * sh), mag = new Float32Array(sw * sh);
     for (let y = 1; y < sh - 1; y++)
       for (let x = 1; x < sw - 1; x++) {
@@ -2849,11 +2874,13 @@
     for (let i = 0; i < mag.length; i++) if (mag[i] >= thr) edges.push(i);
     if (edges.length < 60) return null;
     const rand = rng(12345);
-    const minR = Math.min(sw, sh) * 0.15, maxR = Math.min(sw, sh) * 0.52;
+    const minR = hint.minR !== void 0 ? hint.minR / k2 : Math.min(sw, sh) * 0.15;
+    const maxR = hint.maxR !== void 0 ? hint.maxR / k2 : Math.min(sw, sh) * 0.52;
+    const inside = (hint.contain ?? []).map((p) => ({ x: p.x / k2, y: p.y / k2 }));
     const tol = Math.max(1.8, Math.min(sw, sh) * 0.012);
     let best = null;
     const pt = (i) => ({ x: i % sw, y: Math.floor(i / sw) });
-    for (let it = 0; it < 900; it++) {
+    for (let it = 0; it < (inside.length ? 4e3 : 900); it++) {
       const a = pt(edges[Math.floor(rand() * edges.length)]), b = pt(edges[Math.floor(rand() * edges.length)]), c = pt(edges[Math.floor(rand() * edges.length)]);
       const d = 2 * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));
       if (Math.abs(d) < 1e-6) continue;
@@ -2861,16 +2888,24 @@
       const uy = ((a.x * a.x + a.y * a.y) * (c.x - b.x) + (b.x * b.x + b.y * b.y) * (a.x - c.x) + (c.x * c.x + c.y * c.y) * (b.x - a.x)) / d;
       const r = Math.hypot(a.x - ux, a.y - uy);
       if (r < minR || r > maxR) continue;
+      if (inside.some((q) => Math.hypot(q.x - ux, q.y - uy) > r * 0.85)) continue;
+      if (inside.length && Math.hypot(inside.reduce((a2, q) => a2 + q.x, 0) / inside.length - ux, inside.reduce((a2, q) => a2 + q.y, 0) / inside.length - uy) > r * 0.5) continue;
       let n = 0;
+      const bins2 = new Uint8Array(24);
       for (let q = 0; q < edges.length; q += 2) {
         const p = pt(edges[q]);
         const dist = Math.hypot(p.x - ux, p.y - uy);
         if (Math.abs(dist - r) > tol) continue;
         const rx = (p.x - ux) / (dist || 1), ry = (p.y - uy) / (dist || 1);
         const m = mag[edges[q]] || 1;
-        if (Math.abs((gx[edges[q]] * rx + gy[edges[q]] * ry) / m) > 0.8) n++;
+        if (Math.abs((gx[edges[q]] * rx + gy[edges[q]] * ry) / m) > 0.8) {
+          n++;
+          bins2[Math.min(23, Math.floor((Math.atan2(ry, rx) + Math.PI) / (2 * Math.PI) * 24))] = 1;
+        }
       }
-      if (!best || n > best.n) best = { c: { x: ux, y: uy, r }, n };
+      const coverage = bins2.reduce((a2, b2) => a2 + b2, 0) / 24;
+      const score = n * (0.4 + coverage);
+      if (!best || score > best.n) best = { c: { x: ux, y: uy, r }, n: score };
     }
     if (!best || best.n < Math.max(25, 0.6 * 2 * Math.PI * best.c.r / 4)) return null;
     const inl = [];
@@ -2881,8 +2916,8 @@
     const f = fitCircle(inl) ?? best.c;
     return { x: (f.x + 0.5) * k2, y: (f.y + 0.5) * k2, r: f.r * k2 };
   }
-  function detectHoles(gray2, w, h, ball) {
-    const { g, w: sw, h: sh, k: k2 } = shrink(gray2, w, h, 420);
+  function detectHoles(gray, w, h, ball) {
+    const { g, w: sw, h: sh, k: k2 } = shrink(gray, w, h, 420);
     const c = { x: ball.x / k2, y: ball.y / k2, r: ball.r / k2 };
     const rad2 = Math.max(3, Math.round(c.r / 5));
     const integral = new Float64Array((sw + 1) * (sh + 1));
@@ -2939,6 +2974,265 @@
     }
     return blobs.sort((a, b) => b.contrast * b.r - a.contrast * a.r).slice(0, 8);
   }
+  var traceCache = null;
+  function traceBall(gray, w, h, c0, r0, spread = 0.2, rgb, scoreOut) {
+    const cacheHit = traceCache && traceCache.gray === gray && traceCache.rgb === rgb && traceCache.w === w && traceCache.h === h ? traceCache : null;
+    const { g, w: sw, h: sh, k: k2 } = cacheHit ? cacheHit.shrunk : shrink(gray, w, h, 300);
+    const cx = c0.x / k2, cy = c0.y / k2, R0 = r0 / k2;
+    let fgScore = cacheHit ? cacheHit.fgScore : null;
+    if (rgb && !cacheHit) {
+      const px = (x, y) => {
+        const i = (Math.min(h - 1, Math.round(y * k2)) * w + Math.min(w - 1, Math.round(x * k2))) * 3;
+        return [rgb[i], rgb[i + 1], rgb[i + 2]];
+      };
+      const sample2 = (pred) => {
+        const out = [];
+        for (let y = 0; y < sh; y += 2) for (let x = 0; x < sw; x += 2) if (pred(Math.hypot(x - cx, y - cy))) out.push(px(x, y));
+        return out;
+      };
+      const kmeans = (pts2, kc) => {
+        if (pts2.length < kc) return pts2;
+        let cs = Array.from({ length: kc }, (_, i) => pts2[Math.floor((i + 0.5) * (pts2.length / kc))]);
+        for (let it = 0; it < 6; it++) {
+          const sum = cs.map(() => [0, 0, 0, 0]);
+          for (const p of pts2) {
+            let bi = 0, bd = 1e9;
+            cs.forEach((c, i) => {
+              const d = (c[0] - p[0]) ** 2 + (c[1] - p[1]) ** 2 + (c[2] - p[2]) ** 2;
+              if (d < bd) bd = d, bi = i;
+            });
+            sum[bi][0] += p[0];
+            sum[bi][1] += p[1];
+            sum[bi][2] += p[2];
+            sum[bi][3]++;
+          }
+          cs = cs.map((c, i) => sum[i][3] ? [sum[i][0] / sum[i][3], sum[i][1] / sum[i][3], sum[i][2] / sum[i][3]] : c);
+        }
+        return cs;
+      };
+      const fg = kmeans(sample2((d) => d < R0 * 0.45), 4);
+      const bg2 = kmeans(sample2((d) => d > R0 * 1.55), 5);
+      if (fg.length && bg2.length) {
+        fgScore = new Float32Array(sw * sh);
+        const near = (cs, p) => Math.sqrt(Math.min(...cs.map((c) => (c[0] - p[0]) ** 2 + (c[1] - p[1]) ** 2 + (c[2] - p[2]) ** 2)));
+        for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) {
+          const p = px(x, y);
+          fgScore[y * sw + x] = near(bg2, p) - near(fg, p);
+        }
+      }
+      traceCache = { gray, rgb, w, h, shrunk: { g, w: sw, h: sh, k: k2 }, fgScore };
+    }
+    const sm = new Float32Array(sw * sh);
+    for (let y = 1; y < sh - 1; y++) for (let x = 1; x < sw - 1; x++) sm[y * sw + x] = (4 * g[y * sw + x] + g[y * sw + x - 1] + g[y * sw + x + 1] + g[(y - 1) * sw + x] + g[(y + 1) * sw + x]) / 8;
+    const at = (x, y) => {
+      const xi = Math.max(1, Math.min(sw - 2, Math.round(x))), yi = Math.max(1, Math.min(sh - 2, Math.round(y)));
+      return sm[yi * sw + xi];
+    };
+    const fgAt = (x, y) => fgScore ? fgScore[Math.max(0, Math.min(sh - 1, Math.round(y))) * sw + Math.max(0, Math.min(sw - 1, Math.round(x)))] : 0;
+    const NA = 120;
+    const rMin = Math.max(6, Math.floor(R0 * (1 - spread))), rMax = Math.ceil(R0 * (1 + spread));
+    const NR = rMax - rMin + 1;
+    const edge = [];
+    for (let a = 0; a < NA; a++) {
+      const th = a / NA * 2 * Math.PI, ux = Math.cos(th), uy = Math.sin(th);
+      const row = new Float32Array(NR);
+      for (let ri = 0; ri < NR; ri++) {
+        const r = rMin + ri;
+        const x = cx + ux * r, y = cy + uy * r;
+        if (x < 2 || y < 2 || x > sw - 3 || y > sh - 3) {
+          row[ri] = 0;
+          continue;
+        }
+        const inner = (at(x - ux * 2, y - uy * 2) + at(x - ux * 3, y - uy * 3)) / 2, outer = (at(x + ux * 2, y + uy * 2) + at(x + ux * 3, y + uy * 3)) / 2;
+        row[ri] = Math.abs(outer - inner);
+        if (fgScore) {
+          const fin = (fgAt(x - ux * 3, y - uy * 3) + fgAt(x - ux * 5, y - uy * 5)) / 2, fout = (fgAt(x + ux * 3, y + uy * 3) + fgAt(x + ux * 5, y + uy * 5)) / 2;
+          row[ri] = 0.35 * row[ri] + 0.65 * Math.max(0, fin - fout);
+        }
+      }
+      edge.push(row);
+    }
+    const lambda = 1.2;
+    const best = (startRi) => {
+      let prev = new Float32Array(NR).fill(-1e9);
+      prev[startRi] = edge[0][startRi];
+      const back = [];
+      for (let a = 1; a <= NA; a++) {
+        const cur = new Float32Array(NR).fill(-1e9);
+        const bp = new Int16Array(NR);
+        const row = edge[a % NA];
+        for (let ri2 = 0; ri2 < NR; ri2++) {
+          let bv = -1e9, bi = ri2;
+          for (let d = -3; d <= 3; d++) {
+            const j = ri2 + d;
+            if (j < 0 || j >= NR) continue;
+            const v = prev[j] - lambda * Math.abs(d) * 2;
+            if (v > bv) bv = v, bi = j;
+          }
+          cur[ri2] = bv + row[ri2];
+          bp[ri2] = bi;
+        }
+        back.push(bp);
+        prev = cur;
+      }
+      let ri = startRi;
+      const path2 = new Array(NA);
+      let score = prev[startRi];
+      for (let a = NA; a >= 1; a--) {
+        path2[a % NA] = ri;
+        ri = back[a - 1][ri];
+      }
+      return { path: path2, score };
+    };
+    const starts = [...edge[0].keys()].sort((p, q) => edge[0][q] - edge[0][p]).filter((v, i, arr) => arr.slice(0, i).every((u) => Math.abs(u - v) > 6)).slice(0, 4);
+    let top = null;
+    for (const s of starts) {
+      const b = best(s);
+      if (!top || b.score > top.score) top = b;
+    }
+    if (!top) return null;
+    if (scoreOut) scoreOut.score = top.score / NA;
+    const pts = top.path.map((ri, a) => ({ x: cx + Math.cos(a / NA * 2 * Math.PI) * (rMin + ri), y: cy + Math.sin(a / NA * 2 * Math.PI) * (rMin + ri) }));
+    let fit = fitCircle(pts);
+    for (let round = 0; round < 4 && fit; round++) {
+      const f = fit;
+      const keep = pts.filter((p) => Math.abs(Math.hypot(p.x - f.x, p.y - f.y) - f.r) < f.r * 0.04);
+      if (keep.length < 25) break;
+      fit = fitCircle(keep) ?? fit;
+    }
+    if (!fit || fit.r < R0 * (1 - spread * 1.3) || fit.r > R0 * (1 + spread * 1.3)) return null;
+    return { x: (fit.x + 0.5) * k2, y: (fit.y + 0.5) * k2, r: fit.r * k2 };
+  }
+  function findBalls(gray, w, h, holesMid, rGuess, rgb, count = 3) {
+    const found = [];
+    for (const sizeK of [0.88, 1, 1.12])
+      for (let iy = -2; iy <= 2; iy++)
+        for (let ix = -2; ix <= 2; ix++) {
+          const out = { score: 0 };
+          const c = traceBall(gray, w, h, { x: holesMid.x + ix * rGuess * 0.14, y: holesMid.y + iy * rGuess * 0.14 }, rGuess * sizeK, 0.12, rgb, out);
+          if (c) found.push({ c, score: out.score });
+        }
+    found.sort((a, b) => b.score - a.score);
+    const picks = [];
+    for (const f of found) {
+      if (picks.every((p) => Math.hypot(p.x - f.c.x, p.y - f.c.y) > f.c.r * 0.22 || Math.abs(p.r - f.c.r) > f.c.r * 0.18)) {
+        const again = traceBall(gray, w, h, f.c, f.c.r, 0.08, rgb);
+        picks.push(again ?? f.c);
+      }
+      if (picks.length >= count) break;
+    }
+    return picks;
+  }
+  function detectDots(rgb, w, h, ball, avoid = [], avoidR = 0) {
+    const k2 = Math.max(1, Math.floor(w / 640));
+    const sw = Math.floor(w / k2), sh = Math.floor(h / k2);
+    const c = { x: ball.x / k2, y: ball.y / k2, r: ball.r / k2 };
+    const ch = [new Float32Array(sw * sh), new Float32Array(sw * sh), new Float32Array(sw * sh)];
+    for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) for (let j = 0; j < 3; j++) ch[j][y * sw + x] = rgb[(y * k2 * w + x * k2) * 3 + j];
+    const rad2 = Math.max(4, Math.round(c.r / 9));
+    const integ = ch.map((a) => {
+      const I = new Float64Array((sw + 1) * (sh + 1));
+      for (let y = 0; y < sh; y++) {
+        let row = 0;
+        for (let x = 0; x < sw; x++) {
+          row += a[y * sw + x];
+          I[(y + 1) * (sw + 1) + x + 1] = I[y * (sw + 1) + x + 1] + row;
+        }
+      }
+      return I;
+    });
+    const mean3 = (j, x, y) => {
+      const x0 = Math.max(0, x - rad2), x1 = Math.min(sw, x + rad2 + 1), y0 = Math.max(0, y - rad2), y1 = Math.min(sh, y + rad2 + 1);
+      const I = integ[j];
+      return (I[y1 * (sw + 1) + x1] - I[y0 * (sw + 1) + x1] - I[y1 * (sw + 1) + x0] + I[y0 * (sw + 1) + x0]) / ((x1 - x0) * (y1 - y0));
+    };
+    const clear = (avoidR || ball.r * 0.2) * 1 / k2;
+    const nearAvoid = (x, y) => avoid.some((q) => Math.hypot(q.x / k2 - x, q.y / k2 - y) < clear);
+    const dist = new Float32Array(sw * sh);
+    const sat = new Float32Array(sw * sh);
+    const vals = [];
+    for (let y = 0; y < sh; y++)
+      for (let x = 0; x < sw; x++) {
+        if (Math.hypot(x - c.x, y - c.y) > c.r * 0.9 || nearAvoid(x, y)) continue;
+        const i = y * sw + x;
+        const d = Math.hypot(ch[0][i] - mean3(0, x, y), ch[1][i] - mean3(1, x, y), ch[2][i] - mean3(2, x, y));
+        dist[i] = d;
+        const mx = Math.max(ch[0][i], ch[1][i], ch[2][i]), mn = Math.min(ch[0][i], ch[1][i], ch[2][i]);
+        sat[i] = mx ? (mx - mn) / mx : 0;
+        vals.push(d);
+      }
+    if (vals.length < 50) return [];
+    vals.sort((a, b) => a - b);
+    const t = Math.min(70, Math.max(40, vals[Math.floor(vals.length * 0.995)] * 0.5));
+    const seen = new Uint8Array(sw * sh);
+    const out = [];
+    for (let s = 0; s < sw * sh; s++) {
+      if (seen[s] || dist[s] < t) continue;
+      const stack = [s];
+      seen[s] = 1;
+      let n = 0, sx = 0, sy = 0, x0 = sw, x1 = 0, y0 = sh, y1 = 0, dsum = 0, ssum = 0;
+      while (stack.length) {
+        const i = stack.pop();
+        const x = i % sw, y = Math.floor(i / sw);
+        n++;
+        sx += x;
+        sy += y;
+        dsum += dist[i];
+        ssum += sat[i];
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+        for (const j of [i - 1, i + 1, i - sw, i + sw]) if (j >= 0 && j < sw * sh && !seen[j] && dist[j] >= t) seen[j] = 1, stack.push(j);
+      }
+      const coreContrast = dsum / n;
+      {
+        const mc = [0, 1, 2].map((j) => ch[j][Math.round(sy / n) * sw + Math.round(sx / n)]);
+        const cap = Math.PI * (c.r * 0.13) ** 2;
+        const grown = new Uint8Array(sw * sh);
+        const q = [];
+        for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) {
+          const i = yy * sw + xx;
+          if (seen[i] && dist[i] >= t) grown[i] = 1, q.push(i);
+        }
+        let gn = 0, gx = 0, gy = 0, gx0 = sw, gx1 = 0, gy0 = sh, gy1 = 0, gs = 0;
+        while (q.length && gn < cap * 1.2) {
+          const i = q.pop();
+          const x = i % sw, y = Math.floor(i / sw);
+          gn++;
+          gx += x;
+          gy += y;
+          gs += sat[i] || 0;
+          if (x < gx0) gx0 = x;
+          if (x > gx1) gx1 = x;
+          if (y < gy0) gy0 = y;
+          if (y > gy1) gy1 = y;
+          for (const j of [i - 1, i + 1, i - sw, i + sw]) {
+            if (j < 0 || j >= sw * sh || grown[j]) continue;
+            if (Math.hypot(ch[0][j] - mc[0], ch[1][j] - mc[1], ch[2][j] - mc[2]) < 60) grown[j] = 1, q.push(j);
+          }
+        }
+        if (gn > n && gn < cap * 1.2) {
+          for (let yy = gy0; yy <= gy1; yy++) for (let xx = gx0; xx <= gx1; xx++) if (grown[yy * sw + xx]) seen[yy * sw + xx] = 1;
+          n = gn;
+          sx = gx;
+          sy = gy;
+          x0 = gx0;
+          x1 = gx1;
+          y0 = gy0;
+          y1 = gy1;
+          ssum = Math.max(ssum, gs);
+        }
+      }
+      const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+      const rEq = Math.sqrt(n / Math.PI);
+      if (rEq < c.r * 0.02 || rEq > c.r * 0.11) continue;
+      if (n / (bw * bh) < 0.55 || bw / bh < 0.5 || bw / bh > 2) continue;
+      if (ssum / n < 0.25) continue;
+      out.push({ x: (sx / n + 0.5) * k2, y: (sy / n + 0.5) * k2, r: rEq * k2, contrast: coreContrast });
+    }
+    return out.sort((a, b) => b.contrast * Math.sqrt(b.r) - a.contrast * Math.sqrt(a.r)).slice(0, 6);
+  }
   function pickGrip(blobs, ball, noThumb) {
     let best = null;
     for (let i = 0; i < blobs.length; i++)
@@ -2975,23 +3269,34 @@
     }
     return [x, y, Math.sqrt(1 - rr)];
   }
-  function layoutFromScan(inp) {
-    const warnings = [];
+  function scanFrame(inp) {
     const S2 = (p) => toSphere(p, inp.circle);
     const fa = S2(inp.fingerA), fb = S2(inp.fingerB);
     const F = unit([fa[0] + fb[0], fa[1] + fb[1], fa[2] + fb[2]]);
     const T = inp.thumb ? S2(inp.thumb) : null;
     const G = T ? unit([F[0] + T[0], F[1] + T[1], F[2] + T[2]]) : F;
     const up = T ? tangentToward(G, F) : tangentToward(G, [0, 1, 0]);
-    const e_x = cross(up, G);
+    return { ex: cross(up, G), up, g: G };
+  }
+  function layoutFromScan(inp) {
+    const warnings = [];
+    const S2 = (p) => toSphere(p, inp.circle);
+    const T = inp.thumb ? S2(inp.thumb) : null;
+    const F = unit([S2(inp.fingerA)[0] + S2(inp.fingerB)[0], S2(inp.fingerA)[1] + S2(inp.fingerB)[1], S2(inp.fingerA)[2] + S2(inp.fingerB)[2]]);
+    const { ex: e_x, up, g: G } = scanFrame(inp);
     const map = (v) => [dot(v, e_x), dot(v, up), dot(v, G)];
     const pinCam = S2(inp.pin);
-    const baseCam = inp.baseline ? S2(inp.baseline) : null;
+    const refPt = inp.asymmetric ? inp.mb ?? inp.cg ?? inp.baseline ?? null : inp.cg ?? inp.baseline ?? null;
+    const reference = !refPt ? null : inp.asymmetric && inp.mb && refPt === inp.mb ? "mb" : "cg";
+    const baseCam = refPt ? S2(refPt) : null;
     const measured = measureLayout(map(pinCam), baseCam ? map(baseCam) : null, inp.pap, inp.hand, inp.grip ?? DEFAULT_GRIP);
+    if (inp.asymmetric && !inp.mb && refPt) warnings.push("This ball has a mass bias, but it isn't placed, so I measured from the CG instead. Place the mass bias dot for the right drilling angle.");
+    const pinToCg = inp.cg ? surfDist(map(pinCam), map(S2(inp.cg))) : null;
+    const pinToMb = inp.asymmetric && inp.mb ? surfDist(map(pinCam), map(S2(inp.mb))) : null;
     const near = (p) => Math.hypot(p.x - inp.circle.x, p.y - inp.circle.y) / inp.circle.r > 0.82;
-    if (near(inp.pin) || inp.baseline && near(inp.baseline)) warnings.push("The pin or CG is near the edge of the ball in the picture, where distances are squeezed. Turn the ball so it is closer to the middle and scan again.");
+    if (near(inp.pin) || refPt && near(refPt)) warnings.push("The pin or the CG / mass bias is near the edge of the ball in the picture, where distances are squeezed. Turn the ball so it is closer to the middle and scan again.");
     if (near(inp.fingerA) || near(inp.fingerB) || inp.thumb && near(inp.thumb)) warnings.push("A grip hole is near the edge of the ball in the picture. Turn the ball so the grip faces the camera.");
-    if (measured.drilling !== null && Math.abs(measured.drilling) > 95) warnings.push(`The drilling angle reads ${Math.round(Math.abs(measured.drilling))}\xB0, which is past the usual 10-90\xB0. The CG dot may be on the other side of the pin, or the pin may be in the wrong spot. Check where you tapped.`);
+    if (measured.drilling !== null && Math.abs(measured.drilling) > 95) warnings.push(`The drilling angle reads ${Math.round(Math.abs(measured.drilling))}\xB0, which is past the usual 10-90\xB0. The CG or mass bias dot may be on the other side of the pin, or the pin may be in the wrong spot. Check where you tapped.`);
     if (Math.abs(measured.valAngle) > 90) warnings.push("The pin is below the PAP, which is unusual. Check the PAP (over and up) and where the pin is.");
     if (measured.pinToPap < 0.5 || measured.pinToPap > 7) warnings.push("The pin to PAP distance looks off. Check the PAP numbers and where you placed the pin.");
     const sphereDist = (a, b) => surfDist(a, b);
@@ -3003,11 +3308,23 @@
     }
     void scale;
     void sub;
-    return { measured, spanIn, warnings };
+    const grp = inp.grip ?? DEFAULT_GRIP;
+    const cg = inp.cg ? measureMark(map(pinCam), map(S2(inp.cg)), inp.pap, inp.hand, grp) : null;
+    const mb = inp.asymmetric && inp.mb ? measureMark(map(pinCam), map(S2(inp.mb)), inp.pap, inp.hand, grp) : null;
+    return { measured, spanIn, reference, pinToCg, pinToMb, cg, mb, warnings };
   }
 
   // camera/ballscan.ts
+  var KINDS = [
+    { id: "thumb", label: "One hand, with a thumb", blurb: "a thumb hole and two finger holes" },
+    { id: "nothumb", label: "One hand, no thumb", blurb: "two finger holes, no thumb hole" },
+    { id: "two", label: "Two-handed", blurb: "two finger holes, no thumb hole" }
+  ];
+  var LABEL = { thumb: "Thumb hole", fingerA: "Finger hole 1", fingerB: "Finger hole 2", pin: "Pin", cg: "CG", mb: "Mass bias" };
+  var COLOR = { thumb: "#ffffff", fingerA: "#ff4fd8", fingerB: "#ff4fd8", pin: "#46e6ff", cg: "#ffd25a", mb: "#ff8a3d" };
   var st = null;
+  var kindPicked = null;
+  var drag = null;
   var sheet = () => $("layoutscan");
   var close = () => (sheet().classList.remove("on"), sheet().innerHTML = "", st = null);
   var MAX_W = 960;
@@ -3015,26 +3332,44 @@
     const el = sheet();
     el.classList.add("on");
     const bp = bowlerProfile();
+    const mine = bp.style === "two-handed" ? "two" : bp.style === "one-hand-no-thumb" ? "nothumb" : "thumb";
+    kindPicked = null;
     el.innerHTML = `
     <div class="row"><h2>Scan my ball</h2><button class="btn ghost" id="bs-close">Close</button></div>
-    <div class="note">Take a photo of your drilled ball and I'll work out its layout from where the holes and the pin are, using your PAP. It reads the picture; you confirm every point.</div>
+    <div class="note">First, what kind of grip is drilled in this ball? It tells me which holes to look for.</div>
+    <div class="card">${KINDS.map((k2) => `<button class="opt" data-kind="${k2.id}"><b>${k2.label}</b><span>${k2.blurb}${k2.id === mine ? " \xB7 matches your profile" : ""}</span></button>`).join("")}</div>`;
+    $("bs-close").onclick = close;
+    el.querySelectorAll("[data-kind]").forEach((b) => b.onclick = () => (kindPicked = b.dataset.kind, openPhoto()));
+  }
+  function openPhoto() {
+    const el = sheet();
+    const bp = bowlerProfile();
+    const kind = kindPicked ?? "thumb";
+    el.innerHTML = `
+    <div class="row"><h2>Scan my ball</h2><button class="btn ghost" id="bs-close">Close</button></div>
+    <div class="note">${esc(KINDS.find((k2) => k2.id === kind).label)}. Take a photo and I'll scan it on my own: the ball, the grip holes and the pin. Then you can drag anything I got wrong.</div>
     <div class="card"><div class="k">For the best reading</div><ul>
-      <li>Set the ball on a stand or a towel, grip facing the camera, <b>fingers up, thumb down</b>.</li>
+      <li>Set the ball on a stand or a towel, grip facing the camera, <b>fingers up</b>. A plain background (no hand holding it) makes the outline much easier.</li>
       <li>Turn it so the <b>grip holes and the pin are both in view</b> and not right at the edge of the ball.</li>
       <li>Stand a few feet back and zoom in a little, rather than holding the phone close: it keeps distances true.</li>
-      <li>Good light, no glare, and the whole ball in the picture. A black ball needs light from the side.</li>
-      <li>Know your <b>PAP</b>. Without it there's no layout to read. You'll enter it next.</li>
-      <li>Find the pin from the ball's own marks: many balls show the pin as a dot or a spot under the logo, and a symmetric ball usually marks the CG. If you can't see them, ask your driller to mark them in pencil first.</li></ul></div>
+      <li>Good light, no glare, the whole ball in the picture. A black ball needs light from the side.</li>
+      <li>Know your <b>PAP</b>. Without it there's no layout to read.</li></ul></div>
+    <div class="card"><div class="k">What the marks look like</div><ul>
+      <li><b>Pin:</b> a small solid dot of a vivid color (often green, red or orange) near the logo. It marks the top of the weight block. I look for it by color.</li>
+      <li><b>CG:</b> a symmetric ball is often unmarked, or has a small dot or ring. Many makers fine-tune the CG and mark it.</li>
+      <li><b>Mass bias (MB):</b> only on asymmetric balls, a small dot, often a different color from the pin's. The line from the pin through it points toward the PSA.</li>
+      <li>Marks vary from maker to maker. I can't promise I'll tell the pin from the CG or the MB, so check what I picked, and drag it if it's wrong.</li></ul></div>
     <div class="card"><label class="btn" style="display:inline-block;cursor:pointer">Take or choose a photo<input id="bs-file" type="file" accept="image/*" capture="environment" style="display:none"></label>
       <div class="note" id="bs-msg">Nothing is uploaded: the picture stays on this phone.</div></div>`;
     $("bs-close").onclick = close;
     $("bs-file").onchange = async (e) => {
       const f = e.target.files?.[0];
       if (!f) return;
-      $("bs-msg").textContent = "Reading the picture\u2026";
+      $("bs-msg").textContent = "Scanning the picture\u2026";
       try {
         const img = await loadImage(f);
-        begin(img, bp.hand, bp.style === "two-handed" || bp.style === "one-hand-no-thumb");
+        await new Promise((r) => setTimeout(r, 30));
+        begin(img, bp.hand, kind);
       } catch {
         $("bs-msg").textContent = "That file didn't open as a picture.";
       }
@@ -3057,41 +3392,129 @@
       im.src = url;
     });
   }
-  function gray(c) {
+  function pixels(c) {
     const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
     const g = new Uint8ClampedArray(c.width * c.height);
-    for (let i = 0; i < g.length; i++) g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
-    return g;
+    const rgb = new Uint8ClampedArray(c.width * c.height * 3);
+    for (let i = 0; i < g.length; i++) {
+      rgb[i * 3] = d[i * 4];
+      rgb[i * 3 + 1] = d[i * 4 + 1];
+      rgb[i * 3 + 2] = d[i * 4 + 2];
+      g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+    }
+    return { g, rgb };
   }
-  function begin(img, hand, noThumb) {
-    const g = gray(img);
-    const found = detectBall(g, img.width, img.height);
-    const circle = found ?? { x: img.width / 2, y: img.height / 2, r: Math.min(img.width, img.height) * 0.4 };
+  function begin(img, hand, kind) {
     const pap = S.profile?.spin?.pap ? parsePap(S.profile.spin.pap) : null;
-    st = { img, circle, thumb: null, fingerA: null, fingerB: null, pin: null, cg: null, mode: "pin", noThumb, hand, papText: { over: pap ? fractionInches(pap.over).replace(/"/g, "") : "", up: pap ? fractionInches(pap.up).replace(/"/g, "") : "" }, holeR: {}, found: found ? "I found the ball's outline. Check it fits, and adjust with the sliders if not." : "I couldn't find the ball's outline on its own. Use the sliders to fit the circle to the ball." };
-    autoHoles();
+    st = {
+      img,
+      circle: { x: img.width / 2, y: img.height / 2, r: Math.min(img.width, img.height) * 0.4 },
+      outlines: [],
+      outlineIx: 0,
+      thumb: null,
+      fingerA: null,
+      fingerB: null,
+      pin: null,
+      cg: null,
+      mb: null,
+      asym: false,
+      marks: [],
+      guessed: { pin: false, cg: false, mb: false, holes: false },
+      mode: "pin",
+      kind,
+      noThumb: kind !== "thumb",
+      hand,
+      holeR: 0,
+      showHoles: true,
+      papText: { over: pap ? fractionInches(pap.over).replace(/"/g, "") : "", up: pap ? fractionInches(pap.up).replace(/"/g, "") : "" },
+      found: ""
+    };
+    analyze();
     draw();
   }
-  function autoHoles() {
+  function analyze() {
     if (!st) return;
-    const blobs = detectHoles(gray(st.img), st.img.width, st.img.height, st.circle);
-    const grip = pickGrip(blobs, st.circle, st.noThumb);
+    const s = st;
+    const { g, rgb } = pixels(s.img);
+    const W = s.img.width, H2 = s.img.height;
+    const notes = [];
+    const rough = { x: W / 2, y: H2 / 2, r: Math.min(W, H2) * 0.48 };
+    const blobs = detectHoles(g, W, H2, rough);
+    const grip = pickGrip(blobs, rough, s.noThumb);
+    s.thumb = s.fingerA = s.fingerB = null;
+    s.guessed.holes = false;
     if (grip) {
-      st.thumb = grip.thumb ? { x: grip.thumb.x, y: grip.thumb.y } : null;
-      st.fingerA = { x: grip.fingers[0].x, y: grip.fingers[0].y };
-      st.fingerB = { x: grip.fingers[1].x, y: grip.fingers[1].y };
-      st.holeR = { thumb: grip.thumb?.r, finger: (grip.fingers[0].r + grip.fingers[1].r) / 2 };
-      if (st.fingerA.x > st.fingerB.x) [st.fingerA, st.fingerB] = [st.fingerB, st.fingerA];
+      s.thumb = grip.thumb ? { x: grip.thumb.x, y: grip.thumb.y } : null;
+      s.fingerA = { x: grip.fingers[0].x, y: grip.fingers[0].y };
+      s.fingerB = { x: grip.fingers[1].x, y: grip.fingers[1].y };
+      if (s.fingerA.x > s.fingerB.x) [s.fingerA, s.fingerB] = [s.fingerB, s.fingerA];
+      s.holeR = (grip.fingers[0].r + grip.fingers[1].r) / 2;
+      s.guessed.holes = true;
     }
-    st.found += grip ? " I also found the grip holes." : " I couldn't pick out the grip holes on my own: tap them.";
+    s.outlines = [];
+    if (grip) {
+      const pts = [s.fingerA, s.fingerB, ...s.thumb ? [s.thumb] : []];
+      const mid = { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length };
+      const rGuess = Math.max(Math.min(W, H2) * 0.2, Math.min(Math.min(W, H2) * 0.5, s.holeR * 9.2));
+      s.outlines = findBalls(g, W, H2, mid, rGuess, rgb, 3);
+    }
+    if (!s.outlines.length) {
+      const edge = detectBall(g, W, H2);
+      if (edge) s.outlines = [edge];
+    }
+    s.outlineIx = 0;
+    if (s.outlines.length) s.circle = s.outlines[0];
+    notes.push(s.outlines.length ? `I found the ball's outline${s.outlines.length > 1 ? ` (and ${s.outlines.length - 1} other possible one${s.outlines.length > 2 ? "s" : ""}: try them if it's wrong)` : ""}.` : "I couldn't find the ball's outline on my own: drag the circle to fit the ball.");
+    notes.push(grip ? `I found the grip holes (${s.noThumb ? "two finger holes" : "thumb and two finger holes"}).` : "I couldn't pick out the grip holes on my own: tap them.");
+    if (grip && s.outlines.length) {
+      const again = pickGrip(detectHoles(g, W, H2, s.circle), s.circle, s.noThumb);
+      if (again) {
+        s.thumb = again.thumb ? { x: again.thumb.x, y: again.thumb.y } : null;
+        s.fingerA = { x: again.fingers[0].x, y: again.fingers[0].y };
+        s.fingerB = { x: again.fingers[1].x, y: again.fingers[1].y };
+        if (s.fingerA.x > s.fingerB.x) [s.fingerA, s.fingerB] = [s.fingerB, s.fingerA];
+        s.holeR = (again.fingers[0].r + again.fingers[1].r) / 2;
+      }
+    }
+    const holes = [s.thumb, s.fingerA, s.fingerB].filter((p) => !!p);
+    const dots = detectDots(rgb, W, H2, s.circle, holes, s.holeR ? s.holeR * 2.2 : 0);
+    s.marks = dots.map((d) => ({ x: d.x, y: d.y }));
+    notes.push(s.marks.length ? `I found ${s.marks.length} small colored dot${s.marks.length === 1 ? "" : "s"}. I took the most vivid as the pin${s.marks.length > 1 ? s.asym ? ", the next as the mass bias" : ", the next as the CG" : ""}. Check ${s.marks.length === 1 ? "it" : "them"}.` : "I didn't see a pin dot: tap where the pin is.");
+    assignDots();
+    s.found = notes.join(" ");
   }
-  var MODES = [
-    { id: "thumb", label: "Thumb hole" },
-    { id: "fingerA", label: "Finger hole 1" },
-    { id: "fingerB", label: "Finger hole 2" },
-    { id: "pin", label: "Pin" },
-    { id: "cg", label: "CG dot (optional)" }
-  ];
+  function assignDots() {
+    if (!st) return;
+    const s = st;
+    s.pin = s.cg = s.mb = null;
+    s.guessed.pin = s.guessed.cg = s.guessed.mb = false;
+    if (s.marks[0]) s.pin = s.marks[0], s.guessed.pin = true;
+    if (s.marks[1]) {
+      if (s.asym) s.mb = s.marks[1], s.guessed.mb = true;
+      else s.cg = s.marks[1], s.guessed.cg = true;
+    }
+    if (s.asym && s.marks[2]) s.cg = s.marks[2], s.guessed.cg = true;
+    if (s.marks[1] && s.fingerA && s.fingerB && (s.noThumb || s.thumb)) {
+      const over = parseInches(s.papText.over), up = parseInches(s.papText.up);
+      if (over !== null) {
+        const drill = (pin, cg) => {
+          try {
+            const grp = { ...DEFAULT_GRIP, ...S.profile?.fit ?? {}, noThumb: s.noThumb };
+            return layoutFromScan({ circle: s.circle, thumb: s.noThumb ? null : s.thumb, fingerA: s.fingerA, fingerB: s.fingerB, pin, baseline: cg, pap: { over, up: up ?? 0 }, hand: s.hand, grip: grp }).measured.drilling;
+          } catch {
+            return null;
+          }
+        };
+        const ok = (d) => d !== null && Math.abs(d) >= 5 && Math.abs(d) <= 95;
+        if (!ok(drill(s.marks[0], s.marks[1])) && ok(drill(s.marks[1], s.marks[0]))) {
+          s.pin = s.marks[1];
+          if (s.asym) s.mb = s.marks[0];
+          else s.cg = s.marks[0];
+        }
+      }
+    }
+  }
+  var itemsOf = (s) => [{ id: "thumb", p: s.noThumb ? null : s.thumb }, { id: "fingerA", p: s.fingerA }, { id: "fingerB", p: s.fingerB }, { id: "pin", p: s.pin }, { id: "cg", p: s.cg }, { id: "mb", p: s.asym ? s.mb : null }];
   function draw() {
     if (!st) return;
     const s = st;
@@ -3099,39 +3522,137 @@
     el.innerHTML = `
     <div class="row"><h2>Scan my ball</h2><button class="btn ghost" id="bs-close">Close</button></div>
     <div class="note">${esc(s.found)}</div>
-    <div class="card"><div class="stagebox"><canvas id="bs-canvas" style="width:100%;height:auto;touch-action:manipulation"></canvas></div>
-      <div class="note">Pick what you're placing, then tap it on the ball. Tap again to move it.</div>
-      <div class="chips">${MODES.filter((m) => !(s.noThumb && m.id === "thumb")).map((m) => `<button class="chip ${s.mode === m.id ? "sel" : ""}" data-mode="${m.id}">${m.label}</button>`).join("")}<button class="chip" id="bs-auto">Find holes again</button></div>
-      <div class="two"><div class="field"><label>Ball outline: left-right</label><input id="bs-cx" type="range" min="0" max="${s.img.width}" value="${Math.round(s.circle.x)}"></div><div class="field"><label>up-down</label><input id="bs-cy" type="range" min="0" max="${s.img.height}" value="${Math.round(s.circle.y)}"></div></div>
-      <div class="field"><label>Ball outline: size</label><input id="bs-cr" type="range" min="${Math.round(Math.min(s.img.width, s.img.height) * 0.12)}" max="${Math.round(Math.min(s.img.width, s.img.height) * 0.7)}" value="${Math.round(s.circle.r)}"></div></div>
+    <div class="card"><div class="stagebox" style="position:relative"><canvas id="bs-canvas" style="width:100%;height:auto;touch-action:none;cursor:grab"></canvas><canvas id="bs-loupe" width="150" height="150" style="position:absolute;right:8px;top:8px;width:96px;height:96px;border-radius:50%;border:2px solid #46e6ff;display:none;background:#000;pointer-events:none"></canvas></div>
+      <div class="note"><b>Drag any marker to move it.</b> Drag the circle's middle cross to move the outline and its edge handle to resize it. To place a marker that is missing, pick it below and tap the ball.</div>
+      <div class="chips">${KINDS.map((k2) => `<button class="chip ${s.kind === k2.id ? "sel" : ""}" data-kind="${k2.id}">${k2.label}</button>`).join("")}</div>
+      <div class="chips"><button class="chip ${s.showHoles ? "sel" : ""}" id="bs-holes">Hole markers: ${s.showHoles ? "on" : "off"}</button><button class="chip ${s.asym ? "sel" : ""}" id="bs-asym">Mass bias: ${s.asym ? "on (asymmetric ball)" : "off (symmetric ball)"}</button></div>
+      <div class="note">Only an asymmetric ball has a mass bias dot. A symmetric ball has just the pin and, often, a CG mark. Turn this on if your ball has a mass bias.</div>
+      <div class="chips">${Object.keys(LABEL).filter((i) => !(s.noThumb && i === "thumb") && !(i === "mb" && !s.asym)).map((i) => `<button class="chip ${s.mode === i ? "sel" : ""}" data-mode="${i}">${i === "pin" ? "Place the pin" : i === "cg" ? "Place the CG dot" : i === "mb" ? "Place the mass bias dot" : "Place " + LABEL[i].toLowerCase()}</button>`).join("")}</div>
+      <div class="chips">${s.outlines.length > 1 ? `<button class="chip" id="bs-next">Try another outline (${s.outlineIx + 1} of ${s.outlines.length})</button>` : ""}${s.marks.length > 1 ? `<button class="chip" id="bs-swap">Swap pin and ${s.asym ? "mass bias" : "CG"}</button>` : ""}${s.asym && s.marks.length > 2 ? `<button class="chip" id="bs-swap2">Swap CG and mass bias</button>` : ""}<button class="chip" id="bs-auto">Scan again</button></div></div>
     <div class="card"><div class="k">Your PAP and hand</div>
       <div class="two"><div class="field"><label>PAP over (in)</label><input id="bs-over" value="${esc(s.papText.over)}" placeholder="4 1/4"></div><div class="field"><label>PAP up (in, negative for down)</label><input id="bs-up" value="${esc(s.papText.up)}" placeholder="1/2"></div></div>
       <div class="field"><label>Hand</label><select id="bs-hand"><option value="R" ${s.hand === "R" ? "selected" : ""}>Right</option><option value="L" ${s.hand === "L" ? "selected" : ""}>Left</option></select></div>
       <div class="note">Over is across the grip's midline (to the right for a right-hander), up is toward the fingers, both measured from the center of the grip. This is the layout's whole reference, so make sure it's your real PAP.</div></div>
-    <div id="bs-out"></div>`;
+    <div id="bs-out"></div>
+    <div class="card"><div class="u">If a scan gets it wrong, you can save it so detection can be improved: it saves the photo and your corrected points to this phone's downloads. Send them to me and I'll tune the scanner on them.</div><div class="chips"><button class="chip" id="bs-save">Save this scan for improving detection</button></div></div>`;
     $("bs-close").onclick = close;
     el.querySelectorAll("[data-mode]").forEach((b) => b.onclick = () => (s.mode = b.dataset.mode, el.querySelectorAll("[data-mode]").forEach((x) => x.classList.toggle("sel", x === b))));
-    $("bs-auto").onclick = () => (autoHoles(), draw());
-    for (const [id, key] of [["bs-cx", "x"], ["bs-cy", "y"], ["bs-cr", "r"]])
-      $(id).oninput = (e) => {
-        s.circle = { ...s.circle, [key]: Number(e.target.value) };
-        redraw();
-      };
+    el.querySelectorAll("[data-kind]").forEach((b) => b.onclick = () => {
+      s.kind = b.dataset.kind;
+      s.noThumb = s.kind !== "thumb";
+      analyze();
+      draw();
+    });
+    $("bs-auto").onclick = () => (analyze(), draw());
+    $("bs-next")?.addEventListener("click", () => {
+      s.outlineIx = (s.outlineIx + 1) % s.outlines.length;
+      s.circle = s.outlines[s.outlineIx];
+      draw();
+    });
+    $("bs-holes").onclick = () => {
+      s.showHoles = !s.showHoles;
+      $("bs-holes").textContent = `Hole markers: ${s.showHoles ? "on" : "off"}`;
+      $("bs-holes").classList.toggle("sel", s.showHoles);
+      draw();
+    };
+    $("bs-asym").onclick = () => {
+      s.asym = !s.asym;
+      if (!s.asym) s.mb = null;
+      if (s.mode === "mb" && !s.asym) s.mode = "cg";
+      assignDots();
+      draw();
+    };
+    $("bs-swap")?.addEventListener("click", () => {
+      if (s.asym) [s.pin, s.mb] = [s.mb, s.pin];
+      else [s.pin, s.cg] = [s.cg, s.pin];
+      s.guessed.pin = s.guessed.cg = s.guessed.mb = false;
+      redraw();
+    });
+    $("bs-swap2")?.addEventListener("click", () => {
+      [s.cg, s.mb] = [s.mb, s.cg];
+      s.guessed.cg = s.guessed.mb = false;
+      redraw();
+    });
+    $("bs-save").onclick = saveExample;
+    for (const id of ["bs-over", "bs-up", "bs-hand"]) $(id).addEventListener("change", () => redraw());
+    wireCanvas();
+    redraw();
+  }
+  function wireCanvas() {
+    const s = st;
     const canvas = $("bs-canvas");
     canvas.width = s.img.width;
     canvas.height = s.img.height;
-    canvas.onclick = (e) => {
+    const loupe = $("bs-loupe");
+    const pos = (e) => {
       const r = canvas.getBoundingClientRect();
-      const p = { x: (e.clientX - r.left) / r.width * canvas.width, y: (e.clientY - r.top) / r.height * canvas.height };
-      if (s.mode === "thumb") s.thumb = p;
-      else if (s.mode === "fingerA") s.fingerA = p;
-      else if (s.mode === "fingerB") s.fingerB = p;
-      else if (s.mode === "pin") s.pin = p;
-      else s.cg = p;
-      redraw();
+      return { x: (e.clientX - r.left) / r.width * canvas.width, y: (e.clientY - r.top) / r.height * canvas.height };
     };
-    for (const id of ["bs-over", "bs-up", "bs-hand"]) $(id).addEventListener("change", () => redraw());
-    redraw();
+    const reach = () => 26 * (canvas.width / 900);
+    const pick = (p) => {
+      let best = null;
+      for (const it of itemsOf(s)) if (it.p) {
+        const d = Math.hypot(it.p.x - p.x, it.p.y - p.y);
+        if (d < reach() && (!best || d < best.d)) best = { what: it.id, d };
+      }
+      const dc = Math.hypot(s.circle.x - p.x, s.circle.y - p.y);
+      if (dc < reach() * 1.2 && (!best || dc < best.d)) best = { what: "center", d: dc };
+      const de = Math.hypot(s.circle.x + s.circle.r - p.x, s.circle.y - p.y);
+      if (de < reach() * 1.2 && (!best || de < best.d)) best = { what: "edge", d: de };
+      return best?.what ?? null;
+    };
+    const set = (what, p) => {
+      if (what === "center") s.circle = { ...s.circle, x: p.x, y: p.y };
+      else if (what === "edge") s.circle = { ...s.circle, r: Math.max(20, Math.hypot(p.x - s.circle.x, p.y - s.circle.y)) };
+      else {
+        const snap = what === "pin" || what === "cg" ? s.marks.find((m) => Math.hypot(m.x - p.x, m.y - p.y) < 14 * (canvas.width / 900)) : void 0;
+        const q = snap ? { x: snap.x, y: snap.y } : p;
+        if (what === "thumb") s.thumb = q;
+        else if (what === "fingerA") s.fingerA = q;
+        else if (what === "fingerB") s.fingerB = q;
+        else if (what === "pin") s.pin = q, s.guessed.pin = false;
+        else if (what === "mb") s.mb = q, s.guessed.mb = false;
+        else s.cg = q, s.guessed.cg = false;
+      }
+    };
+    canvas.onpointerdown = (e) => {
+      const p = pos(e);
+      const what = pick(p);
+      if (what) {
+        drag = { what, moved: false };
+        canvas.setPointerCapture(e.pointerId);
+        canvas.style.cursor = "grabbing";
+      } else {
+        set(s.mode, p);
+        redraw();
+      }
+    };
+    canvas.onpointermove = (e) => {
+      if (!drag) return;
+      drag.moved = true;
+      const p = pos(e);
+      set(drag.what, p);
+      redraw();
+      const lc = loupe.getContext("2d");
+      loupe.style.display = "block";
+      const half = 38 * (canvas.width / 900);
+      lc.drawImage(canvas, p.x - half, p.y - half, half * 2, half * 2, 0, 0, loupe.width, loupe.height);
+      lc.strokeStyle = "#ff4fd8";
+      lc.lineWidth = 1.5;
+      lc.beginPath();
+      lc.moveTo(loupe.width / 2, 0);
+      lc.lineTo(loupe.width / 2, loupe.height);
+      lc.moveTo(0, loupe.height / 2);
+      lc.lineTo(loupe.width, loupe.height / 2);
+      lc.stroke();
+    };
+    const end = () => {
+      drag = null;
+      canvas.style.cursor = "grab";
+      loupe.style.display = "none";
+    };
+    canvas.onpointerup = end;
+    canvas.onpointercancel = end;
   }
   function redraw() {
     if (!st) return;
@@ -3147,13 +3668,33 @@
     ctx2.beginPath();
     ctx2.arc(s.circle.x, s.circle.y, s.circle.r, 0, 7);
     ctx2.stroke();
+    ctx2.lineWidth = 2 * k2;
+    ctx2.beginPath();
+    ctx2.moveTo(s.circle.x - 9 * k2, s.circle.y);
+    ctx2.lineTo(s.circle.x + 9 * k2, s.circle.y);
+    ctx2.moveTo(s.circle.x, s.circle.y - 9 * k2);
+    ctx2.lineTo(s.circle.x, s.circle.y + 9 * k2);
+    ctx2.stroke();
+    ctx2.fillStyle = "#46e6ff";
+    ctx2.beginPath();
+    ctx2.arc(s.circle.x + s.circle.r, s.circle.y, 8 * k2, 0, 7);
+    ctx2.fill();
+    s.marks.forEach((m2) => {
+      ctx2.strokeStyle = "rgba(255,210,90,.9)";
+      ctx2.lineWidth = 2 * k2;
+      ctx2.setLineDash([4 * k2, 3 * k2]);
+      ctx2.beginPath();
+      ctx2.arc(m2.x, m2.y, 16 * k2, 0, 7);
+      ctx2.stroke();
+      ctx2.setLineDash([]);
+    });
     const mark = (p, color, label2) => {
       if (!p) return;
       ctx2.strokeStyle = color;
       ctx2.fillStyle = color;
       ctx2.lineWidth = 3 * k2;
       ctx2.beginPath();
-      ctx2.arc(p.x, p.y, 9 * k2, 0, 7);
+      ctx2.arc(p.x, p.y, 10 * k2, 0, 7);
       ctx2.stroke();
       ctx2.beginPath();
       ctx2.arc(p.x, p.y, 2.5 * k2, 0, 7);
@@ -3161,14 +3702,17 @@
       ctx2.font = `700 ${18 * k2}px system-ui`;
       ctx2.lineWidth = 4 * k2;
       ctx2.strokeStyle = "rgba(0,0,0,.8)";
-      ctx2.strokeText(label2, p.x + 13 * k2, p.y - 8 * k2);
-      ctx2.fillText(label2, p.x + 13 * k2, p.y - 8 * k2);
+      ctx2.strokeText(label2, p.x + 14 * k2, p.y - 10 * k2);
+      ctx2.fillText(label2, p.x + 14 * k2, p.y - 10 * k2);
     };
-    mark(s.thumb, "#ffffff", "thumb");
-    mark(s.fingerA, "#ff4fd8", "finger 1");
-    mark(s.fingerB, "#ff4fd8", "finger 2");
-    mark(s.pin, "#46e6ff", "PIN");
-    mark(s.cg, "#ffd25a", "CG");
+    if (s.showHoles) {
+      mark(s.noThumb ? null : s.thumb, COLOR.thumb, "thumb");
+      mark(s.fingerA, COLOR.fingerA, "finger 1");
+      mark(s.fingerB, COLOR.fingerB, "finger 2");
+    }
+    mark(s.pin, COLOR.pin, s.guessed.pin ? "PIN (my guess)" : "PIN");
+    mark(s.cg, COLOR.cg, s.guessed.cg ? "CG (my guess)" : "CG");
+    mark(s.asym ? s.mb : null, COLOR.mb, s.guessed.mb ? "MB (my guess)" : "MB");
     const over = parseInches(s.papText.over), up = parseInches(s.papText.up);
     const out = $("bs-out");
     const need = [];
@@ -3178,12 +3722,12 @@
     if (over === null) need.push("your PAP (over)");
     if (up === null && s.papText.up.trim() !== "") need.push("your PAP (up)");
     if (need.length) {
-      out.innerHTML = `<div class="card"><div class="u">Still needed: ${esc(need.join(", "))}.</div></div>`;
+      out.innerHTML = `<div class="card"><div class="u">Still needed: ${esc(need.join(", "))}. Pick it above and tap the ball.</div></div>`;
       return;
     }
     const grip = { ...DEFAULT_GRIP, ...S.profile?.fit ?? {}, noThumb: s.noThumb };
     const pap = { over, up: up ?? 0 };
-    const res = layoutFromScan({ circle: s.circle, thumb: s.noThumb ? null : s.thumb, fingerA: s.fingerA, fingerB: s.fingerB, pin: s.pin, baseline: s.cg, pap, hand: s.hand, grip, holeRadii: s.holeR });
+    const res = layoutFromScan({ circle: s.circle, thumb: s.noThumb ? null : s.thumb, fingerA: s.fingerA, fingerB: s.fingerB, pin: s.pin, cg: s.cg, mb: s.asym ? s.mb : null, asymmetric: s.asym, pap, hand: s.hand, grip, holeRadii: s.holeR ? { finger: s.holeR, thumb: s.holeR } : void 0 });
     const m = res.measured;
     const neg = (v, f) => (v < 0 ? "\u2212" : "") + f(Math.abs(v));
     const deg2 = (v) => `${Math.round(v * 10) / 10}\xB0`;
@@ -3194,20 +3738,43 @@
         <tr><td>Angle to the VAL</td><td class="n"><b>${neg(m.valAngle, deg2)}</b></td></tr>
         <tr><td>Pin buffer</td><td class="n"><b>${neg(m.pinBuffer, fractionInches)}</b></td></tr>
         <tr><td>Pin to center of grip</td><td class="n"><b>${fractionInches(m.pinToGrip)}</b></td></tr>
-        <tr><td>Drilling angle</td><td class="n"><b>${m.drilling === null ? "tap the CG dot" : neg(m.drilling, deg2)}</b></td></tr>
-        <tr><td>PSA to PAP</td><td class="n"><b>${m.psaToPap === null ? "tap the CG dot" : fractionInches(m.psaToPap)}</b></td></tr>
+        <tr><td>Drilling angle</td><td class="n"><b>${m.drilling === null ? s.asym ? "place the mass bias dot" : "place the CG dot" : neg(m.drilling, deg2)}</b></td></tr>
+        <tr><td>PSA to PAP</td><td class="n"><b>${m.psaToPap === null ? s.asym ? "place the mass bias dot" : "place the CG dot" : fractionInches(m.psaToPap)}</b></td></tr>
+        ${res.cg ? `<tr><td colspan="2"><b>CG</b> (every ball has one)</td></tr><tr><td>Pin to CG</td><td class="n">${fractionInches(res.cg.fromPin)}</td></tr><tr><td>CG to PAP</td><td class="n">${fractionInches(res.cg.toPap)}</td></tr><tr><td>CG angle from the pin</td><td class="n">${neg(res.cg.angleAtPin, deg2)}</td></tr>` : `<tr><td colspan="2"><b>CG</b>: place the CG dot</td></tr>`}
+        ${s.asym ? res.mb ? `<tr><td colspan="2"><b>Mass bias</b> (a separate mark)</td></tr><tr><td>Pin to mass bias</td><td class="n">${fractionInches(res.mb.fromPin)}</td></tr><tr><td>Mass bias to PAP</td><td class="n">${fractionInches(res.mb.toPap)}</td></tr><tr><td>Mass bias angle from the pin</td><td class="n">${neg(res.mb.angleAtPin, deg2)}</td></tr>` : `<tr><td colspan="2"><b>Mass bias</b>: place the mass bias dot</td></tr>` : ""}
         <tr><td>Where the pin sits</td><td class="n">${esc(m.pinPlacement.label)}</td></tr>
         ${res.spanIn !== null ? `<tr><td>Span (rough, from the holes)</td><td class="n">${fractionInches(res.spanIn)}</td></tr>` : ""}</table>
-      ${m.drilling !== null && m.psaToPap !== null ? `<div class="u" style="margin-top:8px"><b>Dual Angle:</b> ${neg(m.drilling, (x) => Math.round(x) + "\xB0")} \xD7 ${fractionInches(m.pinToPap)} \xD7 ${neg(m.valAngle, (x) => Math.round(x) + "\xB0")} &nbsp; <b>Pin Buffer:</b> ${fractionInches(m.pinToPap)} \xD7 ${fractionInches(m.psaToPap)} \xD7 ${neg(m.pinBuffer, fractionInches)} &nbsp; <b>2LS:</b> ${fractionInches(m.pinToPap)} \xD7 ${fractionInches(m.psaToPap)} \xD7 ${fractionInches(m.pinToGrip)}</div>` : `<div class="u" style="margin-top:8px">The drilling angle and PSA-to-PAP need a reference line from the pin through the CG (or the PSA on an asymmetric ball). Tap the CG dot if your ball has one marked.</div>`}
+      ${m.drilling !== null && m.psaToPap !== null ? `<div class="u" style="margin-top:8px"><b>Dual Angle:</b> ${neg(m.drilling, (x) => Math.round(x) + "\xB0")} \xD7 ${fractionInches(m.pinToPap)} \xD7 ${neg(m.valAngle, (x) => Math.round(x) + "\xB0")} &nbsp; <b>Pin Buffer:</b> ${fractionInches(m.pinToPap)} \xD7 ${fractionInches(m.psaToPap)} \xD7 ${neg(m.pinBuffer, fractionInches)} &nbsp; <b>2LS:</b> ${fractionInches(m.pinToPap)} \xD7 ${fractionInches(m.psaToPap)} \xD7 ${fractionInches(m.pinToGrip)}</div>` : `<div class="u" style="margin-top:8px">The drilling angle and PSA to PAP need a line from the pin through ${s.asym ? "the mass bias" : "the CG"}. Place that dot if your ball has one.</div>`}
       ${res.warnings.map((w) => `<div class="note" style="color:var(--gold)">${esc(w)}</div>`).join("")}
-      <div class="note">A careful photo reads distances to about an eighth to a quarter inch and angles to a few degrees. Check against the ball's drill sheet before relying on it. Negative angles and distances mean the other side of the line (see the Layout Lab).</div>
+      <div class="note">A careful photo reads distances to about an eighth to a quarter inch and angles to a few degrees, if the outline fits the ball and the points are on the right spots. Check against the ball's drill sheet before relying on it. Negative angles and distances mean the other side of the line.</div>
       <div class="chips">${m.drilling !== null ? `<button class="btn" id="bs-open">Open in the Layout Lab</button>` : ""}</div></div>`;
     const open2 = document.getElementById("bs-open");
     if (open2)
       open2.onclick = () => {
         close();
-        openLayoutLab({ layout: { dualAngle: { drilling: m.drilling, pinToPap: m.pinToPap, valAngle: m.valAngle }, pap, hand: s.hand } });
+        const frame = scanFrame({ circle: s.circle, thumb: s.noThumb ? null : s.thumb, fingerA: s.fingerA, fingerB: s.fingerB });
+        const keepImg = document.createElement("canvas");
+        keepImg.width = s.img.width;
+        keepImg.height = s.img.height;
+        keepImg.getContext("2d").drawImage(s.img, 0, 0);
+        openLayoutLab({ marks: { symmetric: !s.asym, pinToCg: res.pinToCg ?? void 0, mb: res.pinToMb !== null ? { dist: res.pinToMb, angle: 0 } : void 0 }, photo: { img: keepImg, circle: s.circle, ...frame }, layout: { dualAngle: { drilling: m.drilling, pinToPap: m.pinToPap, valAngle: m.valAngle }, pap, hand: s.hand } });
       };
+  }
+  function saveExample() {
+    if (!st) return;
+    const s = st;
+    const stamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
+    const dl = (blob, name) => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4e3);
+    };
+    const body = { app: "LaneIQ ball scan", at: (/* @__PURE__ */ new Date()).toISOString(), kind: s.kind, hand: s.hand, size: { w: s.img.width, h: s.img.height }, circle: s.circle, otherOutlines: s.outlines, holes: { thumb: s.noThumb ? null : s.thumb, fingerA: s.fingerA, fingerB: s.fingerB }, pin: s.pin, cg: s.cg, massBias: s.asym ? s.mb : null, asymmetric: s.asym, dotsFound: s.marks, guessedByApp: s.guessed, pap: s.papText };
+    dl(new Blob([JSON.stringify(body, null, 1)], { type: "application/json" }), `laneiq-scan-${stamp}.json`);
+    setTimeout(() => s.img.toBlob((b) => b && dl(b, `laneiq-scan-${stamp}.jpg`), "image/jpeg", 0.92), 500);
+    $("bs-save").textContent = "Saved to your downloads";
   }
 
   // camera/layoutlab.ts
@@ -3253,7 +3820,8 @@
       rev: bp.revRpm ?? 380,
       speed: bp.launchSpeed ?? 16,
       flip: false,
-      show: { val: true, buffer: true, track: true, flare: true, labels: true },
+      show: { val: true, buffer: true, track: true, flare: true, labels: true, photo: true },
+      photo: null,
       notes: "",
       compare: null,
       ...layout
@@ -3296,6 +3864,7 @@
     ctx2.beginPath();
     ctx2.arc(cx, cy, r, 0, 7);
     ctx2.fill();
+    if (l.photo && l.show.photo) drawPhotoSphere(ctx2, cx, cy, r, l.photo, m);
     ctx2.strokeStyle = "rgba(255,255,255,.22)";
     ctx2.lineWidth = 1.5;
     ctx2.stroke();
@@ -3377,9 +3946,11 @@
     strokePath(arcPts(pts.pap, pts.pin), "#46e6ff", 2.4);
     strokePath(arcPts(pts.pin, pts.psa), "#ff4fd8", 2.4);
     strokePath(arcPts(pts.psa, pts.pap), "rgba(255,79,216,.45)", 1.4, [4, 4]);
-    if (pts.thumb) hole(pts.thumb, l.grip.thumbDia);
-    hole(pts.middle, l.grip.fingerDia);
-    hole(pts.ring, l.grip.fingerDia);
+    if (!(l.photo && l.show.photo)) {
+      if (pts.thumb) hole(pts.thumb, l.grip.thumbDia);
+      hole(pts.middle, l.grip.fingerDia);
+      hole(pts.ring, l.grip.fingerDia);
+    }
     dot3(pts.grip, "#ffffff", "grip center", 4, -4);
     dot3(pts.pap, "#5affb0", "PAP", 7);
     dot3(pts.pin, "#46e6ff", "PIN (low RG)", 7);
@@ -3389,7 +3960,7 @@
       const cg = walk(pts.pin, unit(cross(cross(pts.pin, pts.psa), pts.pin)), Math.min(QUARTER, l.ball.pinToCg));
       dot3(cg, "#ffd25a", "CG", 6);
     }
-    if (l.ball.mb) {
+    if (l.ball.mb && !l.ball.symmetric) {
       const base = unit(cross(cross(pts.pin, pts.psa), pts.pin));
       const d = rotate(base, pts.pin, l.ball.mb.angle * Math.PI / 180);
       dot3(walk(pts.pin, d, Math.min(QUARTER, l.ball.mb.dist)), "#ff8a3d", "MB", 6);
@@ -3397,6 +3968,36 @@
     ctx2.fillStyle = "rgba(255,255,255,.35)";
     ctx2.font = `${Math.round(r * 0.06)}px system-ui`;
     ctx2.fillText("drag to turn the ball", 10, H2 - 10);
+  }
+  function drawPhotoSphere(ctx2, cx, cy, r, ph, m) {
+    if (!ph.pixels) ph.pixels = ph.img.getContext("2d").getImageData(0, 0, ph.img.width, ph.img.height);
+    const src = ph.pixels;
+    const size = Math.max(2, Math.round(r * 2));
+    const out = ctx2.createImageData(size, size);
+    for (let py = 0; py < size; py++)
+      for (let px = 0; px < size; px++) {
+        const nx = (px + 0.5 - size / 2) / (size / 2), ny = (size / 2 - py - 0.5) / (size / 2);
+        const rr = nx * nx + ny * ny;
+        if (rr >= 1) continue;
+        const nz = Math.sqrt(1 - rr);
+        const bx = m[0][0] * nx + m[1][0] * ny + m[2][0] * nz, by = m[0][1] * nx + m[1][1] * ny + m[2][1] * nz, bz = m[0][2] * nx + m[1][2] * ny + m[2][2] * nz;
+        const cxv = ph.ex[0] * bx + ph.up[0] * by + ph.g[0] * bz, cyv = ph.ex[1] * bx + ph.up[1] * by + ph.g[1] * bz, czv = ph.ex[2] * bx + ph.up[2] * by + ph.g[2] * bz;
+        const o = (py * size + px) * 4;
+        if (czv > 0.03) {
+          const sx = Math.min(src.width - 1, Math.max(0, Math.round(ph.circle.x + cxv * ph.circle.r))), sy = Math.min(src.height - 1, Math.max(0, Math.round(ph.circle.y - cyv * ph.circle.r)));
+          const s = (sy * src.width + sx) * 4;
+          out.data[o] = src.data[s];
+          out.data[o + 1] = src.data[s + 1];
+          out.data[o + 2] = src.data[s + 2];
+          out.data[o + 3] = 255;
+        } else {
+          out.data[o] = 16;
+          out.data[o + 1] = 20;
+          out.data[o + 2] = 30;
+          out.data[o + 3] = 255;
+        }
+      }
+    ctx2.putImageData(out, Math.round(cx - size / 2), Math.round(cy - size / 2));
   }
   var numInput = (id, v, label2, hint = "") => `<div class="field"><label>${label2}</label><input id="${id}" value="${esc(fractionInches(v).replace(/"/g, ""))}" inputmode="decimal" autocomplete="off">${hint ? `<div class="note">${hint}</div>` : ""}</div>`;
   var degInput = (id, v, label2) => `<div class="field"><label>${label2}</label><input id="${id}" value="${Math.round(v)}" inputmode="decimal" autocomplete="off"></div>`;
@@ -3408,6 +4009,11 @@
       return mine ? fromCatalog(mine) : { name: "Sample ball", rg: 2.52, totalDiff: 0.045, intDiff: 0, symmetric: true };
     })();
     lab = startingLab(first, { ...rest, ...dualAngle ? { dual: dualAngle, system: "dual" } : {} });
+    if (opts.photo) lab.photo = opts.photo;
+    if (opts.marks) {
+      lab.ball = { ...lab.ball, symmetric: opts.marks.symmetric, pinToCg: opts.marks.pinToCg, mb: opts.marks.symmetric ? void 0 : opts.marks.mb };
+      if (opts.marks.symmetric) lab.ball.intDiff = 0;
+    }
     view = facing([0, 0, 1]);
     if (opts.sheetId) return loadSheet(opts.sheetId);
     draw2();
@@ -3429,7 +4035,8 @@
       ${mine.length ? `<div class="field"><label>From my arsenal</label><select id="lb-mine"><option value="">choose\u2026</option>${mine.map((x) => `<option value="${esc(x.c.key)}">${esc(x.b.name)}</option>`).join("")}</select></div>` : ""}
       <div class="field"><label>Or search the catalog</label><input id="lb-search" placeholder="Type a ball name" autocomplete="off"><div class="suggest" id="lb-hits"></div></div>
       <div class="u"><b>${esc(l.ball.manufacturer ? l.ball.manufacturer + " " : "")}${esc(l.ball.name)}</b>: RG ${fmt2(l.ball.rg, 3)}, differential ${fmt2(l.ball.totalDiff, 3)}${l.ball.symmetric ? ", symmetric core" : `, asymmetric core (intermediate ${fmt2(l.ball.intDiff, 3)})`}</div>
-      <div class="two"><div class="field"><label>Pin to CG (in)</label><input id="lb-cg" value="${l.ball.pinToCg ?? ""}" placeholder="from the layout sheet" inputmode="decimal"></div><div class="field"><label>Mass bias: in from pin, \xB0 from pin-to-PSA</label><div class="two"><input id="lb-mbd" value="${l.ball.mb?.dist ?? ""}" placeholder="in" inputmode="decimal"><input id="lb-mba" value="${l.ball.mb?.angle ?? ""}" placeholder="\xB0" inputmode="decimal"></div></div></div>
+      <div class="chips"><button class="chip ${l.ball.symmetric ? "" : "sel"}" id="lb-asym">Mass bias: ${l.ball.symmetric ? "off (symmetric ball)" : "on (asymmetric ball)"}</button></div>
+      <div class="two"><div class="field"><label>Pin to CG (in)</label><input id="lb-cg" value="${l.ball.pinToCg ?? ""}" placeholder="from the layout sheet" inputmode="decimal"></div>${l.ball.symmetric ? "" : `<div class="field"><label>Mass bias: in from pin, \xB0 from pin-to-PSA</label><div class="two"><input id="lb-mbd" value="${l.ball.mb?.dist ?? ""}" placeholder="in" inputmode="decimal"><input id="lb-mba" value="${l.ball.mb?.angle ?? ""}" placeholder="\xB0" inputmode="decimal"></div></div>`}</div>
       ${l.ball.symmetric ? "" : `<div class="field"><label>Intermediate differential</label><input id="lb-int" value="${fmt2(l.ball.intDiff, 3)}" inputmode="decimal"></div>`}
       <div class="note">CG and mass bias positions are on the manufacturer's layout sheet for the ball. They aren't in the catalog, so enter them to see them on the ball.</div>
     </div>
@@ -3438,7 +4045,7 @@
       <div class="k">The ball, with your layout</div>
       <div class="stagebox"><canvas id="lb-canvas" width="720" height="720" style="width:100%;height:auto;aspect-ratio:1;touch-action:none;cursor:grab"></canvas></div>
       <div class="chips"><button class="chip" data-view="grip">Grip view</button><button class="chip" data-view="pap">PAP view</button><button class="chip" data-view="pin">Pin view</button><button class="chip" data-view="psa">PSA view</button><button class="chip" data-view="back">Back</button></div>
-      <div class="chips">${["val", "buffer", "track", "flare", "labels"].map((k2) => `<button class="chip ${l.show[k2] ? "sel" : ""}" data-show="${k2}">${{ val: "VAL", buffer: "Pin buffer", track: "Track", flare: "Flare", labels: "Labels" }[k2]}</button>`).join("")}</div>
+      <div class="chips">${["val", "buffer", "track", "flare", "labels", ...l.photo ? ["photo"] : []].map((k2) => `<button class="chip ${l.show[k2] ? "sel" : ""}" data-show="${k2}">${{ val: "VAL", buffer: "Pin buffer", track: "Track", flare: "Flare", labels: "Labels", photo: "My photo" }[k2]}</button>`).join("")}</div>
       <div class="note"><span style="color:#46e6ff">Cyan: pin to PAP</span> \xB7 <span style="color:#ff4fd8">Magenta: pin to PSA</span> \xB7 <span style="color:#5affb0">Green: PAP and the first track</span> \xB7 <span style="color:#ffd25a">Gold: where the spin axis wanders</span></div>
     </div>
 
@@ -3517,9 +4124,10 @@
     if (th !== null && th > 0) l.grip.thumbDia = th;
     if (fi !== null && fi > 0) l.grip.fingerDia = fi;
     l.notes = $("lb-notes").value;
-    const cg = val("lb-cg"), mbd = val("lb-mbd"), mba = val("lb-mba");
+    const cg = val("lb-cg");
     l.ball.pinToCg = cg !== null && cg > 0 ? cg : void 0;
-    l.ball.mb = mbd !== null && mba !== null && mbd > 0 ? { dist: mbd, angle: mba } : void 0;
+    const mbd = document.getElementById("lb-mbd") ? val("lb-mbd") : null, mba = document.getElementById("lb-mba") ? val("lb-mba") : null;
+    l.ball.mb = !l.ball.symmetric && mbd !== null && mba !== null && mbd > 0 ? { dist: mbd, angle: mba } : void 0;
     const inter = document.getElementById("lb-int");
     if (inter && Number.isFinite(Number(inter.value))) l.ball.intDiff = Math.max(0, Number(inter.value));
   }
@@ -3552,6 +4160,13 @@
     sheet2().querySelectorAll("[data-sys]").forEach((b) => b.onclick = () => switchSystem(b.dataset.sys));
     sheet2().querySelectorAll("[data-show]").forEach((b) => b.onclick = () => (l.show[b.dataset.show] = !l.show[b.dataset.show], b.classList.toggle("sel"), update(true)));
     sheet2().querySelectorAll("[data-view]").forEach((b) => b.onclick = () => faceView(b.dataset.view));
+    $("lb-asym")?.addEventListener("click", () => {
+      readFields();
+      readHand();
+      l.ball.symmetric = !l.ball.symmetric;
+      if (l.ball.symmetric) l.ball.intDiff = 0, l.ball.mb = void 0;
+      draw2();
+    });
     $("lb-flip").onclick = () => (l.flip = !l.flip, $("lb-flip").classList.toggle("sel"), recompute(), update());
     $("lb-suggest").onclick = () => {
       const bp = bowlerProfile();
@@ -3598,7 +4213,7 @@
   function swapBall(b) {
     if (!lab) return;
     const keep = lab;
-    lab = { ...startingLab(b), system: keep.system, pap: keep.pap, grip: keep.grip, hand: keep.hand, rev: keep.rev, speed: keep.speed, dual: keep.dual, pb: keep.pb, ls2: keep.ls2, compare: keep.compare };
+    lab = { ...startingLab(b), photo: keep.photo, system: keep.system, pap: keep.pap, grip: keep.grip, hand: keep.hand, rev: keep.rev, speed: keep.speed, dual: keep.dual, pb: keep.pb, ls2: keep.ls2, compare: keep.compare };
     draw2();
   }
   function switchSystem(sys) {
@@ -6407,7 +7022,7 @@ ${url}`);
     bar.innerHTML = `<b>${msg}</b><button class="btn" id="upd-go">Update</button>`;
     document.body.append(bar);
     bar.querySelector("button").onclick = reload;
-  });
+  }, () => !document.body.classList.contains("live"));
   $("guide-open").onclick = openGuide;
   $("guide-hud").onclick = openGuide;
   $("confirm").onclick = () => {
@@ -6676,15 +7291,15 @@ ${url}`);
     if (!H || !laneMask || !armed || enrolling) return;
     wctx.drawImage(video, 0, 0, GW, GH);
     const px = wctx.getImageData(0, 0, GW, GH).data;
-    const gray2 = new Float32Array(GW * GH);
-    for (let i = 0; i < gray2.length; i++) gray2[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+    const gray = new Float32Array(GW * GH);
+    for (let i = 0; i < gray.length; i++) gray[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
     if (!bg) {
-      bg = gray2.slice();
+      bg = gray.slice();
       return;
     }
     if (now < cooldownUntil) return;
     const fg = new Uint8Array(GW * GH);
-    for (let i = 0; i < gray2.length; i++) if (laneMask[i] && Math.abs(gray2[i] - bg[i]) > 28) fg[i] = 1;
+    for (let i = 0; i < gray.length; i++) if (laneMask[i] && Math.abs(gray[i] - bg[i]) > 28) fg[i] = 1;
     const sy = overlay.height / GH;
     const sx = overlay.width / GW;
     const cands = findBlobs(fg).filter((b) => b.area >= 2 && b.area <= 260);
@@ -6718,7 +7333,7 @@ ${url}`);
       if (confirmed) void finish();
       else resetTrack();
     } else if (!lastBlob) {
-      for (let i = 0; i < bg.length; i++) bg[i] += (gray2[i] - bg[i]) * 0.02;
+      for (let i = 0; i < bg.length; i++) bg[i] += (gray[i] - bg[i]) * 0.02;
     }
   }
   async function finish() {
