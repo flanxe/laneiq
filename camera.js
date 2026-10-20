@@ -478,6 +478,7 @@
         }
         let good = 0;
         let rowsN = 0;
+        let strengthSum = 0;
         for (let y = t + 2; y <= b - 2; y += 3) {
           const xl = xAt(L, y);
           const xr = xAt(R2, y);
@@ -489,6 +490,7 @@
           if (!Number.isFinite(left) && !Number.isFinite(right)) continue;
           rowsN++;
           if ((!Number.isFinite(left) || inside - left > 6) && (!Number.isFinite(right) || inside - right > 6)) good++;
+          strengthSum += Math.max(0, Math.min(100, Math.min(Number.isFinite(left) ? inside - left : 100, Number.isFinite(right) ? inside - right : 100)));
         }
         if (rowsN < 5 || good / rowsN < 0.45) {
           why.contrast++;
@@ -499,7 +501,7 @@
         const cb = (xAt(L, b) + xAt(R2, b)) / 2;
         const centered = 1 - 0.12 * Math.min(1, Math.abs(cb - w / 2) / (w * 0.5));
         const lenScore = Math.min(1, (b - t) / (h * 0.25));
-        cands.push({ L, R: R2, t, b, base: (votes + contrast + 0.5 * lenScore) * centered });
+        cands.push({ L, R: R2, t, b, base: (votes + contrast + 0.5 * lenScore + 1.2 * (strengthSum / rowsN / 100)) * centered });
       }
     dbg(`pairs ${cands.length}; rejected ${JSON.stringify(why)}`);
     if (diag) {
@@ -510,13 +512,21 @@
     const distinct = [];
     for (const c of cands) {
       const cb = (xAt(c.L, c.b) + xAt(c.R, c.b)) / 2;
-      if (distinct.every((d) => Math.abs((xAt(d.L, d.b) + xAt(d.R, d.b)) / 2 - cb) > 0.04 * w)) distinct.push(c);
+      const isSame = (d) => {
+        if (Math.abs((xAt(d.L, d.b) + xAt(d.R, d.b)) / 2 - cb) > 0.04 * w) return false;
+        const y = Math.min(c.b, d.b) - 2;
+        const wc = xAt(c.R, y) - xAt(c.L, y);
+        const wd = xAt(d.R, y) - xAt(d.L, y);
+        return wd > 0 && wc / wd > 0.85 && wc / wd < 1.18;
+      };
+      if (!distinct.some(isSame)) distinct.push(c);
       if (distinct.length >= maxCandidates + 9) break;
     }
     if (diag && distinct[0]) {
       const c = distinct[0];
       diag.guess = { left: { x0: xAt(c.L, c.t), y0: c.t, x1: xAt(c.L, c.b), y1: c.b }, right: { x0: xAt(c.R, c.t), y0: c.t, x1: xAt(c.R, c.b), y1: c.b } };
     }
+    dbg(`candidates: ${distinct.map((c) => `[${xAt(c.L, c.b).toFixed(0)}-${xAt(c.R, c.b).toFixed(0)}@${c.b} t${c.t} base ${c.base.toFixed(2)}]`).join(" ")}`);
     const results = [];
     for (const c of distinct) {
       const r = geometry(c);
@@ -565,6 +575,7 @@
       const topRows = (arr) => Array.from({ length: h }, (_, y) => y).filter((y) => y >= yStart && y < h - 4).sort((p, q) => arr[q] - arr[p]).slice(0, 6).map((y) => `${y}:${arr[y].toFixed(2)}`).join(" ");
       dbg(`profile peaks (density): ${topRows(prof)} | pit step peaks: ${topRows(up)} thr ${thr.toFixed(1)}`);
       const prow = new Float32Array(h).fill(NaN);
+      const plow = new Float32Array(h).fill(NaN);
       for (let y = yStart; y < h - 3; y++) {
         const wid = xAt(R2, y) - xAt(L, y);
         if (wid < 6) continue;
@@ -575,11 +586,12 @@
         for (let x = a; x <= b2; x++) vals.push(sm[y * w + x]);
         vals.sort((p, q) => p - q);
         prow[y] = vals[vals.length >> 1];
+        plow[y] = vals[vals.length >> 2];
       }
-      const pAvg = (ya, yb, y) => {
+      const pAvg = (ya, yb, y, src = prow) => {
         let s = 0, n = 0;
         for (let k2 = ya; k2 <= yb; k2++) {
-          const v = prow[Math.round(y + k2)];
+          const v = src[Math.round(y + k2)];
           if (Number.isFinite(v)) {
             s += v;
             n++;
@@ -588,16 +600,17 @@
         return n >= Math.max(1, (yb - ya + 1) / 2) ? s / n : NaN;
       };
       const foulCands = localMax(prof, 0.2, 8, Math.floor(t + h * 0.05), h - 4);
-      const pitCands = localMax(up, 0.3, 6, Math.floor(t - 14), Math.floor(t + 18));
+      const pitBefore = Math.max(14, Math.round(0.045 * h));
+      const pitAfter = Math.max(18, Math.round(0.055 * h));
+      const pitCands = localMax(up, 0.3, 6, Math.floor(t - pitBefore), Math.floor(t + pitAfter));
       {
         const dip = new Float32Array(h);
         const stp = new Float32Array(h);
         for (let y = yStart + 11; y < h - 12; y++) {
           const a = pAvg(-9, -4, y), b2 = pAvg(4, 9, y), m = pAvg(-1, 1, y);
-          if (Number.isFinite(a) && Number.isFinite(b2) && Number.isFinite(m)) {
-            dip[y] = Math.max(Math.min(a, b2) - m, m - Math.max(a, b2));
-            stp[y] = Math.abs(a - b2) - 0.5 * Math.max(0, Math.max(Math.min(a, b2) - m, m - Math.max(a, b2)));
-          }
+          if (Number.isFinite(a) && Number.isFinite(b2) && Number.isFinite(m)) dip[y] = Math.max(Math.min(a, b2) - m, m - Math.max(a, b2));
+          const la = pAvg(-9, -4, y, plow), lb = pAvg(4, 9, y, plow), lm = pAvg(-1, 1, y, plow);
+          if (Number.isFinite(la) && Number.isFinite(lb)) stp[y] = Math.abs(la - lb) - 0.5 * (Number.isFinite(lm) ? Math.max(0, Math.max(Math.min(la, lb) - lm, lm - Math.max(la, lb))) : 0);
         }
         const peaks = (arr, min, k2, from, to) => {
           const out = [];
@@ -605,7 +618,7 @@
           return out.sort((p, q) => arr[q] - arr[p]).slice(0, k2);
         };
         for (const y of peaks(dip, 2.5, 8, Math.floor(t + h * 0.05), h - 4)) if (!foulCands.some((c2) => Math.abs(c2 - y) <= 2)) foulCands.push(y);
-        for (const y of peaks(stp, 6, 6, Math.floor(t - 14), Math.floor(t + 18))) if (!pitCands.some((c2) => Math.abs(c2 - y) <= 2)) pitCands.push(y);
+        for (const y of peaks(stp, 6, 6, Math.floor(t - pitBefore), Math.floor(t + pitAfter))) if (!pitCands.some((c2) => Math.abs(c2 - y) <= 2)) pitCands.push(y);
         for (const y of peaks(stp, 4, 4, Math.floor(b - 0.05 * h), Math.floor(b + 0.05 * h))) if (!foulCands.some((c2) => Math.abs(c2 - y) <= 2)) foulCands.push(y);
       }
       const supported = (y) => (L.rows[y] || L.rows[y - 1] || L.rows[y + 1] || L.rows[y - 2] || L.rows[y + 2]) && (R2.rows[y] || R2.rows[y - 1] || R2.rows[y + 1] || R2.rows[y - 2] || R2.rows[y + 2]);
@@ -639,11 +652,55 @@
         return Number.isFinite(a) && Number.isFinite(c2) && Math.abs(a - c2) > Math.max(5, Math.max(a, c2) * 0.07);
       };
       const isPitStep = (p) => {
-        const above = pAvg(-10, -4, p);
-        const below = pAvg(4, 10, p);
+        const above = pAvg(-10, -4, p, plow);
+        const below = pAvg(4, 10, p, plow);
         dbg(`pit? p${p}: above ${above.toFixed(0)} below ${below.toFixed(0)}`);
         return Number.isFinite(above) && Number.isFinite(below) && Math.abs(above - below) > Math.max(6, Math.max(above, below) * 0.12);
       };
+      let walk2 = NaN;
+      {
+        const lane0 = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
+        const lowRun = Math.max(6, Math.round(0.022 * h));
+        if (Number.isFinite(lane0)) {
+          let low = 0;
+          for (let y = Math.floor(b) - 3; y > yStart + 2; y--) {
+            const v = plow[y];
+            if (!Number.isFinite(v)) continue;
+            if (v < lane0 * 0.78) {
+              if (++low >= lowRun) {
+                walk2 = y + low;
+                break;
+              }
+            } else low = 0;
+          }
+        }
+        if (Number.isFinite(walk2) && !pitCands.some((c2) => Math.abs(c2 - walk2) <= 2)) pitCands.push(Math.round(walk2));
+      }
+      const lane1 = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
+      const validPits = pitCands.filter((p) => {
+        const below = pAvg(4, 10, p, plow);
+        return Number.isFinite(lane1) && Number.isFinite(below) && Math.abs(below - lane1) <= Math.max(20, lane1 * 0.2) && isPitStep(p);
+      });
+      const lowestPit = validPits.length ? Math.max(...validPits) : NaN;
+      let pinPit = NaN;
+      const laneMed = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), prow);
+      if (Number.isFinite(laneMed)) {
+        const bright = (y) => Number.isFinite(prow[y]) && prow[y] >= laneMed * 1.08 + 4;
+        for (let y = Math.max(yStart + 2, Math.floor(t - pitBefore)); y < Math.min(h - 3, Math.floor(t + pitAfter)); y++) {
+          if (!bright(y) || bright(y - 1)) continue;
+          let e = y;
+          while (e < h - 3 && bright(e + 1)) e++;
+          const wid = xAt(R2, y) - xAt(L, y);
+          const pinH = wid * (15 / 41.5) * 0.95;
+          if (e - y + 1 >= 0.45 * pinH && e - y + 1 <= 1.6 * pinH + 1) {
+            pinPit = y + pinH;
+            break;
+          }
+        }
+        if (Number.isFinite(pinPit) && !pitCands.some((c2) => Math.abs(c2 - pinPit) <= 1.5)) pitCands.push(Math.round(pinPit));
+      }
+      dbg(`walk ${walk2} t ${t} b ${b} pitCands ${pitCands.join(",")} valid ${validPits.join(",")}`);
+      const laneLevel = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
       let best = null;
       const tried = [];
       for (const f of foulCands) {
@@ -662,7 +719,15 @@
           if (!n || cov / n < 0.5) continue;
           const nearB = Math.max(0, 1 - Math.abs(f - b) / (0.06 * h));
           const nearT = Math.max(0, 1 - Math.abs(p - t) / (0.05 * h));
-          const score = cov / n * 1 + prof[f] * 0.5 + Math.min(1, up[p]) * 0.5 + 1.2 * nearB + 0.6 * nearT;
+          const pitLow = Math.max(0, Math.min(1, (p - (t - pitBefore)) / (pitBefore + pitAfter)));
+          const belowP = pAvg(4, 10, p, plow);
+          const laneMatch = Number.isFinite(laneLevel) && Number.isFinite(belowP) ? 1 - Math.min(1, Math.abs(belowP - laneLevel) / Math.max(20, laneLevel * 0.35)) : 0;
+          const wF = Math.max(1, xAt(R2, f) - xAt(L, f));
+          const dRows = LANE_END_FT * rho / (1 - rho);
+          const fovDeg = 2 * Math.atan(w / 2 * (41.5 / 12) / (wF * dRows)) * 180 / Math.PI;
+          const fovFit = Math.exp(-0.5 * ((fovDeg - 66) / 22) ** 2);
+          const score = cov / n * 1 + prof[f] * 0.5 + Math.min(1, up[p]) * 0.5 + 1.2 * nearB + 0.6 * nearT + 0.8 * pitLow + 1.3 * laneMatch + 1.6 * fovFit + (Number.isFinite(walk2) && Math.abs(p - walk2) <= 2.5 ? 0.6 : 0) + (p === lowestPit ? 1.6 : 0) + (Number.isFinite(pinPit) && Math.abs(p - pinPit) <= 2 ? 2.2 : 0);
+          dbg(`pair f${f} p${p} cov${(cov / n).toFixed(2)} prof${prof[f].toFixed(2)} up${up[p].toFixed(2)} nearB${nearB.toFixed(2)} nearT${nearT.toFixed(2)} pitLow${pitLow.toFixed(2)} match${laneMatch.toFixed(2)} fov${fovDeg.toFixed(0)}/${fovFit.toFixed(2)} yv${yv.toFixed(1)} wF${wF.toFixed(0)} rho${rho.toFixed(3)} L${xAt(L, f).toFixed(0)}-R${xAt(R2, f).toFixed(0)} pin${Number.isFinite(pinPit) ? pinPit.toFixed(1) : "-"} low${p === lowestPit ? 1 : 0} (below ${belowP.toFixed(0)} lane ${laneLevel.toFixed(0)}) = ${score.toFixed(2)}`);
           if (!best || score > best.score) best = { pit: p, foul: f, score };
         }
       }
@@ -679,7 +744,21 @@
         return sw > 0 ? sy / sw : y;
       };
       const foul = prof[best.foul] > 0.05 ? centroid(prof, best.foul, 4, prof[best.foul] * 0.4) : best.foul;
-      const pit = up[best.pit] > 0.1 ? centroid(up, best.pit, 3, up[best.pit] * 0.3) : best.pit;
+      const halfway = (p) => {
+        const A = pAvg(-10, -4, p, plow);
+        const B = pAvg(4, 10, p, plow);
+        if (!Number.isFinite(A) || !Number.isFinite(B) || Math.abs(A - B) < 6) return NaN;
+        const mid = (A + B) / 2;
+        const rising = B > A;
+        for (let y = p - 5; y <= p + 5; y++) {
+          const a = plow[y], c2 = plow[y + 1];
+          if (!Number.isFinite(a) || !Number.isFinite(c2)) continue;
+          if (rising ? a < mid && c2 >= mid : a > mid && c2 <= mid) return y + (mid - a) / (c2 - a || 1) + 0.5;
+        }
+        return NaN;
+      };
+      const hw = halfway(best.pit);
+      const pit = Number.isFinite(hw) && Math.abs(hw - best.pit) <= (Number.isFinite(pinPit) ? 1.5 : 4) ? hw : up[best.pit] > 0.1 ? centroid(up, best.pit, 3, up[best.pit] * 0.3) : best.pit;
       if (diag && !diag.foulRow) {
         diag.foulRow = foul;
         diag.pitRow = pit;
@@ -716,10 +795,16 @@
         }
         return sw > 0 ? sy / sw : guess;
       };
-      const fyL = sideRow(foul, "L", "foul");
-      const fyR = sideRow(foul, "R", "foul");
-      const pL = sideRow(pit, "L", "pit");
-      const pR = sideRow(pit, "R", "pit");
+      let fyL = sideRow(foul, "L", "foul");
+      let fyR = sideRow(foul, "R", "foul");
+      let pL = sideRow(pit, "L", "pit");
+      let pR = sideRow(pit, "R", "pit");
+      const dF = fyR - fyL;
+      const dP = pR - pL;
+      if (Math.abs(dF) < 1.5 || Math.abs(dP) < 1.5 || Math.sign(dF) !== Math.sign(dP) || Math.abs(dP / dF) > 1.6 || Math.abs(dP / dF) < 0.15) {
+        fyL = fyR = foul;
+        pL = pR = pit;
+      }
       const rowFor = (fyS, pS) => {
         const rho = (pS - yv) / (fyS - yv);
         if (!(rho > 0.03 && rho < 0.75)) return null;
@@ -6678,6 +6763,8 @@ ${url}`);
   var INCH_PER_X = 41.5 / 39;
   var BallTracker = class {
     bg = null;
+    /** what the empty lane looks like in colour (red minus blue), so a ball the same brightness as the lane is still seen */
+    bgC = null;
     path = [];
     /** ball positions in picture pixels, for drawing */
     trail = [];
@@ -6689,6 +6776,8 @@ ${url}`);
     lastR = 0;
     t0 = 0;
     lanePrev = -1;
+    /** how far down the lane the last dozen frames were, to notice a "ball" that has stopped getting anywhere */
+    recent = [];
     sampleIdx = [];
     fgAge = new Uint8Array(0);
     s;
@@ -6703,11 +6792,16 @@ ${url}`);
       this.last = null;
       this.lost = 0;
       this.lanePrev = -1;
-      if (!keepBackground) this.bg = null;
+      this.recent = [];
+      if (!keepBackground) {
+        this.bg = null;
+        this.bgC = null;
+      }
     }
     /** Learn the empty lane again (after a shot, or when the lighting has changed). */
     forgetBackground() {
       this.bg = null;
+      this.bgC = null;
     }
     lane(x, y) {
       return applyHomography(this.s.H, { x: x * this.s.scale, y: y * this.s.scale });
@@ -6752,20 +6846,30 @@ ${url}`);
       }
       return out;
     }
-    /** Feed one frame (grayscale, grid size). `t` is the frame's time in seconds. */
-    step(gray, t) {
+    /** Feed one frame (grayscale, grid size, and optionally red-minus-blue). `t` is the frame's time in seconds. */
+    step(gray, t, chroma) {
       const { w, h, mask } = this.s;
       if (!this.bg) {
         this.bg = gray.slice();
+        this.bgC = chroma ? chroma.slice() : null;
         return "idle";
       }
       const bg = this.bg;
+      const bgC = chroma && this.bgC ? this.bgC : null;
       const d = this.sampleIdx.map((i) => gray[i] - bg[i]).sort((a, b) => a - b);
       const off = d.length ? d[d.length >> 1] : 0;
       const mad = d.length ? [...d].map((v) => Math.abs(v - off)).sort((a, b) => a - b)[d.length >> 1] * 1.4826 : 4;
       const thr = Math.max(18, 4.5 * mad);
       const fg = new Uint8Array(w * h);
       for (let i = 0; i < gray.length; i++) if (mask[i] && Math.abs(gray[i] - off - bg[i]) > thr) fg[i] = 1;
+      let offC = 0;
+      if (bgC && chroma) {
+        const dc = this.sampleIdx.map((i) => chroma[i] - bgC[i]).sort((a, b) => a - b);
+        offC = dc.length ? dc[dc.length >> 1] : 0;
+        const madC = dc.length ? [...dc].map((v) => Math.abs(v - offC)).sort((a, b) => a - b)[dc.length >> 1] * 1.4826 : 4;
+        const thrC = Math.max(22, 5 * madC);
+        for (let i = 0; i < gray.length; i++) if (mask[i] && !fg[i] && Math.abs(chroma[i] - offC - bgC[i]) > thrC) fg[i] = 1;
+      }
       if (this.fgAge.length !== fg.length) this.fgAge = new Uint8Array(fg.length);
       if (this.last) this.fgAge.fill(0);
       else
@@ -6773,6 +6877,7 @@ ${url}`);
           if (!fg[i]) this.fgAge[i] = 0;
           else if (++this.fgAge[i] >= 24) {
             bg[i] = gray[i] - off;
+            if (bgC && chroma) bgC[i] = chroma[i] - offC;
             this.fgAge[i] = 0;
             fg[i] = 0;
           }
@@ -6808,12 +6913,22 @@ ${url}`);
         this.lost = 0;
         const prev = this.last;
         this.last = { x: best.x, y: best.y, vx: prev ? 0.6 * (best.x - prev.x) + 0.4 * prev.vx : 0, vy: prev ? 0.6 * (best.y - prev.y) + 0.4 * prev.vy : 0 };
+        globalThis.__trk?.push({ x: best.x, y: best.y, area: best.area, er: best.er, ly: best.ly, w: best.w, h: best.h });
         this.lanePrev = Math.max(this.lanePrev, best.ly);
         this.lastR = best.er;
         if (!this.path.length) this.t0 = t;
         this.path.push({ t: t - this.t0, x: best.lx, y: best.ly });
         this.trail.push({ x: best.x * this.s.scale, y: best.y * this.s.scale });
         for (let i = 0; i < bg.length; i++) if (!fg[i]) bg[i] += (gray[i] - off - bg[i]) * 0.01 + 0;
+        if (bgC && chroma) {
+          for (let i = 0; i < bgC.length; i++) if (!fg[i]) bgC[i] += (chroma[i] - offC - bgC[i]) * 0.01;
+        }
+        this.recent.push(best.ly);
+        if (this.recent.length > 12) this.recent.shift();
+        const progress = this.recent.length >= 12 ? best.ly - this.recent[0] : Infinity;
+        if (progress < 1 && this.confirmed && this.lanePrev > 40) return "finished";
+        if (progress < 0.4 && !this.confirmed && this.path.length > 14) return this.reset(), "reset";
+        if (this.path.length > 500) return this.confirmed ? "finished" : (this.reset(), "reset");
         let event = "tracking";
         if (!this.confirmed && this.path.length >= 5) {
           const a = this.path[0];
@@ -6841,6 +6956,7 @@ ${url}`);
         return "tracking";
       }
       for (let i = 0; i < bg.length; i++) bg[i] += (gray[i] - off - bg[i]) * 0.04;
+      if (bgC && chroma) for (let i = 0; i < bgC.length; i++) bgC[i] += (chroma[i] - offC - bgC[i]) * 0.04;
       return "idle";
     }
   };
@@ -7043,7 +7159,7 @@ ${url}`);
   var locks = [];
   var candidate = null;
   var verifyUntil = 0;
-  var MAX_DW = 1280;
+  var MAX_DW = 640;
   var pending = null;
   var lastCandidates = [];
   var dcanvas = document.createElement("canvas");
@@ -7133,6 +7249,13 @@ ${url}`);
     return inside;
   };
   var centerOf = (c) => ({ x: c.reduce((s, p) => s + p.x, 0) / c.length, y: c.reduce((s, p) => s + p.y, 0) / c.length });
+  window.__lane = { get tracker() {
+    return tracker;
+  }, get path() {
+    return path;
+  }, get corners() {
+    return corners;
+  } };
   var adjusted = false;
   var dragIx = -1;
   var detectMs = 0;
@@ -7739,7 +7862,8 @@ ${url}`);
     const sx = video.videoWidth / GW;
     const sy = video.videoHeight / GH;
     laneMask = new Uint8Array(GW * GH);
-    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) laneMask[y * GW + x] = inPolygon({ x: (x + 0.5) * sx, y: (y + 0.5) * sy }, corners) ? 1 : 0;
+    const area = Hinv ? [laneToPx(0, -2), laneToPx(LANE_BOARDS, -2), laneToPx(LANE_BOARDS, 64.5), laneToPx(0, 64.5)] : corners;
+    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) laneMask[y * GW + x] = inPolygon({ x: (x + 0.5) * sx, y: (y + 0.5) * sy }, area) ? 1 : 0;
   }
   var sigAcc = new Array(SIG_LEN).fill(0);
   var CROP = 24;
@@ -7879,10 +8003,14 @@ ${url}`);
     wctx.drawImage(video, 0, 0, GW, GH);
     const px = wctx.getImageData(0, 0, GW, GH).data;
     const gray = new Float32Array(GW * GH);
-    for (let i = 0; i < gray.length; i++) gray[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+    const chroma = new Float32Array(GW * GH);
+    for (let i = 0; i < gray.length; i++) {
+      gray[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+      chroma[i] = 128 + (px[i * 4] - px[i * 4 + 2]) * 0.6;
+    }
     if (!tracker) tracker = new BallTracker({ w: GW, h: GH, mask: laneMask, H, Hinv, scale: video.videoWidth / GW });
     if (now < cooldownUntil) return;
-    const ev = tracker.step(gray, meta.mediaTime);
+    const ev = tracker.step(gray, meta.mediaTime, chroma);
     path = tracker.path;
     trail = tracker.trail;
     lastBlob = tracker.last ? { gx: tracker.last.x, gy: tracker.last.y } : null;
@@ -8051,7 +8179,38 @@ ${url}`);
       status.textContent = `Lane ${laneNo}: ${saved ? "using your saved lock for it." : "looking for it."}`;
     });
   };
-  $("start").onclick = () => askLane().then(() => startCamera()).catch((e) => status.textContent = `Camera error: ${e.message}. Camera needs an https:// address.`);
+  (function setupStartScreen() {
+    const input = $("hero-lane");
+    const start = $("start");
+    try {
+      input.value = localStorage.getItem("laneiq.laneNo") ?? "";
+    } catch {
+    }
+    const ok = () => /^[0-9]{1,3}$/.test(input.value.trim()) && Number(input.value) > 0;
+    const refresh = () => {
+      start.disabled = !ok();
+      start.textContent = ok() ? `Start camera on lane ${Number(input.value)}` : "Type your lane number to start";
+    };
+    input.addEventListener("input", () => {
+      input.value = input.value.replace(/[^0-9]/g, "");
+      refresh();
+    });
+    refresh();
+    const v = Array.from(document.scripts).map((x) => x.src).find((x) => /camera\.js\?v=/.test(x));
+    $("ver").textContent = v ? `version ${v.split("?v=")[1]}` : "";
+  })();
+  function takeLane() {
+    const input = $("hero-lane");
+    laneNo = String(Number(input.value.trim()));
+    try {
+      localStorage.setItem("laneiq.laneNo", laneNo);
+    } catch {
+    }
+    const badge = $("laneno");
+    badge.style.display = "";
+    badge.textContent = `Lane ${laneNo}`;
+  }
+  $("start").onclick = () => Promise.resolve().then(() => (takeLane(), startCamera())).catch((e) => status.textContent = `Camera error: ${e.message}. Camera needs an https:// address.`);
   function synthPath(startX, bp, entryX, speedFtS) {
     const out = [];
     const mid = startX + 3;

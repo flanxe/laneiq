@@ -150,7 +150,11 @@
     <div id="hero">
       <h1>Point. Lock.<br>Bowl.</h1>
       <p>Set your phone behind the approach or off to one side, with the whole lane in view. It finds the lane by itself.</p>
-      <button class="btn" id="start">Start camera</button>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:300px">
+        <input id="hero-lane" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" placeholder="Your lane number" aria-label="Your lane number" style="width:100%;box-sizing:border-box;font:700 22px system-ui;text-align:center;padding:12px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:#fff">
+        <button class="btn" id="start" disabled style="width:100%">Type your lane number to start</button>
+      </div>
+      <div id="ver" class="note" style="font-size:11px;opacity:.6"></div>
       <button class="chip" id="guide-open">How to get a good lock</button>
     </div>
   </div>
@@ -218,7 +222,7 @@
   <button class="tb" data-tab="proshop"><svg viewBox="0 0 24 24"><path d="M14.5 5.5a4 4 0 0 0-5 5L4 16l4 4 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5z"/></svg>Pro shop</button>
   <button class="tb" data-tab="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/></svg>Me</button>
 </nav>
-<script src="camera.js?v=mvh1pypl"></script>
+<script src="camera.js?v=mvh5fp64"></script>
 <div id="lanedlg" style="position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;background:rgba(3,6,12,.82);padding:20px">
   <div class="card" style="max-width:380px;width:100%;text-align:center">
     <h2 style="margin:0 0 6px">Which lane are you on?</h2>
