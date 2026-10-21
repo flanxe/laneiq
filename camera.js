@@ -573,9 +573,9 @@
         return out.sort((p, q) => arr[q] - arr[p]).slice(0, k2);
       };
       const topRows = (arr) => Array.from({ length: h }, (_, y) => y).filter((y) => y >= yStart && y < h - 4).sort((p, q) => arr[q] - arr[p]).slice(0, 6).map((y) => `${y}:${arr[y].toFixed(2)}`).join(" ");
-      dbg(`profile peaks (density): ${topRows(prof)} | pit step peaks: ${topRows(up)} thr ${thr.toFixed(1)}`);
       const prow = new Float32Array(h).fill(NaN);
       const plow = new Float32Array(h).fill(NaN);
+      const phigh = new Float32Array(h).fill(NaN);
       for (let y = yStart; y < h - 3; y++) {
         const wid = xAt(R2, y) - xAt(L, y);
         if (wid < 6) continue;
@@ -587,6 +587,7 @@
         vals.sort((p, q) => p - q);
         prow[y] = vals[vals.length >> 1];
         plow[y] = vals[vals.length >> 2];
+        phigh[y] = vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.9))];
       }
       const pAvg = (ya, yb, y, src = prow) => {
         let s = 0, n = 0;
@@ -641,7 +642,6 @@
         const above = pAvg(-9, -4, f);
         const below = pAvg(4, 9, f);
         const mid = pAvg(-1, 1, f);
-        dbg(`thin? f${f}: above ${above.toFixed(0)} mid ${mid.toFixed(0)} below ${below.toFixed(0)}`);
         if (![above, below, mid].every(Number.isFinite)) return false;
         const margin = Math.max(2.5, (above + below) / 2 * 0.03);
         return mid < Math.min(above, below) - margin || mid > Math.max(above, below) + margin;
@@ -654,7 +654,6 @@
       const isPitStep = (p) => {
         const above = pAvg(-10, -4, p, plow);
         const below = pAvg(4, 10, p, plow);
-        dbg(`pit? p${p}: above ${above.toFixed(0)} below ${below.toFixed(0)}`);
         return Number.isFinite(above) && Number.isFinite(below) && Math.abs(above - below) > Math.max(6, Math.max(above, below) * 0.12);
       };
       let walk2 = NaN;
@@ -681,10 +680,26 @@
         const below = pAvg(4, 10, p, plow);
         return Number.isFinite(lane1) && Number.isFinite(below) && Math.abs(below - lane1) <= Math.max(20, lane1 * 0.2) && isPitStep(p);
       });
-      const lowestPit = validPits.length ? Math.max(...validPits) : NaN;
+      let lowestPit = validPits.length ? Math.max(...validPits) : NaN;
       let pinPit = NaN;
+      {
+        const ref = pAvg(10, 18, Math.round(t), prow);
+        const whiteAt = Number.isFinite(ref) ? Math.max(150, ref + 34) : 230;
+        for (let y = Math.max(yStart + 2, Math.floor(t - pitBefore)); y < Math.min(h - 3, Math.floor(t + pitAfter)); y++) {
+          const white = (yy) => Number.isFinite(phigh[yy]) && phigh[yy] >= whiteAt;
+          if (!white(y) || white(y - 1)) continue;
+          let e = y;
+          while (e < h - 3 && white(e + 1)) e++;
+          const wid = xAt(R2, y) - xAt(L, y);
+          const pinH = wid * (15 / 41.5) * 0.95;
+          if (e - y + 1 >= 0.55 * pinH && e - y + 1 <= 2.8 * pinH + 1) {
+            pinPit = y + 0.85 * pinH;
+            break;
+          }
+        }
+      }
       const laneMed = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), prow);
-      if (Number.isFinite(laneMed)) {
+      if (!Number.isFinite(pinPit) && Number.isFinite(laneMed)) {
         const bright = (y) => Number.isFinite(prow[y]) && prow[y] >= laneMed * 1.08 + 4;
         for (let y = Math.max(yStart + 2, Math.floor(t - pitBefore)); y < Math.min(h - 3, Math.floor(t + pitAfter)); y++) {
           if (!bright(y) || bright(y - 1)) continue;
@@ -697,16 +712,19 @@
             break;
           }
         }
-        if (Number.isFinite(pinPit) && !pitCands.some((c2) => Math.abs(c2 - pinPit) <= 1.5)) pitCands.push(Math.round(pinPit));
       }
-      dbg(`walk ${walk2} t ${t} b ${b} pitCands ${pitCands.join(",")} valid ${validPits.join(",")}`);
+      if (Number.isFinite(pinPit) && !pitCands.some((c2) => Math.abs(c2 - pinPit) <= 1.5)) pitCands.push(Math.round(pinPit));
+      if (Number.isFinite(pinPit)) {
+        const pc = pitCands.find((c2) => Math.abs(c2 - pinPit) <= 2);
+        if (pc !== void 0 && (!Number.isFinite(lowestPit) || pc > lowestPit)) lowestPit = pc;
+      }
       const laneLevel = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
       let best = null;
       const tried = [];
       for (const f of foulCands) {
         if (!isThinLine(f) && !(Math.abs(f - b) <= 0.05 * h && isLaneToApproach(f))) continue;
         for (const p of pitCands) {
-          if (f - p < h * 0.06 || !isPitStep(p)) continue;
+          if (f - p < h * 0.06 || !(isPitStep(p) || Number.isFinite(pinPit) && Math.abs(p - pinPit) <= 2)) continue;
           const rho = (p - yv) / (f - yv);
           if (!(rho > 0.03 && rho < 0.75)) continue;
           let cov = 0;
@@ -727,7 +745,6 @@
           const fovDeg = 2 * Math.atan(w / 2 * (41.5 / 12) / (wF * dRows)) * 180 / Math.PI;
           const fovFit = Math.exp(-0.5 * ((fovDeg - 66) / 22) ** 2);
           const score = cov / n * 1 + prof[f] * 0.5 + Math.min(1, up[p]) * 0.5 + 1.2 * nearB + 0.6 * nearT + 0.8 * pitLow + 1.3 * laneMatch + 1.6 * fovFit + (Number.isFinite(walk2) && Math.abs(p - walk2) <= 2.5 ? 0.6 : 0) + (p === lowestPit ? 1.6 : 0) + (Number.isFinite(pinPit) && Math.abs(p - pinPit) <= 2 ? 2.2 : 0);
-          dbg(`pair f${f} p${p} cov${(cov / n).toFixed(2)} prof${prof[f].toFixed(2)} up${up[p].toFixed(2)} nearB${nearB.toFixed(2)} nearT${nearT.toFixed(2)} pitLow${pitLow.toFixed(2)} match${laneMatch.toFixed(2)} fov${fovDeg.toFixed(0)}/${fovFit.toFixed(2)} yv${yv.toFixed(1)} wF${wF.toFixed(0)} rho${rho.toFixed(3)} L${xAt(L, f).toFixed(0)}-R${xAt(R2, f).toFixed(0)} pin${Number.isFinite(pinPit) ? pinPit.toFixed(1) : "-"} low${p === lowestPit ? 1 : 0} (below ${belowP.toFixed(0)} lane ${laneLevel.toFixed(0)}) = ${score.toFixed(2)}`);
           if (!best || score > best.score) best = { pit: p, foul: f, score };
         }
       }
@@ -758,7 +775,7 @@
         return NaN;
       };
       const hw = halfway(best.pit);
-      const pit = Number.isFinite(hw) && Math.abs(hw - best.pit) <= (Number.isFinite(pinPit) ? 1.5 : 4) ? hw : up[best.pit] > 0.1 ? centroid(up, best.pit, 3, up[best.pit] * 0.3) : best.pit;
+      const pit = Number.isFinite(pinPit) && Math.abs(best.pit - pinPit) <= 2 ? pinPit : Number.isFinite(hw) && Math.abs(hw - best.pit) <= (Number.isFinite(pinPit) ? 1.5 : 4) ? hw : up[best.pit] > 0.1 ? centroid(up, best.pit, 3, up[best.pit] * 0.3) : best.pit;
       if (diag && !diag.foulRow) {
         diag.foulRow = foul;
         diag.pitRow = pit;
@@ -865,8 +882,19 @@
     }
   }
   var isSolid = (d) => d.confidence >= 0.85 && d.rows.foul !== null && d.rows.pit !== null;
+  function oneOfEach(list, w) {
+    const mid = (d) => (d.corners[0].x + d.corners[1].x) / 2;
+    const wid = (d) => Math.abs(d.corners[1].x - d.corners[0].x);
+    const out = [];
+    for (const d of [...list].sort((a, b) => b.confidence - a.confidence)) {
+      const i = out.findIndex((o) => Math.abs(mid(o) - mid(d)) < 0.05 * w && wid(o) / Math.max(1, wid(d)) > 0.6 && wid(o) / Math.max(1, wid(d)) < 1.7);
+      if (i < 0) out.push(d);
+      else if (wid(d) < 0.85 * wid(out[i])) out[i] = d;
+    }
+    return out;
+  }
   function chooseLane(cands, w) {
-    const solid2 = cands.filter(isSolid);
+    const solid2 = oneOfEach(cands.filter(isSolid), w);
     if (solid2.length <= 1) return { pick: solid2[0] ?? null, choices: solid2 };
     const off = (d) => Math.abs((d.corners[0].x + d.corners[1].x) / 2 - w / 2) / w;
     const ranked = [...solid2].sort((a, b) => off(a) - off(b));
@@ -6776,6 +6804,8 @@ ${url}`);
     lastR = 0;
     t0 = 0;
     lanePrev = -1;
+    /** where the ball was last seen on the lane (boards, feet) and when, to judge where it can be next however sparse the frames are */
+    lastLane = null;
     /** how far down the lane the last dozen frames were, to notice a "ball" that has stopped getting anywhere */
     recent = [];
     sampleIdx = [];
@@ -6792,6 +6822,7 @@ ${url}`);
       this.last = null;
       this.lost = 0;
       this.lanePrev = -1;
+      this.lastLane = null;
       this.recent = [];
       if (!keepBackground) {
         this.bg = null;
@@ -6906,6 +6937,11 @@ ${url}`);
         const py = this.last.y + this.last.vy;
         const reach = Math.max(7, 2.4 * Math.hypot(this.last.vx, this.last.vy) + 2.5 * (cands[0]?.er ?? 3));
         best = cands.filter((c) => Math.hypot(c.x - px, c.y - py) < reach && c.ly >= this.lanePrev - 1.2).sort((a, b) => Math.hypot(a.x - px, a.y - py) + 6 * a.q - (Math.hypot(b.x - px, b.y - py) + 6 * b.q))[0];
+        if (!best && this.lastLane) {
+          const dt = Math.max(5e-3, t - this.lastLane.t);
+          const ll = this.lastLane;
+          best = cands.filter((c) => c.ly >= ll.y - 0.8 && c.ly <= ll.y + 51 * dt + 2 && Math.abs(c.lx - ll.x) <= 4 + 9 * dt).sort((a, b) => a.q - b.q)[0];
+        }
       } else {
         best = cands.filter((c) => c.ly < 48).sort((a, b) => a.q - b.q || a.ly - b.ly)[0];
       }
@@ -6915,6 +6951,7 @@ ${url}`);
         this.last = { x: best.x, y: best.y, vx: prev ? 0.6 * (best.x - prev.x) + 0.4 * prev.vx : 0, vy: prev ? 0.6 * (best.y - prev.y) + 0.4 * prev.vy : 0 };
         globalThis.__trk?.push({ x: best.x, y: best.y, area: best.area, er: best.er, ly: best.ly, w: best.w, h: best.h });
         this.lanePrev = Math.max(this.lanePrev, best.ly);
+        this.lastLane = { x: best.lx, y: best.ly, t };
         this.lastR = best.er;
         if (!this.path.length) this.t0 = t;
         this.path.push({ t: t - this.t0, x: best.lx, y: best.ly });
@@ -7132,7 +7169,8 @@ ${url}`);
   }
   async function startCamera() {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60, min: 30 } },
+      // the sharpest picture the phone will give (1080p; pins and the far end of the lane are only a few pixels, so every pixel counts)
+      video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60, min: 30 } },
       audio: false
     });
     video.srcObject = stream;
@@ -7773,10 +7811,13 @@ ${url}`);
   var zoomCaps = null;
   var zoomNow = 1;
   var zoomLevels = [1];
+  var panX = 0;
+  var panY = 0;
+  var DIGITAL_MAX = 6;
   function drawZoomBar() {
     const bar = $("zoombar");
-    bar.innerHTML = zoomLevels.map((z) => `<button class="seg ${Math.abs(z - zoomNow) < 0.01 ? "on" : ""}" data-z="${z}">${z}\xD7</button>`).join("");
-    bar.querySelectorAll("button").forEach((b) => b.onclick = () => void setZoom(Number(b.dataset.z)));
+    bar.innerHTML = zoomLevels.map((z) => `<button class="seg ${Math.abs(z - zoomNow) < 0.05 ? "on" : ""}" data-z="${z}">${z}\xD7</button>`).join("") + (Math.abs(zoomNow - Math.round(zoomNow * 2) / 2) > 0.05 || !zoomLevels.some((z) => Math.abs(z - zoomNow) < 0.05) ? `<button class="seg on" disabled>${zoomNow.toFixed(1)}\xD7</button>` : "");
+    bar.querySelectorAll("button[data-z]").forEach((b) => b.onclick = () => void setZoom(Number(b.dataset.z)));
   }
   async function setupZoom() {
     const track = stream?.getVideoTracks()[0];
@@ -7792,35 +7833,136 @@ ${url}`);
     zoomNow = zoomLevels.includes(saved) ? saved : zoomLevels[0];
     await setZoom(zoomNow, false);
   }
+  function applyView() {
+    const stage = $("stage");
+    const W = stage.clientWidth;
+    const Hh = stage.clientHeight;
+    const z = zoomCaps ? 1 : zoomNow;
+    const mx = (z - 1) * W / 2;
+    const my = (z - 1) * Hh / 2;
+    panX = Math.max(-mx, Math.min(mx, panX));
+    panY = Math.max(-my, Math.min(my, panY));
+    for (const el of [video, overlay]) {
+      el.style.transformOrigin = "50% 50%";
+      el.style.transform = z === 1 && !panX && !panY ? "" : `translate(${panX}px, ${panY}px) scale(${z})`;
+    }
+  }
   async function setZoom(z, dropLock = true) {
-    zoomNow = z;
+    const lo = zoomCaps ? zoomCaps.min : 1;
+    const hi = zoomCaps ? zoomCaps.max : DIGITAL_MAX;
+    zoomNow = Math.max(lo, Math.min(hi, z));
     const track = stream?.getVideoTracks()[0];
     if (zoomCaps && track) {
       try {
-        await track.applyConstraints({ advanced: [{ zoom: z }] });
+        await track.applyConstraints({ advanced: [{ zoom: zoomNow }] });
       } catch {
         status.textContent = "This phone would not change the camera zoom.";
       }
-      video.style.transform = overlay.style.transform = "";
+      applyView();
       if (dropLock && (H || pending)) {
         relock(false);
-        status.textContent = `Zoom ${z}\xD7: looking for the lane again at this zoom\u2026`;
+        status.textContent = `Zoom ${zoomNow.toFixed(1)}\xD7: looking for the lane again at this zoom\u2026`;
       }
     } else {
-      const c = corners.length === 4 ? centerOf(corners) : { x: video.videoWidth / 2, y: video.videoHeight / 2 };
-      const origin = `${c.x / Math.max(1, video.videoWidth) * 100}% ${c.y / Math.max(1, video.videoHeight) * 100}%`;
-      for (const el of [video, overlay]) {
-        el.style.transformOrigin = origin;
-        el.style.transform = z === 1 ? "" : `scale(${z})`;
-      }
-      if (z !== 1) status.textContent = `Zoom ${z}\xD7 (on screen only: this phone does not let the app zoom the lens, so detection still uses the whole picture).`;
+      if (zoomNow === 1) panX = panY = 0;
+      applyView();
+      if (zoomNow !== 1) status.textContent = `Zoom ${zoomNow.toFixed(1)}\xD7 (on screen only: this phone does not let the app zoom the lens, so detection still uses the whole picture).`;
     }
     try {
-      localStorage.setItem(ZOOM_KEY, String(z));
+      localStorage.setItem(ZOOM_KEY, String(zoomNow));
     } catch {
     }
     drawZoomBar();
   }
+  var touches = /* @__PURE__ */ new Map();
+  var gesture = null;
+  var gestureActive = false;
+  var zoomDirty = false;
+  var relockTimer;
+  var stageEl = $("stage");
+  var gestureState = () => {
+    const [a, b] = Array.from(touches.values());
+    return { d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+  };
+  stageEl.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (e.target.closest("#zoombar,#expandbtn,#viewtoggle,#hero")) return;
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size >= 2) {
+        gestureActive = true;
+        dragIx = -1;
+        const g = gestureState();
+        gesture = { d0: Math.max(10, g.d), z0: zoomNow, mx0: g.mx, my0: g.my, px0: panX, py0: panY };
+        e.stopPropagation();
+      }
+    },
+    true
+  );
+  stageEl.addEventListener(
+    "pointermove",
+    (e) => {
+      if (!touches.has(e.pointerId)) return;
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size >= 2 && gesture) {
+        const g = gestureState();
+        zoomNow = Math.max(zoomCaps ? zoomCaps.min : 1, Math.min(zoomCaps ? zoomCaps.max : DIGITAL_MAX, gesture.z0 * (g.d / gesture.d0)));
+        panX = gesture.px0 + (g.mx - gesture.mx0);
+        panY = gesture.py0 + (g.my - gesture.my0);
+        zoomDirty = true;
+        if (zoomCaps) void stream?.getVideoTracks()[0]?.applyConstraints({ advanced: [{ zoom: zoomNow }] }).catch(() => {
+        });
+        applyView();
+        drawZoomBar();
+        e.stopPropagation();
+      } else if (gestureActive) e.stopPropagation();
+    },
+    true
+  );
+  var liftFinger = (e) => {
+    if (!touches.delete(e.pointerId)) return;
+    if (touches.size < 2) gesture = null;
+    if (touches.size === 0) {
+      gestureActive = false;
+      if (zoomDirty) {
+        zoomDirty = false;
+        try {
+          localStorage.setItem(ZOOM_KEY, String(zoomNow));
+        } catch {
+        }
+        if (zoomCaps && (H || pending)) {
+          clearTimeout(relockTimer);
+          relockTimer = setTimeout(() => {
+            relock(false);
+            status.textContent = `Zoom ${zoomNow.toFixed(1)}\xD7: looking for the lane again at this zoom\u2026`;
+          }, 500);
+        }
+      }
+    }
+  };
+  stageEl.addEventListener("pointerup", liftFinger, true);
+  stageEl.addEventListener("pointercancel", liftFinger, true);
+  stageEl.addEventListener(
+    "wheel",
+    (e) => {
+      if (!document.body.classList.contains("live")) return;
+      e.preventDefault();
+      const z = zoomNow * Math.exp(-e.deltaY * 15e-4);
+      void setZoom(z, false).then(() => {
+        if (zoomCaps && (H || pending)) {
+          clearTimeout(relockTimer);
+          relockTimer = setTimeout(() => relock(false), 700);
+        }
+      });
+    },
+    { passive: false }
+  );
+  $("expandbtn").onclick = () => {
+    const on = document.body.classList.toggle("expanded");
+    $("expandbtn").textContent = on ? "Close" : "Expand";
+    window.scrollTo(0, 0);
+    applyView();
+  };
   $("vt-lane").onclick = () => setMode("lane");
   $("vt-raw").onclick = () => setMode("raw");
   $("vt-3d").onclick = () => setMode("3d");
@@ -7931,7 +8073,7 @@ ${url}`);
     if (!stream || !window.MediaRecorder || S.demo) return;
     try {
       const mime = pickMime();
-      const mr = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 3e6 } : void 0);
+      const mr = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 6e6 } : void 0);
       const chunks = [];
       mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
       mr.start();
@@ -7980,6 +8122,7 @@ ${url}`);
       strokeTrail(v, trail.slice(-40), 1, true);
       drawBallHead(v, trail[trail.length - 1]);
     }
+    drawPinSpots(now);
   }
   var confirmed = false;
   var cooldownUntil = 0;
@@ -8057,6 +8200,8 @@ ${url}`);
       idleDeck = cur;
       if (pinsReadable(cur)) fullDeck = cur;
     }
+    const seen = cur.filter((p) => pinContrast(p) >= 8).length;
+    $("pinstat").textContent = seen >= 8 ? `Pins: ready (${seen} of 10 seen)` : seen > 0 ? `Pins: only ${seen} of 10 stand out, so pinfall may be missed. Zoom in on them.` : "Pins: can't tell them from the deck. Zoom in on them or add light.";
     deckCand = cur;
   }
   function pinfallNow(start, full, now) {
@@ -8070,6 +8215,45 @@ ${url}`);
       return { down: after.filter((s, i) => before[i] === true && s === false).length, standing: after };
     }
     return null;
+  }
+  var lastPinRead = null;
+  function drawPinSpots(now) {
+    if (!Hinv || S.demo || viewMode !== "lane") return;
+    const s = overlay.width / 1280;
+    const fresh = lastPinRead && now - lastPinRead.at < 14e3 ? lastPinRead : null;
+    const boxes = pinBoxes(laneToPx);
+    ctx.save();
+    ctx.lineWidth = Math.max(1, 1.8 * s);
+    boxes.forEach((b, i) => {
+      const st2 = fresh ? fresh.standing[i] : void 0;
+      const pad = 3 * s;
+      const x = b.x0 - pad, y = b.y0 - pad, w = b.x1 - b.x0 + 2 * pad, h = b.y1 - b.y0 + 2 * pad;
+      ctx.strokeStyle = st2 === true ? "rgba(90,255,176,.95)" : st2 === false ? "rgba(255,90,110,.95)" : "rgba(70,230,255,.55)";
+      ctx.fillStyle = st2 === true ? "rgba(90,255,176,.28)" : st2 === false ? "rgba(255,90,110,.32)" : "rgba(70,230,255,.10)";
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeRect(x, y, w, h);
+      if (st2 === false) {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + w, y + h);
+        ctx.moveTo(x + w, y);
+        ctx.lineTo(x, y + h);
+        ctx.stroke();
+      }
+    });
+    if (fresh) {
+      const top = Math.min(...boxes.map((b) => b.y0)) - 34 * s;
+      const mid = (Math.min(...boxes.map((b) => b.x0)) + Math.max(...boxes.map((b) => b.x1))) / 2;
+      const text = fresh.down === 10 ? "STRIKE" : `${fresh.down} DOWN`;
+      ctx.font = `800 ${16 * s}px system-ui`;
+      ctx.textAlign = "center";
+      ctx.lineWidth = 4 * s;
+      ctx.strokeStyle = "rgba(0,0,0,.85)";
+      ctx.strokeText(text, mid, top);
+      ctx.fillStyle = fresh.down === 10 ? "#5affb0" : "#ffd25a";
+      ctx.fillText(text, mid, top);
+    }
+    ctx.restore();
   }
   var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   async function readPinfall(shot, start, full) {
@@ -8090,6 +8274,7 @@ ${url}`);
     const standing = stands[Math.max(0, at)] ?? [];
     const leave = n === 10 ? [] : standing.map((s, i) => s ? i + 1 : 0).filter(Boolean);
     shot.result = { pinsDown: n, auto: true, ...leave.length ? { leave } : {} };
+    lastPinRead = { standing, at: performance.now(), down: n };
     await updateShot(shot);
     renderResult(shot);
     status.textContent = n === 10 ? "Strike, read from the camera." : `${n} pins down, read from the camera.`;
