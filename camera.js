@@ -53,6 +53,27 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-22-invites",
+      date: "2026-10-22",
+      title: "Friend invites that stick",
+      items: [
+        "A friend's invite link is now remembered for two weeks, so it isn't lost when the tab closes or you add the app to your home screen.",
+        "On first setup there's an 'Invited by a friend?' box: enter their tag or paste their link and they're added when you finish.",
+        "When the app is added to the home screen from an invite link, the icon is set to open on that invite (on phones that allow it)."
+      ]
+    },
+    {
+      id: "2026-10-22-rewards",
+      date: "2026-10-22",
+      title: "Rewards and skins",
+      items: [
+        "Unlock looks for your ball tracer, the pins and the lane. Open Skins and rewards from the Score or Me tab.",
+        "Play track: every pin you knock down counts toward lifetime pinfall, which unlocks the everyday skins.",
+        "Improve track: improvement points come from new high games, strike streaks, clean games, a rising average, converted splits and skills reaching their targets. They unlock the rare skins. Throwing more shots doesn't earn points.",
+        "Levels, a next-unlock bar, and a message when something unlocks."
+      ]
+    },
+    {
       id: "2026-10-21-no-lane-number",
       date: "2026-10-21",
       title: "No more lane number",
@@ -822,20 +843,20 @@
   }
   function planProgress(plan, recent) {
     return plan.items.map((item) => {
-      let current3 = null;
+      let current4 = null;
       if (item.metric === "pocketMiss") {
         const miss = recent.filter((s) => s.m.pocketMiss !== null);
-        current3 = miss.length >= 5 ? Math.round(miss.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / miss.length * 100) : null;
+        current4 = miss.length >= 5 ? Math.round(miss.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / miss.length * 100) : null;
       } else {
         const v = featureValues(recent, item.metric);
         const useSd = item.unit.includes("\xB1");
-        current3 = v.length >= 5 ? Number((useSd ? sd2(v) : mean2(v)).toFixed(2)) : null;
+        current4 = v.length >= 5 ? Number((useSd ? sd2(v) : mean2(v)).toFixed(2)) : null;
       }
-      if (current3 === null) return { item, current: current3, progress: null, met: false };
+      if (current4 === null) return { item, current: current4, progress: null, met: false };
       const span = item.target - item.baseline;
-      const progress = span === 0 ? 1 : Math.max(0, Math.min(1, (current3 - item.baseline) / span));
-      const met = item.direction === "down" ? current3 <= item.target : current3 >= item.target;
-      return { item, current: current3, progress, met };
+      const progress2 = span === 0 ? 1 : Math.max(0, Math.min(1, (current4 - item.baseline) / span));
+      const met = item.direction === "down" ? current4 <= item.target : current4 >= item.target;
+      return { item, current: current4, progress: progress2, met };
     });
   }
 
@@ -1283,8 +1304,8 @@
   function initPatchNotes() {
     const box = document.getElementById("whatsnew");
     if (!box) return;
-    const fresh = seen() !== LATEST_NOTE_ID;
-    box.innerHTML = `<button class="chip" id="notes-open">${fresh ? "NEW \xB7 " : ""}What's new</button>`;
+    const fresh2 = seen() !== LATEST_NOTE_ID;
+    box.innerHTML = `<button class="chip" id="notes-open">${fresh2 ? "NEW \xB7 " : ""}What's new</button>`;
     document.getElementById("notes-open").onclick = () => {
       const sheet5 = document.getElementById("notes");
       sheet5.classList.add("on");
@@ -1293,6 +1314,59 @@
       markSeen();
       document.getElementById("notes-open").textContent = "What's new";
     };
+  }
+
+  // camera/theme.ts
+  var lerp = (a, b, t) => a + (b - a) * t;
+  var hsl = (h, s, l, a) => `hsla(${(h % 360 + 360) % 360}, ${s}%, ${l}%, ${a})`;
+  var ramp2 = (h0, h1, s = 100, l0 = 62, l1 = 58) => (t, a = 1) => hsl(lerp(h0, h1, t), s, lerp(l0, l1, t), a);
+  var TRACERS = {
+    "tracer-aurora": { color: ramp2(190, 320), core: "255,255,255", glow: 24, width: 1 },
+    "tracer-ember": { color: ramp2(8, 48), core: "255,244,214", glow: 26, width: 1.05 },
+    "tracer-lime": { color: ramp2(120, 85), core: "240,255,225", glow: 22, width: 1 },
+    "tracer-silver": { color: (t, a = 1) => hsl(215, 12, lerp(55, 88, t), a), core: "255,255,255", glow: 18, width: 0.95 },
+    "tracer-sunset": { color: ramp2(335, 40, 95, 60, 62), core: "255,240,225", glow: 28, width: 1.05 },
+    "tracer-plasma": { color: ramp2(275, 215, 100, 60, 66), core: "235,225,255", glow: 34, width: 1.15 },
+    "tracer-gold": { color: (t, a = 1) => hsl(lerp(38, 50, t), 100, lerp(48, 68, t), a), core: "255,250,220", glow: 36, width: 1.2 },
+    "tracer-inferno": { color: (t, a = 1) => hsl(lerp(2, 52, t * t), 100, lerp(45, 72, t), a), core: "255,255,235", glow: 42, width: 1.3 },
+    "tracer-prism": { color: (t, a = 1, clock = 0) => hsl(clock * 90 + t * 300, 100, 62, a), core: "255,255,255", glow: 40, width: 1.2 }
+  };
+  var PINS = {
+    "pins-classic": { standing: { fill: "rgba(90,255,176,.28)", stroke: "rgba(90,255,176,.95)", text: "#fff" }, down: { fill: "rgba(255,90,110,.32)", stroke: "rgba(255,90,110,.95)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(70,230,255,.10)", stroke: "rgba(70,230,255,.55)" } },
+    "pins-ice": { standing: { fill: "rgba(170,225,255,.35)", stroke: "rgba(210,240,255,.95)", text: "#fff" }, down: { fill: "rgba(70,110,170,.35)", stroke: "rgba(110,150,210,.8)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(170,225,255,.10)", stroke: "rgba(170,225,255,.5)" } },
+    "pins-sunny": { standing: { fill: "rgba(255,214,90,.35)", stroke: "rgba(255,226,120,.95)", text: "#fff" }, down: { fill: "rgba(255,120,60,.32)", stroke: "rgba(255,130,70,.9)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(255,214,90,.10)", stroke: "rgba(255,214,90,.5)" } },
+    "pins-mono": { standing: { fill: "rgba(255,255,255,.30)", stroke: "rgba(255,255,255,.95)", text: "#fff" }, down: { fill: "rgba(255,255,255,.04)", stroke: "rgba(255,255,255,.3)", text: "rgba(255,255,255,.3)" }, unknown: { fill: "rgba(255,255,255,.08)", stroke: "rgba(255,255,255,.45)" } },
+    "pins-neon": { standing: { fill: "rgba(255,60,220,.30)", stroke: "rgba(255,90,235,1)", text: "#fff" }, down: { fill: "rgba(60,255,240,.16)", stroke: "rgba(60,255,240,.8)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(255,60,220,.10)", stroke: "rgba(255,60,220,.5)" } },
+    "pins-gold": { standing: { fill: "rgba(255,200,60,.42)", stroke: "rgba(255,225,110,1)", text: "#fff" }, down: { fill: "rgba(120,80,20,.30)", stroke: "rgba(190,140,50,.8)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(255,200,60,.12)", stroke: "rgba(255,200,60,.55)" } },
+    "pins-holo": { standing: { fill: "rgba(160,120,255,.34)", stroke: "rgba(120,255,230,1)", text: "#fff" }, down: { fill: "rgba(255,120,200,.22)", stroke: "rgba(255,150,220,.85)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(160,120,255,.10)", stroke: "rgba(160,120,255,.5)" } }
+  };
+  var LANES = {
+    "lane-house": { fill: "rgba(255,214,150,.07)", edge: "rgba(120,200,255,.8)", major: "rgba(255,255,255,.3)", minor: "rgba(255,255,255,.12)", foul: "rgba(255,90,110,.95)", arrow: "rgba(255,210,90,.8)", backdrop: "#10151f" },
+    "lane-ice": { fill: "rgba(150,210,255,.12)", edge: "rgba(190,235,255,.95)", major: "rgba(210,240,255,.4)", minor: "rgba(210,240,255,.16)", foul: "rgba(255,255,255,.95)", arrow: "rgba(200,240,255,.9)", backdrop: "#0b1a2a" },
+    "lane-night": { fill: "rgba(120,100,255,.09)", edge: "rgba(160,140,255,.9)", major: "rgba(200,190,255,.28)", minor: "rgba(200,190,255,.1)", foul: "rgba(255,120,200,.95)", arrow: "rgba(190,170,255,.85)", backdrop: "#07070f" },
+    "lane-grass": { fill: "rgba(90,200,110,.14)", edge: "rgba(180,255,190,.9)", major: "rgba(230,255,230,.35)", minor: "rgba(230,255,230,.14)", foul: "rgba(255,255,255,.95)", arrow: "rgba(255,255,255,.8)", backdrop: "#0b1a10" },
+    "lane-neon": { fill: "rgba(0,255,220,.07)", edge: "rgba(0,255,230,1)", major: "rgba(255,60,220,.5)", minor: "rgba(0,255,230,.2)", foul: "rgba(255,60,220,1)", arrow: "rgba(255,240,60,.95)", backdrop: "#050510" },
+    "lane-gold": { fill: "rgba(255,200,70,.14)", edge: "rgba(255,225,120,1)", major: "rgba(255,230,150,.45)", minor: "rgba(255,230,150,.16)", foul: "rgba(255,255,255,1)", arrow: "rgba(255,245,200,.95)", backdrop: "#140e04" },
+    "lane-void": { fill: "rgba(255,255,255,.03)", edge: "rgba(255,255,255,.55)", major: "rgba(255,255,255,.18)", minor: "rgba(255,255,255,.06)", foul: "rgba(255,70,70,1)", arrow: "rgba(255,255,255,.55)", backdrop: "#000" }
+  };
+  var KEY2 = "laneiq.skins";
+  var DEFAULTS = { tracer: "tracer-aurora", pins: "pins-classic", lane: "lane-house" };
+  var sel = { ...DEFAULTS };
+  try {
+    Object.assign(sel, JSON.parse(localStorage.getItem(KEY2) ?? "{}"));
+  } catch {
+  }
+  var currentTracer = () => TRACERS[sel.tracer] ?? TRACERS[DEFAULTS.tracer];
+  var currentPins = () => PINS[sel.pins] ?? PINS[DEFAULTS.pins];
+  var currentLane = () => LANES[sel.lane] ?? LANES[DEFAULTS.lane];
+  var equippedSkins = () => ({ ...sel });
+  var skinClock = () => performance.now() / 1e3;
+  function equip(slot, id) {
+    sel[slot] = id;
+    try {
+      localStorage.setItem(KEY2, JSON.stringify(sel));
+    } catch {
+    }
   }
 
   // core/src/scoring.ts
@@ -1389,7 +1463,7 @@
   function bowlingStats(games2) {
     const complete = games2.filter((g) => replay(g.rolls).complete);
     const scores = complete.map((g) => scoreGame(g.rolls).total);
-    let fresh = 0, strikes = 0, freshPins = 0, spareTry = 0, spareMade = 0, open2 = 0;
+    let fresh2 = 0, strikes = 0, freshPins = 0, spareTry = 0, spareMade = 0, open2 = 0;
     const single = { attempts: 0, made: 0 }, multi = { attempts: 0, made: 0 };
     const byLeave = {};
     for (const g of games2) {
@@ -1397,7 +1471,7 @@
       rp.states.forEach((s, k2) => {
         const down = g.rolls[k2].down.filter((p) => s.standingBefore.includes(p));
         if (s.fresh) {
-          fresh++;
+          fresh2++;
           freshPins += down.length;
           if (down.length === 10) strikes++;
         } else {
@@ -1425,8 +1499,8 @@
       completeGames: complete.length,
       average: avg2(scores),
       high: scores.length ? Math.max(...scores) : null,
-      strikePct: fresh ? strikes / fresh * 100 : null,
-      firstBallAvg: fresh ? freshPins / fresh : null,
+      strikePct: fresh2 ? strikes / fresh2 * 100 : null,
+      firstBallAvg: fresh2 ? freshPins / fresh2 : null,
       sparePct: spareTry ? spareMade / spareTry * 100 : null,
       openFrames: open2,
       singlePin: single,
@@ -1518,6 +1592,485 @@
     return { leave, name, split, keyPin, boards: leave.length ? boards : null, direction, text, notes };
   }
 
+  // core/src/rewards.ts
+  var SKINS = [
+    // ball tracers
+    { id: "tracer-aurora", kind: "tracer", name: "Aurora", unlock: { free: true } },
+    { id: "tracer-ember", kind: "tracer", name: "Ember", unlock: { pinfall: 500 } },
+    { id: "tracer-lime", kind: "tracer", name: "Lime", unlock: { pinfall: 2e3 } },
+    { id: "tracer-silver", kind: "tracer", name: "Silver", unlock: { pinfall: 5e3 } },
+    { id: "tracer-sunset", kind: "tracer", name: "Sunset", unlock: { pinfall: 1e4 } },
+    { id: "tracer-plasma", kind: "tracer", name: "Plasma", unlock: { points: 100 } },
+    { id: "tracer-gold", kind: "tracer", name: "Liquid gold", unlock: { points: 300 } },
+    { id: "tracer-inferno", kind: "tracer", name: "Inferno", unlock: { points: 600 } },
+    { id: "tracer-prism", kind: "tracer", name: "Prism (color-cycling)", unlock: { points: 1e3 } },
+    // pins
+    { id: "pins-classic", kind: "pins", name: "Classic", unlock: { free: true } },
+    { id: "pins-ice", kind: "pins", name: "Ice", unlock: { pinfall: 1e3 } },
+    { id: "pins-sunny", kind: "pins", name: "Sunny", unlock: { pinfall: 4e3 } },
+    { id: "pins-mono", kind: "pins", name: "Mono", unlock: { pinfall: 8e3 } },
+    { id: "pins-neon", kind: "pins", name: "Neon", unlock: { points: 150 } },
+    { id: "pins-gold", kind: "pins", name: "Gold", unlock: { points: 450 } },
+    { id: "pins-holo", kind: "pins", name: "Holo", unlock: { points: 800 } },
+    // lanes
+    { id: "lane-house", kind: "lane", name: "House wood", unlock: { free: true } },
+    { id: "lane-ice", kind: "lane", name: "Ice blue", unlock: { pinfall: 1500 } },
+    { id: "lane-night", kind: "lane", name: "Night", unlock: { pinfall: 6e3 } },
+    { id: "lane-grass", kind: "lane", name: "Fairway", unlock: { pinfall: 12e3 } },
+    { id: "lane-neon", kind: "lane", name: "Neon grid", unlock: { points: 200 } },
+    { id: "lane-gold", kind: "lane", name: "Gold rush", unlock: { points: 500 } },
+    { id: "lane-void", kind: "lane", name: "Void", unlock: { points: 900 } }
+  ];
+  function totalPinfall(games2, shots) {
+    const linked = new Set(games2.flatMap((g) => g.rolls.map((r) => r.shotId)).filter(Boolean));
+    const fromGames = games2.reduce((a, g) => a + g.rolls.reduce((b, r) => b + r.down.length, 0), 0);
+    const fromShots = shots.filter((s) => !linked.has(s.id) && s.result).reduce((a, s) => a + s.result.pinsDown, 0);
+    return fromGames + fromShots;
+  }
+  var pointsForLevel = (n) => n <= 1 ? 0 : Math.round(40 * (n - 1) ** 1.5 + 60 * (n - 1));
+  function levelOf(points) {
+    let n = 1;
+    while (points >= pointsForLevel(n + 1)) n++;
+    return n;
+  }
+  var GAME_MILESTONES = [[100, 20, "Broke 100"], [150, 30, "Broke 150"], [200, 60, "Broke 200"], [250, 100, "Broke 250"], [300, 300, "A perfect 300"]];
+  var STREAKS = [[3, 15, "Turkey: three strikes in a row"], [4, 25, "Four-bagger: four strikes in a row"], [5, 40, "Five-bagger: five strikes in a row"], [6, 60, "Six-bagger: six strikes in a row"], [9, 150, "Nine in a row"], [12, 300, "Twelve in a row"]];
+  function strikeRun(g) {
+    const rp = replay(g.rolls);
+    let best = 0, cur = 0;
+    rp.states.forEach((s, k2) => {
+      if (s.fresh && g.rolls[k2].down.length === 10) best = Math.max(best, ++cur);
+      else if (s.fresh) cur = 0;
+    });
+    return best;
+  }
+  function achievements(games2, axes) {
+    const out = [];
+    const done = games2.filter((g) => replay(g.rolls).complete).sort((a, b) => a.at.localeCompare(b.at));
+    const scores = done.map((g) => scoreGame(g.rolls).total);
+    if (done.length) out.push({ id: "first-game", title: "First game on the card", detail: "Finish a scored game", points: 10 });
+    for (const [min, pts, title] of GAME_MILESTONES) if (scores.some((s) => s >= min)) out.push({ id: `score-${min}`, title, detail: `Score ${min} or more in a game`, points: pts });
+    let best = -1, pbs = 0;
+    scores.forEach((s) => {
+      if (s > best) {
+        if (best >= 0) pbs++;
+        best = s;
+      }
+    });
+    for (let i = 1; i <= Math.min(pbs, 20); i++) out.push({ id: `pb-${i}`, title: `New high game (#${i})`, detail: "Beat your best game", points: 10 });
+    const run = games2.reduce((m, g) => Math.max(m, strikeRun(g)), 0);
+    for (const [n, pts, title] of STREAKS) if (run >= n) out.push({ id: `streak-${n}`, title, detail: `${n} strikes in a row in one game`, points: pts });
+    const clean = done.filter((g) => {
+      const f = bowlingStats([g]);
+      return f.openFrames === 0;
+    }).length;
+    if (clean >= 1) out.push({ id: "clean-1", title: "Clean game", detail: "A game with no open frames", points: 50 });
+    if (clean >= 5) out.push({ id: "clean-5", title: "Five clean games", detail: "Five games with no open frames", points: 150 });
+    if (done.length >= 10) {
+      const avg2 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+      const gain = avg2(scores.slice(-5)) - avg2(scores.slice(0, 5));
+      for (const [need, pts] of [[5, 30], [10, 60], [20, 120]]) if (gain >= need) out.push({ id: `avg-${need}`, title: `Average up ${need} pins`, detail: "Your last five games against your first five", points: pts });
+    }
+    let splits = 0;
+    for (const g of games2) {
+      const rp = replay(g.rolls);
+      rp.states.forEach((s, k2) => {
+        if (s.fresh) return;
+        if (isSplit(s.standingBefore) && g.rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length === s.standingBefore.length) splits++;
+      });
+    }
+    if (splits >= 1) out.push({ id: "split-1", title: "Converted a split", detail: "Pick up a split for the spare", points: 25 });
+    if (splits >= 5) out.push({ id: "split-5", title: "Split specialist", detail: "Convert five splits", points: 75 });
+    for (const a of axes) {
+      if (a.score !== null && a.score >= 85) out.push({ id: `skill-${a.id}-85`, title: `${a.label}: strong`, detail: `${a.label} at 85 or better on the skills chart`, points: 25 });
+      if (a.score !== null && a.score >= 100) out.push({ id: `skill-${a.id}-100`, title: `${a.label}: at target`, detail: `${a.label} reached its target`, points: 50 });
+      if (a.score !== null && a.earlierScore !== null && a.score - a.earlierScore >= 10) out.push({ id: `skill-${a.id}-up`, title: `${a.label}: improving`, detail: `${a.label} is up 10 points or more since you started`, points: 20 });
+    }
+    return out;
+  }
+  function progress(games2, shots, axes, extraPoints = 0) {
+    const earned = achievements(games2, axes);
+    const points = earned.reduce((a, b) => a + b.points, 0) + extraPoints;
+    const level = levelOf(points);
+    const lo = pointsForLevel(level), hi = pointsForLevel(level + 1);
+    return { pinfall: totalPinfall(games2, shots), points, level, levelProgress: { into: points - lo, span: hi - lo }, earned };
+  }
+  function isUnlocked(s, p) {
+    const u = s.unlock;
+    return "free" in u || "pinfall" in u && p.pinfall >= u.pinfall || "points" in u && p.points >= u.points;
+  }
+  var unlockText = (s) => "free" in s.unlock ? "Free" : "pinfall" in s.unlock ? `${s.unlock.pinfall.toLocaleString()} pins knocked down` : `${s.unlock.points} improvement points`;
+  function nextUnlocks(p) {
+    const play = SKINS.filter((s) => "pinfall" in s.unlock && p.pinfall < s.unlock.pinfall).sort((a, b) => a.unlock.pinfall - b.unlock.pinfall)[0];
+    const imp = SKINS.filter((s) => "points" in s.unlock && p.points < s.unlock.points).sort((a, b) => a.unlock.points - b.unlock.points)[0];
+    return {
+      play: play ? { skin: play, need: play.unlock.pinfall - p.pinfall } : null,
+      improve: imp ? { skin: imp, need: imp.unlock.points - p.points } : null
+    };
+  }
+
+  // core/src/skills.ts
+  var AXES = [
+    {
+      id: "strikes",
+      label: "Strikes",
+      group: "Scoring",
+      higherBetter: true,
+      target: 60.2,
+      unit: "%",
+      basis: "benchmark",
+      at200: 49.7,
+      minSample: 20,
+      source: "Strike rate of a 220-average bowler: 60.2% (200 average: 49.7%). Bowling This Month, Nov 2020.",
+      drill: "Strikes come from hitting the pocket with enough entry angle. Work on the pocket and entry-angle axes first, then match your ball and surface to the lane."
+    },
+    {
+      id: "singles",
+      label: "Single-pin spares",
+      group: "Scoring",
+      higherBetter: true,
+      target: 95.1,
+      unit: "%",
+      basis: "benchmark",
+      at200: 85.6,
+      minSample: 5,
+      source: "Single-pin conversion of a 220-average bowler: 95.1% (200 average: 85.6%). Bowling This Month, Nov 2020.",
+      drill: "Use a plastic spare ball (99% of elite bowlers do, Bowling This Month 2016) and the 3-6-9 system: same target as your strike shot, feet moved 3, 6 or 9 boards. Practice the 10 and 7 pins most."
+    },
+    {
+      id: "closed",
+      label: "Closed frames",
+      group: "Scoring",
+      higherBetter: true,
+      target: 91.9,
+      unit: "%",
+      basis: "benchmark",
+      at200: 85,
+      minSample: 20,
+      source: "Frames closed with a strike or spare, 220 average: 91.9% (200 average: 85.0%). Bowling This Month, Nov 2020.",
+      drill: "Every open frame is a spare you missed or a split you left. Convert the makeable ones: check the Score tab's list of leaves to practice."
+    },
+    {
+      id: "firstBall",
+      label: "First-ball pins",
+      group: "Scoring",
+      higherBetter: true,
+      target: 9.2,
+      unit: " pins",
+      basis: "benchmark",
+      minSample: 20,
+      source: 'A first-ball average over 9.2 means most shots reach the pocket (Bowling This Month, "Increasing Your Carry Percentage").',
+      drill: "Raise it by repeating your line: same feet, same target, same speed. Fix the arrows and start-board spread first."
+    },
+    {
+      id: "pocket",
+      label: "Pocket hits",
+      group: "Accuracy",
+      higherBetter: true,
+      target: 70,
+      unit: "%",
+      basis: "coaching",
+      minSample: 10,
+      source: "Share of tracked shots entering within 1 board of the pocket. LaneIQ working target: 70%.",
+      drill: "Pick one target arrow and bowl 10 shots at it. Move your feet, not your target, to bring the entry board back to the pocket."
+    },
+    {
+      id: "entry",
+      label: "Entry angle",
+      group: "Accuracy",
+      higherBetter: true,
+      target: 4,
+      unit: "\xB0",
+      basis: "coaching",
+      minSample: 8,
+      source: "Average entry angle at the pins. LaneIQ working target: at least 4 degrees (below about 3 the ball has little room to carry the pocket).",
+      drill: "Test one change: a little less speed or a touch more rotation, and keep your line. Check whether the entry angle passes 4 degrees."
+    },
+    {
+      id: "arrows",
+      label: "Target control",
+      group: "Repeatability",
+      higherBetter: false,
+      target: 1,
+      unit: " boards \xB1",
+      basis: "coaching",
+      minSample: 8,
+      source: "Spread (standard deviation) of the board you cross at the arrows. LaneIQ working target: under 1 board.",
+      drill: "Lay a towel or marker on your target arrow. Throw 10 shots looking only at it, same feet, and check the arrows board after each."
+    },
+    {
+      id: "start",
+      label: "Start position",
+      group: "Repeatability",
+      higherBetter: false,
+      target: 1,
+      unit: " boards \xB1",
+      basis: "coaching",
+      minSample: 8,
+      source: "Spread of the board the ball starts on. LaneIQ working target: under 1 board.",
+      drill: "Mark your feet on the approach with tape and check your slide ends in the same place each shot."
+    },
+    {
+      id: "speed",
+      label: "Speed control",
+      group: "Repeatability",
+      higherBetter: false,
+      target: 0.6,
+      unit: " mph \xB1",
+      basis: "coaching",
+      minSample: 8,
+      source: "Spread of launch speed. LaneIQ working target: under 0.6 mph.",
+      drill: "Throw 10 shots at the same effort and watch the live speed. Keep every shot within half a mile an hour of the first."
+    }
+  ];
+  var sdOf = (v) => {
+    const m = v.reduce((a, b) => a + b, 0) / v.length;
+    return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / Math.max(1, v.length - 1));
+  };
+  var nums = (xs) => xs.filter((x) => typeof x === "number" && Number.isFinite(x));
+  function frameOutcomes(games2) {
+    let closed = 0, open2 = 0;
+    for (const g of games2) {
+      const rp = replay(g.rolls);
+      const by = /* @__PURE__ */ new Map();
+      rp.states.forEach((s, k2) => by.set(s.frame, [...by.get(s.frame) ?? [], g.rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length]));
+      for (const [f, c] of by) {
+        if (f < 10) {
+          if (c[0] === 10) closed++;
+          else if (c.length === 2) c[0] + c[1] === 10 ? closed++ : open2++;
+        } else if (rp.complete) {
+          c[0] === 10 || c.length >= 2 && c[0] + c[1] >= 10 ? closed++ : open2++;
+        }
+      }
+    }
+    return { closed, open: open2 };
+  }
+  function measure(games2, shots) {
+    const st2 = bowlingStats(games2);
+    const fo = frameOutcomes(games2);
+    const fresh2 = games2.reduce((a, g) => a + replay(g.rolls).states.filter((s) => s.fresh).length, 0);
+    const pk = shots.filter((s) => s.m.pocketMiss !== null);
+    const sdv = (key2) => {
+      const v = nums(shots.map((s) => s.m[key2]));
+      return { value: v.length >= 2 ? sdOf(v) : null, n: v.length };
+    };
+    const ea = nums(shots.map((s) => s.m.entryAngle));
+    return {
+      strikes: { value: st2.strikePct, n: fresh2 },
+      singles: { value: st2.singlePin.attempts ? st2.singlePin.made / st2.singlePin.attempts * 100 : null, n: st2.singlePin.attempts },
+      closed: { value: fo.closed + fo.open ? fo.closed / (fo.closed + fo.open) * 100 : null, n: fo.closed + fo.open },
+      firstBall: { value: st2.firstBallAvg, n: fresh2 },
+      pocket: { value: pk.length ? pk.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / pk.length * 100 : null, n: pk.length },
+      entry: { value: ea.length ? ea.reduce((a, b) => a + b, 0) / ea.length : null, n: ea.length },
+      arrows: sdv("arrowsBoard"),
+      start: sdv("startBoard"),
+      speed: sdv("launchSpeed")
+    };
+  }
+  function scoreOf(def, value) {
+    if (value === null) return null;
+    const s = def.higherBetter ? value / def.target * 100 : value <= 0 ? 100 : def.target / value * 100;
+    return Math.max(0, Math.min(100, Math.round(s)));
+  }
+  function skillsProfile(games2, shots) {
+    const now = measure(games2, shots);
+    const gh = Math.floor(games2.length / 2), sh = Math.floor(shots.length / 2);
+    const early = measure(games2.slice(0, gh), shots.slice(0, sh));
+    return AXES.map((d) => {
+      const m = now[d.id];
+      const e = early[d.id];
+      const value = m.n >= d.minSample ? m.value : null;
+      return {
+        ...d,
+        value,
+        score: scoreOf(d, value),
+        score200: d.at200 === void 0 ? null : scoreOf(d, d.at200),
+        earlierScore: e.n >= d.minSample && value !== null && (games2.length >= 4 || shots.length >= 16) ? scoreOf(d, e.value) : null
+      };
+    });
+  }
+  function focusList(axes) {
+    return axes.filter((a) => a.score !== null && a.score < 100).map((a) => ({ axis: a, gap: 100 - a.score + (a.group === "Scoring" ? 3 : 0) })).sort((a, b) => b.gap - a.gap);
+  }
+  var strongest = (axes) => axes.filter((a) => a.score !== null).sort((a, b) => b.score - a.score).slice(0, 3);
+
+  // camera/skinscene.ts
+  function drawSkinScene(c, tracerId, pinsId, laneId, clock = 0, ballT = 1) {
+    const g = c.getContext("2d");
+    const w = c.width, h = c.height;
+    const lane = LANES[laneId] ?? LANES["lane-house"], pins = PINS[pinsId] ?? PINS["pins-classic"], tr = TRACERS[tracerId] ?? TRACERS["tracer-aurora"];
+    g.clearRect(0, 0, w, h);
+    g.fillStyle = lane.backdrop;
+    g.fillRect(0, 0, w, h);
+    const P = (u, v) => {
+      const half = (0.46 - v * 0.2) * w;
+      return { x: w / 2 + (u - 0.5) * 2 * half, y: h * (0.94 - v * 0.82) };
+    };
+    g.beginPath();
+    [P(0, 0), P(1, 0), P(1, 1), P(0, 1)].forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y));
+    g.closePath();
+    g.fillStyle = lane.fill;
+    g.fill();
+    for (let i = 0; i <= 39; i++) {
+      const edge = i === 0 || i === 39, major = (39 - i) % 5 === 0;
+      g.strokeStyle = edge ? lane.edge : major ? lane.major : lane.minor;
+      g.lineWidth = edge ? 2 : 1;
+      g.beginPath();
+      const a = P(i / 39, 0), b = P(i / 39, 1);
+      g.moveTo(a.x, a.y);
+      g.lineTo(b.x, b.y);
+      g.stroke();
+    }
+    g.strokeStyle = lane.foul;
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(P(0, 0).x, P(0, 0).y);
+    g.lineTo(P(1, 0).x, P(1, 0).y);
+    g.stroke();
+    g.fillStyle = lane.arrow;
+    for (let b = 1; b <= 7; b++) {
+      const u = b / 8, v = 0.2 + 0.05 * (1 - Math.abs(b - 4) / 3), p = P(u, v);
+      g.beginPath();
+      g.moveTo(p.x, p.y - 4);
+      g.lineTo(p.x - 4, p.y + 5);
+      g.lineTo(p.x + 4, p.y + 5);
+      g.closePath();
+      g.fill();
+    }
+    const rows = [[0.5], [0.44, 0.56], [0.38, 0.5, 0.62], [0.32, 0.44, 0.56, 0.68]];
+    let n = 1;
+    rows.forEach(
+      (row, ri) => row.forEach((u) => {
+        const p = P(u, 0.97 - ri * 0.045);
+        const down = n === 2 || n === 4 || n === 9;
+        const st2 = down ? pins.down : pins.standing;
+        g.beginPath();
+        g.arc(p.x, p.y, 8, 0, 7);
+        g.fillStyle = st2.fill;
+        g.fill();
+        g.strokeStyle = st2.stroke;
+        g.lineWidth = 1.8;
+        g.stroke();
+        n++;
+      })
+    );
+    const pts = [];
+    const steps = 60;
+    for (let i = 0; i <= steps * ballT; i++) {
+      const t = i / steps;
+      const u = 0.82 - 0.2 * t - 0.26 * Math.max(0, t - 0.55) ** 2 * 3.2;
+      pts.push(P(u, 0.02 + t * 0.9));
+    }
+    g.save();
+    g.globalCompositeOperation = "lighter";
+    g.lineCap = "round";
+    for (let i = 1; i < pts.length; i++) {
+      const t = i / Math.max(1, pts.length - 1);
+      g.shadowBlur = tr.glow * 0.5;
+      g.shadowColor = tr.color(t, 1, clock);
+      g.strokeStyle = tr.color(t, 0.2 + 0.8 * t, clock);
+      g.lineWidth = (2 + 7 * t) * tr.width;
+      g.beginPath();
+      g.moveTo(pts[i - 1].x, pts[i - 1].y);
+      g.lineTo(pts[i].x, pts[i].y);
+      g.stroke();
+      g.shadowBlur = 0;
+      g.strokeStyle = `rgba(${tr.core},${t})`;
+      g.lineWidth = (0.8 + 2 * t) * tr.width;
+      g.stroke();
+    }
+    g.restore();
+  }
+
+  // camera/rewardsui.ts
+  var SEEN_KEY = "laneiq.unlockSeen";
+  var raf = 0;
+  async function current() {
+    const games2 = await loadGames();
+    const axes = skillsProfile(games2, S.shots);
+    return progress(games2, S.shots, axes);
+  }
+  var toastTimer = 0;
+  function toast(text) {
+    let el = document.getElementById("toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "toast";
+      el.style.cssText = "position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:90;max-width:90vw;background:linear-gradient(90deg,#46e6ff,#ff4fd8);color:#06101c;font:700 14px system-ui;padding:11px 16px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.5);text-align:center";
+      el.onclick = () => openRewards();
+      document.body.append(el);
+    }
+    el.textContent = text;
+    el.style.display = "block";
+    clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => el.style.display = "none", 6e3);
+  }
+  async function checkUnlocks() {
+    try {
+      const p = await current();
+      const open2 = SKINS.filter((s) => isUnlocked(s, p)).map((s) => s.id);
+      const raw = localStorage.getItem(SEEN_KEY);
+      localStorage.setItem(SEEN_KEY, JSON.stringify(open2));
+      if (raw === null) return;
+      const seen2 = new Set(JSON.parse(raw));
+      const fresh2 = SKINS.filter((s) => open2.includes(s.id) && !seen2.has(s.id));
+      if (fresh2.length) toast(`Unlocked: ${fresh2.slice(0, 2).map((s) => s.name).join(", ")}${fresh2.length > 2 ? ` and ${fresh2.length - 2} more` : ""}. Tap to equip.`);
+    } catch {
+    }
+  }
+  async function summaryHtml() {
+    const p = await current();
+    const nx = nextUnlocks(p);
+    return `<div class="k">Rewards \xB7 level ${p.level}</div><div class="u">${p.points} improvement points \xB7 ${p.pinfall.toLocaleString()} pins knocked down</div>
+    <div class="u">${nx.play ? `Next play skin: <b>${esc(nx.play.skin.name)}</b>, ${nx.play.need.toLocaleString()} pins to go.` : ""} ${nx.improve ? `Next improvement skin: <b>${esc(nx.improve.skin.name)}</b>, ${nx.improve.need} points to go.` : ""}</div>`;
+  }
+  async function openRewards() {
+    const el = $("rewards");
+    el.classList.add("on");
+    const p = await current();
+    const lv = p.level, lo = pointsForLevel(lv), hi = pointsForLevel(lv + 1);
+    const nx = nextUnlocks(p);
+    const eq = equippedSkins();
+    const grid = (kind, title) => `<h3>${title}</h3><div class="skin-grid">${SKINS.filter((s) => s.kind === kind).map((s) => {
+      const open2 = isUnlocked(s, p);
+      return `<button class="skin ${open2 ? "" : "locked"} ${eq[kind] === s.id ? "on" : ""}" data-skin="${s.id}" data-kind="${kind}" ${open2 ? "" : "disabled"}><canvas width="150" height="170" data-c="${s.id}"></canvas><div class="n">${esc(s.name)}</div><div class="r ${"points" in s.unlock ? "rare" : ""}">${open2 ? eq[kind] === s.id ? "Equipped" : "Tap to equip" : "Locked: " + esc(unlockText(s))}</div></button>`;
+    }).join("")}</div>`;
+    el.innerHTML = `
+    <div class="row"><h2>Rewards</h2><button class="btn ghost" id="rw-close">Close</button></div>
+    <div class="note">Knock down pins to unlock everyday skins. Improve to earn the rare ones. Points come from getting better, not from throwing more shots.</div>
+    <div class="card"><div class="k">Level ${lv}</div>
+      <div class="u">${p.points} improvement points \xB7 ${p.pinfall.toLocaleString()} pins knocked down</div>
+      <div style="height:8px;border-radius:4px;background:rgba(255,255,255,.1);margin:8px 0"><div style="width:${Math.min(100, (p.points - lo) / Math.max(1, hi - lo) * 100)}%;height:8px;border-radius:4px;background:linear-gradient(90deg,#46e6ff,#ff4fd8)"></div></div>
+      <div class="note">${hi - p.points} more points to level ${lv + 1}</div>
+      <div class="u" style="margin-top:6px">${nx.play ? `<b>Play:</b> ${esc(nx.play.skin.name)} (${nx.play.skin.kind}): ${nx.play.need.toLocaleString()} more pins` : "Every play skin unlocked."}</div>
+      <div class="u">${nx.improve ? `<b>Improve:</b> ${esc(nx.improve.skin.name)} (${nx.improve.skin.kind}): ${nx.improve.need} more points` : "Every improvement skin unlocked."}</div></div>
+    <div class="card"><div class="k">Your look</div><canvas id="rw-big" width="360" height="300" style="width:100%;max-width:420px;display:block;margin:0 auto"></canvas></div>
+    ${grid("tracer", "Ball tracers")}${grid("pins", "Pins")}${grid("lane", "Lanes")}
+    <div class="card"><div class="k">How you earned your points</div>
+      ${p.earned.length ? `<ul>${p.earned.map((a) => `<li><b>+${a.points}</b> ${esc(a.title)} <span class="note">${esc(a.detail)}</span></li>`).join("")}</ul>` : `<div class="u">Nothing yet. Finish a game on the Score tab, or reach a target on the skills chart.</div>`}
+      <div class="note">Points come from new high games, strike streaks, clean games, scoring milestones, a rising average, converted splits and skills reaching their targets.</div></div>`;
+    $("rw-close").onclick = () => (cancelAnimationFrame(raf), el.classList.remove("on"), el.innerHTML = "");
+    el.querySelectorAll("canvas[data-c]").forEach((c) => {
+      const id = c.dataset.c;
+      const k2 = SKINS.find((s) => s.id === id).kind;
+      drawSkinScene(c, k2 === "tracer" ? id : eq.tracer, k2 === "pins" ? id : eq.pins, k2 === "lane" ? id : eq.lane);
+    });
+    el.querySelectorAll(".skin:not(.locked)").forEach((b) => b.onclick = () => {
+      equip(b.dataset.kind, b.dataset.skin);
+      void openRewards();
+    });
+    cancelAnimationFrame(raf);
+    const t0 = performance.now();
+    const tick = (now) => {
+      const big = document.getElementById("rw-big");
+      if (!big) return;
+      const e = equippedSkins();
+      drawSkinScene(big, e.tracer, e.pins, e.lane, skinClock(), Math.min(1, (now - t0) % 3200 / 2400));
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  }
+
   // camera/scorecard.ts
   var games = [];
   var loadedFor = "";
@@ -1532,8 +2085,9 @@
   async function persist() {
     if (!S.demo && S.profile) await dbPut(S.profile.id, "meta", games, "games").catch(() => {
     });
+    void checkUnlocks();
   }
-  var current = () => {
+  var current2 = () => {
     const g = games[games.length - 1];
     return g && !replay(g.rolls).complete ? g : void 0;
   };
@@ -1545,15 +2099,16 @@
     if (when2 > 15 * 6e4) return null;
     return { shotId: s.id, leave: s.result.pinsDown === 10 ? [] : s.result.leave ?? [] };
   }
-  function deckSvg(standing, sel) {
+  function deckSvg(standing, sel2) {
     const R2 = 19;
     const pin = (p) => {
       const { x, row } = PIN_XY[p];
       const cx = 130 + x * 4.8, cy = 28 + (3 - row) * 52;
       const gone = !standing.includes(p);
-      const left = sel.has(p);
-      const fill = gone ? "transparent" : left ? "#ffd25a" : "rgba(255,255,255,.14)";
-      const stroke = gone ? "rgba(255,255,255,.12)" : left ? "#ffd25a" : "rgba(255,255,255,.5)";
+      const left = sel2.has(p);
+      const ps = currentPins();
+      const fill = gone ? "transparent" : left ? "#ffd25a" : ps.standing.fill;
+      const stroke = gone ? "rgba(255,255,255,.12)" : left ? "#ffd25a" : ps.standing.stroke;
       return `<g data-pin="${p}" style="cursor:${gone ? "default" : "pointer"}"><circle cx="${cx}" cy="${cy}" r="${R2}" fill="${fill}" stroke="${stroke}" stroke-width="2"/><text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="15" font-weight="700" fill="${gone ? "rgba(255,255,255,.2)" : left ? "#111" : "#fff"}">${p}</text></g>`;
     };
     return `<svg viewBox="0 0 260 200" style="width:100%;max-width:340px;display:block;margin:0 auto;touch-action:manipulation">${ALL_PINS.map(pin).join("")}</svg>`;
@@ -1573,7 +2128,7 @@
     await ensureLoaded();
     if (!shot.result?.auto) return false;
     if (games.some((g) => g.rolls.some((r) => r.shotId === shot.id))) return false;
-    let cur = current();
+    let cur = current2();
     if (!cur) {
       cur = { id: newId(), at: (/* @__PURE__ */ new Date()).toISOString(), rolls: [], lane: shot.lane };
       games.push(cur);
@@ -1651,7 +2206,7 @@
   async function renderScore() {
     await ensureLoaded();
     const el = $("score-page");
-    const g = current();
+    const g = current2();
     const rp = g ? replay(g.rolls) : null;
     const standing = rp?.standing ?? ALL_PINS;
     const advice = g && standing.length < 10 ? adviseSpare(standing, bowlerProfile().hand) : null;
@@ -1669,12 +2224,20 @@
         <button class="btn ghost" id="sc-undo">Undo last roll</button></div>
       ${cam ? `<div class="chips" style="justify-content:center"><button class="chip" id="sc-cam">Use the camera's read: ${cam.leave.length ? `leaves the ${cam.leave.join("-")}` : "a strike"}</button></div>` : ""}</div>` : ""}
     ${advice ? `<div class="card"><div class="k">Spare coach: ${esc(advice.name)}</div><div class="u"><b>${esc(advice.text)}</b></div>${advice.notes.map((n) => `<div class="note">${esc(n)}</div>`).join("")}<div class="note">3-6-9 spare system (USA Bowling and coaching sources): feet move 3, 6 or 9 boards away from the pin, aim stays on your strike target.</div></div>` : ""}
+    <div class="card" id="sc-rewards"><div class="note">Loading rewards\u2026</div></div>
     <div class="card"><div class="k">Your statistics</div>${statsHtml()}</div>
     <div class="card"><div class="k">What costs you pins</div>${analysisHtml()}</div>
     ${done.length ? `<div class="card"><div class="k">Games</div>${done.map((x) => {
       const s = scoreGame(x.rolls);
       return `<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${s.total}</b> <span class="note">${replay(x.rolls).complete ? "" : "in progress \xB7 "}${esc(new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</span></div><button class="chip danger" data-del="${x.id}">Delete</button></div>`;
     }).join("")}</div>` : ""}`;
+    void summaryHtml().then((h) => {
+      const box = document.getElementById("sc-rewards");
+      if (box) {
+        box.innerHTML = h + `<div class="chips"><button class="btn" id="sc-rw">Skins and rewards</button></div>`;
+        $("sc-rw").onclick = () => void openRewards();
+      }
+    });
     $("sc-new")?.addEventListener("click", async () => {
       games.push({ id: newId(), at: (/* @__PURE__ */ new Date()).toISOString(), rolls: [] });
       leaveSel = /* @__PURE__ */ new Set();
@@ -1682,7 +2245,7 @@
       renderScore();
     });
     const add2 = async (roll) => {
-      const cur = current();
+      const cur = current2();
       if (!cur) return;
       cur.rolls.push(roll);
       leaveSel = /* @__PURE__ */ new Set();
@@ -1701,7 +2264,7 @@
     $("sc-record")?.addEventListener("click", () => add2({ down: standing.filter((p) => !leaveSel.has(p)) }));
     $("sc-gutter")?.addEventListener("click", () => add2({ down: [] }));
     $("sc-undo")?.addEventListener("click", async () => {
-      const cur = current() ?? games[games.length - 1];
+      const cur = current2() ?? games[games.length - 1];
       if (!cur || !cur.rolls.length) return;
       cur.rolls.pop();
       leaveSel = /* @__PURE__ */ new Set();
@@ -2580,8 +3143,8 @@
 
   // camera/render.ts
   var k = (v) => v.width / 1280;
-  var lerp = (a, b, t) => a + (b - a) * t;
-  var ramp = (t, alpha = 1) => `hsla(${lerp(190, 320, t)}, 100%, ${lerp(62, 58, t)}%, ${alpha})`;
+  var lerp2 = (a, b, t) => a + (b - a) * t;
+  var ramp = (t, alpha = 1) => currentTracer().color(t, alpha, skinClock());
   var DECK_END_FT = 63;
   var ROW_FT = 10.39 / 12;
   var PIN_SPACING_BOARDS = 12 / (41.5 / LANE_BOARDS);
@@ -2590,6 +3153,7 @@
     if (n < 2) return;
     const { ctx: ctx2 } = v;
     const s = k(v);
+    const tr = currentTracer();
     ctx2.save();
     ctx2.globalCompositeOperation = "lighter";
     ctx2.lineCap = "round";
@@ -2598,17 +3162,17 @@
       const t = i / (n - 1);
       const a = points[i - 1];
       const b = points[i];
-      ctx2.shadowBlur = 24 * s;
+      ctx2.shadowBlur = tr.glow * s;
       ctx2.shadowColor = ramp(t);
       ctx2.strokeStyle = ramp(t, baseAlpha * (headBoost ? 0.15 + 0.85 * t : 0.9));
-      ctx2.lineWidth = (headBoost ? lerp(3, 14, t) : 10) * s;
+      ctx2.lineWidth = (headBoost ? lerp2(3, 14, t) : 10) * s * tr.width;
       ctx2.beginPath();
       ctx2.moveTo(a.x, a.y);
       ctx2.lineTo(b.x, b.y);
       ctx2.stroke();
       ctx2.shadowBlur = 0;
-      ctx2.strokeStyle = `rgba(255,255,255,${baseAlpha * (headBoost ? t : 0.8)})`;
-      ctx2.lineWidth = (headBoost ? lerp(1, 4, t) : 3.5) * s;
+      ctx2.strokeStyle = `rgba(${tr.core},${baseAlpha * (headBoost ? t : 0.8)})`;
+      ctx2.lineWidth = (headBoost ? lerp2(1, 4, t) : 3.5) * s * tr.width;
       ctx2.beginPath();
       ctx2.moveTo(a.x, a.y);
       ctx2.lineTo(b.x, b.y);
@@ -2620,8 +3184,8 @@
     const s = k(v);
     const g = v.ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, 26 * s);
     g.addColorStop(0, "rgba(255,255,255,.95)");
-    g.addColorStop(0.25, "rgba(120,230,255,.6)");
-    g.addColorStop(1, "rgba(120,230,255,0)");
+    g.addColorStop(0.25, ramp(1, 0.6));
+    g.addColorStop(1, ramp(1, 0));
     v.ctx.save();
     v.ctx.globalCompositeOperation = "lighter";
     v.ctx.fillStyle = g;
@@ -2696,24 +3260,25 @@
   function drawLaneGrid(v) {
     const { ctx: ctx2, P } = v;
     const s = k(v);
+    const L = currentLane();
     ctx2.save();
     const quad = [P(0, 0), P(LANE_BOARDS, 0), P(LANE_BOARDS, DECK_END_FT), P(0, DECK_END_FT)];
     ctx2.beginPath();
     quad.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
     ctx2.closePath();
-    ctx2.fillStyle = "rgba(255,214,150,.07)";
+    ctx2.fillStyle = L.fill;
     ctx2.fill();
     for (let i = 0; i <= LANE_BOARDS; i++) {
       const fromRight = LANE_BOARDS - i;
       const major = fromRight % 5 === 0;
       const edge = i === 0 || i === LANE_BOARDS;
-      ctx2.strokeStyle = edge ? "rgba(120,200,255,.8)" : major ? "rgba(255,255,255,.3)" : "rgba(255,255,255,.12)";
+      ctx2.strokeStyle = edge ? L.edge : major ? L.major : L.minor;
       ctx2.lineWidth = (edge ? 2.4 : major ? 1.3 : 0.8) * s;
       line(v, P(i, 0), P(i, LANE_LENGTH_FT));
     }
-    ctx2.strokeStyle = "rgba(255,90,110,.95)";
+    ctx2.strokeStyle = L.foul;
     ctx2.lineWidth = 3 * s;
-    ctx2.shadowColor = "rgba(255,90,110,.9)";
+    ctx2.shadowColor = L.foul;
     ctx2.shadowBlur = 10 * s;
     line(v, P(0, 0), P(LANE_BOARDS, 0));
     ctx2.shadowBlur = 0;
@@ -2742,8 +3307,8 @@
       ctx2.beginPath();
       tri.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
       ctx2.closePath();
-      ctx2.fillStyle = b === 20 ? "rgba(255,210,90,.95)" : "rgba(255,210,90,.7)";
-      ctx2.shadowColor = "rgba(255,210,90,.8)";
+      ctx2.fillStyle = L.arrow;
+      ctx2.shadowColor = L.arrow;
       ctx2.shadowBlur = 8 * s;
       ctx2.fill();
     }
@@ -2781,19 +3346,20 @@
     const px = (x) => padX + x / LANE_BOARDS * laneW;
     const py = (ft) => h - bottom - ft / DECK_END_FT * laneH;
     ctx2.clearRect(0, 0, w, h);
+    const L = currentLane();
     ctx2.save();
-    ctx2.fillStyle = "rgba(255,214,150,.08)";
+    ctx2.fillStyle = L.fill;
     ctx2.fillRect(px(0), py(DECK_END_FT), laneW, laneH);
     ctx2.lineWidth = 1;
     for (let i = 0; i <= LANE_BOARDS; i++) {
       const major = (LANE_BOARDS - i) % 5 === 0;
-      ctx2.strokeStyle = i === 0 || i === LANE_BOARDS ? "rgba(120,200,255,.8)" : major ? "rgba(255,255,255,.22)" : "rgba(255,255,255,.07)";
+      ctx2.strokeStyle = i === 0 || i === LANE_BOARDS ? L.edge : major ? L.major : L.minor;
       ctx2.beginPath();
       ctx2.moveTo(px(i), py(0));
       ctx2.lineTo(px(i), py(LANE_LENGTH_FT));
       ctx2.stroke();
     }
-    ctx2.strokeStyle = "rgba(255,90,110,.95)";
+    ctx2.strokeStyle = L.foul;
     ctx2.lineWidth = 2.5;
     ctx2.beginPath();
     ctx2.moveTo(px(0), py(0));
@@ -2809,7 +3375,7 @@
       ctx2.stroke();
     }
     ctx2.setLineDash([]);
-    ctx2.fillStyle = "rgba(255,210,90,.85)";
+    ctx2.fillStyle = L.arrow;
     for (let b = 5; b <= 35; b += 5) {
       const tip = 12 + 4 * (1 - Math.abs(b - 20) / 15);
       const cx = px(boardToX(b));
@@ -2983,10 +3549,10 @@
     return out;
   }
   function upcomingForBowler(catalog, ownedKeys, targets, limit = 5, now = /* @__PURE__ */ new Date()) {
-    const fresh = catalog.filter((c) => !ownedKeys.has(c.key) && !isSpareBall(c) && isUpcoming(c, now) && (!c.competition || c.competition.value === "approved"));
+    const fresh2 = catalog.filter((c) => !ownedKeys.has(c.key) && !isSpareBall(c) && isUpcoming(c, now) && (!c.competition || c.competition.value === "approved"));
     const withSpecs = [];
     const noSpecs = [];
-    for (const ball of fresh) {
+    for (const ball of fresh2) {
       const index = motionIndex(ball);
       if (index === null) {
         noSpecs.push({ ball, index: null, off: null, why: "Specs aren't published yet. Worth a look once they are." });
@@ -3002,11 +3568,11 @@
   }
 
   // camera/health.ts
-  var KEY2 = "laneiq.locklog";
+  var KEY3 = "laneiq.locklog";
   var MAX = 120;
   function read() {
     try {
-      const v = JSON.parse(localStorage.getItem(KEY2) ?? "[]");
+      const v = JSON.parse(localStorage.getItem(KEY3) ?? "[]");
       return Array.isArray(v) ? v : [];
     } catch {
       return [];
@@ -3014,7 +3580,7 @@
   }
   function write(v) {
     try {
-      localStorage.setItem(KEY2, JSON.stringify(v.slice(-MAX)));
+      localStorage.setItem(KEY3, JSON.stringify(v.slice(-MAX)));
     } catch {
     }
   }
@@ -5607,191 +6173,6 @@
     showFit();
   }
 
-  // core/src/skills.ts
-  var AXES = [
-    {
-      id: "strikes",
-      label: "Strikes",
-      group: "Scoring",
-      higherBetter: true,
-      target: 60.2,
-      unit: "%",
-      basis: "benchmark",
-      at200: 49.7,
-      minSample: 20,
-      source: "Strike rate of a 220-average bowler: 60.2% (200 average: 49.7%). Bowling This Month, Nov 2020.",
-      drill: "Strikes come from hitting the pocket with enough entry angle. Work on the pocket and entry-angle axes first, then match your ball and surface to the lane."
-    },
-    {
-      id: "singles",
-      label: "Single-pin spares",
-      group: "Scoring",
-      higherBetter: true,
-      target: 95.1,
-      unit: "%",
-      basis: "benchmark",
-      at200: 85.6,
-      minSample: 5,
-      source: "Single-pin conversion of a 220-average bowler: 95.1% (200 average: 85.6%). Bowling This Month, Nov 2020.",
-      drill: "Use a plastic spare ball (99% of elite bowlers do, Bowling This Month 2016) and the 3-6-9 system: same target as your strike shot, feet moved 3, 6 or 9 boards. Practice the 10 and 7 pins most."
-    },
-    {
-      id: "closed",
-      label: "Closed frames",
-      group: "Scoring",
-      higherBetter: true,
-      target: 91.9,
-      unit: "%",
-      basis: "benchmark",
-      at200: 85,
-      minSample: 20,
-      source: "Frames closed with a strike or spare, 220 average: 91.9% (200 average: 85.0%). Bowling This Month, Nov 2020.",
-      drill: "Every open frame is a spare you missed or a split you left. Convert the makeable ones: check the Score tab's list of leaves to practice."
-    },
-    {
-      id: "firstBall",
-      label: "First-ball pins",
-      group: "Scoring",
-      higherBetter: true,
-      target: 9.2,
-      unit: " pins",
-      basis: "benchmark",
-      minSample: 20,
-      source: 'A first-ball average over 9.2 means most shots reach the pocket (Bowling This Month, "Increasing Your Carry Percentage").',
-      drill: "Raise it by repeating your line: same feet, same target, same speed. Fix the arrows and start-board spread first."
-    },
-    {
-      id: "pocket",
-      label: "Pocket hits",
-      group: "Accuracy",
-      higherBetter: true,
-      target: 70,
-      unit: "%",
-      basis: "coaching",
-      minSample: 10,
-      source: "Share of tracked shots entering within 1 board of the pocket. LaneIQ working target: 70%.",
-      drill: "Pick one target arrow and bowl 10 shots at it. Move your feet, not your target, to bring the entry board back to the pocket."
-    },
-    {
-      id: "entry",
-      label: "Entry angle",
-      group: "Accuracy",
-      higherBetter: true,
-      target: 4,
-      unit: "\xB0",
-      basis: "coaching",
-      minSample: 8,
-      source: "Average entry angle at the pins. LaneIQ working target: at least 4 degrees (below about 3 the ball has little room to carry the pocket).",
-      drill: "Test one change: a little less speed or a touch more rotation, and keep your line. Check whether the entry angle passes 4 degrees."
-    },
-    {
-      id: "arrows",
-      label: "Target control",
-      group: "Repeatability",
-      higherBetter: false,
-      target: 1,
-      unit: " boards \xB1",
-      basis: "coaching",
-      minSample: 8,
-      source: "Spread (standard deviation) of the board you cross at the arrows. LaneIQ working target: under 1 board.",
-      drill: "Lay a towel or marker on your target arrow. Throw 10 shots looking only at it, same feet, and check the arrows board after each."
-    },
-    {
-      id: "start",
-      label: "Start position",
-      group: "Repeatability",
-      higherBetter: false,
-      target: 1,
-      unit: " boards \xB1",
-      basis: "coaching",
-      minSample: 8,
-      source: "Spread of the board the ball starts on. LaneIQ working target: under 1 board.",
-      drill: "Mark your feet on the approach with tape and check your slide ends in the same place each shot."
-    },
-    {
-      id: "speed",
-      label: "Speed control",
-      group: "Repeatability",
-      higherBetter: false,
-      target: 0.6,
-      unit: " mph \xB1",
-      basis: "coaching",
-      minSample: 8,
-      source: "Spread of launch speed. LaneIQ working target: under 0.6 mph.",
-      drill: "Throw 10 shots at the same effort and watch the live speed. Keep every shot within half a mile an hour of the first."
-    }
-  ];
-  var sdOf = (v) => {
-    const m = v.reduce((a, b) => a + b, 0) / v.length;
-    return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / Math.max(1, v.length - 1));
-  };
-  var nums = (xs) => xs.filter((x) => typeof x === "number" && Number.isFinite(x));
-  function frameOutcomes(games2) {
-    let closed = 0, open2 = 0;
-    for (const g of games2) {
-      const rp = replay(g.rolls);
-      const by = /* @__PURE__ */ new Map();
-      rp.states.forEach((s, k2) => by.set(s.frame, [...by.get(s.frame) ?? [], g.rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length]));
-      for (const [f, c] of by) {
-        if (f < 10) {
-          if (c[0] === 10) closed++;
-          else if (c.length === 2) c[0] + c[1] === 10 ? closed++ : open2++;
-        } else if (rp.complete) {
-          c[0] === 10 || c.length >= 2 && c[0] + c[1] >= 10 ? closed++ : open2++;
-        }
-      }
-    }
-    return { closed, open: open2 };
-  }
-  function measure(games2, shots) {
-    const st2 = bowlingStats(games2);
-    const fo = frameOutcomes(games2);
-    const fresh = games2.reduce((a, g) => a + replay(g.rolls).states.filter((s) => s.fresh).length, 0);
-    const pk = shots.filter((s) => s.m.pocketMiss !== null);
-    const sdv = (key2) => {
-      const v = nums(shots.map((s) => s.m[key2]));
-      return { value: v.length >= 2 ? sdOf(v) : null, n: v.length };
-    };
-    const ea = nums(shots.map((s) => s.m.entryAngle));
-    return {
-      strikes: { value: st2.strikePct, n: fresh },
-      singles: { value: st2.singlePin.attempts ? st2.singlePin.made / st2.singlePin.attempts * 100 : null, n: st2.singlePin.attempts },
-      closed: { value: fo.closed + fo.open ? fo.closed / (fo.closed + fo.open) * 100 : null, n: fo.closed + fo.open },
-      firstBall: { value: st2.firstBallAvg, n: fresh },
-      pocket: { value: pk.length ? pk.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / pk.length * 100 : null, n: pk.length },
-      entry: { value: ea.length ? ea.reduce((a, b) => a + b, 0) / ea.length : null, n: ea.length },
-      arrows: sdv("arrowsBoard"),
-      start: sdv("startBoard"),
-      speed: sdv("launchSpeed")
-    };
-  }
-  function scoreOf(def, value) {
-    if (value === null) return null;
-    const s = def.higherBetter ? value / def.target * 100 : value <= 0 ? 100 : def.target / value * 100;
-    return Math.max(0, Math.min(100, Math.round(s)));
-  }
-  function skillsProfile(games2, shots) {
-    const now = measure(games2, shots);
-    const gh = Math.floor(games2.length / 2), sh = Math.floor(shots.length / 2);
-    const early = measure(games2.slice(0, gh), shots.slice(0, sh));
-    return AXES.map((d) => {
-      const m = now[d.id];
-      const e = early[d.id];
-      const value = m.n >= d.minSample ? m.value : null;
-      return {
-        ...d,
-        value,
-        score: scoreOf(d, value),
-        score200: d.at200 === void 0 ? null : scoreOf(d, d.at200),
-        earlierScore: e.n >= d.minSample && value !== null && (games2.length >= 4 || shots.length >= 16) ? scoreOf(d, e.value) : null
-      };
-    });
-  }
-  function focusList(axes) {
-    return axes.filter((a) => a.score !== null && a.score < 100).map((a) => ({ axis: a, gap: 100 - a.score + (a.group === "Scoring" ? 3 : 0) })).sort((a, b) => b.gap - a.gap);
-  }
-  var strongest = (axes) => axes.filter((a) => a.score !== null).sort((a, b) => b.score - a.score).slice(0, 3);
-
   // camera/skills.ts
   var SIZE = 320;
   var C = SIZE / 2;
@@ -5803,7 +6184,7 @@
   var poly = (vals) => vals.map((v, i) => pt(i, vals.length, v ?? 0).map((x) => x.toFixed(1)).join(",")).join(" ");
   var fmt3 = (a, v) => a.unit.trim() === "%" ? `${v.toFixed(1)}%` : a.unit.trim() === "\xB0" ? `${v.toFixed(1)}\xB0` : `${v.toFixed(a.id === "speed" ? 2 : 1)}${a.unit}`;
   var targetText = (a) => `${a.higherBetter ? "at least " : "under "}${fmt3(a, a.target)}`;
-  function radarSvg(axes, sel) {
+  function radarSvg(axes, sel2) {
     const n = axes.length;
     const rings = [25, 50, 75, 100].map((r) => `<polygon points="${poly(axes.map(() => r))}" fill="none" stroke="rgba(255,255,255,${r === 100 ? 0.35 : 0.12})" stroke-width="${r === 100 ? 1.5 : 1}" ${r === 100 ? 'stroke-dasharray="4 3"' : ""}/>`).join("");
     const spokes = axes.map((_, i) => {
@@ -5815,7 +6196,7 @@
     const dots = axes.map((a, i) => {
       const [x, y] = pt(i, n, a.score ?? 0);
       const col = a.score === null ? "none" : a.score >= 85 ? "#5affb0" : a.score >= 60 ? "#ffd25a" : "#ff5a6e";
-      return `<circle cx="${x}" cy="${y}" r="${i === sel ? 6 : 4.2}" fill="${col}" stroke="${a.score === null ? "rgba(255,255,255,.5)" : "#0b1220"}" stroke-width="1.5"/>`;
+      return `<circle cx="${x}" cy="${y}" r="${i === sel2 ? 6 : 4.2}" fill="${col}" stroke="${a.score === null ? "rgba(255,255,255,.5)" : "#0b1220"}" stroke-width="1.5"/>`;
     }).join("");
     const ticks = axes.map((a, i) => {
       if (a.score200 === null) return "";
@@ -5825,7 +6206,7 @@
     const labels = axes.map((a, i) => {
       const [x, y] = pt(i, n, 126);
       const anchor = x < C - 12 ? "end" : x > C + 12 ? "start" : "middle";
-      return `<g data-ax="${i}" style="cursor:pointer"><text x="${x}" y="${y + 4}" text-anchor="${anchor}" font-size="11.5" font-weight="${i === sel ? 800 : 600}" fill="${i === sel ? "#fff" : "#b6c2d9"}">${esc(a.label)}</text></g>`;
+      return `<g data-ax="${i}" style="cursor:pointer"><text x="${x}" y="${y + 4}" text-anchor="${anchor}" font-size="11.5" font-weight="${i === sel2 ? 800 : 600}" fill="${i === sel2 ? "#fff" : "#b6c2d9"}">${esc(a.label)}</text></g>`;
     }).join("");
     return `<svg viewBox="-62 -4 ${SIZE + 124} ${SIZE + 8}" style="width:100%;max-width:420px;display:block;margin:0 auto" role="img" aria-label="Skills radar">${rings}${spokes}${earlier}${now}${ticks}${dots}${labels}</svg>`;
   }
@@ -5851,17 +6232,17 @@
     card.id = "skills-card";
     host2.querySelectorAll("#skills-card").forEach((x) => x.remove());
     const focus = focusList(axes);
-    let sel = focus.length ? axes.indexOf(focus[0].axis) : 0;
+    let sel2 = focus.length ? axes.indexOf(focus[0].axis) : 0;
     const draw3 = () => {
       card.innerHTML = `<div class="k">Your skills</div>
-      ${scored.length ? radarSvg(axes, sel) : `<div class="u">Your skills chart fills in as you bowl. Scoring axes come from games on the Score tab; accuracy and repeatability axes come from tracked camera shots.</div>${radarSvg(axes, sel)}`}
+      ${scored.length ? radarSvg(axes, sel2) : `<div class="u">Your skills chart fills in as you bowl. Scoring axes come from games on the Score tab; accuracy and repeatability axes come from tracked camera shots.</div>${radarSvg(axes, sel2)}`}
       <div class="note" style="text-align:center"><span style="color:#46e6ff">\u2501 now</span> \xB7 ${axes.some((a) => a.earlierScore !== null) ? '<span style="color:#ccc">\u2505 when you started</span> \xB7 ' : ""}<span style="color:#ffd25a">\u25C6 200-average bowler</span> \xB7 outer ring = target. Tap a skill.</div>
-      <div id="sk-detail" style="margin-top:8px">${detail(axes[sel])}</div>
+      <div id="sk-detail" style="margin-top:8px">${detail(axes[sel2])}</div>
       ${focus.length ? `<div class="k" style="margin-top:12px">Work on these first</div><ol>${focus.slice(0, 3).map((f) => `<li><b>${esc(f.axis.label)}</b> (${f.axis.score}/100): ${esc(f.axis.drill)}</li>`).join("")}</ol>` : scored.length ? `<div class="u">Every scored skill is at its target. Raise the bar by bowling more games.</div>` : ""}
       ${strongest(axes).length ? `<div class="k" style="margin-top:8px">Your strengths</div><div class="u">${strongest(axes).map((a) => `${esc(a.label)} (${a.score})`).join(" \xB7 ")}</div>` : ""}
       ${axes.some((a) => a.score === null) ? `<div class="note" style="margin-top:8px">Not scored yet: ${axes.filter((a) => a.score === null).map((a) => esc(a.label)).join(", ")}. They need more games or more tracked shots.</div>` : ""}`;
       card.querySelectorAll("[data-ax]").forEach((g) => g.addEventListener("click", () => {
-        sel = Number(g.getAttribute("data-ax"));
+        sel2 = Number(g.getAttribute("data-ax"));
         draw3();
       }));
     };
@@ -5998,13 +6379,13 @@
     o.putImageData(img, 0, 0);
     return out;
   }
-  async function readText(src, c, progress) {
+  async function readText(src, c, progress2) {
     const T = await loadTesseract();
     const words = /* @__PURE__ */ new Map();
     const runs = [["lum", false], ["lum", true], ["r", false], ["r", true], ["b", false], ["b", true], ["g", false], ["g", true]];
     let done = 0;
     for (const [ch, inv] of runs) {
-      progress(done++, runs.length);
+      progress2(done++, runs.length);
       const { data } = await T.recognize(prepare(src, c, ch, inv), "eng");
       for (const w of data.words) {
         const clean = w.text.replace(/[^A-Za-z0-9]/g, "");
@@ -6364,9 +6745,89 @@
     drawTopDown($("lv-map").getContext("2d"), 360, 560, paths, { board: S.profile?.hand === "L" ? 22.5 : 17.5 });
   }
 
+  // camera/pending.ts
+  var HASH_KEY = "laneiq.pendingHash";
+  var TAG_KEY = "laneiq.pendingTag";
+  var TWO_WEEKS = 14 * 864e5;
+  function fresh(raw) {
+    if (!raw) return "";
+    try {
+      const o = JSON.parse(raw);
+      return Date.now() - o.at < TWO_WEEKS ? o.v : "";
+    } catch {
+      return "";
+    }
+  }
+  function readPendingHash() {
+    try {
+      return sessionStorage.getItem(HASH_KEY) || fresh(localStorage.getItem(HASH_KEY));
+    } catch {
+      return "";
+    }
+  }
+  function writePendingHash(h) {
+    try {
+      sessionStorage.setItem(HASH_KEY, h);
+      localStorage.setItem(HASH_KEY, JSON.stringify({ v: h, at: Date.now() }));
+    } catch {
+    }
+  }
+  function clearPendingHash() {
+    try {
+      sessionStorage.removeItem(HASH_KEY);
+      localStorage.removeItem(HASH_KEY);
+    } catch {
+    }
+  }
+  var readPendingTag = () => {
+    try {
+      return fresh(localStorage.getItem(TAG_KEY));
+    } catch {
+      return "";
+    }
+  };
+  function writePendingTag(t) {
+    try {
+      localStorage.setItem(TAG_KEY, JSON.stringify({ v: t, at: Date.now() }));
+    } catch {
+    }
+  }
+  function clearPendingTag() {
+    try {
+      localStorage.removeItem(TAG_KEY);
+    } catch {
+    }
+  }
+  function installManifestFor(hash) {
+    const standalone = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+    if (standalone || !hash) return;
+    try {
+      const here = new URL(location.href);
+      here.hash = "";
+      const abs = (p) => new URL(p, here).href;
+      const manifest = {
+        name: "LaneIQ",
+        short_name: "LaneIQ",
+        description: "Automatic bowling shot tracking",
+        start_url: here.href + hash,
+        scope: new URL("./", here).href,
+        display: "standalone",
+        orientation: "any",
+        background_color: "#070a10",
+        theme_color: "#070a10",
+        icons: [
+          { src: abs("icon-192.png"), sizes: "192x192", type: "image/png" },
+          { src: abs("icon-512.png"), sizes: "512x512", type: "image/png", purpose: "any" }
+        ]
+      };
+      const link = document.querySelector('link[rel="manifest"]');
+      if (link) link.href = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" }));
+    } catch {
+    }
+  }
+
   // camera/friends.ts
   var LINK_KEY = "laneiq.appLink";
-  var PENDING_KEY = "laneiq.pendingHash";
   var baseUrl = () => new URL(".", location.href).href.replace(/\/+$/, "");
   var PUBLIC_APP = "https://flanxe.github.io/laneiq";
   function appLink() {
@@ -6621,21 +7082,17 @@ ${url}`);
   }
   function captureIncomingHash() {
     if (/^#(invite|reply|session|live)=/.test(location.hash)) {
-      try {
-        sessionStorage.setItem(PENDING_KEY, location.hash);
-      } catch {
-      }
+      const h = location.hash;
+      writePendingHash(h);
+      installManifestFor(h);
       history.replaceState(null, "", location.pathname + location.search);
     }
   }
   async function handleIncoming() {
-    let h = "";
-    try {
-      h = sessionStorage.getItem(PENDING_KEY) ?? "";
-      sessionStorage.removeItem(PENDING_KEY);
-    } catch {
-    }
+    if (S.profile) await addPendingTag();
+    const h = readPendingHash();
     if (!h || !S.profile) return;
+    clearPendingHash();
     const [, kind, value] = /^#(invite|reply|session|live)=(.+)$/.exec(h) ?? [];
     if (!kind) return;
     if (kind === "live") return void joinFrom(value);
@@ -6646,6 +7103,16 @@ ${url}`);
     const inv = decodeInvite(value);
     if (!inv) return void alert("That friend link is damaged.");
     openFriendRequest(inv, kind);
+  }
+  async function addPendingTag() {
+    const raw = readPendingTag();
+    if (!raw) return;
+    clearPendingTag();
+    const t = parseFriendTag(raw);
+    if (!t || t.code === myCode() || S.friends.some((f) => f.code === t.code)) return;
+    S.friends.push({ code: t.code, name: t.username, username: t.username, addedAt: (/* @__PURE__ */ new Date()).toISOString() });
+    await saveSocial();
+    alert(`Added ${t.username} as a friend.`);
   }
   function friendsCardHtml() {
     const link = appLink();
@@ -6728,11 +7195,7 @@ ${url}`);
     { id: "fun", label: "Just for fun" }
   ];
   function inviteBanner() {
-    let h = "";
-    try {
-      h = sessionStorage.getItem("laneiq.pendingHash") ?? "";
-    } catch {
-    }
+    const h = readPendingHash();
     const m = /^#(invite|reply|session)=(.+)$/.exec(h);
     if (!m) return "";
     if (m[1] === "session") return `<div class="invitebox"><b>A friend shared a session with you</b><div class="note">Set up your profile first. Then you can compare their shots with yours on the same lane.</div></div>`;
@@ -6753,7 +7216,8 @@ ${url}`);
         case 0:
           return `<div class="welcome"><div class="logo">Lane<b style="background:linear-gradient(90deg,#46e6ff,#ff4fd8);-webkit-background-clip:text;background-clip:text;color:transparent">IQ</b></div><div class="note">Your bowling coach, using your phone's camera</div></div>${inviteBanner()}<h2>What should I call you?</h2><div class="note">A few quick questions so the app understands how you bowl before your first shot. Everything stays on this phone.</div>
           <div class="field"><label>Your name</label><input id="q-name" value="${esc(a.name)}" placeholder="Name" autocomplete="off"></div>
-          <div class="field"><label>Account name (how friends find you)</label><input id="q-user" value="${esc(a.username ?? "")}" placeholder="e.g. strikeking22" autocomplete="off" autocapitalize="none" spellcheck="false"><div class="note" id="q-usernote">3 to 20 letters, numbers or underscores. Friends add you with this name plus your friend code, so nobody can pretend to be you. It stays on this phone and in links you send.</div></div>`;
+          <div class="field"><label>Account name (how friends find you)</label><input id="q-user" value="${esc(a.username ?? "")}" placeholder="e.g. strikeking22" autocomplete="off" autocapitalize="none" spellcheck="false"><div class="note" id="q-usernote">3 to 20 letters, numbers or underscores. Friends add you with this name plus your friend code, so nobody can pretend to be you. It stays on this phone and in links you send.</div></div>
+          ${mode2 === "first" ? `<div class="field"><label>Invited by a friend? (optional)</label><input id="q-invite" placeholder="Their friend tag, or paste their invite link" autocomplete="off" autocapitalize="none" spellcheck="false"><div class="note">If a friend sent you here, enter their tag (it looks like strikeking22#K7QP2MXA) and they are added when you finish.</div></div>` : ""}`;
         case 1:
           return `<h2>How do you bowl?</h2><div class="note">This changes what the app expects from your ball and what it suggests.</div>` + STYLES.map((s) => `<button class="opt ${a.style === s.id ? "sel" : ""}" data-k="style" data-v="${s.id}"><b>${esc(s.label)}</b><span>${esc(s.blurb)}</span></button>`).join("");
         case 2:
@@ -6828,6 +7292,13 @@ ${url}`);
       if (name) a.name = name.value;
       const user = document.getElementById("q-user");
       if (user) a.username = cleanUsername(user.value);
+      const inv = document.getElementById("q-invite");
+      if (inv && inv.value.trim()) {
+        const v = inv.value.trim();
+        const link = /#((?:invite|reply)=[^\s]+)/.exec(v);
+        if (link) writePendingHash("#" + link[1]);
+        else if (parseFriendTag(v)) writePendingTag(v);
+      }
       const rev = document.getElementById("q-rev");
       if (rev) {
         const v = parseInt(rev.value, 10);
@@ -7239,9 +7710,9 @@ ${url}`);
     let pitch = PRESETS.Behind.pitch;
     let dist = PRESETS.Behind.dist;
     let target = [...PRESETS.Behind.target];
-    let raf = 0;
+    let raf2 = 0;
     const markDirty = () => {
-      if (!raf) raf = requestAnimationFrame(draw3);
+      if (!raf2) raf2 = requestAnimationFrame(draw3);
     };
     for (const name of Object.keys(PRESETS)) {
       const b = document.createElement("button");
@@ -7304,7 +7775,7 @@ ${url}`);
       }
     }
     function draw3() {
-      raf = 0;
+      raf2 = 0;
       resize();
       const w = canvas.width;
       const h = canvas.height;
@@ -7475,7 +7946,7 @@ ${url}`);
       redraw: markDirty,
       destroy() {
         ro.disconnect();
-        cancelAnimationFrame(raf);
+        cancelAnimationFrame(raf2);
         canvas.remove();
         bar.remove();
         hint.remove();
@@ -7484,9 +7955,9 @@ ${url}`);
   }
 
   // camera/tabs.ts
-  var current2 = "live";
+  var current3 = "live";
   function showTab(t) {
-    current2 = t;
+    current3 = t;
     document.querySelectorAll(".tab").forEach((el) => el.classList.toggle("on", el.id === `tab-${t}`));
     document.querySelectorAll(".tb").forEach((el) => el.classList.toggle("on", el.dataset.tab === t));
     window.scrollTo(0, 0);
@@ -7502,12 +7973,12 @@ ${url}`);
     });
   }
   function render2() {
-    if (current2 === "shots") renderShots();
-    else if (current2 === "score") void renderScore();
-    else if (current2 === "insights") renderInsights();
-    else if (current2 === "arsenal") renderArsenal();
-    else if (current2 === "proshop") renderProshop();
-    else if (current2 === "me") renderMe();
+    if (current3 === "shots") renderShots();
+    else if (current3 === "score") void renderScore();
+    else if (current3 === "insights") renderInsights();
+    else if (current3 === "arsenal") renderArsenal();
+    else if (current3 === "proshop") renderProshop();
+    else if (current3 === "me") renderMe();
   }
   var ballName = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
   var when = (iso) => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -7713,9 +8184,9 @@ ${url}`);
     const after = S.shots.filter((s) => s.at > plan.createdAt).slice(-STATE_PLAN_RECENT);
     const prog = planProgress(plan, after);
     box.innerHTML = `<div class="note">Plan made ${esc(when(plan.createdAt))} from ${plan.basedOnShots} shots. Progress uses your shots since then (needs 5 or more).</div>` + prog.map(
-      ({ item, current: current3, progress, met }) => `<div class="card"><div class="row"><div class="lr-head" style="font-size:16px">${esc(item.title)}</div><span class="badge ${met ? "good" : "moderate"}">${met ? "target met" : "in progress"}</span></div>
-      <div class="u">Baseline ${item.baseline} \u2192 target ${item.target} ${esc(item.unit)} \xB7 now ${current3 === null ? "need 5+ new shots" : current3}</div>
-      <div class="prog"><i style="width:${Math.round((progress ?? 0) * 100)}%"></i></div>
+      ({ item, current: current4, progress: progress2, met }) => `<div class="card"><div class="row"><div class="lr-head" style="font-size:16px">${esc(item.title)}</div><span class="badge ${met ? "good" : "moderate"}">${met ? "target met" : "in progress"}</span></div>
+      <div class="u">Baseline ${item.baseline} \u2192 target ${item.target} ${esc(item.unit)} \xB7 now ${current4 === null ? "need 5+ new shots" : current4}</div>
+      <div class="prog"><i style="width:${Math.round((progress2 ?? 0) * 100)}%"></i></div>
       <div class="lr-next">Drill: ${esc(item.drill)}</div></div>`
     ).join("") + `<div class="chips"><button class="btn ghost" id="plan-redo">Rebuild plan from all shots</button></div>`;
     $("plan-redo").onclick = async () => {
@@ -7989,6 +8460,7 @@ ${url}`);
     const profs = listProfiles();
     el.innerHTML = `
     <h2>Me</h2>
+    <div class="card"><div class="k">Rewards</div><div class="note">Unlock ball tracers, pin looks and lane looks by playing and by improving.</div><div class="chips"><button class="btn" id="me-rewards">Skins and rewards</button></div></div>
     ${p?.quiz ? `<div class="card"><div class="k">Your bowler profile</div><ul>${summarize(p.quiz).map((l) => `<li>${esc(l)}</li>`).join("")}</ul><div class="note">${esc(styleNotes(p.quiz.style).join(" "))}</div><div class="chips"><button class="btn ghost" id="me-quiz">Retake the quiz</button></div></div>` : p ? `<div class="card"><div class="u">Take the short bowler quiz so the app knows how you bowl.</div><div class="chips"><button class="btn" id="me-quiz">Take the quiz</button></div></div>` : ""}
     ${p ? `<div class="card"><div class="k">Ball motion (pro shop)</div>
       <div class="note">The live camera can't measure these. Enter numbers from a pro-shop tool, or measure them from a slow-motion release video.${p.spin ? ` Last set ${esc(when(p.spin.at))} (${p.spin.source === "video" ? "from video" : "entered"}).` : ""}</div>
@@ -8030,6 +8502,7 @@ ${url}`);
       }
     );
     wireFriendsCard(renderMe);
+    $("me-rewards").onclick = () => void openRewards();
     $("me-new").onclick = () => showQuiz("add", () => {
     });
     $("sp-save")?.addEventListener("click", () => {
@@ -8297,9 +8770,9 @@ ${url}`);
         }
         this.recent.push(best.ly);
         if (this.recent.length > 12) this.recent.shift();
-        const progress = this.recent.length >= 12 ? best.ly - this.recent[0] : Infinity;
-        if (progress < 1 && this.confirmed && this.lanePrev > 40) return "finished";
-        if (progress < 0.4 && !this.confirmed && this.path.length > 14) return this.reset(), "reset";
+        const progress2 = this.recent.length >= 12 ? best.ly - this.recent[0] : Infinity;
+        if (progress2 < 1 && this.confirmed && this.lanePrev > 40) return "finished";
+        if (progress2 < 0.4 && !this.confirmed && this.path.length > 14) return this.reset(), "reset";
         if (this.path.length > 500) return this.confirmed ? "finished" : (this.reset(), "reset");
         let event = "tracking";
         if (!this.confirmed && this.path.length >= 5) {
@@ -9593,16 +10066,17 @@ ${url}`);
   function drawPinSpots(now) {
     if (!Hinv || S.demo || viewMode !== "lane") return;
     const s = overlay.width / 1280;
-    const fresh = lastPinRead && now - lastPinRead.at < 14e3 ? lastPinRead : null;
+    const fresh2 = lastPinRead && now - lastPinRead.at < 14e3 ? lastPinRead : null;
     const boxes = pinBoxes(laneToPx);
     ctx.save();
     ctx.lineWidth = Math.max(1, 1.8 * s);
     boxes.forEach((b, i) => {
-      const st2 = fresh ? fresh.standing[i] : void 0;
+      const st2 = fresh2 ? fresh2.standing[i] : void 0;
       const pad = 3 * s;
       const x = b.x0 - pad, y = b.y0 - pad, w = b.x1 - b.x0 + 2 * pad, h = b.y1 - b.y0 + 2 * pad;
-      ctx.strokeStyle = st2 === true ? "rgba(90,255,176,.95)" : st2 === false ? "rgba(255,90,110,.95)" : "rgba(70,230,255,.55)";
-      ctx.fillStyle = st2 === true ? "rgba(90,255,176,.28)" : st2 === false ? "rgba(255,90,110,.32)" : "rgba(70,230,255,.10)";
+      const ps = currentPins();
+      ctx.strokeStyle = st2 === true ? ps.standing.stroke : st2 === false ? ps.down.stroke : ps.unknown.stroke;
+      ctx.fillStyle = st2 === true ? ps.standing.fill : st2 === false ? ps.down.fill : ps.unknown.fill;
       ctx.fillRect(x, y, w, h);
       ctx.strokeRect(x, y, w, h);
       if (st2 === false) {
@@ -9614,16 +10088,16 @@ ${url}`);
         ctx.stroke();
       }
     });
-    if (fresh) {
+    if (fresh2) {
       const top = Math.min(...boxes.map((b) => b.y0)) - 34 * s;
       const mid = (Math.min(...boxes.map((b) => b.x0)) + Math.max(...boxes.map((b) => b.x1))) / 2;
-      const text = fresh.down === 10 ? "STRIKE" : `${fresh.down} DOWN`;
+      const text = fresh2.down === 10 ? "STRIKE" : `${fresh2.down} DOWN`;
       ctx.font = `800 ${16 * s}px system-ui`;
       ctx.textAlign = "center";
       ctx.lineWidth = 4 * s;
       ctx.strokeStyle = "rgba(0,0,0,.85)";
       ctx.strokeText(text, mid, top);
-      ctx.fillStyle = fresh.down === 10 ? "#5affb0" : "#ffd25a";
+      ctx.fillStyle = fresh2.down === 10 ? "#5affb0" : "#ffd25a";
       ctx.fillText(text, mid, top);
     }
     ctx.restore();
