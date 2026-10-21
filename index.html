@@ -163,8 +163,8 @@
     <div id="hero">
       <h1>Point. Lock. Bowl.</h1>
       <div style="display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:300px">
-        <input id="hero-lane" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" placeholder="Your lane number" aria-label="Your lane number" style="width:100%;box-sizing:border-box;font:700 20px system-ui;text-align:center;padding:9px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:#fff">
-        <button class="btn" id="start" disabled style="width:100%;padding:11px 14px">Type your lane number to start</button>
+        <input id="hero-lane" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" placeholder="Lane number (optional)" aria-label="Lane number, optional" style="width:100%;box-sizing:border-box;font:700 20px system-ui;text-align:center;padding:9px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:#fff">
+        <button class="btn" id="start" style="width:100%;padding:11px 14px">Start camera</button>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center"><span id="whatsnew"></span><button class="chip" id="guide-open">How to get a lock</button></div>
       <div id="ver" class="note" style="font-size:10px;opacity:.5;line-height:1"></div>
@@ -238,13 +238,13 @@
   <button class="tb" data-tab="proshop"><svg viewBox="0 0 24 24"><path d="M14.5 5.5a4 4 0 0 0-5 5L4 16l4 4 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5z"/></svg>Pro shop</button>
   <button class="tb" data-tab="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/></svg>Me</button>
 </nav>
-<script src="camera.js?v=mvi73ci4"></script>
+<script src="camera.js?v=mvi86y5b"></script>
 <div id="lanedlg" style="position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;background:rgba(3,6,12,.82);padding:20px">
   <div class="card" style="max-width:380px;width:100%;text-align:center">
-    <h2 style="margin:0 0 6px">Which lane are you on?</h2>
-    <div class="note">I will watch only this lane and ignore the bowlers on the lanes next to it. Type the number on the lane sign or the scoring screen.</div>
+    <h2 style="margin:0 0 6px">Which lane are you on? (optional)</h2>
+    <div class="note">A lane number lets the app remember this lane's lock and label your shots with it. Leave it empty to skip it.</div>
     <input id="lanedlg-in" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" placeholder="Lane number" style="margin:14px 0;width:100%;box-sizing:border-box;font:700 32px system-ui;text-align:center;padding:10px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:#fff">
-    <button class="btn" id="lanedlg-go" disabled style="width:100%">Start on this lane</button>
+    <button class="btn" id="lanedlg-go" style="width:100%">Save</button>
   </div>
 </div>
 </body>

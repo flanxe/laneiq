@@ -53,6 +53,15 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-21-optional-lane",
+      date: "2026-10-21",
+      title: "Lane number is optional",
+      items: [
+        "Start the camera without a lane number. Add one only if you want the app to remember each lane's lock and label your shots.",
+        "A tighter start screen that fits on a phone."
+      ]
+    },
+    {
       id: "2026-10-21-skills",
       date: "2026-10-21",
       title: "Your skills chart",
@@ -9643,7 +9652,7 @@ ${url}`);
       } catch {
       }
       input.value = last;
-      const ok = () => /^[0-9]{1,3}$/.test(input.value.trim()) && Number(input.value) > 0;
+      const ok = () => input.value.trim() === "" || /^[0-9]{1,3}$/.test(input.value.trim()) && Number(input.value) > 0;
       go.disabled = !ok();
       input.oninput = () => {
         input.value = input.value.replace(/[^0-9]/g, "");
@@ -9651,15 +9660,16 @@ ${url}`);
       };
       const done = () => {
         if (!ok()) return;
-        laneNo = String(Number(input.value.trim()));
+        laneNo = input.value.trim() === "" ? "" : String(Number(input.value.trim()));
         try {
-          localStorage.setItem("laneiq.laneNo", laneNo);
+          if (laneNo) localStorage.setItem("laneiq.laneNo", laneNo);
+          else localStorage.removeItem("laneiq.laneNo");
         } catch {
         }
         dlg.style.display = "none";
         const badge = $("laneno");
         badge.style.display = "";
-        badge.textContent = `Lane ${laneNo}`;
+        badge.textContent = laneNo ? `Lane ${laneNo}` : "Add lane #";
         resolve();
       };
       go.onclick = done;
@@ -9673,7 +9683,7 @@ ${url}`);
       const saved = savedCalibration();
       if (saved) applyCalibration(saved, "your saved setup, verifying");
       else relock(false);
-      status.textContent = `Lane ${laneNo}: ${saved ? "using your saved lock for it." : "looking for it."}`;
+      status.textContent = laneNo ? `Lane ${laneNo}: ${saved ? "using your saved lock for it." : "looking for it."}` : "No lane number: looking for the lane.";
     });
   };
   (function setupStartScreen() {
@@ -9685,8 +9695,8 @@ ${url}`);
     }
     const ok = () => /^[0-9]{1,3}$/.test(input.value.trim()) && Number(input.value) > 0;
     const refresh = () => {
-      start.disabled = !ok();
-      start.textContent = ok() ? `Start camera on lane ${Number(input.value)}` : "Type your lane number to start";
+      start.disabled = false;
+      start.textContent = ok() ? `Start camera on lane ${Number(input.value)}` : "Start camera";
     };
     input.addEventListener("input", () => {
       input.value = input.value.replace(/[^0-9]/g, "");
@@ -9699,14 +9709,16 @@ ${url}`);
   })();
   function takeLane() {
     const input = $("hero-lane");
-    laneNo = String(Number(input.value.trim()));
+    const typed = /^[0-9]{1,3}$/.test(input.value.trim()) && Number(input.value) > 0;
+    laneNo = typed ? String(Number(input.value.trim())) : "";
     try {
-      localStorage.setItem("laneiq.laneNo", laneNo);
+      if (typed) localStorage.setItem("laneiq.laneNo", laneNo);
+      else localStorage.removeItem("laneiq.laneNo");
     } catch {
     }
     const badge = $("laneno");
     badge.style.display = "";
-    badge.textContent = `Lane ${laneNo}`;
+    badge.textContent = laneNo ? `Lane ${laneNo}` : "Add lane #";
   }
   $("start").onclick = () => Promise.resolve().then(() => (takeLane(), startCamera())).catch((e) => status.textContent = `Camera error: ${e.message}. Camera needs an https:// address.`);
   function synthPath(startX, bp, entryX, speedFtS) {
