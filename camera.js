@@ -53,6 +53,15 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-21-fps",
+      date: "2026-10-21",
+      title: "Faster camera and a live status line",
+      items: [
+        "The camera now asks the phone for exactly 60 fps (1080p, then 720p) before settling for 30, and keeps whichever stream is fastest.",
+        "A status line under the camera shows the camera's frame rate, how many frames a second are analysed, whether a ball is being seen and whether the lane lock is on, so a silent screen can be explained."
+      ]
+    },
+    {
       id: "2026-10-21-optional-lane",
       date: "2026-10-21",
       title: "Lane number is optional",
@@ -1859,21 +1868,21 @@
   var ASSUMED_HFOV_DEG = 63;
   var LANE_LEN = 60;
   var newDiag = () => ({ edgePixels: 0, leftLines: 0, rightLines: 0, pairs: 0, guess: null, foulRow: null, pitRow: null, hint: "" });
-  function detectLanes(gray, w, h, maxCandidates = 3, seed, diag) {
-    const first = detectLanesOnce(gray, w, h, maxCandidates, seed, diag);
+  function detectLanes(gray, w, h, maxCandidates = 3, seed, diag2) {
+    const first = detectLanesOnce(gray, w, h, maxCandidates, seed, diag2);
     if (first.length && first.some(isSolid)) return first;
     const inv = new Uint8ClampedArray(w * h);
     for (let i = 0; i < inv.length; i++) inv[i] = 255 - gray[i];
-    const dg2 = diag ? newDiag() : void 0;
+    const dg2 = diag2 ? newDiag() : void 0;
     const second = detectLanesOnce(inv, w, h, maxCandidates, seed, dg2);
     const best = (l) => l.reduce((m, d) => Math.max(m, d.confidence), 0);
     if (best(second) > best(first)) {
-      if (diag && dg2) Object.assign(diag, dg2);
+      if (diag2 && dg2) Object.assign(diag2, dg2);
       return second;
     }
     return first;
   }
-  function detectLanesOnce(gray, w, h, maxCandidates = 3, seed, diag) {
+  function detectLanesOnce(gray, w, h, maxCandidates = 3, seed, diag2) {
     const dbg = (m) => globalThis.__laneDbg?.push(m);
     const sm = new Float32Array(w * h);
     for (let y = 1; y < h - 1; y++)
@@ -1936,9 +1945,9 @@
         }
       }
     dbg(`thr ${thr.toFixed(1)} edges ${edges.length}`);
-    if (diag) diag.edgePixels = edges.length;
+    if (diag2) diag2.edgePixels = edges.length;
     if (edges.length < 60) {
-      if (diag) diag.hint = "I can barely see any edges: the picture may be too dark, blurry or flat.";
+      if (diag2) diag2.hint = "I can barely see any edges: the picture may be too dark, blurry or flat.";
       return [];
     }
     const xAt = (l, y) => l.xa + (l.xb - l.xa) * (y - yA) / span;
@@ -2095,14 +2104,14 @@
     const Rs = seed ? seededLines(-1) : linesOf(accR, -1, 16);
     globalThis.__laneLines = { Ls, Rs, yA, span };
     dbg(`lines L ${Ls.length} R ${Rs.length}`);
-    if (diag) {
-      diag.leftLines = Ls.length;
-      diag.rightLines = Rs.length;
+    if (diag2) {
+      diag2.leftLines = Ls.length;
+      diag2.rightLines = Rs.length;
     }
     dbg("L lines @row200: " + Ls.map((l) => `${(l.xa + (l.xb - l.xa) * (200 - yA) / span).toFixed(0)}[v${l.votes},${l.top}-${l.bot}]`).join(" "));
     dbg("R lines @row200: " + Rs.map((l) => `${(l.xa + (l.xb - l.xa) * (200 - yA) / span).toFixed(0)}[v${l.votes},${l.top}-${l.bot}]`).join(" "));
     if (!Ls.length || !Rs.length) {
-      if (diag) diag.hint = Ls.length || Rs.length ? "I can see one edge of the lane but not the other. Make sure both gutters are in view." : "I can't pick out the lane edges. Aim so the whole lane, with both gutters, fills the middle of the picture.";
+      if (diag2) diag2.hint = Ls.length || Rs.length ? "I can see one edge of the lane but not the other. Make sure both gutters are in view." : "I can't pick out the lane edges. Aim so the whole lane, with both gutters, fills the middle of the picture.";
       return [];
     }
     const rowMean = (y, xl, xr) => {
@@ -2159,9 +2168,9 @@
         cands.push({ L, R: R2, t, b, base: (votes + contrast + 0.5 * lenScore + 1.2 * (strengthSum / rowsN / 100)) * centered });
       }
     dbg(`pairs ${cands.length}; rejected ${JSON.stringify(why)}`);
-    if (diag) {
-      diag.pairs = cands.length;
-      if (!cands.length) diag.hint = "I see edges, but nothing that looks like a bright lane between two dark gutters yet.";
+    if (diag2) {
+      diag2.pairs = cands.length;
+      if (!cands.length) diag2.hint = "I see edges, but nothing that looks like a bright lane between two dark gutters yet.";
     }
     cands.sort((p, q) => q.base - p.base);
     const distinct = [];
@@ -2177,9 +2186,9 @@
       if (!distinct.some(isSame)) distinct.push(c);
       if (distinct.length >= maxCandidates + 9) break;
     }
-    if (diag && distinct[0]) {
+    if (diag2 && distinct[0]) {
       const c = distinct[0];
-      diag.guess = { left: { x0: xAt(c.L, c.t), y0: c.t, x1: xAt(c.L, c.b), y1: c.b }, right: { x0: xAt(c.R, c.t), y0: c.t, x1: xAt(c.R, c.b), y1: c.b } };
+      diag2.guess = { left: { x0: xAt(c.L, c.t), y0: c.t, x1: xAt(c.L, c.b), y1: c.b }, right: { x0: xAt(c.R, c.t), y0: c.t, x1: xAt(c.R, c.b), y1: c.b } };
     }
     dbg(`candidates: ${distinct.map((c) => `[${xAt(c.L, c.b).toFixed(0)}-${xAt(c.R, c.b).toFixed(0)}@${c.b} t${c.t} base ${c.base.toFixed(2)}]`).join(" ")}`);
     const results = [];
@@ -2188,7 +2197,7 @@
       if (r) results.push(r);
     }
     const sorted2 = results.sort((p, q) => q.confidence - p.confidence).slice(0, maxCandidates);
-    if (diag && sorted2.length) diag.hint = "";
+    if (diag2 && sorted2.length) diag2.hint = "";
     return sorted2;
     function geometry(c) {
       let { L, R: R2 } = c;
@@ -2403,7 +2412,7 @@
           if (!best || score > best.score) best = { pit: p, foul: f, score };
         }
       }
-      if (!best && diag && !diag.hint) diag.hint = "I found both lane edges but not the foul line and the end of the lane together. Tilt the phone so the foul line, the arrows and the pins are all in view.";
+      if (!best && diag2 && !diag2.hint) diag2.hint = "I found both lane edges but not the foul line and the end of the lane together. Tilt the phone so the foul line, the arrows and the pins are all in view.";
       if (!best) return fallback(L, R2, t, b, yv, up, notes) ?? (dbg(`reject: no foul/pit pair foul ${foulCands.join(",")} pit ${pitCands.join(",")} yv ${yv.toFixed(1)} t ${t} b ${b} | ${tried.slice(0, 8).join(" ")} | L(${L.xa.toFixed(0)},${L.xb.toFixed(0)}) R(${R2.xa.toFixed(0)},${R2.xb.toFixed(0)})`), null);
       const centroid = (arr, y, r, base) => {
         let sw = 0;
@@ -2431,9 +2440,9 @@
       };
       const hw = halfway(best.pit);
       const pit = Number.isFinite(pinPit) && Math.abs(best.pit - pinPit) <= 2 ? pinPit : Number.isFinite(hw) && Math.abs(hw - best.pit) <= (Number.isFinite(pinPit) ? 1.5 : 4) ? hw : up[best.pit] > 0.1 ? centroid(up, best.pit, 3, up[best.pit] * 0.3) : best.pit;
-      if (diag && !diag.foulRow) {
-        diag.foulRow = foul;
-        diag.pitRow = pit;
+      if (diag2 && !diag2.foulRow) {
+        diag2.foulRow = foul;
+        diag2.pitRow = pit;
       }
       const foulOk = true;
       const pitOk = true;
@@ -8487,12 +8496,34 @@ ${url}`);
     if (typeof video.requestVideoFrameCallback === "function") video.requestVideoFrameCallback((n, m) => onFrame(n, m));
     else requestAnimationFrame((t) => onFrame(t, { mediaTime: video.currentTime }));
   }
+  async function openCamera() {
+    const tries = [
+      { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { exact: 60 } },
+      { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { exact: 60 } },
+      { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60, min: 30 } }
+    ];
+    let best = null;
+    let bestFps = 0;
+    let lastErr = null;
+    for (const t of tries) {
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", ...t }, audio: false });
+        const f = s.getVideoTracks()[0].getSettings().frameRate ?? 30;
+        if (f > bestFps) {
+          best?.getTracks().forEach((x) => x.stop());
+          best = s;
+          bestFps = f;
+        } else s.getTracks().forEach((x) => x.stop());
+        if (bestFps >= 50) break;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    if (!best) throw lastErr ?? new Error("no camera");
+    return best;
+  }
   async function startCamera() {
-    stream = await navigator.mediaDevices.getUserMedia({
-      // the sharpest picture the phone will give (1080p; pins and the far end of the lane are only a few pixels, so every pixel counts)
-      video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60, min: 30 } },
-      audio: false
-    });
+    stream = await openCamera();
     video.srcObject = stream;
     await video.play();
     overlay.width = video.videoWidth;
@@ -8504,6 +8535,7 @@ ${url}`);
     document.body.classList.add("live");
     const fps = stream.getVideoTracks()[0].getSettings().frameRate;
     setText("fps", fps ? `${Math.round(fps)} FPS` : "LIVE");
+    cameraFps = fps ? Math.round(fps) : 0;
     const saved = savedCalibration();
     if (saved) {
       applyCalibration(saved, "your saved setup, verifying");
@@ -9455,9 +9487,24 @@ ${url}`);
     lost = 0;
     confirmed = false;
   }
+  var cameraFps = 0;
+  var diag = { frames: 0, since: 0, perSec: 0, ballFrames: 0, ballSeen: 0 };
+  function diagTick(now, analysed, ball) {
+    if (analysed) diag.frames++;
+    if (ball) diag.ballFrames++;
+    if (!diag.since) diag.since = now;
+    if (now - diag.since < 1e3) return;
+    diag.perSec = Math.round(diag.frames * 1e3 / (now - diag.since));
+    diag.ballSeen = diag.ballFrames;
+    diag.frames = diag.ballFrames = 0;
+    diag.since = now;
+    const el = document.getElementById("diag");
+    if (el) el.textContent = `Camera ${cameraFps || "?"} fps${cameraFps && cameraFps < 50 ? " (this phone's limit)" : ""} \xB7 analysing ${diag.perSec}/s \xB7 ball ${diag.ballSeen ? "seen" : "not seen"} \xB7 lane lock ${H ? armed ? "on" : "paused" : "searching"}`;
+  }
   function onFrame(_now, meta) {
     schedule();
     const now = performance.now();
+    diagTick(now, !!(H && laneMask && armed && !enrolling), !!lastBlob);
     drawOverlay(now);
     enrollTick(now);
     if (!H) autoDetectTick(now);
