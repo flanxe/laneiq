@@ -2668,7 +2668,7 @@
     if (v[1] < 0) v = scale(v, -1);
     return { pap: p, q, valUp: v };
   }
-  var ang = (inch2) => inch2 / R;
+  var ang = (inch3) => inch3 / R;
   function solveLayout(input, pap, hand, grip = DEFAULT_GRIP, flip = false) {
     const problems = [];
     const { hs, fingers, thumb, middle, ring } = gripFrame(grip, hand);
@@ -3220,8 +3220,8 @@
           row[ri] = 0;
           continue;
         }
-        const inner = (at(x - ux * 2, y - uy * 2) + at(x - ux * 3, y - uy * 3)) / 2, outer = (at(x + ux * 2, y + uy * 2) + at(x + ux * 3, y + uy * 3)) / 2;
-        row[ri] = Math.abs(outer - inner);
+        const inner = (at(x - ux * 2, y - uy * 2) + at(x - ux * 3, y - uy * 3)) / 2, outer2 = (at(x + ux * 2, y + uy * 2) + at(x + ux * 3, y + uy * 3)) / 2;
+        row[ri] = Math.abs(outer2 - inner);
         if (fgScore) {
           const fin = (fgAt(x - ux * 3, y - uy * 3) + fgAt(x - ux * 5, y - uy * 5)) / 2, fout = (fgAt(x + ux * 3, y + uy * 3) + fgAt(x + ux * 5, y + uy * 5)) / 2;
           row[ri] = 0.35 * row[ri] + 0.65 * Math.max(0, fin - fout);
@@ -4541,6 +4541,501 @@
     ${sections.map((s) => `<div class="card"><div class="k">${esc(s.title)}</div><ul>${s.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}
     <div class="note">General guidance, not a substitute for a fitting by a qualified pro shop operator.</div>`;
     $("pb-close").onclick = () => (el.classList.remove("on"), el.innerHTML = "");
+  }
+
+  // core/src/drilled.ts
+  var G_TO_LB_PER_IN3 = 0.036127;
+  var OZ_PER_LB = 16;
+  var zero = () => [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  var ident = (k2) => [[k2, 0, 0], [0, k2, 0], [0, 0, k2]];
+  var outer = (a, b) => [0, 1, 2].map((i) => [0, 1, 2].map((j) => a[i] * b[j]));
+  var addM = (a, b, k2 = 1) => a.map((r, i) => r.map((v, j) => v + k2 * b[i][j]));
+  function eigenvalues(m) {
+    const a = m.map((r) => [...r]);
+    for (let sweep = 0; sweep < 50; sweep++) {
+      let off = 0;
+      for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) off += a[i][j] * a[i][j];
+      if (off < 1e-24) break;
+      for (let p = 0; p < 2; p++)
+        for (let q = p + 1; q < 3; q++) {
+          if (Math.abs(a[p][q]) < 1e-30) continue;
+          const theta = (a[q][q] - a[p][p]) / (2 * a[p][q]);
+          const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+          const c = 1 / Math.sqrt(t * t + 1), s = t * c;
+          for (let k2 = 0; k2 < 3; k2++) {
+            const akp = a[k2][p], akq = a[k2][q];
+            a[k2][p] = c * akp - s * akq;
+            a[k2][q] = s * akp + c * akq;
+          }
+          for (let k2 = 0; k2 < 3; k2++) {
+            const apk = a[p][k2], aqk = a[q][k2];
+            a[p][k2] = c * apk - s * aqk;
+            a[q][k2] = s * apk + c * aqk;
+          }
+        }
+    }
+    return [a[0][0], a[1][1], a[2][2]].sort((x, y) => x - y);
+  }
+  function ballProfile(weightLb, meanRg2) {
+    const t = 0.5, rf = R - t;
+    const cover = 1.15 * G_TO_LB_PER_IN3;
+    const vol = (a, b) => 4 * Math.PI / 3 * (b ** 3 - a ** 3);
+    const k2 = 8 * Math.PI / 15;
+    let best = null;
+    for (let rc = 1.2; rc <= 2.8; rc += 0.05) {
+      const Vc = vol(0, rc), Vf = vol(rc, rf), Vcov = vol(rf, R);
+      const m1 = weightLb - cover * Vcov;
+      const i1 = weightLb * meanRg2 / k2 - cover * (R ** 5 - rf ** 5);
+      const A = Vf, B = Vc, C = rf ** 5 - rc ** 5, D = rc ** 5;
+      const det = A * D - B * C;
+      if (Math.abs(det) < 1e-9) continue;
+      const a = (m1 * D - B * i1) / det, b = (A * i1 - C * m1) / det;
+      const aG = a / G_TO_LB_PER_IN3, bG = b / G_TO_LB_PER_IN3;
+      if (aG > 0.35 && aG < 1.1 && bG > 2 && bG < 7) {
+        const score = Math.abs(rc - 1.8);
+        if (!best || score < Math.abs(best.coreRadius - 1.8)) best = { coreRadius: rc, cover, filler: a, core: b, coverThickness: t };
+      }
+    }
+    return best ?? { coreRadius: 2, cover, filler: cover * 0.8, core: cover * 2, coverThickness: t };
+  }
+  var densityAt = (p, r) => r > R - p.coverThickness ? p.cover : r > p.coreRadius ? p.filler : p.core;
+  function halfDifference(holes, n) {
+    let diff = 0;
+    for (const h of holes)
+      for (const s of h.slices) {
+        const along = s.r * dot(h.dir, n);
+        const w = Math.max(1e-6, h.radius);
+        const f = along > w ? 1 : along < -w ? 0 : (along + w) / (2 * w);
+        diff += -s.massLb * (f - (1 - f));
+      }
+    return diff * OZ_PER_LB;
+  }
+  var word = (v, plus, minus) => Math.abs(v) < 0.05 ? "even" : `${Math.abs(v).toFixed(1)} oz ${v > 0 ? plus : minus}`;
+  function drillBall(ball, solved2, grip, opt = {}) {
+    const notes = [];
+    const intDiff = ball.intDiff ?? 0;
+    const M = ball.weightLb;
+    const p = solved2.points;
+    const e1 = unit(p.pin), e3 = unit(p.psa), e2 = unit(p.inter);
+    const r1 = ball.rg, r2 = ball.rg + intDiff, r3 = ball.rg + ball.totalDiff;
+    const profile = ballProfile(M, (r1 * r1 + r2 * r2 + r3 * r3) / 3);
+    let I = zero();
+    I = addM(I, outer(e1, e1), M * r1 * r1);
+    I = addM(I, outer(e2, e2), M * r2 * r2);
+    I = addM(I, outer(e3, e3), M * r3 * r3);
+    const fingerDepth = opt.fingerDepth ?? 2.25, thumbDepth = opt.thumbDepth ?? 2.75;
+    const holes = [
+      { name: "finger", dir: unit(p.middle), radius: grip.fingerDia / 2, depth: fingerDepth },
+      { name: "finger", dir: unit(p.ring), radius: grip.fingerDia / 2, depth: fingerDepth }
+    ];
+    if (p.thumb && !grip.noThumb) holes.push({ name: "thumb", dir: unit(p.thumb), radius: grip.thumbDia / 2, depth: thumbDepth });
+    if (fingerDepth > 2.75) notes.push('Finger holes deeper than 2 3/4" raise the RG a lot and make the ball later with less motion (Storm).');
+    let removed = 0, thumbOz = 0, fingerOz = 0;
+    let moment = [0, 0, 0];
+    const held = [];
+    const N2 = 40;
+    for (const h of holes) {
+      const slices = [];
+      for (let k2 = 0; k2 < N2; k2++) {
+        const s = (k2 + 0.5) / N2 * h.depth;
+        const r = R - s;
+        const dm = densityAt(profile, r) * Math.PI * h.radius * h.radius * (h.depth / N2);
+        slices.push({ r, massLb: dm });
+        removed += dm;
+        if (h.name === "thumb") thumbOz += dm * OZ_PER_LB;
+        else fingerOz += dm * OZ_PER_LB;
+        const c = scale(h.dir, r);
+        moment = add(moment, scale(c, dm));
+        I = addM(I, addM(ident(dot(c, c)), outer(c, c), -1), -dm);
+        const dd2 = outer(h.dir, h.dir);
+        const own = dd2.map((row, i) => row.map((v, j) => h.radius * h.radius / 2 * v + h.radius * h.radius / 4 * ((i === j ? 1 : 0) - v)));
+        I = addM(I, own, -dm);
+      }
+      held.push({ dir: h.dir, radius: h.radius, slices });
+    }
+    const Mn = M - removed;
+    const d = scale(moment, -1 / Mn);
+    const dd = dot(d, d);
+    I = addM(I, addM(ident(dd), outer(d, d), -1), -Mn);
+    const ev = eigenvalues(I).map((l) => Math.sqrt(Math.max(0, l) / Mn));
+    const drilled = { rg: ev[0], intDiff: ev[1] - ev[0], totalDiff: ev[2] - ev[0] };
+    const top = halfDifference(held, [0, 0, -1]);
+    const finger = halfDifference(held, [0, 1, 0]);
+    const side = halfDifference(held, [1, 0, 0]);
+    return {
+      undrilled: { rg: ball.rg, intDiff, totalDiff: ball.totalDiff },
+      drilled,
+      removedOz: { thumb: thumbOz, fingers: fingerOz, total: thumbOz + fingerOz },
+      weightOz: Mn * OZ_PER_LB,
+      comShift: Math.sqrt(dd),
+      staticOz: { top, finger, side },
+      staticWords: { top: word(top, "on top (away from the grip)", "on the bottom (grip side)"), finger: word(finger, "on the finger side", "on the thumb side"), side: word(side, "to the PAP side", "away from the PAP side") },
+      notes
+    };
+  }
+  function checkStaticWeight(w, weightLb = 15, hasBalanceHole = false) {
+    const problems = [];
+    const notes = [];
+    const sft = weightLb > 10 && !hasBalanceHole ? 3 : 1;
+    const lim = { topBottom: 3, sideFingerThumb: sft };
+    const chk = (label2, v, max) => {
+      if (v !== void 0 && Math.abs(v) > max + 1e-9) problems.push(`${label2} weight ${Math.abs(v).toFixed(2)} oz is over the ${max} oz limit.`);
+    };
+    chk("Top", w.top, lim.topBottom);
+    chk("Bottom", w.bottom, lim.topBottom);
+    chk("Finger", w.finger, sft);
+    chk("Thumb", w.thumb, sft);
+    chk("Side", w.side, sft);
+    if (hasBalanceHole) notes.push("Balance holes are no longer allowed in USBC competition (since Aug 1, 2020): plug it, or the ball is illegal there.");
+    if (weightLb <= 10) notes.push("Balls of 10 lb or less keep the 1 oz side, finger and thumb limits.");
+    if (w.finger !== void 0 && w.thumb !== void 0 && w.finger > 0 && w.thumb > 0) notes.push("Finger and thumb weight are opposite sides of one measurement: a ball can't be heavy on both. Check which you read off the scale.");
+    return { ok: problems.length === 0, limits: lim, problems, notes };
+  }
+
+  // core/src/layoutpro.ts
+  var fr = (v) => {
+    const w = Math.floor(v + 1e-9);
+    const e = Math.round((v - w) * 8);
+    if (e === 0) return `${w}"`;
+    if (e === 8) return `${w + 1}"`;
+    const g = e % 2 === 0 ? e % 4 === 0 ? [e / 4, 2] : [e / 2, 4] : [e, 8];
+    return `${w ? w + " " : ""}${g[0]}/${g[1]}"`;
+  };
+  function checkLayout(input, solved2, opt = {}) {
+    const out = [];
+    for (const p2 of solved2.problems) out.push({ level: "error", text: p2 });
+    const eq = solved2.eq;
+    const sum = solved2.angleSum;
+    if (input.system === "dual") {
+      if (input.drilling < 10 || input.drilling > 90) out.push({ level: "error", text: `A drilling angle runs 10 to 90 degrees; ${input.drilling} is outside it.` });
+      if (input.valAngle < 20 || input.valAngle > 70) out.push({ level: "warn", text: `The VAL angle is only effective from 20 to about 70 degrees (Pinel); ${input.valAngle} is outside it.` });
+      if (sum < 30 || sum > 160) out.push({ level: "warn", text: `The angle sum ${Math.round(sum)} is outside the 30 to 160 range the system is built for.` });
+      if (opt.symmetric && input.pinToPap < 1.5) out.push({ level: "warn", text: "Pinel: Dual Angle is accurate on a symmetric core only with the pin out at least 1 1/2 inches." });
+    }
+    if (input.system === "2ls" && solved2.ok && input.pinToPap + input.pinToGrip < solved2.papToGrip - 1e-6) out.push({ level: "error", text: "Pin to PAP plus pin to the center of the grip must reach at least the PAP to grip-center distance (the lightning-arc rule)." });
+    if (!solved2.ok) return out;
+    const ptp = eq.dual.pinToPap;
+    if (ptp > 6 + 1e-6) out.push({ level: "warn", text: `Pin to PAP ${fr(ptp)} is past 6": rarely used, and sources warn of unstable reaction near the ends (BowlTecX).` });
+    else if (ptp < 1) out.push({ level: "warn", text: `Pin to PAP ${fr(ptp)} is under 1": rarely used, and an independent source (BowlTecX) warns of inverted flare near the ends.` });
+    else if (ptp >= 3 && ptp <= 4 && input.system === "pinbuffer") out.push({ level: "info", text: 'Storm calls 3 to 4" pin to PAP very early and possibly unstable on high revs or high-differential cores.' });
+    if (opt.axisTilt !== void 0 && opt.axisTilt <= 6 && input.system === "pinbuffer" && eq.pinbuffer.pinBuffer < eq.pinbuffer.pinToPap - 1.5) out.push({ level: "warn", text: "At 6 degrees of axis tilt or less, a pin long relative to the buffer can track over the finger holes (Storm's layout-adapter note)." });
+    const p = solved2.points;
+    const holes = [["the thumb hole", p.thumb], ["the middle finger hole", p.middle], ["the ring finger hole", p.ring]];
+    for (const [name, h] of holes) {
+      if (!h) continue;
+      const d = surfDist(p.pin, h);
+      if (d < 1) out.push({ level: "error", text: `The pin lands ${fr(d)} from ${name}. Storm voids the warranty within 1 inch of any hole: move the grip or drill the pin out completely.` });
+    }
+    if (sum >= 30 && sum <= 160 && !out.some((f) => f.level === "error")) out.push({ level: "info", text: `Angle sum ${Math.round(sum)}: ${sum < 70 ? "a fast skid-to-hook transition" : sum < 110 ? "a medium transition" : "a slow, late transition"}.` });
+    return out;
+  }
+  var TRACK_TABLE = [
+    { label: "High track", tiltRange: "axis tilt under 12 degrees", sharper: "65 x 3 3/8 x 25", midlane: "50 x 4 x 35", control: "85 x 4 1/2 x 45" },
+    { label: "Medium track", tiltRange: "axis tilt 12 to 18 degrees", sharper: "55 x 3 3/4 x 25", midlane: "35 x 4 1/4 x 30", control: "65 x 5 x 40" },
+    { label: "Low track", tiltRange: "axis tilt over 18 degrees", sharper: "40 x 4 1/4 x 25", midlane: "15 x 4 3/4 x 30", control: "30 x 5 1/4 x 65" }
+  ];
+  var STORM_LADDER = [
+    { layout: "2 x 6 x 1", note: "control, early and smooth" },
+    { layout: "6 x 5 x 3", note: "weak, late and smooth" },
+    { layout: "5 x 5 x 4", note: "control benchmark" },
+    { layout: "4 1/2 x 3 x 2", note: "strong benchmark, early arc" },
+    { layout: "5 x 4 x 2", note: "universal benchmark" },
+    { layout: "4 x 4 x 1", note: "strong control" },
+    { layout: "3 x 4 1/2 x 2", note: "strong, early" }
+  ];
+  var LS2_LADDER = ["5 1/2 x 5 x 2", "2 x 6 x 5", "5 x 4 x 3 1/2 (benchmark)", "4 1/2 x 3 x 4 1/2", "4 x 4 x 5", "3 1/2 x 4 x 6 1/2"];
+  function trackRow(tilt) {
+    return TRACK_TABLE[tilt === void 0 || tilt >= 12 && tilt <= 18 ? 1 : tilt < 12 ? 0 : 2];
+  }
+  var round8 = (v) => Math.round(v * 8) / 8;
+  function adviseLayouts(b, pattern, opt = {}) {
+    const d = suggestDualAngle(b, pattern, opt.totalDiff);
+    const why = [...d.why];
+    const pap = opt.pap ?? { over: 4.5, up: 1 };
+    const s = solveLayout({ system: "dual", drilling: d.drilling, pinToPap: d.pinToPap, valAngle: d.valAngle }, pap, opt.hand ?? b.hand, opt.grip ?? DEFAULT_GRIP);
+    const dom = bowlerDominance(b.revRpm, b.launchSpeed);
+    const row = trackRow(b.axisTilt);
+    if (b.axisTilt !== void 0) why.push(`${row.label} (${row.tiltRange}): Pinel's table for it runs ${row.sharper}, ${row.midlane} and ${row.control} (drilling x pin to PAP x VAL angle).`);
+    if (b.revRpm !== void 0) {
+      why.push(b.revRpm < 300 ? 'Lower revs: a pin distance of 3 1/2 to 4" is the usual range.' : b.revRpm < 400 ? 'Medium revs on a house shot: 4 to 4 1/2".' : 'Higher revs: 4 1/2 to 6", and two-handers often live there.');
+    }
+    if (b.style === "two-handed" || b.style === "one-hand-no-thumb") why.push("Two-handed and thumbless bowlers use 2LS, which measures the PAP from the bridge between the finger holes rather than from a grip center.");
+    return {
+      dual: { drilling: d.drilling, pinToPap: d.pinToPap, valAngle: d.valAngle },
+      pinBuffer: { pinToPap: round8(s.eq.pinbuffer.pinToPap), psaToPap: round8(s.eq.pinbuffer.psaToPap), pinBuffer: round8(s.eq.pinbuffer.pinBuffer) },
+      ls2: { pinToPap: round8(s.eq.ls2.pinToPap), psaToPap: round8(s.eq.ls2.psaToPap), pinToGrip: round8(s.eq.ls2.pinToGrip) },
+      sumRange: d.sumRange,
+      why,
+      dominance: dom,
+      trackRow: row
+    };
+  }
+  var SYMPTOMS = [
+    {
+      id: "early",
+      label: "Hooks too early, nothing left at the backend",
+      reading: "The ball burns its energy before the breakpoint: too much friction too soon for the oil it is on.",
+      fixes: [
+        { lever: "surface", text: "Raise the grit or add polish: the quickest fix, and the one that costs nothing permanent (Bowling.com, Storm)." },
+        { lever: "layout", text: "On the next drilling, a larger angle sum (a longer VAL angle, a bigger drilling angle) and a longer pin buffer delay the transition." },
+        { lever: "ball", text: "Move down to a weaker coverstock or a lower-differential core for this condition." },
+        { lever: "lane", text: "If the lanes are carrying down or burning up, move in and play straighter before changing equipment." }
+      ]
+    },
+    {
+      id: "late",
+      label: "Skids too long, reads too late",
+      reading: "The ball is still skidding at the breakpoint, so it either misses the pocket or snaps at the pins.",
+      fixes: [
+        { lever: "surface", text: "Lower the grit (matte it) to read sooner; slick sport patterns often want 500, 1000 or 1500 matte (Bowling.com)." },
+        { lever: "layout", text: "A smaller angle sum (VAL angle toward 20 to 35) and a shorter pin buffer move the transition earlier; a pin closer to the PAP gives a smoother, earlier arc." },
+        { lever: "ball", text: "A stronger coverstock or a ball with more mid-lane read." },
+        { lever: "technique", text: "More revs or a lower launch speed turn more of the ball's energy into hook." }
+      ]
+    },
+    {
+      id: "weak-back",
+      label: "Good motion in the middle, weak backend",
+      reading: "The ball reads fine and then rolls out: not enough energy left past the breakpoint.",
+      fixes: [
+        { lever: "surface", text: "More polish or a higher grit: 1500 plus polish is the standard backend fix (Bowling.com)." },
+        { lever: "layout", text: `A longer pin-to-PAP (past 4 1/2 up to 6") saves energy for later; Pinel's larger angle sums do the same.` },
+        { lever: "ball", text: "A ball with a higher differential or a cleaner coverstock." }
+      ]
+    },
+    {
+      id: "angular",
+      label: "Too sharp and angular at the breakpoint",
+      reading: "The ball skids then jumps. Typical of a strong layout on a clean skid, or very long pin-to-PAP.",
+      fixes: [
+        { lever: "layout", text: "A shorter pin buffer and a smaller VAL angle make a smoother arc; a pin-down placement is also smoother (BowlersMart). BowlTecX disputes the pin up/down effect below about 3 inches apart." },
+        { lever: "surface", text: "Lower the grit a step to start the ball earlier so it does not have to turn so hard." },
+        { lever: "ball", text: "A pearl or hybrid ball is usually smoother than a solid." }
+      ]
+    },
+    {
+      id: "flat",
+      label: "Ball goes flat or hooks too little everywhere",
+      reading: "Not enough overall motion for the lane.",
+      fixes: [
+        { lever: "surface", text: "Go lower in grit; on heavy oil 80 to 360 grit, medium to medium-heavy 500 to 1000 (Storm)." },
+        { lever: "layout", text: 'A stronger layout: a shorter pin to PAP (about 3 to 4") and a smaller angle sum.' },
+        { lever: "ball", text: "A stronger ball (more cover, more differential)." },
+        { lever: "technique", text: "A lighter ball you can rev up, or an adjustment to hand position, can add more rotation." }
+      ]
+    },
+    {
+      id: "overunder",
+      label: "Big swings: sometimes it hooks, sometimes it doesn't",
+      reading: "The ball is on the edge of its window: the same layout reads very differently with small changes.",
+      fixes: [
+        { lever: "technique", text: "Check consistency first: speed and axis rotation changes shift the reaction a lot." },
+        { lever: "layout", text: 'A medium angle sum with a pin buffer around 2 to 3" is the least touchy (Storm benchmarks 5 x 4 x 2 as universal).' },
+        { lever: "surface", text: "A balanced surface (1000 to 2000) reduces how much the ball cares about small oil changes." }
+      ]
+    },
+    {
+      id: "carry",
+      label: "Good hits, poor carry",
+      reading: "The ball arrives in the pocket but leaves washouts or splits.",
+      fixes: [
+        { lever: "layout", text: "Entry angle matters: a stronger backend (longer pin buffer, a later breakpoint) often carries better than a ball that rolls early." },
+        { lever: "ball", text: "A carrying ball for the first part of a pattern, a rolling ball later, is the usual pro approach." },
+        { lever: "technique", text: "Check the entry angle LaneIQ measured: it should reach about 4 to 6 degrees at the pins." }
+      ]
+    }
+  ];
+  var SURFACE_TABLE = [
+    { oil: "Extremely oily", grits: "80 to 360", why: "Early hook, strong midlane read, smooth backend (Storm)." },
+    { oil: "Medium to medium-heavy", grits: "500 to 1000", why: "Balanced; the default family for most house shots (Storm)." },
+    { oil: "Medium to dry", grits: "1500 to 3000", why: "Longer skid, more energy for the backend." },
+    { oil: "Dry or burnt", grits: "4000 to polish", why: "Slick: it skids through the dry area and saves energy (Storm, Bowling.com). Sources differ on where 3000 and 4000 sit." }
+  ];
+  function surfaceFor(pattern, dom) {
+    let level = 1;
+    if (pattern) {
+      const vol = pattern.volumeMl ?? 24;
+      if (vol >= 28 || pattern.lengthFt >= 44) level = 0;
+      else if (vol >= 22 && pattern.lengthFt >= 39) level = 1;
+      else if (vol >= 18) level = 2;
+      else level = 3;
+    }
+    const lean = dom === "rev" ? "Rev-dominant: lean toward the higher-grit end of the range, since you create plenty of friction." : dom === "speed" ? "Speed-dominant: lean toward the lower-grit end, to help the ball turn earlier." : "Balanced: the middle of the range is a fine start.";
+    return { row: SURFACE_TABLE[level], lean };
+  }
+  var FIT_SYMPTOMS = [
+    { id: "squeeze", label: "I squeeze the ball", causes: ["Thumb hole too loose or span too long, so you grip to feel secure."], fixes: ["Re-fit the span and thumb size; tape can cover a small change; plug and redrill if it persists."] },
+    { id: "drag", label: "Thumb drags or hangs on release", causes: ["Thumb hole too tight, or too little reverse pitch, or the span is too short."], fixes: ["Add reverse thumb pitch or open the hole slightly; a half-thumb (cutaway) layout helps bowlers who cannot clear the thumb."] },
+    { id: "pinch", label: "Pinching or pain in the thumb", causes: ["A round hole for an oval thumb."], fixes: ["An ovalled thumb hole, then re-check the span."] },
+    { id: "callus", label: "Calluses, blisters or torn skin", causes: ["A bad fit in span, pitch or hole size. 'Should not happen with a proper fit' (National Bowling Academy)."], fixes: ["Re-fit; calluses at the index finger may only need tape or a glove (USBC)."] },
+    { id: "swell", label: "Fits great in game one, tight later", causes: ["Hands swell during a long session."], fixes: ["Keep tape or inserts to adjust; ask for a fit that works through the middle of the session."] },
+    { id: "wrist", label: "Sore wrist or hand after bowling", causes: ["A ball too heavy, or a span that forces the wrist out of neutral."], fixes: ["Try a pound lighter, then re-check the span; fit means no stress on the hand, wrist or arm."] }
+  ];
+  function suggestWeight(bodyLb) {
+    const lb = Math.max(10, Math.min(16, Math.round(bodyLb / 10)));
+    return { lb, test: `Test ${lb - 1} and ${Math.min(16, lb + 1)} lb too: pick the heaviest ball you can throw at normal speed with a neutral wrist and good balance.` };
+  }
+  var GRIP_TYPES = [
+    { name: "Conventional", text: 'Fingers in to about 1/4" below the second knuckle: the most secure, the most thumb-and-fingers release, the least revs.' },
+    { name: "Semi-fingertip", text: "Between the two: a common compromise." },
+    { name: "Fingertip", text: "Finger holes stop at the first knuckle, so you can lift more and rev more, with less feeling of security." }
+  ];
+  var THEORY = [
+    { title: "Pin, PSA, PAP and VAL", kind: "primary", source: "Pinel, Dual Angle Layout Technique", body: `The pin is where the core's low-RG axis comes out. The PSA (high-RG axis) is always 90 degrees, 6 3/4", from the pin on a 27" ball. The PAP is the point that does not rotate at release; the VAL is the vertical line through it parallel to the grip midline. Every layout system places those same few things.` },
+    { title: "Dual Angle", kind: "primary", source: "Pinel / MoRich", body: "Drilling angle x pin to PAP x VAL angle. The drilling angle (10 to 90) sets how soon the ball rolls; the pin-to-PAP distance sets how much flare potential is kept; the VAL angle (20 to 70) sets how fast the ball changes from skid to hook. Drilling angle plus VAL angle is the angle sum: 30 is the fastest transition, 160 the slowest." },
+    { title: "Pin Buffer / VLS", kind: "vendor", source: "Storm", body: 'Pin to PAP x PSA to PAP x pin buffer. The pin buffer is the distance from the pin to the VAL: 1 to 2" is a faster transition, 4 to 5" slower. Rules: pin to PAP plus PSA to PAP is at least 6 3/4", and the buffer cannot exceed the pin-to-PAP.' },
+    { title: "2LS for two-handed bowlers", kind: "vendor", source: "Storm", body: 'The PAP is measured from the bridge between the finger holes. Pin to PAP x PSA to PAP x pin to center of grip. Longer than 3 3/8" pin to PAP is later and more angular; the pin-to-grip distance sets the post-drill total differential. Do not drill the fingers deeper than 2 3/4".' },
+    { title: "PAL", kind: "vendor", source: "Bowling Science, via BowlersMart", body: "Pin to PAP x PSA to PAP x pin above the line, with the line running from the PAP through the ring finger. LaneIQ cites the description only; the definition rests on one vendor." },
+    { title: "Where sources disagree: pin up vs pin down", kind: "disagreement", source: "BowlersMart vs BowlTecX", body: "BowlersMart: pin up is later and sharper, pin down earlier and smoother. BowlTecX argues the difference is negligible unless the pins are about 3 inches apart. LaneIQ shows the vendor view and flags the disagreement." },
+    { title: "Where sources disagree: how much layout matters", kind: "disagreement", source: "Bowling This Month, BowlTecX", body: "Both say coverstock and surface account for roughly 70 to 75 percent of reaction. Neither shows a measurement. So change the surface first, and use layout to fine-tune." },
+    { title: "Mass bias", kind: "primary", source: "Bowling This Month, Storm", body: "On an asymmetric ball, the mass bias farther from the thumb gives a stronger, earlier hooking motion; near the thumb or in the track a weaker one. Nobody publishes numbers, so LaneIQ shows only the direction." },
+    { title: "Static weight (USBC)", kind: "rule", source: "USBC Equipment Specifications", body: "Balls over 10 lb with no balance hole: 3 oz side, finger or thumb weight and 3 oz top or bottom. Balance holes are banned from Aug 1, 2020. Up to five grip holes and all must be used on every delivery. Check the current Equipment Specifications Manual before a tournament." },
+    { title: "Weight selection", kind: "primary", source: "AMF, Spin Bowling Tips", body: "A first guess is 10% of body weight, capped at 16 lb. Choose the heaviest ball you can throw at normal speed with a neutral wrist." },
+    { title: "Redrilling", kind: "vendor", source: "BowlersMart", body: "Most balls can be redrilled two or three times before the plug affects the dynamics. A study of five redrills exists behind a paywall; LaneIQ could not read it." }
+  ];
+
+  // camera/proshoptools.ts
+  var inch2 = (v) => fractionInches(v);
+  var num2 = (el) => el && el.value.trim() !== "" ? Number(el.value) : void 0;
+  function gripNow() {
+    const f = S.profile?.fit;
+    const st2 = bowlerProfile().style;
+    return { ...DEFAULT_GRIP, ...f?.span ? { span: f.span } : {}, ...f?.thumbDia ? { thumbDia: f.thumbDia } : {}, ...f?.fingerDia ? { fingerDia: f.fingerDia } : {}, ...f?.bridge ? { bridge: f.bridge } : {}, noThumb: st2 === "two-handed" || st2 === "one-hand-no-thumb" };
+  }
+  function proshopToolsHtml(pattern) {
+    const bp = bowlerProfile();
+    const grip = gripNow();
+    const pap = parsePap(S.profile?.spin?.pap ?? "") ?? void 0;
+    const a = adviseLayouts(bp, pattern, { pap, grip });
+    const dom = bowlerDominance(bp.revRpm, bp.launchSpeed);
+    const surf = surfaceFor(pattern, dom);
+    const twoHand = bp.style === "two-handed" || bp.style === "one-hand-no-thumb";
+    const known = [bp.revRpm !== void 0 ? `${Math.round(bp.revRpm)} RPM` : null, bp.launchSpeed !== void 0 ? `${bp.launchSpeed.toFixed(1)} mph` : null, bp.axisTilt !== void 0 ? `${Math.round(bp.axisTilt)}\xB0 tilt` : null].filter(Boolean).join(" \xB7 ");
+    return `
+    <h3>Pro shop toolkit</h3>
+    <div class="note">Built from published layout theory (Pinel's Dual Angle, Storm's Pin Buffer and 2LS) and the USBC rules. Every number is a starting point for a driller, and where sources disagree the text says so.</div>
+    <details class="card" open><summary class="k">Layout advisor${known ? " \xB7 " + esc(known) : ""}</summary>
+      <table>
+        <tr><td>Dual Angle (drilling \xD7 pin to PAP \xD7 VAL)</td><td class="n">${a.dual.drilling}\xB0 \xD7 ${inch2(a.dual.pinToPap)} \xD7 ${a.dual.valAngle}\xB0</td></tr>
+        <tr><td>Pin Buffer (pin to PAP \xD7 PSA to PAP \xD7 buffer)</td><td class="n">${inch2(a.pinBuffer.pinToPap)} \xD7 ${inch2(a.pinBuffer.psaToPap)} \xD7 ${inch2(a.pinBuffer.pinBuffer)}</td></tr>
+        <tr><td>2LS (pin to PAP \xD7 PSA to PAP \xD7 pin to grip)${twoHand ? "" : " <span class='note'>for two-handed</span>"}</td><td class="n">${inch2(a.ls2.pinToPap)} \xD7 ${inch2(a.ls2.psaToPap)} \xD7 ${inch2(a.ls2.pinToGrip)}</td></tr>
+        <tr><td>Angle sum range for you</td><td class="n">${a.sumRange[0]} to ${a.sumRange[1]}</td></tr></table>
+      <ul>${a.why.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>
+      <div class="note">${pap ? "Converted at your saved PAP." : "No PAP saved, so the Pin Buffer and 2LS numbers use a typical 4 1/2 over, 1 up. Enter yours in the Layout Lab."} The three notations are the same layout; the pin goes at the same spot on the ball.</div>
+      <div class="k" style="margin-top:8px">Pinel's layouts by track (drilling \xD7 pin to PAP \xD7 VAL angle)</div>
+      <table>${TRACK_TABLE.map((r) => `<tr${r === a.trackRow && bp.axisTilt !== void 0 ? ' style="font-weight:600"' : ""}><td>${esc(r.label)} <span class="note">${esc(r.tiltRange)}</span></td><td class="n">${esc(r.sharper)} \xB7 ${esc(r.midlane)} \xB7 ${esc(r.control)}</td></tr>`).join("")}</table>
+      <div class="note">Columns: sharper breakpoint, midlane, control (Pinel 2010 table, via BowlersMart).</div>
+      <div class="k" style="margin-top:8px">Storm benchmark ladders</div>
+      <div class="note">Pin Buffer: ${STORM_LADDER.map((l) => `${esc(l.layout)} (${esc(l.note)})`).join("; ")}.</div>
+      <div class="note">2LS, weakest to strongest: ${LS2_LADDER.map(esc).join("; ")}.</div></details>
+
+    <details class="card"><summary class="k">Layout checker and drilled-ball estimate</summary>
+      <div class="note">Enter a layout in any system. LaneIQ checks it against the system's rules and the hole-clearance rule, converts it, and estimates what drilling does to the ball.</div>
+      <div class="chips"><label>System <select id="pt-sys"><option value="dual">Dual Angle</option><option value="pinbuffer">Pin Buffer</option><option value="2ls">2LS</option></select></label></div>
+      <div class="chips"><label id="pt-l1">Drilling angle \xB0 <input id="pt-a" inputmode="decimal" value="${a.dual.drilling}" style="width:70px"></label>
+        <label id="pt-l2">Pin to PAP <input id="pt-b" value="${inch2(a.dual.pinToPap)}" style="width:70px"></label>
+        <label id="pt-l3">VAL angle \xB0 <input id="pt-c" inputmode="decimal" value="${a.dual.valAngle}" style="width:70px"></label></div>
+      <div class="chips"><label>PAP over <input id="pt-over" value="${pap ? inch2(pap.over) : "4 1/2"}" style="width:70px"></label><label>up (negative = down) <input id="pt-up" value="${pap ? inch2(pap.up) : "1"}" style="width:70px"></label></div>
+      <div class="chips"><label>Ball lb <input id="pt-w" inputmode="decimal" placeholder="15" style="width:60px"></label><label>RG <input id="pt-rg" inputmode="decimal" placeholder="2.50" style="width:60px"></label><label>Total diff <input id="pt-td" inputmode="decimal" placeholder=".050" style="width:60px"></label><label>Int diff <input id="pt-id" inputmode="decimal" placeholder=".015 (0 = symmetric)" style="width:90px"></label></div>
+      <div class="chips"><button class="btn" id="pt-go">Check this layout</button></div>
+      <div id="pt-out"></div>
+      <div class="k" style="margin-top:10px">Static weight check</div>
+      <div class="chips"><label>Top oz <input id="pt-st" inputmode="decimal" style="width:55px"></label><label>Finger oz <input id="pt-sf" inputmode="decimal" style="width:55px"></label><label>Side oz <input id="pt-ss" inputmode="decimal" style="width:55px"></label><label><input type="checkbox" id="pt-bal"> has a balance hole</label><button class="btn ghost" id="pt-sgo">Check</button></div>
+      <div id="pt-sout"></div></details>
+
+    <details class="card"><summary class="k">Reaction doctor</summary>
+      <div class="chips"><label>What's the ball doing? <select id="pt-sym">${SYMPTOMS.map((s) => `<option value="${s.id}">${esc(s.label)}</option>`).join("")}</select></label></div>
+      <div id="pt-sym-out"></div></details>
+
+    <details class="card"><summary class="k">Surface guide</summary>
+      <table>${SURFACE_TABLE.map((r) => `<tr${r === surf.row ? ' style="font-weight:600"' : ""}><td>${esc(r.oil)}</td><td class="n">${esc(r.grits)}</td></tr>`).join("")}</table>
+      <div class="note">${pattern ? `For ${esc(pattern.name)}: ${esc(surf.row.oil)}, ${esc(surf.row.grits)} grit. ` : ""}${esc(surf.lean)}</div>
+      <div class="note">Surface is the quick, reversible fix. Lower grit is more hook and earlier; higher grit or polish is longer skid and more backend. Coverstock and surface are said to account for 70 to 75 percent of reaction (no measurement cited), so change them before the layout.</div></details>
+
+    <details class="card"><summary class="k">Fit, grip and ball weight</summary>
+      <div class="chips"><label>Body weight lb <input id="pt-body" inputmode="numeric" style="width:70px"></label><button class="btn ghost" id="pt-wgo">Suggest ball weight</button></div>
+      <div id="pt-wout" class="note"></div>
+      <ul>${GRIP_TYPES.map((g) => `<li><b>${esc(g.name)}.</b> ${esc(g.text)}</li>`).join("")}</ul>
+      <div class="chips"><label>Fit problem <select id="pt-fit">${FIT_SYMPTOMS.map((s) => `<option value="${s.id}">${esc(s.label)}</option>`).join("")}</select></label></div>
+      <div id="pt-fit-out"></div>
+      <div class="note">A good fit means no squeeze and no stress on the hand, wrist or arm. Hands swell during a session, so fit through the middle, not game one.</div></details>
+
+    <details class="card"><summary class="k">Theory library (sources named)</summary>
+      ${THEORY.map((t) => `<div style="padding:6px 0;border-top:1px solid var(--line)"><b>${esc(t.title)}</b> <span class="badge ${t.kind === "disagreement" ? "moderate" : "good"}">${t.kind}</span><div class="note">${esc(t.source)}</div><div class="u">${esc(t.body)}</div></div>`).join("")}</details>`;
+  }
+  function wireProshopTools(el) {
+    const q = (id) => el.querySelector("#" + id);
+    const sys = q("pt-sys");
+    if (!sys) return;
+    const bp = bowlerProfile();
+    const labels = { dual: ["Drilling angle \xB0", "Pin to PAP", "VAL angle \xB0"], pinbuffer: ["Pin to PAP", "PSA to PAP", "Pin buffer"], "2ls": ["Pin to PAP", "PSA to PAP", "Pin to center of grip"] };
+    const setLabels = () => {
+      const l = labels[sys.value];
+      ["pt-l1", "pt-l2", "pt-l3"].forEach((id, i) => {
+        const lab2 = q(id);
+        lab2.firstChild.textContent = l[i] + " ";
+      });
+    };
+    sys.onchange = setLabels;
+    const readIn = (id) => {
+      const v = q(id).value;
+      return parseInches(v) ?? Number(v);
+    };
+    q("pt-go").onclick = () => {
+      const out = q("pt-out");
+      const a = readIn("pt-a"), b = readIn("pt-b"), c = readIn("pt-c");
+      const over = readIn("pt-over"), up = readIn("pt-up");
+      if (![a, b, c, over, up].every(Number.isFinite)) return void (out.innerHTML = `<div class="u">Enter all three layout numbers and the PAP. Fractions like 4 1/2 work.</div>`);
+      const input = sys.value === "dual" ? { system: "dual", drilling: a, pinToPap: b, valAngle: c } : sys.value === "pinbuffer" ? { system: "pinbuffer", pinToPap: a, psaToPap: b, pinBuffer: c } : { system: "2ls", pinToPap: a, psaToPap: b, pinToGrip: c };
+      const grip = gripNow();
+      const solved2 = solveLayout(input, { over, up }, bp.hand, grip);
+      const ballW = num2(q("pt-w")), rg = num2(q("pt-rg")), td = num2(q("pt-td")), idf = num2(q("pt-id"));
+      const f = checkLayout(input, solved2, { axisTilt: bp.axisTilt, symmetric: idf === 0, grip });
+      const e = solved2.eq;
+      let drilled = "";
+      if (ballW && rg && td !== void 0) {
+        const r = drillBall({ weightLb: ballW, rg, totalDiff: td, intDiff: idf }, solved2, grip);
+        drilled = `<div class="k" style="margin-top:8px">Estimated drilled ball</div>
+        <table><tr><td>RG</td><td class="n">${r.undrilled.rg.toFixed(3)} \u2192 ${r.drilled.rg.toFixed(3)}</td></tr>
+        <tr><td>Intermediate diff</td><td class="n">${r.undrilled.intDiff.toFixed(3)} \u2192 ${r.drilled.intDiff.toFixed(3)}</td></tr>
+        <tr><td>Total diff</td><td class="n">${r.undrilled.totalDiff.toFixed(3)} \u2192 ${r.drilled.totalDiff.toFixed(3)}</td></tr>
+        <tr><td>Weight removed</td><td class="n">${r.removedOz.total.toFixed(1)} oz (thumb ${r.removedOz.thumb.toFixed(1)}, fingers ${r.removedOz.fingers.toFixed(1)})</td></tr>
+        <tr><td>Static (from drilling alone)</td><td class="n">${esc(r.staticWords.top)} ${Math.abs(r.staticOz.top).toFixed(1)} oz \xB7 ${esc(r.staticWords.finger)} ${Math.abs(r.staticOz.finger).toFixed(1)} oz \xB7 ${esc(r.staticWords.side)} ${Math.abs(r.staticOz.side).toFixed(1)} oz</td></tr></table>
+        <div class="note">${idf === 0 ? "On a symmetric core this model gets the RG and differential trends wrong, so trust the weight figures only. " : "Checked against Pinel's measured asymmetric ball. "}A ball's own built-in imbalance is unknown without the scale, so this never replaces the scale.</div>`;
+      }
+      out.innerHTML = `
+      <ul>${f.map((x) => `<li class="${x.level === "error" ? "danger" : ""}"><b>${x.level === "error" ? "Problem" : x.level === "warn" ? "Check" : "Note"}.</b> ${esc(x.text)}</li>`).join("")}</ul>
+      <table><tr><td>Dual Angle</td><td class="n">${Math.round(e.dual.drilling)}\xB0 \xD7 ${inch2(e.dual.pinToPap)} \xD7 ${Math.round(e.dual.valAngle)}\xB0</td></tr>
+      <tr><td>Pin Buffer</td><td class="n">${inch2(e.pinbuffer.pinToPap)} \xD7 ${inch2(e.pinbuffer.psaToPap)} \xD7 ${inch2(e.pinbuffer.pinBuffer)}</td></tr>
+      <tr><td>2LS</td><td class="n">${inch2(e.ls2.pinToPap)} \xD7 ${inch2(e.ls2.psaToPap)} \xD7 ${inch2(e.ls2.pinToGrip)}</td></tr></table>${drilled}`;
+    };
+    q("pt-sgo").onclick = () => {
+      const v = (id) => num2(q(id));
+      const bal = q("pt-bal").checked;
+      const w = checkStaticWeight({ top: v("pt-st"), finger: v("pt-sf"), side: v("pt-ss") }, num2(q("pt-w")) ?? 15, bal);
+      q("pt-sout").innerHTML = `<div class="u">${w.ok ? "Within the USBC limits." : esc(w.problems.join(" "))} Limits: ${w.limits.topBottom} oz top or bottom, ${w.limits.sideFingerThumb} oz side, finger or thumb.</div>${w.notes.map((n) => `<div class="note">${esc(n)}</div>`).join("")}`;
+    };
+    const sym = q("pt-sym");
+    const showSym = () => {
+      const s = SYMPTOMS.find((x) => x.id === sym.value);
+      q("pt-sym-out").innerHTML = `<div class="u">${esc(s.reading)}</div><ol>${s.fixes.map((f) => `<li><span class="badge good">${esc(f.lever)}</span> ${esc(f.text)}</li>`).join("")}</ol><div class="note">Order matters: surface and lane play are free and reversible; layout and equipment are permanent.</div>`;
+    };
+    sym.onchange = showSym;
+    showSym();
+    q("pt-wgo").onclick = () => {
+      const lb = Number(q("pt-body").value);
+      q("pt-wout").textContent = lb > 0 ? (() => {
+        const w = suggestWeight(lb);
+        return `About ${w.lb} lb. ${w.test}`;
+      })() : "Enter your body weight.";
+    };
+    const fit = q("pt-fit");
+    const showFit = () => {
+      const s = FIT_SYMPTOMS.find((x) => x.id === fit.value);
+      q("pt-fit-out").innerHTML = `<div class="u"><b>Likely cause.</b> ${s.causes.map(esc).join(" ")}</div><div class="u"><b>Fix.</b> ${s.fixes.map(esc).join(" ")}</div>`;
+    };
+    fit.onchange = showFit;
+    showFit();
   }
 
   // core/src/layout.ts
@@ -6448,9 +6943,9 @@ ${url}`);
     el.querySelectorAll("[data-ball]").forEach((card) => {
       const b = S.arsenal.find((x) => x.id === card.dataset.ball);
       card.querySelector("[data-act=save]")?.addEventListener("click", async () => {
-        const num2 = (f) => parseFloat(card.querySelector(`[data-f=${f}]`).value);
-        const rg = num2("rg");
-        const diff = num2("diff");
+        const num3 = (f) => parseFloat(card.querySelector(`[data-f=${f}]`).value);
+        const rg = num3("rg");
+        const diff = num3("diff");
         b.rg = Number.isFinite(rg) ? rg : void 0;
         b.diff = Number.isFinite(diff) ? diff : void 0;
         b.cover = card.querySelector("[data-f=cover]").value || void 0;
@@ -6541,7 +7036,7 @@ ${url}`);
     const pat = currentPattern();
     const lineup = buildLineup(pat, bp, ownedBalls());
     const ownedKeys = new Set(S.arsenal.map((b) => b.catalogKey).filter(Boolean));
-    const inch2 = (v) => v === void 0 ? "not entered" : fractionInches(v);
+    const inch3 = (v) => v === void 0 ? "not entered" : fractionInches(v);
     const fit = p?.fit;
     const sheets = p?.sheets ?? [];
     const realPat = pat.source.url === "typical condition used by the optimizer" ? null : pat;
@@ -6556,13 +7051,15 @@ ${url}`);
       <tr><td>PAP</td><td class="n">${esc(p?.spin?.pap ?? "not entered")}</td></tr>
       <tr><td>Rev rate \xB7 speed</td><td class="n">${bp.revRpm ? Math.round(bp.revRpm) + " RPM" : "unknown"} \xB7 ${bp.launchSpeed ? bp.launchSpeed.toFixed(1) + " mph" : "unknown"}</td></tr>
       <tr><td>Axis rotation \xB7 tilt</td><td class="n">${bp.axisRotation !== void 0 ? Math.round(bp.axisRotation) + "\xB0" : "-"} \xB7 ${bp.axisTilt !== void 0 ? Math.round(bp.axisTilt) + "\xB0" : "-"}</td></tr>
-      <tr><td>Span</td><td class="n">${inch2(fit?.span)}</td></tr><tr><td>Thumb \xB7 finger holes \xB7 bridge</td><td class="n">${inch2(fit?.thumbDia)} \xB7 ${inch2(fit?.fingerDia)} \xB7 ${inch2(fit?.bridge)}</td></tr></table>
+      <tr><td>Span</td><td class="n">${inch3(fit?.span)}</td></tr><tr><td>Thumb \xB7 finger holes \xB7 bridge</td><td class="n">${inch3(fit?.thumbDia)} \xB7 ${inch3(fit?.fingerDia)} \xB7 ${inch3(fit?.bridge)}</td></tr></table>
       <div class="note">Enter or change these in the Layout Lab (Hand and grip), and the ball-motion numbers under Me.</div></div>
     <div class="card"><div class="k">Saved layouts${p ? " for " + esc(p.name) : ""}</div>
       ${sheets.length ? sheets.map((x) => `<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${esc(x.ball.name)}</b> <span class="note">${esc(x.layoutText)} \xB7 ${esc(new Date(x.at).toLocaleDateString())}</span></div><div><button class="chip" data-open="${x.id}">Open</button><button class="chip danger" data-rm="${x.id}">Delete</button></div></div>`).join("") : `<div class="u">None yet. Save a layout from the Layout Lab and it appears here, with the bowler's profile.</div>`}</div>
+    ${proshopToolsHtml(realPat)}
     <h3>What to look for at a pro shop</h3>
     <div class="chips"><button class="chip" id="ps-print">Open as a printable sheet</button></div>
     ${playbookHtml(realPat)}`;
+    wireProshopTools(el);
     $("ps-lab").onclick = () => openLayoutLab();
     $("ps-scan").onclick = () => openBallScan();
     $("ps-report").onclick = () => openReport(pat, bp, lineup, ownedKeys);
@@ -6698,11 +7195,11 @@ ${url}`);
     $("me-new").onclick = () => showQuiz("add", () => {
     });
     $("sp-save")?.addEventListener("click", () => {
-      const num2 = (id) => {
+      const num3 = (id) => {
         const v = parseFloat($(id).value);
         return Number.isFinite(v) ? v : void 0;
       };
-      updateProfile({ spin: { rpm: num2("sp-rpm"), axisRotation: num2("sp-rot"), axisTilt: num2("sp-tilt"), pap: $("sp-pap").value.trim() || void 0, source: "entered", at: (/* @__PURE__ */ new Date()).toISOString() } });
+      updateProfile({ spin: { rpm: num3("sp-rpm"), axisRotation: num3("sp-rot"), axisTilt: num3("sp-tilt"), pap: $("sp-pap").value.trim() || void 0, source: "entered", at: (/* @__PURE__ */ new Date()).toISOString() } });
     });
     $("sp-lab")?.addEventListener("click", () => openSpinLab(() => renderMe()));
     $("me-quiz")?.addEventListener("click", () => showQuiz("retake", () => renderMe()));
