@@ -60,7 +60,8 @@
         "New Score tab: a scorecard that keeps itself. Tap the pins left standing after each roll.",
         "Spare coach after every first ball: names the leave and tells you how far to move your feet (3-6-9 spare system), with every direction reversed for left-handers.",
         "Your statistics: average, strike %, spare conversion, single-pin and multi-pin spares, and every leave you've shot.",
-        "Use the camera's pin read with one tap instead of entering the leave yourself."
+        "Scores itself from the camera: the pins it reads go straight on the card, games start and end on their own, and the spare coach shows on the Live tab right after each shot.",
+        "What costs you pins: how many pins a game your missed spares take, the leaves to practice, and strike rate by where the ball hit the pocket."
       ]
     },
     {
@@ -1086,19 +1087,19 @@
     const a = s.a;
     const m = s.m;
     setText("c-speed", a.speedMph.toFixed(1));
-    setText("c-speed-u", `\xB1 ${a.speedUncertainty.toFixed(1)} mph`);
+    setText("c-speed-u", `\xC2\xB1 ${a.speedUncertainty.toFixed(1)} mph`);
     setText("c-arrows", f1(a.boardAtArrows));
     setText("c-bp", f1(a.breakpointBoard));
     setText("c-bp-u", a.breakpointFt === null ? "" : `at ${a.breakpointFt.toFixed(0)} ft`);
     setText("c-entry", f1(a.entryBoard));
-    setText("c-launch", a.launchAngleDeg === null ? "n/a" : `${a.launchAngleDeg.toFixed(1)}\xB0`);
-    setText("c-impact", a.impactAngleDeg === null ? "n/a" : `${a.impactAngleDeg.toFixed(1)}\xB0`);
+    setText("c-launch", a.launchAngleDeg === null ? "n/a" : `${a.launchAngleDeg.toFixed(1)}\xC2\xB0`);
+    setText("c-impact", a.impactAngleDeg === null ? "n/a" : `${a.impactAngleDeg.toFixed(1)}\xC2\xB0`);
     setText("c-loss", m.speedLossPct === null ? "n/a" : `${m.speedLossPct.toFixed(0)}%`);
     setText("c-hook", f1(m.hookBoards));
     setText("c-miss", m.pocketMiss === null ? "n/a" : `${m.pocketMiss > 0 ? "+" : ""}${m.pocketMiss.toFixed(1)}`);
-    setText("c-miss-u", m.zone ? ZONE_TEXT[m.zone] : "+ high, \u2212 light");
+    setText("c-miss-u", m.zone ? ZONE_TEXT[m.zone] : "+ high, \xE2\u02C6\u2019 light");
     $("c-conf").style.width = `${Math.round(a.confidence * 100)}%`;
-    setText("c-conf-t", `${Math.round(a.confidence * 100)}% confidence \xB7 ${a.samples} pts`);
+    setText("c-conf-t", `${Math.round(a.confidence * 100)}% confidence \xC2\xB7 ${a.samples} pts`);
     document.querySelectorAll("#tab-live .card").forEach((el) => {
       el.classList.remove("pop");
       void el.offsetWidth;
@@ -1108,14 +1109,18 @@
   function addHistory(s, n) {
     const chip = document.createElement("div");
     chip.className = "chip";
-    chip.textContent = `#${n} \xB7 ${s.a.speedMph.toFixed(1)} mph \xB7 entry ${f1(s.a.entryBoard)}`;
+    chip.textContent = `#${n} \xC2\xB7 ${s.a.speedMph.toFixed(1)} mph \xC2\xB7 entry ${f1(s.a.entryBoard)}`;
     $("history").prepend(chip);
+  }
+  var resultExtra = null;
+  function setResultExtra(fn) {
+    resultExtra = fn;
   }
   function renderResult(s) {
     const el = $("result-card");
     if (!s) return void (el.innerHTML = `<div class="u">Waiting for your first shot</div>`);
     const cur = s.result?.pinsDown;
-    el.innerHTML = `<div class="u">${s.result?.auto ? `Read from the camera: ${cur === 10 ? "a strike" : `${cur} down${s.result.leave?.length ? `, leaving the ${s.result.leave.join("-")}` : ""}`}. Tap a number if that is wrong.` : "How many pins did this shot knock down? This is how the app learns what costs you strikes."}</div><div class="chips">` + [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((n) => `<button class="chip ${cur === n ? "sel" : n === 10 ? "x" : ""}" data-n="${n}">${n === 10 ? "Strike" : n}</button>`).join("") + `</div>`;
+    el.innerHTML = `<div class="u">${s.result?.auto ? `Read from the camera: ${cur === 10 ? "a strike" : `${cur} down${s.result.leave?.length ? `, leaving the ${s.result.leave.join("-")}` : ""}`}. Tap a number if that is wrong.` : "How many pins did this shot knock down? This is how the app learns what costs you strikes."}</div><div class="chips">` + [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((n) => `<button class="chip ${cur === n ? "sel" : n === 10 ? "x" : ""}" data-n="${n}">${n === 10 ? "Strike" : n}</button>`).join("") + `</div>` + (resultExtra?.() ?? "");
     el.querySelectorAll("button[data-n]").forEach((b) => {
       b.onclick = async () => {
         s.result = { pinsDown: Number(b.dataset.n) };
@@ -1141,7 +1146,7 @@
     if (mine && (cat || mine.rg !== void 0)) {
       const info = document.createElement("div");
       info.className = "note";
-      info.textContent = cat ? [`${cat.manufacturer} ${cat.name}`, cat.rg && `RG ${cat.rg.value}`, cat.differential && `diff ${cat.differential.value}`, cat.coverstock?.value, cat.core?.value, cat.colorway?.value].filter(Boolean).join(" \xB7 ") : `RG ${mine.rg} \xB7 diff ${mine.diff ?? "?"} (your specs)`;
+      info.textContent = cat ? [`${cat.manufacturer} ${cat.name}`, cat.rg && `RG ${cat.rg.value}`, cat.differential && `diff ${cat.differential.value}`, cat.coverstock?.value, cat.core?.value, cat.colorway?.value].filter(Boolean).join(" \xC2\xB7 ") : `RG ${mine.rg} \xC2\xB7 diff ${mine.diff ?? "?"} (your specs)`;
       el.append(info);
     }
     const row = document.createElement("div");
@@ -1198,14 +1203,14 @@
     attachSuggest(input);
     const hint = document.createElement("div");
     hint.className = "note";
-    hint.textContent = "\u201CShow me this ball\u201D learns it before you bowl: hold it up to the camera, rotate it slowly for a few seconds, and it can name it from shot 1.";
+    hint.textContent = "\xE2\u20AC\u0153Show me this ball\xE2\u20AC\x9D learns it before you bowl: hold it up to the camera, rotate it slowly for a few seconds, and it can name it from shot 1.";
     el.append(hint);
   }
   function renderLane() {
     const tracked = sessionShots().map((x) => ({ a: x.a, ballId: x.ballId }));
     const r = readLane(tracked);
     const el = $("lane-read");
-    el.innerHTML = `<div class="lr-head">${esc(r.headline)}</div><span class="badge ${r.confidence}">${r.confidence} confidence \xB7 ${r.shotsUsed} shots</span><ul>${r.points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul><div class="lr-next">Next test: ${esc(r.next)}</div>`;
+    el.innerHTML = `<div class="lr-head">${esc(r.headline)}</div><span class="badge ${r.confidence}">${r.confidence} confidence \xC2\xB7 ${r.shotsUsed} shots</span><ul>${r.points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul><div class="lr-next">Next test: ${esc(r.next)}</div>`;
     const last = sessionShots().at(-1);
     const rec2 = recommendBall(r, last?.ballId, ownedBalls().map((b) => ({ id: b.id, name: b.name, catalog: b.specs })));
     const rc = document.createElement("div");
@@ -1254,6 +1259,427 @@
       markSeen();
       document.getElementById("notes-open").textContent = `What's new: ${PATCH_NOTES[0].title}`;
     };
+  }
+
+  // core/src/scoring.ts
+  var ALL_PINS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  var minus = (a, b) => a.filter((p) => !b.includes(p));
+  function replay(rolls) {
+    const states = [];
+    let standing = ALL_PINS.slice();
+    let frame = 1, ball = 1;
+    let complete = false;
+    let tenthBalls = [];
+    for (const r of rolls) {
+      if (complete) break;
+      const before = standing.slice();
+      states.push({ frame, ball, standingBefore: before, fresh: before.length === 10 });
+      const down = r.down.filter((p) => before.includes(p));
+      const after = minus(before, down);
+      if (frame < 10) {
+        if (after.length === 0 && ball === 1) {
+          frame++;
+          ball = 1;
+          standing = ALL_PINS.slice();
+        } else if (ball === 1) {
+          ball = 2;
+          standing = after;
+        } else {
+          frame++;
+          ball = 1;
+          standing = ALL_PINS.slice();
+        }
+      } else {
+        tenthBalls.push(down.length);
+        const cleared = after.length === 0;
+        if (ball === 1) {
+          ball = 2;
+          standing = cleared ? ALL_PINS.slice() : after;
+        } else if (ball === 2) {
+          const first = tenthBalls[0];
+          if (first === 10 || cleared) {
+            ball = 3;
+            standing = cleared ? ALL_PINS.slice() : after;
+          } else complete = true;
+        } else complete = true;
+      }
+    }
+    if (frame > 10) complete = true;
+    return { states, standing, frame: complete ? 11 : frame, ball: complete ? 1 : ball, complete };
+  }
+  function scoreGame(rolls) {
+    const counts = rolls.map((r) => r.down.length);
+    const frames = [];
+    let i = 0, running = 0;
+    for (let f = 1; f <= 10; f++) {
+      if (i >= counts.length) break;
+      const a = counts[i];
+      if (f < 10) {
+        if (a === 10) {
+          const b = counts[i + 1], c = counts[i + 2];
+          const total = b !== void 0 && c !== void 0 ? running += 10 + b + c : null;
+          frames.push({ pins: [10], marks: ["X"], total });
+          i += 1;
+        } else {
+          const b = counts[i + 1];
+          if (b === void 0) {
+            frames.push({ pins: [a], marks: [a === 0 ? "-" : String(a)], total: null });
+            i += 1;
+            break;
+          }
+          const spare = a + b === 10;
+          const nxt = counts[i + 2];
+          const total = spare ? nxt !== void 0 ? running += 10 + nxt : null : running += a + b;
+          frames.push({ pins: [a, b], marks: [a === 0 ? "-" : String(a), spare ? "/" : b === 0 ? "-" : String(b)], total });
+          i += 2;
+        }
+      } else {
+        const rest = counts.slice(i, i + 3);
+        const marks = [];
+        let prev = 0;
+        rest.forEach((n, k2) => {
+          if (n === 10 && (k2 === 0 || prev === 10 || marks[k2 - 1] === "/")) marks.push("X");
+          else if (k2 > 0 && marks[k2 - 1] !== "X" && marks[k2 - 1] !== "/" && prev + n === 10) marks.push("/");
+          else marks.push(n === 0 ? "-" : String(n));
+          prev = marks[k2] === "/" ? 0 : n;
+        });
+        const done = rest.length === 3 || rest.length === 2 && rest[0] !== 10 && rest[0] + rest[1] < 10;
+        frames.push({ pins: rest, marks, total: done ? running += rest.reduce((x, y) => x + y, 0) : null });
+        i = counts.length;
+      }
+    }
+    const last = [...frames].reverse().find((f) => f.total !== null);
+    return { frames, total: last?.total ?? 0, complete: replay(rolls).complete };
+  }
+  var key = (pins) => pins.slice().sort((a, b) => a - b).join("-");
+  function bowlingStats(games2) {
+    const complete = games2.filter((g) => replay(g.rolls).complete);
+    const scores = complete.map((g) => scoreGame(g.rolls).total);
+    let fresh = 0, strikes = 0, freshPins = 0, spareTry = 0, spareMade = 0, open2 = 0;
+    const single = { attempts: 0, made: 0 }, multi = { attempts: 0, made: 0 };
+    const byLeave = {};
+    for (const g of games2) {
+      const rp = replay(g.rolls);
+      rp.states.forEach((s, k2) => {
+        const down = g.rolls[k2].down.filter((p) => s.standingBefore.includes(p));
+        if (s.fresh) {
+          fresh++;
+          freshPins += down.length;
+          if (down.length === 10) strikes++;
+        } else {
+          spareTry++;
+          const made = down.length === s.standingBefore.length;
+          if (made) spareMade++;
+          const t = byLeave[key(s.standingBefore)] ??= { attempts: 0, made: 0 };
+          t.attempts++;
+          if (made) t.made++;
+          const bucket = s.standingBefore.length === 1 ? single : multi;
+          bucket.attempts++;
+          if (made) bucket.made++;
+        }
+      });
+      const frameRolls = /* @__PURE__ */ new Map();
+      rp.states.forEach((s, k2) => frameRolls.set(s.frame, [...frameRolls.get(s.frame) ?? [], g.rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length]));
+      for (const [f, c] of frameRolls) {
+        if (f < 10 && c.length === 2 && c[0] + c[1] < 10) open2++;
+        if (f === 10 && c.length >= 2 && c[0] < 10 && c[0] + c[1] < 10) open2++;
+      }
+    }
+    const avg2 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+    return {
+      games: games2.length,
+      completeGames: complete.length,
+      average: avg2(scores),
+      high: scores.length ? Math.max(...scores) : null,
+      strikePct: fresh ? strikes / fresh * 100 : null,
+      firstBallAvg: fresh ? freshPins / fresh : null,
+      sparePct: spareTry ? spareMade / spareTry * 100 : null,
+      openFrames: open2,
+      singlePin: single,
+      multiPin: multi,
+      byLeave
+    };
+  }
+  function whatIf(rolls) {
+    const rp = replay(rolls);
+    const actual = scoreGame(rolls).total;
+    const rescored = (single) => {
+      const copy = rolls.map((r) => ({ ...r }));
+      let changed2 = 0;
+      rp.states.forEach((s, k2) => {
+        if (s.fresh || s.frame >= 10) return;
+        const downNow = rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length;
+        if (downNow === s.standingBefore.length) return;
+        if (single && s.standingBefore.length !== 1) return;
+        copy[k2] = { ...copy[k2], down: s.standingBefore.slice() };
+        changed2++;
+      });
+      return { total: scoreGame(copy).total, changed: changed2 };
+    };
+    const a = rescored(true), b = rescored(false);
+    return { actual, ifSingles: a.total, ifAllSpares: b.total, missedSingles: a.changed, missedSpares: b.changed };
+  }
+
+  // core/src/spares.ts
+  var PIN_XY = {
+    1: { x: 0, row: 0 },
+    2: { x: -6, row: 1 },
+    3: { x: 6, row: 1 },
+    4: { x: -12, row: 2 },
+    5: { x: 0, row: 2 },
+    6: { x: 12, row: 2 },
+    7: { x: -18, row: 3 },
+    8: { x: -6, row: 3 },
+    9: { x: 6, row: 3 },
+    10: { x: 18, row: 3 }
+  };
+  var TOUCH = [[1, 2], [1, 3], [2, 3], [2, 4], [2, 5], [3, 5], [3, 6], [4, 5], [5, 6], [4, 7], [4, 8], [5, 8], [5, 9], [6, 9], [6, 10], [7, 8], [8, 9], [9, 10]];
+  var touching = (a, b) => TOUCH.some(([x, y]) => x === a && y === b || x === b && y === a);
+  var sorted = (pins) => pins.slice().sort((a, b) => a - b);
+  function isSplit(leave) {
+    if (leave.length < 2 || leave.includes(1)) return false;
+    const seen2 = /* @__PURE__ */ new Set([leave[0]]);
+    const queue = [leave[0]];
+    while (queue.length) {
+      const p = queue.pop();
+      for (const q of leave) if (!seen2.has(q) && touching(p, q)) seen2.add(q), queue.push(q);
+    }
+    return seen2.size < leave.length;
+  }
+  var NAMES = {
+    "7-10": "the bedposts (7-10)",
+    "2-7": "a baby split (2-7)",
+    "3-10": "a baby split (3-10)",
+    "4-6-7-10": "the big four (4-6-7-10)",
+    "5-7-10": "the lily (5-7-10)",
+    "8-10": "the Cincinnati (8-10)",
+    "1-2-10": "a washout (1-2-10)",
+    "1-3-7": "a washout (1-3-7)",
+    "2-8": "a sleeper (the 8 hides behind the 2)",
+    "3-9": "a sleeper (the 9 hides behind the 3)",
+    "1-5": "a sleeper (the 5 hides behind the 1)"
+  };
+  var MOVE_RIGHT_HANDED = { 1: 0, 5: 0, 2: 3, 8: 3, 4: 6, 7: 9, 3: -3, 9: -3, 6: -6, 10: -9 };
+  function keyPinOf(leave) {
+    return sorted(leave).sort((a, b) => PIN_XY[a].row - PIN_XY[b].row || Math.abs(PIN_XY[a].x) - Math.abs(PIN_XY[b].x))[0];
+  }
+  function adviseSpare(leaveIn, hand = "R") {
+    const leave = sorted(leaveIn);
+    const split = isSplit(leave);
+    const k2 = leave.join("-");
+    const name = NAMES[k2] ?? (leave.length === 1 ? `the ${leave[0]} pin` : split ? `a split (${k2})` : `${k2}`);
+    const keyPin = keyPinOf(leave);
+    const notes = [];
+    const raw = (MOVE_RIGHT_HANDED[keyPin] ?? 0) * (hand === "L" ? -1 : 1);
+    const boards = Math.abs(raw);
+    const direction = raw === 0 ? "none" : raw > 0 ? "right" : "left";
+    let text;
+    if (leave.length === 0) text = "Nothing standing: a strike.";
+    else if (boards === 0) text = `Key pin ${keyPin}: no move. Throw your regular strike shot at your strike target.`;
+    else text = `Key pin ${keyPin}: move your feet ${boards} boards ${direction} from where you stand for a strike, and aim at the same target you use for a strike.`;
+    if (split) notes.push("A split is a low-percentage spare whichever system you use. Pick the pin you can hit solidly and expect to leave the other half the time or more.");
+    if (leave.length > 1 && !split) notes.push(`With more than one pin, the system uses the key pin, the one closest to you (the ${keyPin}), and lets it carry the rest.`);
+    if (keyPin === 10 || keyPin === 7) notes.push(`The ${keyPin} pin is the biggest move, nine boards, because it is the far corner pin on the other side of the deck.`);
+    notes.push("The 3-6-9 system assumes your first ball hits the pocket consistently, and lane conditions can change how it works. Adjust if the ball doesn't go where you expect.");
+    return { leave, name, split, keyPin, boards: leave.length ? boards : null, direction, text, notes };
+  }
+
+  // camera/scorecard.ts
+  var games = [];
+  var loadedFor = "";
+  var leaveSel = /* @__PURE__ */ new Set();
+  async function ensureLoaded() {
+    const id = S.profile?.id ?? "";
+    if (loadedFor === id) return;
+    loadedFor = id;
+    games = (id && !S.demo ? await dbGet(id, "meta", "games").catch(() => void 0) : void 0) ?? [];
+    leaveSel = /* @__PURE__ */ new Set();
+  }
+  async function persist() {
+    if (!S.demo && S.profile) await dbPut(S.profile.id, "meta", games, "games").catch(() => {
+    });
+  }
+  var current = () => {
+    const g = games[games.length - 1];
+    return g && !replay(g.rolls).complete ? g : void 0;
+  };
+  function cameraSuggestion() {
+    const used = new Set(games.flatMap((g) => g.rolls.map((r) => r.shotId)).filter(Boolean));
+    const s = [...S.shots].reverse().find((x) => x.result?.auto && !used.has(x.id));
+    if (!s || !s.result) return null;
+    const when2 = Date.now() - new Date(s.at).getTime();
+    if (when2 > 15 * 6e4) return null;
+    return { shotId: s.id, leave: s.result.pinsDown === 10 ? [] : s.result.leave ?? [] };
+  }
+  function deckSvg(standing, sel) {
+    const R2 = 19;
+    const pin = (p) => {
+      const { x, row } = PIN_XY[p];
+      const cx = 130 + x * 4.8, cy = 28 + (3 - row) * 52;
+      const gone = !standing.includes(p);
+      const left = sel.has(p);
+      const fill = gone ? "transparent" : left ? "#ffd25a" : "rgba(255,255,255,.14)";
+      const stroke = gone ? "rgba(255,255,255,.12)" : left ? "#ffd25a" : "rgba(255,255,255,.5)";
+      return `<g data-pin="${p}" style="cursor:${gone ? "default" : "pointer"}"><circle cx="${cx}" cy="${cy}" r="${R2}" fill="${fill}" stroke="${stroke}" stroke-width="2"/><text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="15" font-weight="700" fill="${gone ? "rgba(255,255,255,.2)" : left ? "#111" : "#fff"}">${p}</text></g>`;
+    };
+    return `<svg viewBox="0 0 260 200" style="width:100%;max-width:340px;display:block;margin:0 auto;touch-action:manipulation">${ALL_PINS.map(pin).join("")}</svg>`;
+  }
+  function cardHtml(g) {
+    const sc = scoreGame(g.rolls);
+    const cells = Array.from({ length: 10 }, (_, i) => {
+      const f = sc.frames[i];
+      const m = f?.marks ?? [];
+      const slots = i < 9 ? 2 : 3;
+      const boxes = Array.from({ length: slots }, (_2, k2) => `<span style="display:inline-block;min-width:18px;text-align:center;border:1px solid var(--line);border-radius:3px;margin:0 1px;font-size:13px;${m[k2] === "X" ? "color:#5affb0;font-weight:700" : m[k2] === "/" ? "color:#46e6ff;font-weight:700" : ""}">${m[k2] ?? "&nbsp;"}</span>`).join("");
+      return `<td style="text-align:center;padding:4px 2px;border:1px solid var(--line);vertical-align:top"><div style="font-size:10px;opacity:.6">${i + 1}</div><div>${boxes}</div><div style="font-weight:700;font-size:15px;min-height:20px">${f?.total ?? ""}</div></td>`;
+    });
+    return `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:620px"><tr>${cells.join("")}</tr></table></div>`;
+  }
+  async function autoScoreShot(shot) {
+    await ensureLoaded();
+    if (!shot.result?.auto) return false;
+    if (games.some((g) => g.rolls.some((r) => r.shotId === shot.id))) return false;
+    let cur = current();
+    if (!cur) {
+      cur = { id: newId(), at: (/* @__PURE__ */ new Date()).toISOString(), rolls: [], lane: shot.lane };
+      games.push(cur);
+    }
+    const standing = replay(cur.rolls).standing;
+    const leave = shot.result.pinsDown === 10 && standing.length === 10 ? [] : shot.result.leave ?? [];
+    if (!leave.every((p) => standing.includes(p))) return false;
+    cur.rolls.push({ down: standing.filter((p) => !leave.includes(p)), shotId: shot.id });
+    leaveSel = /* @__PURE__ */ new Set();
+    await persist();
+    return true;
+  }
+  function liveScoreHtml() {
+    const g = games[games.length - 1];
+    if (!g || !g.rolls.length) return "";
+    const rp = replay(g.rolls);
+    const sc = scoreGame(g.rolls);
+    const head = `<div class="k" style="margin-top:8px">Scorecard \xB7 game ${games.length}</div><div class="u"><b>${sc.total}</b> ${rp.complete ? "final" : `after ${sc.frames.filter((f) => f.total !== null).length} scored frames \xB7 next: frame ${rp.frame}, ball ${rp.ball}`}</div>`;
+    if (rp.complete || rp.standing.length === 10) return head;
+    const adv = adviseSpare(rp.standing, bowlerProfile().hand);
+    return `${head}<div class="u"><b>Spare: ${esc(adv.name)}.</b> ${esc(adv.text)}</div>`;
+  }
+  setResultExtra(liveScoreHtml);
+  var pctStr = (v) => v === null ? "-" : `${Math.round(v)}%`;
+  function statsHtml() {
+    const st2 = bowlingStats(games);
+    if (!st2.games) return `<div class="u">Statistics appear after your first game.</div>`;
+    const leaves = Object.entries(st2.byLeave).sort((a, b) => b[1].attempts - a[1].attempts).slice(0, 8);
+    return `<table>
+    <tr><td>Average</td><td class="n">${st2.average === null ? "-" : st2.average.toFixed(1)} (${st2.completeGames} games)</td></tr>
+    <tr><td>High game</td><td class="n">${st2.high ?? "-"}</td></tr>
+    <tr><td>Strike %</td><td class="n">${pctStr(st2.strikePct)}</td></tr>
+    <tr><td>First-ball average</td><td class="n">${st2.firstBallAvg === null ? "-" : st2.firstBallAvg.toFixed(1)} pins</td></tr>
+    <tr><td>Spare conversion</td><td class="n">${pctStr(st2.sparePct)}</td></tr>
+    <tr><td>Single-pin spares</td><td class="n">${st2.singlePin.attempts ? `${st2.singlePin.made}/${st2.singlePin.attempts} (${pctStr(st2.singlePin.made / st2.singlePin.attempts * 100)})` : "-"}</td></tr>
+    <tr><td>Multi-pin spares</td><td class="n">${st2.multiPin.attempts ? `${st2.multiPin.made}/${st2.multiPin.attempts} (${pctStr(st2.multiPin.made / st2.multiPin.attempts * 100)})` : "-"}</td></tr>
+    <tr><td>Open frames</td><td class="n">${st2.openFrames}</td></tr></table>
+    ${leaves.length ? `<div class="k" style="margin-top:8px">Spare tries by leave</div><table>${leaves.map(([k2, t]) => `<tr><td>${esc(k2)}</td><td class="n">${t.made}/${t.attempts} (${pctStr(t.made / t.attempts * 100)})</td></tr>`).join("")}</table>` : ""}`;
+  }
+  function analysisHtml() {
+    const done = games.filter((g) => replay(g.rolls).complete);
+    const out = [];
+    if (done.length) {
+      const w = done.map((g) => whatIf(g.rolls));
+      const avg2 = (f) => w.reduce((a, b) => a + f(b), 0) / w.length;
+      const gain = avg2((x) => x.ifSingles - x.actual);
+      out.push(`<div class="u">Missed single-pin spares cost you <b>${gain.toFixed(1)} pins a game</b> (${avg2((x) => x.missedSingles).toFixed(1)} a game). Make them all and your average would be ${avg2((x) => x.ifSingles).toFixed(0)} instead of ${avg2((x) => x.actual).toFixed(0)}.</div>`);
+      out.push(`<div class="note">Missed spares of every kind: ${avg2((x) => x.missedSpares).toFixed(1)} a game; making all of them would score about ${avg2((x) => x.ifAllSpares).toFixed(0)}.</div>`);
+    }
+    const st2 = bowlingStats(games);
+    const weak = Object.entries(st2.byLeave).filter(([, t]) => t.attempts >= 3 && t.made / t.attempts < 0.6).sort((a, b) => b[1].attempts - a[1].attempts).slice(0, 4);
+    if (weak.length) out.push(`<div class="k" style="margin-top:8px">Practice these</div><ul>${weak.map(([k2, t]) => {
+      const a = adviseSpare(k2.split("-").map(Number), bowlerProfile().hand);
+      return `<li><b>${esc(a.name)}</b>: ${t.made}/${t.attempts} made. ${esc(a.text)}</li>`;
+    }).join("")}</ul>`);
+    const zones = {};
+    for (const g of games) {
+      const rp = replay(g.rolls);
+      g.rolls.forEach((r, k2) => {
+        const s = rp.states[k2];
+        const shot = r.shotId ? S.shots.find((x) => x.id === r.shotId) : void 0;
+        if (!s?.fresh || !shot?.m.zone) return;
+        const z = zones[shot.m.zone] ??= { n: 0, x: 0 };
+        z.n++;
+        if (r.down.length === 10) z.x++;
+      });
+    }
+    const zs = Object.entries(zones).filter(([, v]) => v.n >= 2);
+    if (zs.length) {
+      const label2 = { pocket: "In the pocket", high: "High (Brooklyn side)", light: "Light", "very-high": "Way high", "very-light": "Way light" };
+      out.push(`<div class="k" style="margin-top:8px">Strikes by where the ball hit (camera-tracked first balls)</div><table>${zs.map(([k2, v]) => `<tr><td>${label2[k2] ?? esc(k2)}</td><td class="n">${v.x}/${v.n} strikes (${Math.round(v.x / v.n * 100)}%)</td></tr>`).join("")}</table>`);
+    }
+    return out.length ? out.join("") : `<div class="u">Play a few games and this will show what is costing you pins.</div>`;
+  }
+  async function renderScore() {
+    await ensureLoaded();
+    const el = $("score-page");
+    const g = current();
+    const rp = g ? replay(g.rolls) : null;
+    const standing = rp?.standing ?? ALL_PINS;
+    const advice = g && standing.length < 10 ? adviseSpare(standing, bowlerProfile().hand) : null;
+    const cam = g ? cameraSuggestion() : null;
+    const done = games.slice().reverse().slice(0, 12);
+    el.innerHTML = `
+    <h2>Score</h2>
+    <div class="note">With the camera running, every shot is scored for you: the pins it reads go straight on the card and the spare coach tells you where to move. Tap the pins below only to fix a mistake or to score without the camera. Free, and it stays on this phone.</div>
+    ${g ? `<div class="card"><div class="k">Game ${games.length} \xC2\xB7 ${rp.frame <= 10 ? `frame ${rp.frame}, ball ${rp.ball}` : ""}</div>${cardHtml(g)}</div>` : `<div class="card"><div class="u">${games.length ? "Game over. Start the next one." : "No game in progress."}</div><div class="chips"><button class="btn" id="sc-new">Start a game</button></div></div>`}
+    ${g ? `<div class="card"><div class="k">${standing.length === 10 ? "How many pins are standing after this roll? Tap them" : "Tap the pins still standing"}</div>
+      ${deckSvg(standing, leaveSel)}
+      <div class="chips" style="justify-content:center">
+        <button class="btn" id="sc-record">${leaveSel.size ? `Record: ${leaveSel.size} left (${standing.length - leaveSel.size} down)` : standing.length === 10 ? "Record a strike" : "Record a spare"}</button>
+        <button class="btn ghost" id="sc-gutter">All ${standing.length} left</button>
+        <button class="btn ghost" id="sc-undo">Undo last roll</button></div>
+      ${cam ? `<div class="chips" style="justify-content:center"><button class="chip" id="sc-cam">Use the camera's read: ${cam.leave.length ? `leaves the ${cam.leave.join("-")}` : "a strike"}</button></div>` : ""}</div>` : ""}
+    ${advice ? `<div class="card"><div class="k">Spare coach: ${esc(advice.name)}</div><div class="u"><b>${esc(advice.text)}</b></div>${advice.notes.map((n) => `<div class="note">${esc(n)}</div>`).join("")}<div class="note">3-6-9 spare system (USA Bowling and coaching sources): feet move 3, 6 or 9 boards away from the pin, aim stays on your strike target.</div></div>` : ""}
+    <div class="card"><div class="k">Your statistics</div>${statsHtml()}</div>
+    <div class="card"><div class="k">What costs you pins</div>${analysisHtml()}</div>
+    ${done.length ? `<div class="card"><div class="k">Games</div>${done.map((x) => {
+      const s = scoreGame(x.rolls);
+      return `<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${s.total}</b> <span class="note">${replay(x.rolls).complete ? "" : "in progress \xC2\xB7 "}${esc(new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</span></div><button class="chip danger" data-del="${x.id}">Delete</button></div>`;
+    }).join("")}</div>` : ""}`;
+    $("sc-new")?.addEventListener("click", async () => {
+      games.push({ id: newId(), at: (/* @__PURE__ */ new Date()).toISOString(), rolls: [] });
+      leaveSel = /* @__PURE__ */ new Set();
+      await persist();
+      renderScore();
+    });
+    const add2 = async (roll) => {
+      const cur = current();
+      if (!cur) return;
+      cur.rolls.push(roll);
+      leaveSel = /* @__PURE__ */ new Set();
+      await persist();
+      renderScore();
+    };
+    el.querySelectorAll("[data-pin]").forEach((n) => {
+      n.addEventListener("click", () => {
+        const p = Number(n.getAttribute("data-pin"));
+        if (!standing.includes(p)) return;
+        if (leaveSel.has(p)) leaveSel.delete(p);
+        else leaveSel.add(p);
+        renderScore();
+      });
+    });
+    $("sc-record")?.addEventListener("click", () => add2({ down: standing.filter((p) => !leaveSel.has(p)) }));
+    $("sc-gutter")?.addEventListener("click", () => add2({ down: [] }));
+    $("sc-undo")?.addEventListener("click", async () => {
+      const cur = current() ?? games[games.length - 1];
+      if (!cur || !cur.rolls.length) return;
+      cur.rolls.pop();
+      leaveSel = /* @__PURE__ */ new Set();
+      await persist();
+      renderScore();
+    });
+    $("sc-cam")?.addEventListener("click", () => cam && add2({ down: standing.filter((p) => !cam.leave.includes(p)), shotId: cam.shotId }));
+    el.querySelectorAll("[data-del]").forEach((b) => b.onclick = async () => {
+      games = games.filter((x) => x.id !== b.dataset.del);
+      await persist();
+      renderScore();
+    });
   }
 
   // core/src/vision.ts
@@ -5143,344 +5569,6 @@
     showFit();
   }
 
-  // core/src/scoring.ts
-  var ALL_PINS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  var minus = (a, b) => a.filter((p) => !b.includes(p));
-  function replay(rolls) {
-    const states = [];
-    let standing = ALL_PINS.slice();
-    let frame = 1, ball = 1;
-    let complete = false;
-    let tenthBalls = [];
-    for (const r of rolls) {
-      if (complete) break;
-      const before = standing.slice();
-      states.push({ frame, ball, standingBefore: before, fresh: before.length === 10 });
-      const down = r.down.filter((p) => before.includes(p));
-      const after = minus(before, down);
-      if (frame < 10) {
-        if (after.length === 0 && ball === 1) {
-          frame++;
-          ball = 1;
-          standing = ALL_PINS.slice();
-        } else if (ball === 1) {
-          ball = 2;
-          standing = after;
-        } else {
-          frame++;
-          ball = 1;
-          standing = ALL_PINS.slice();
-        }
-      } else {
-        tenthBalls.push(down.length);
-        const cleared = after.length === 0;
-        if (ball === 1) {
-          ball = 2;
-          standing = cleared ? ALL_PINS.slice() : after;
-        } else if (ball === 2) {
-          const first = tenthBalls[0];
-          if (first === 10 || cleared) {
-            ball = 3;
-            standing = cleared ? ALL_PINS.slice() : after;
-          } else complete = true;
-        } else complete = true;
-      }
-    }
-    if (frame > 10) complete = true;
-    return { states, standing, frame: complete ? 11 : frame, ball: complete ? 1 : ball, complete };
-  }
-  function scoreGame(rolls) {
-    const counts = rolls.map((r) => r.down.length);
-    const frames = [];
-    let i = 0, running = 0;
-    for (let f = 1; f <= 10; f++) {
-      if (i >= counts.length) break;
-      const a = counts[i];
-      if (f < 10) {
-        if (a === 10) {
-          const b = counts[i + 1], c = counts[i + 2];
-          const total = b !== void 0 && c !== void 0 ? running += 10 + b + c : null;
-          frames.push({ pins: [10], marks: ["X"], total });
-          i += 1;
-        } else {
-          const b = counts[i + 1];
-          if (b === void 0) {
-            frames.push({ pins: [a], marks: [a === 0 ? "-" : String(a)], total: null });
-            i += 1;
-            break;
-          }
-          const spare = a + b === 10;
-          const nxt = counts[i + 2];
-          const total = spare ? nxt !== void 0 ? running += 10 + nxt : null : running += a + b;
-          frames.push({ pins: [a, b], marks: [a === 0 ? "-" : String(a), spare ? "/" : b === 0 ? "-" : String(b)], total });
-          i += 2;
-        }
-      } else {
-        const rest = counts.slice(i, i + 3);
-        const marks = [];
-        let prev = 0;
-        rest.forEach((n, k2) => {
-          if (n === 10 && (k2 === 0 || prev === 10 || marks[k2 - 1] === "/")) marks.push("X");
-          else if (k2 > 0 && marks[k2 - 1] !== "X" && marks[k2 - 1] !== "/" && prev + n === 10) marks.push("/");
-          else marks.push(n === 0 ? "-" : String(n));
-          prev = marks[k2] === "/" ? 0 : n;
-        });
-        const done = rest.length === 3 || rest.length === 2 && rest[0] !== 10 && rest[0] + rest[1] < 10;
-        frames.push({ pins: rest, marks, total: done ? running += rest.reduce((x, y) => x + y, 0) : null });
-        i = counts.length;
-      }
-    }
-    const last = [...frames].reverse().find((f) => f.total !== null);
-    return { frames, total: last?.total ?? 0, complete: replay(rolls).complete };
-  }
-  var key = (pins) => pins.slice().sort((a, b) => a - b).join("-");
-  function bowlingStats(games2) {
-    const complete = games2.filter((g) => replay(g.rolls).complete);
-    const scores = complete.map((g) => scoreGame(g.rolls).total);
-    let fresh = 0, strikes = 0, freshPins = 0, spareTry = 0, spareMade = 0, open2 = 0;
-    const single = { attempts: 0, made: 0 }, multi = { attempts: 0, made: 0 };
-    const byLeave = {};
-    for (const g of games2) {
-      const rp = replay(g.rolls);
-      rp.states.forEach((s, k2) => {
-        const down = g.rolls[k2].down.filter((p) => s.standingBefore.includes(p));
-        if (s.fresh) {
-          fresh++;
-          freshPins += down.length;
-          if (down.length === 10) strikes++;
-        } else {
-          spareTry++;
-          const made = down.length === s.standingBefore.length;
-          if (made) spareMade++;
-          const t = byLeave[key(s.standingBefore)] ??= { attempts: 0, made: 0 };
-          t.attempts++;
-          if (made) t.made++;
-          const bucket = s.standingBefore.length === 1 ? single : multi;
-          bucket.attempts++;
-          if (made) bucket.made++;
-        }
-      });
-      const frameRolls = /* @__PURE__ */ new Map();
-      rp.states.forEach((s, k2) => frameRolls.set(s.frame, [...frameRolls.get(s.frame) ?? [], g.rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length]));
-      for (const [f, c] of frameRolls) {
-        if (f < 10 && c.length === 2 && c[0] + c[1] < 10) open2++;
-        if (f === 10 && c.length >= 2 && c[0] < 10 && c[0] + c[1] < 10) open2++;
-      }
-    }
-    const avg2 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
-    return {
-      games: games2.length,
-      completeGames: complete.length,
-      average: avg2(scores),
-      high: scores.length ? Math.max(...scores) : null,
-      strikePct: fresh ? strikes / fresh * 100 : null,
-      firstBallAvg: fresh ? freshPins / fresh : null,
-      sparePct: spareTry ? spareMade / spareTry * 100 : null,
-      openFrames: open2,
-      singlePin: single,
-      multiPin: multi,
-      byLeave
-    };
-  }
-
-  // core/src/spares.ts
-  var PIN_XY = {
-    1: { x: 0, row: 0 },
-    2: { x: -6, row: 1 },
-    3: { x: 6, row: 1 },
-    4: { x: -12, row: 2 },
-    5: { x: 0, row: 2 },
-    6: { x: 12, row: 2 },
-    7: { x: -18, row: 3 },
-    8: { x: -6, row: 3 },
-    9: { x: 6, row: 3 },
-    10: { x: 18, row: 3 }
-  };
-  var TOUCH = [[1, 2], [1, 3], [2, 3], [2, 4], [2, 5], [3, 5], [3, 6], [4, 5], [5, 6], [4, 7], [4, 8], [5, 8], [5, 9], [6, 9], [6, 10], [7, 8], [8, 9], [9, 10]];
-  var touching = (a, b) => TOUCH.some(([x, y]) => x === a && y === b || x === b && y === a);
-  var sorted = (pins) => pins.slice().sort((a, b) => a - b);
-  function isSplit(leave) {
-    if (leave.length < 2 || leave.includes(1)) return false;
-    const seen2 = /* @__PURE__ */ new Set([leave[0]]);
-    const queue = [leave[0]];
-    while (queue.length) {
-      const p = queue.pop();
-      for (const q of leave) if (!seen2.has(q) && touching(p, q)) seen2.add(q), queue.push(q);
-    }
-    return seen2.size < leave.length;
-  }
-  var NAMES = {
-    "7-10": "the bedposts (7-10)",
-    "2-7": "a baby split (2-7)",
-    "3-10": "a baby split (3-10)",
-    "4-6-7-10": "the big four (4-6-7-10)",
-    "5-7-10": "the lily (5-7-10)",
-    "8-10": "the Cincinnati (8-10)",
-    "1-2-10": "a washout (1-2-10)",
-    "1-3-7": "a washout (1-3-7)",
-    "2-8": "a sleeper (the 8 hides behind the 2)",
-    "3-9": "a sleeper (the 9 hides behind the 3)",
-    "1-5": "a sleeper (the 5 hides behind the 1)"
-  };
-  var MOVE_RIGHT_HANDED = { 1: 0, 5: 0, 2: 3, 8: 3, 4: 6, 7: 9, 3: -3, 9: -3, 6: -6, 10: -9 };
-  function keyPinOf(leave) {
-    return sorted(leave).sort((a, b) => PIN_XY[a].row - PIN_XY[b].row || Math.abs(PIN_XY[a].x) - Math.abs(PIN_XY[b].x))[0];
-  }
-  function adviseSpare(leaveIn, hand = "R") {
-    const leave = sorted(leaveIn);
-    const split = isSplit(leave);
-    const k2 = leave.join("-");
-    const name = NAMES[k2] ?? (leave.length === 1 ? `the ${leave[0]} pin` : split ? `a split (${k2})` : `${k2}`);
-    const keyPin = keyPinOf(leave);
-    const notes = [];
-    const raw = (MOVE_RIGHT_HANDED[keyPin] ?? 0) * (hand === "L" ? -1 : 1);
-    const boards = Math.abs(raw);
-    const direction = raw === 0 ? "none" : raw > 0 ? "right" : "left";
-    let text;
-    if (leave.length === 0) text = "Nothing standing: a strike.";
-    else if (boards === 0) text = `Key pin ${keyPin}: no move. Throw your regular strike shot at your strike target.`;
-    else text = `Key pin ${keyPin}: move your feet ${boards} boards ${direction} from where you stand for a strike, and aim at the same target you use for a strike.`;
-    if (split) notes.push("A split is a low-percentage spare whichever system you use. Pick the pin you can hit solidly and expect to leave the other half the time or more.");
-    if (leave.length > 1 && !split) notes.push(`With more than one pin, the system uses the key pin, the one closest to you (the ${keyPin}), and lets it carry the rest.`);
-    if (keyPin === 10 || keyPin === 7) notes.push(`The ${keyPin} pin is the biggest move, nine boards, because it is the far corner pin on the other side of the deck.`);
-    notes.push("The 3-6-9 system assumes your first ball hits the pocket consistently, and lane conditions can change how it works. Adjust if the ball doesn't go where you expect.");
-    return { leave, name, split, keyPin, boards: leave.length ? boards : null, direction, text, notes };
-  }
-
-  // camera/scorecard.ts
-  var games = [];
-  var loadedFor = "";
-  var leaveSel = /* @__PURE__ */ new Set();
-  async function ensureLoaded() {
-    const id = S.profile?.id ?? "";
-    if (loadedFor === id) return;
-    loadedFor = id;
-    games = (id && !S.demo ? await dbGet(id, "meta", "games").catch(() => void 0) : void 0) ?? [];
-    leaveSel = /* @__PURE__ */ new Set();
-  }
-  async function persist() {
-    if (!S.demo && S.profile) await dbPut(S.profile.id, "meta", games, "games").catch(() => {
-    });
-  }
-  var current = () => {
-    const g = games[games.length - 1];
-    return g && !replay(g.rolls).complete ? g : void 0;
-  };
-  function cameraSuggestion() {
-    const used = new Set(games.flatMap((g) => g.rolls.map((r) => r.shotId)).filter(Boolean));
-    const s = [...S.shots].reverse().find((x) => x.result?.auto && !used.has(x.id));
-    if (!s || !s.result) return null;
-    const when2 = Date.now() - new Date(s.at).getTime();
-    if (when2 > 15 * 6e4) return null;
-    return { shotId: s.id, leave: s.result.pinsDown === 10 ? [] : s.result.leave ?? [] };
-  }
-  function deckSvg(standing, sel) {
-    const R2 = 19;
-    const pin = (p) => {
-      const { x, row } = PIN_XY[p];
-      const cx = 130 + x * 4.8, cy = 28 + (3 - row) * 52;
-      const gone = !standing.includes(p);
-      const left = sel.has(p);
-      const fill = gone ? "transparent" : left ? "#ffd25a" : "rgba(255,255,255,.14)";
-      const stroke = gone ? "rgba(255,255,255,.12)" : left ? "#ffd25a" : "rgba(255,255,255,.5)";
-      return `<g data-pin="${p}" style="cursor:${gone ? "default" : "pointer"}"><circle cx="${cx}" cy="${cy}" r="${R2}" fill="${fill}" stroke="${stroke}" stroke-width="2"/><text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="15" font-weight="700" fill="${gone ? "rgba(255,255,255,.2)" : left ? "#111" : "#fff"}">${p}</text></g>`;
-    };
-    return `<svg viewBox="0 0 260 200" style="width:100%;max-width:340px;display:block;margin:0 auto;touch-action:manipulation">${ALL_PINS.map(pin).join("")}</svg>`;
-  }
-  function cardHtml(g) {
-    const sc = scoreGame(g.rolls);
-    const cells = Array.from({ length: 10 }, (_, i) => {
-      const f = sc.frames[i];
-      const m = f?.marks ?? [];
-      const slots = i < 9 ? 2 : 3;
-      const boxes = Array.from({ length: slots }, (_2, k2) => `<span style="display:inline-block;min-width:18px;text-align:center;border:1px solid var(--line);border-radius:3px;margin:0 1px;font-size:13px;${m[k2] === "X" ? "color:#5affb0;font-weight:700" : m[k2] === "/" ? "color:#46e6ff;font-weight:700" : ""}">${m[k2] ?? "&nbsp;"}</span>`).join("");
-      return `<td style="text-align:center;padding:4px 2px;border:1px solid var(--line);vertical-align:top"><div style="font-size:10px;opacity:.6">${i + 1}</div><div>${boxes}</div><div style="font-weight:700;font-size:15px;min-height:20px">${f?.total ?? ""}</div></td>`;
-    });
-    return `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:620px"><tr>${cells.join("")}</tr></table></div>`;
-  }
-  var pctStr = (v) => v === null ? "-" : `${Math.round(v)}%`;
-  function statsHtml() {
-    const st2 = bowlingStats(games);
-    if (!st2.games) return `<div class="u">Statistics appear after your first game.</div>`;
-    const leaves = Object.entries(st2.byLeave).sort((a, b) => b[1].attempts - a[1].attempts).slice(0, 8);
-    return `<table>
-    <tr><td>Average</td><td class="n">${st2.average === null ? "-" : st2.average.toFixed(1)} (${st2.completeGames} games)</td></tr>
-    <tr><td>High game</td><td class="n">${st2.high ?? "-"}</td></tr>
-    <tr><td>Strike %</td><td class="n">${pctStr(st2.strikePct)}</td></tr>
-    <tr><td>First-ball average</td><td class="n">${st2.firstBallAvg === null ? "-" : st2.firstBallAvg.toFixed(1)} pins</td></tr>
-    <tr><td>Spare conversion</td><td class="n">${pctStr(st2.sparePct)}</td></tr>
-    <tr><td>Single-pin spares</td><td class="n">${st2.singlePin.attempts ? `${st2.singlePin.made}/${st2.singlePin.attempts} (${pctStr(st2.singlePin.made / st2.singlePin.attempts * 100)})` : "-"}</td></tr>
-    <tr><td>Multi-pin spares</td><td class="n">${st2.multiPin.attempts ? `${st2.multiPin.made}/${st2.multiPin.attempts} (${pctStr(st2.multiPin.made / st2.multiPin.attempts * 100)})` : "-"}</td></tr>
-    <tr><td>Open frames</td><td class="n">${st2.openFrames}</td></tr></table>
-    ${leaves.length ? `<div class="k" style="margin-top:8px">Spare tries by leave</div><table>${leaves.map(([k2, t]) => `<tr><td>${esc(k2)}</td><td class="n">${t.made}/${t.attempts} (${pctStr(t.made / t.attempts * 100)})</td></tr>`).join("")}</table>` : ""}`;
-  }
-  async function renderScore() {
-    await ensureLoaded();
-    const el = $("score-page");
-    const g = current();
-    const rp = g ? replay(g.rolls) : null;
-    const standing = rp?.standing ?? ALL_PINS;
-    const advice = g && standing.length < 10 ? adviseSpare(standing, bowlerProfile().hand) : null;
-    const cam = g ? cameraSuggestion() : null;
-    const done = games.slice().reverse().slice(0, 12);
-    el.innerHTML = `
-    <h2>Score</h2>
-    <div class="note">A scorecard that keeps itself, with spare coaching after every first ball and statistics for your game. Free, and it stays on this phone.</div>
-    ${g ? `<div class="card"><div class="k">Game ${games.length} \xC2\xB7 ${rp.frame <= 10 ? `frame ${rp.frame}, ball ${rp.ball}` : ""}</div>${cardHtml(g)}</div>` : `<div class="card"><div class="u">${games.length ? "Game over. Start the next one." : "No game in progress."}</div><div class="chips"><button class="btn" id="sc-new">Start a game</button></div></div>`}
-    ${g ? `<div class="card"><div class="k">${standing.length === 10 ? "How many pins are standing after this roll? Tap them" : "Tap the pins still standing"}</div>
-      ${deckSvg(standing, leaveSel)}
-      <div class="chips" style="justify-content:center">
-        <button class="btn" id="sc-record">${leaveSel.size ? `Record: ${leaveSel.size} left (${standing.length - leaveSel.size} down)` : standing.length === 10 ? "Record a strike" : "Record a spare"}</button>
-        <button class="btn ghost" id="sc-gutter">All ${standing.length} left</button>
-        <button class="btn ghost" id="sc-undo">Undo last roll</button></div>
-      ${cam ? `<div class="chips" style="justify-content:center"><button class="chip" id="sc-cam">Use the camera's read: ${cam.leave.length ? `leaves the ${cam.leave.join("-")}` : "a strike"}</button></div>` : ""}</div>` : ""}
-    ${advice ? `<div class="card"><div class="k">Spare coach: ${esc(advice.name)}</div><div class="u"><b>${esc(advice.text)}</b></div>${advice.notes.map((n) => `<div class="note">${esc(n)}</div>`).join("")}<div class="note">3-6-9 spare system (USA Bowling and coaching sources): feet move 3, 6 or 9 boards away from the pin, aim stays on your strike target.</div></div>` : ""}
-    <div class="card"><div class="k">Your statistics</div>${statsHtml()}</div>
-    ${done.length ? `<div class="card"><div class="k">Games</div>${done.map((x) => {
-      const s = scoreGame(x.rolls);
-      return `<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${s.total}</b> <span class="note">${replay(x.rolls).complete ? "" : "in progress \xC2\xB7 "}${esc(new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</span></div><button class="chip danger" data-del="${x.id}">Delete</button></div>`;
-    }).join("")}</div>` : ""}`;
-    $("sc-new")?.addEventListener("click", async () => {
-      games.push({ id: newId(), at: (/* @__PURE__ */ new Date()).toISOString(), rolls: [] });
-      leaveSel = /* @__PURE__ */ new Set();
-      await persist();
-      renderScore();
-    });
-    const add2 = async (roll) => {
-      const cur = current();
-      if (!cur) return;
-      cur.rolls.push(roll);
-      leaveSel = /* @__PURE__ */ new Set();
-      await persist();
-      renderScore();
-    };
-    el.querySelectorAll("[data-pin]").forEach((n) => {
-      n.addEventListener("click", () => {
-        const p = Number(n.getAttribute("data-pin"));
-        if (!standing.includes(p)) return;
-        if (leaveSel.has(p)) leaveSel.delete(p);
-        else leaveSel.add(p);
-        renderScore();
-      });
-    });
-    $("sc-record")?.addEventListener("click", () => add2({ down: standing.filter((p) => !leaveSel.has(p)) }));
-    $("sc-gutter")?.addEventListener("click", () => add2({ down: [] }));
-    $("sc-undo")?.addEventListener("click", async () => {
-      const cur = current() ?? games[games.length - 1];
-      if (!cur || !cur.rolls.length) return;
-      cur.rolls.pop();
-      leaveSel = /* @__PURE__ */ new Set();
-      await persist();
-      renderScore();
-    });
-    $("sc-cam")?.addEventListener("click", () => cam && add2({ down: standing.filter((p) => !cam.leave.includes(p)), shotId: cam.shotId }));
-    el.querySelectorAll("[data-del]").forEach((b) => b.onclick = async () => {
-      games = games.filter((x) => x.id !== b.dataset.del);
-      await persist();
-      renderScore();
-    });
-  }
-
   // core/src/layout.ts
   function releaseStrength(b) {
     let v = 0;
@@ -9217,6 +9305,7 @@ ${url}`);
     shot.result = { pinsDown: n, auto: true, ...leave.length ? { leave } : {} };
     lastPinRead = { standing, at: performance.now(), down: n };
     await updateShot(shot);
+    await autoScoreShot(shot);
     renderResult(shot);
     status.textContent = n === 10 ? "Strike, read from the camera." : `${n} pins down, read from the camera.`;
   }
