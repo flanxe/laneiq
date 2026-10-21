@@ -53,6 +53,16 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-21-skills",
+      date: "2026-10-21",
+      title: "Your skills chart",
+      items: [
+        "New skills radar at the top of Insights: nine skills on one chart, so you can see your strengths and what to work on at a glance.",
+        "Scoring skills (strikes, single-pin spares, closed frames, first-ball pins) are measured against published 200 and 220-average benchmarks. Camera skills (pocket hits, entry angle, target, start and speed control) use LaneIQ's coaching targets, and each one says which it is.",
+        "Tap any skill for your number, the target, the change since you started, and a drill. 'Work on these first' ranks what to fix."
+      ]
+    },
+    {
       id: "2026-10-21-score",
       date: "2026-10-21",
       title: "Scorecard and spare coach",
@@ -1087,19 +1097,19 @@
     const a = s.a;
     const m = s.m;
     setText("c-speed", a.speedMph.toFixed(1));
-    setText("c-speed-u", `\xC2\xB1 ${a.speedUncertainty.toFixed(1)} mph`);
+    setText("c-speed-u", `\xB1 ${a.speedUncertainty.toFixed(1)} mph`);
     setText("c-arrows", f1(a.boardAtArrows));
     setText("c-bp", f1(a.breakpointBoard));
     setText("c-bp-u", a.breakpointFt === null ? "" : `at ${a.breakpointFt.toFixed(0)} ft`);
     setText("c-entry", f1(a.entryBoard));
-    setText("c-launch", a.launchAngleDeg === null ? "n/a" : `${a.launchAngleDeg.toFixed(1)}\xC2\xB0`);
-    setText("c-impact", a.impactAngleDeg === null ? "n/a" : `${a.impactAngleDeg.toFixed(1)}\xC2\xB0`);
+    setText("c-launch", a.launchAngleDeg === null ? "n/a" : `${a.launchAngleDeg.toFixed(1)}\xB0`);
+    setText("c-impact", a.impactAngleDeg === null ? "n/a" : `${a.impactAngleDeg.toFixed(1)}\xB0`);
     setText("c-loss", m.speedLossPct === null ? "n/a" : `${m.speedLossPct.toFixed(0)}%`);
     setText("c-hook", f1(m.hookBoards));
     setText("c-miss", m.pocketMiss === null ? "n/a" : `${m.pocketMiss > 0 ? "+" : ""}${m.pocketMiss.toFixed(1)}`);
-    setText("c-miss-u", m.zone ? ZONE_TEXT[m.zone] : "+ high, \xE2\u02C6\u2019 light");
+    setText("c-miss-u", m.zone ? ZONE_TEXT[m.zone] : "+ high, \u2212 light");
     $("c-conf").style.width = `${Math.round(a.confidence * 100)}%`;
-    setText("c-conf-t", `${Math.round(a.confidence * 100)}% confidence \xC2\xB7 ${a.samples} pts`);
+    setText("c-conf-t", `${Math.round(a.confidence * 100)}% confidence \xB7 ${a.samples} pts`);
     document.querySelectorAll("#tab-live .card").forEach((el) => {
       el.classList.remove("pop");
       void el.offsetWidth;
@@ -1109,7 +1119,7 @@
   function addHistory(s, n) {
     const chip = document.createElement("div");
     chip.className = "chip";
-    chip.textContent = `#${n} \xC2\xB7 ${s.a.speedMph.toFixed(1)} mph \xC2\xB7 entry ${f1(s.a.entryBoard)}`;
+    chip.textContent = `#${n} \xB7 ${s.a.speedMph.toFixed(1)} mph \xB7 entry ${f1(s.a.entryBoard)}`;
     $("history").prepend(chip);
   }
   var resultExtra = null;
@@ -1146,7 +1156,7 @@
     if (mine && (cat || mine.rg !== void 0)) {
       const info = document.createElement("div");
       info.className = "note";
-      info.textContent = cat ? [`${cat.manufacturer} ${cat.name}`, cat.rg && `RG ${cat.rg.value}`, cat.differential && `diff ${cat.differential.value}`, cat.coverstock?.value, cat.core?.value, cat.colorway?.value].filter(Boolean).join(" \xC2\xB7 ") : `RG ${mine.rg} \xC2\xB7 diff ${mine.diff ?? "?"} (your specs)`;
+      info.textContent = cat ? [`${cat.manufacturer} ${cat.name}`, cat.rg && `RG ${cat.rg.value}`, cat.differential && `diff ${cat.differential.value}`, cat.coverstock?.value, cat.core?.value, cat.colorway?.value].filter(Boolean).join(" \xB7 ") : `RG ${mine.rg} \xB7 diff ${mine.diff ?? "?"} (your specs)`;
       el.append(info);
     }
     const row = document.createElement("div");
@@ -1203,14 +1213,14 @@
     attachSuggest(input);
     const hint = document.createElement("div");
     hint.className = "note";
-    hint.textContent = "\xE2\u20AC\u0153Show me this ball\xE2\u20AC\x9D learns it before you bowl: hold it up to the camera, rotate it slowly for a few seconds, and it can name it from shot 1.";
+    hint.textContent = "\u201CShow me this ball\u201D learns it before you bowl: hold it up to the camera, rotate it slowly for a few seconds, and it can name it from shot 1.";
     el.append(hint);
   }
   function renderLane() {
     const tracked = sessionShots().map((x) => ({ a: x.a, ballId: x.ballId }));
     const r = readLane(tracked);
     const el = $("lane-read");
-    el.innerHTML = `<div class="lr-head">${esc(r.headline)}</div><span class="badge ${r.confidence}">${r.confidence} confidence \xC2\xB7 ${r.shotsUsed} shots</span><ul>${r.points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul><div class="lr-next">Next test: ${esc(r.next)}</div>`;
+    el.innerHTML = `<div class="lr-head">${esc(r.headline)}</div><span class="badge ${r.confidence}">${r.confidence} confidence \xB7 ${r.shotsUsed} shots</span><ul>${r.points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul><div class="lr-next">Next test: ${esc(r.next)}</div>`;
     const last = sessionShots().at(-1);
     const rec2 = recommendBall(r, last?.ballId, ownedBalls().map((b) => ({ id: b.id, name: b.name, catalog: b.specs })));
     const rc = document.createElement("div");
@@ -1626,7 +1636,7 @@
     el.innerHTML = `
     <h2>Score</h2>
     <div class="note">With the camera running, every shot is scored for you: the pins it reads go straight on the card and the spare coach tells you where to move. Tap the pins below only to fix a mistake or to score without the camera. Free, and it stays on this phone.</div>
-    ${g ? `<div class="card"><div class="k">Game ${games.length} \xC2\xB7 ${rp.frame <= 10 ? `frame ${rp.frame}, ball ${rp.ball}` : ""}</div>${cardHtml(g)}</div>` : `<div class="card"><div class="u">${games.length ? "Game over. Start the next one." : "No game in progress."}</div><div class="chips"><button class="btn" id="sc-new">Start a game</button></div></div>`}
+    ${g ? `<div class="card"><div class="k">Game ${games.length} \xB7 ${rp.frame <= 10 ? `frame ${rp.frame}, ball ${rp.ball}` : ""}</div>${cardHtml(g)}</div>` : `<div class="card"><div class="u">${games.length ? "Game over. Start the next one." : "No game in progress."}</div><div class="chips"><button class="btn" id="sc-new">Start a game</button></div></div>`}
     ${g ? `<div class="card"><div class="k">${standing.length === 10 ? "How many pins are standing after this roll? Tap them" : "Tap the pins still standing"}</div>
       ${deckSvg(standing, leaveSel)}
       <div class="chips" style="justify-content:center">
@@ -1639,7 +1649,7 @@
     <div class="card"><div class="k">What costs you pins</div>${analysisHtml()}</div>
     ${done.length ? `<div class="card"><div class="k">Games</div>${done.map((x) => {
       const s = scoreGame(x.rolls);
-      return `<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${s.total}</b> <span class="note">${replay(x.rolls).complete ? "" : "in progress \xC2\xB7 "}${esc(new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</span></div><button class="chip danger" data-del="${x.id}">Delete</button></div>`;
+      return `<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${s.total}</b> <span class="note">${replay(x.rolls).complete ? "" : "in progress \xB7 "}${esc(new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</span></div><button class="chip danger" data-del="${x.id}">Delete</button></div>`;
     }).join("")}</div>` : ""}`;
     $("sc-new")?.addEventListener("click", async () => {
       games.push({ id: newId(), at: (/* @__PURE__ */ new Date()).toISOString(), rolls: [] });
@@ -1680,6 +1690,10 @@
       await persist();
       renderScore();
     });
+  }
+  async function loadGames() {
+    await ensureLoaded();
+    return games;
   }
 
   // core/src/vision.ts
@@ -3573,9 +3587,9 @@
     const inside = (hint.contain ?? []).map((p) => ({ x: p.x / k2, y: p.y / k2 }));
     const tol = Math.max(1.8, Math.min(sw, sh) * 0.012);
     let best = null;
-    const pt = (i) => ({ x: i % sw, y: Math.floor(i / sw) });
+    const pt2 = (i) => ({ x: i % sw, y: Math.floor(i / sw) });
     for (let it = 0; it < (inside.length ? 4e3 : 900); it++) {
-      const a = pt(edges[Math.floor(rand() * edges.length)]), b = pt(edges[Math.floor(rand() * edges.length)]), c = pt(edges[Math.floor(rand() * edges.length)]);
+      const a = pt2(edges[Math.floor(rand() * edges.length)]), b = pt2(edges[Math.floor(rand() * edges.length)]), c = pt2(edges[Math.floor(rand() * edges.length)]);
       const d = 2 * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));
       if (Math.abs(d) < 1e-6) continue;
       const ux = ((a.x * a.x + a.y * a.y) * (b.y - c.y) + (b.x * b.x + b.y * b.y) * (c.y - a.y) + (c.x * c.x + c.y * c.y) * (a.y - b.y)) / d;
@@ -3587,7 +3601,7 @@
       let n = 0;
       const bins2 = new Uint8Array(24);
       for (let q = 0; q < edges.length; q += 2) {
-        const p = pt(edges[q]);
+        const p = pt2(edges[q]);
         const dist = Math.hypot(p.x - ux, p.y - uy);
         if (Math.abs(dist - r) > tol) continue;
         const rx = (p.x - ux) / (dist || 1), ry = (p.y - uy) / (dist || 1);
@@ -3604,7 +3618,7 @@
     if (!best || best.n < Math.max(25, 0.6 * 2 * Math.PI * best.c.r / 4)) return null;
     const inl = [];
     for (const e of edges) {
-      const p = pt(e);
+      const p = pt2(e);
       if (Math.abs(Math.hypot(p.x - best.c.x, p.y - best.c.y) - best.c.r) <= tol) inl.push(p);
     }
     const f = fitCircle(inl) ?? best.c;
@@ -4610,8 +4624,8 @@
     const pts = s.points;
     const hole = (center, dia) => {
       const north = unit(cross(cross(center, [0, 1, 0]), center));
-      const poly = Array.from({ length: 28 }, (_, i) => walk(center, rotate(Math.abs(center[1]) > 0.98 ? [1, 0, 0] : north, center, 2 * Math.PI * i / 28), dia / 2));
-      const ps = poly.map(proj);
+      const poly2 = Array.from({ length: 28 }, (_, i) => walk(center, rotate(Math.abs(center[1]) > 0.98 ? [1, 0, 0] : north, center, 2 * Math.PI * i / 28), dia / 2));
+      const ps = poly2.map(proj);
       if (ps.every((p) => p.z <= 0.02)) return;
       ctx2.save();
       ctx2.beginPath();
@@ -5117,10 +5131,10 @@
       const Vc = vol(0, rc), Vf = vol(rc, rf), Vcov = vol(rf, R);
       const m1 = weightLb - cover * Vcov;
       const i1 = weightLb * meanRg2 / k2 - cover * (R ** 5 - rf ** 5);
-      const A = Vf, B = Vc, C = rf ** 5 - rc ** 5, D = rc ** 5;
-      const det = A * D - B * C;
+      const A = Vf, B = Vc, C2 = rf ** 5 - rc ** 5, D = rc ** 5;
+      const det = A * D - B * C2;
       if (Math.abs(det) < 1e-9) continue;
-      const a = (m1 * D - B * i1) / det, b = (A * i1 - C * m1) / det;
+      const a = (m1 * D - B * i1) / det, b = (A * i1 - C2 * m1) / det;
       const aG = a / G_TO_LB_PER_IN3, bG = b / G_TO_LB_PER_IN3;
       if (aG > 0.35 && aG < 1.1 && bG > 2 && bG < 7) {
         const score = Math.abs(rc - 1.8);
@@ -5567,6 +5581,270 @@
     };
     fit.onchange = showFit;
     showFit();
+  }
+
+  // core/src/skills.ts
+  var AXES = [
+    {
+      id: "strikes",
+      label: "Strikes",
+      group: "Scoring",
+      higherBetter: true,
+      target: 60.2,
+      unit: "%",
+      basis: "benchmark",
+      at200: 49.7,
+      minSample: 20,
+      source: "Strike rate of a 220-average bowler: 60.2% (200 average: 49.7%). Bowling This Month, Nov 2020.",
+      drill: "Strikes come from hitting the pocket with enough entry angle. Work on the pocket and entry-angle axes first, then match your ball and surface to the lane."
+    },
+    {
+      id: "singles",
+      label: "Single-pin spares",
+      group: "Scoring",
+      higherBetter: true,
+      target: 95.1,
+      unit: "%",
+      basis: "benchmark",
+      at200: 85.6,
+      minSample: 5,
+      source: "Single-pin conversion of a 220-average bowler: 95.1% (200 average: 85.6%). Bowling This Month, Nov 2020.",
+      drill: "Use a plastic spare ball (99% of elite bowlers do, Bowling This Month 2016) and the 3-6-9 system: same target as your strike shot, feet moved 3, 6 or 9 boards. Practice the 10 and 7 pins most."
+    },
+    {
+      id: "closed",
+      label: "Closed frames",
+      group: "Scoring",
+      higherBetter: true,
+      target: 91.9,
+      unit: "%",
+      basis: "benchmark",
+      at200: 85,
+      minSample: 20,
+      source: "Frames closed with a strike or spare, 220 average: 91.9% (200 average: 85.0%). Bowling This Month, Nov 2020.",
+      drill: "Every open frame is a spare you missed or a split you left. Convert the makeable ones: check the Score tab's list of leaves to practice."
+    },
+    {
+      id: "firstBall",
+      label: "First-ball pins",
+      group: "Scoring",
+      higherBetter: true,
+      target: 9.2,
+      unit: " pins",
+      basis: "benchmark",
+      minSample: 20,
+      source: 'A first-ball average over 9.2 means most shots reach the pocket (Bowling This Month, "Increasing Your Carry Percentage").',
+      drill: "Raise it by repeating your line: same feet, same target, same speed. Fix the arrows and start-board spread first."
+    },
+    {
+      id: "pocket",
+      label: "Pocket hits",
+      group: "Accuracy",
+      higherBetter: true,
+      target: 70,
+      unit: "%",
+      basis: "coaching",
+      minSample: 10,
+      source: "Share of tracked shots entering within 1 board of the pocket. LaneIQ working target: 70%.",
+      drill: "Pick one target arrow and bowl 10 shots at it. Move your feet, not your target, to bring the entry board back to the pocket."
+    },
+    {
+      id: "entry",
+      label: "Entry angle",
+      group: "Accuracy",
+      higherBetter: true,
+      target: 4,
+      unit: "\xB0",
+      basis: "coaching",
+      minSample: 8,
+      source: "Average entry angle at the pins. LaneIQ working target: at least 4 degrees (below about 3 the ball has little room to carry the pocket).",
+      drill: "Test one change: a little less speed or a touch more rotation, and keep your line. Check whether the entry angle passes 4 degrees."
+    },
+    {
+      id: "arrows",
+      label: "Target control",
+      group: "Repeatability",
+      higherBetter: false,
+      target: 1,
+      unit: " boards \xB1",
+      basis: "coaching",
+      minSample: 8,
+      source: "Spread (standard deviation) of the board you cross at the arrows. LaneIQ working target: under 1 board.",
+      drill: "Lay a towel or marker on your target arrow. Throw 10 shots looking only at it, same feet, and check the arrows board after each."
+    },
+    {
+      id: "start",
+      label: "Start position",
+      group: "Repeatability",
+      higherBetter: false,
+      target: 1,
+      unit: " boards \xB1",
+      basis: "coaching",
+      minSample: 8,
+      source: "Spread of the board the ball starts on. LaneIQ working target: under 1 board.",
+      drill: "Mark your feet on the approach with tape and check your slide ends in the same place each shot."
+    },
+    {
+      id: "speed",
+      label: "Speed control",
+      group: "Repeatability",
+      higherBetter: false,
+      target: 0.6,
+      unit: " mph \xB1",
+      basis: "coaching",
+      minSample: 8,
+      source: "Spread of launch speed. LaneIQ working target: under 0.6 mph.",
+      drill: "Throw 10 shots at the same effort and watch the live speed. Keep every shot within half a mile an hour of the first."
+    }
+  ];
+  var sdOf = (v) => {
+    const m = v.reduce((a, b) => a + b, 0) / v.length;
+    return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / Math.max(1, v.length - 1));
+  };
+  var nums = (xs) => xs.filter((x) => typeof x === "number" && Number.isFinite(x));
+  function frameOutcomes(games2) {
+    let closed = 0, open2 = 0;
+    for (const g of games2) {
+      const rp = replay(g.rolls);
+      const by = /* @__PURE__ */ new Map();
+      rp.states.forEach((s, k2) => by.set(s.frame, [...by.get(s.frame) ?? [], g.rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length]));
+      for (const [f, c] of by) {
+        if (f < 10) {
+          if (c[0] === 10) closed++;
+          else if (c.length === 2) c[0] + c[1] === 10 ? closed++ : open2++;
+        } else if (rp.complete) {
+          c[0] === 10 || c.length >= 2 && c[0] + c[1] >= 10 ? closed++ : open2++;
+        }
+      }
+    }
+    return { closed, open: open2 };
+  }
+  function measure(games2, shots) {
+    const st2 = bowlingStats(games2);
+    const fo = frameOutcomes(games2);
+    const fresh = games2.reduce((a, g) => a + replay(g.rolls).states.filter((s) => s.fresh).length, 0);
+    const pk = shots.filter((s) => s.m.pocketMiss !== null);
+    const sdv = (key2) => {
+      const v = nums(shots.map((s) => s.m[key2]));
+      return { value: v.length >= 2 ? sdOf(v) : null, n: v.length };
+    };
+    const ea = nums(shots.map((s) => s.m.entryAngle));
+    return {
+      strikes: { value: st2.strikePct, n: fresh },
+      singles: { value: st2.singlePin.attempts ? st2.singlePin.made / st2.singlePin.attempts * 100 : null, n: st2.singlePin.attempts },
+      closed: { value: fo.closed + fo.open ? fo.closed / (fo.closed + fo.open) * 100 : null, n: fo.closed + fo.open },
+      firstBall: { value: st2.firstBallAvg, n: fresh },
+      pocket: { value: pk.length ? pk.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / pk.length * 100 : null, n: pk.length },
+      entry: { value: ea.length ? ea.reduce((a, b) => a + b, 0) / ea.length : null, n: ea.length },
+      arrows: sdv("arrowsBoard"),
+      start: sdv("startBoard"),
+      speed: sdv("launchSpeed")
+    };
+  }
+  function scoreOf(def, value) {
+    if (value === null) return null;
+    const s = def.higherBetter ? value / def.target * 100 : value <= 0 ? 100 : def.target / value * 100;
+    return Math.max(0, Math.min(100, Math.round(s)));
+  }
+  function skillsProfile(games2, shots) {
+    const now = measure(games2, shots);
+    const gh = Math.floor(games2.length / 2), sh = Math.floor(shots.length / 2);
+    const early = measure(games2.slice(0, gh), shots.slice(0, sh));
+    return AXES.map((d) => {
+      const m = now[d.id];
+      const e = early[d.id];
+      const value = m.n >= d.minSample ? m.value : null;
+      return {
+        ...d,
+        value,
+        score: scoreOf(d, value),
+        score200: d.at200 === void 0 ? null : scoreOf(d, d.at200),
+        earlierScore: e.n >= d.minSample && value !== null && (games2.length >= 4 || shots.length >= 16) ? scoreOf(d, e.value) : null
+      };
+    });
+  }
+  function focusList(axes) {
+    return axes.filter((a) => a.score !== null && a.score < 100).map((a) => ({ axis: a, gap: 100 - a.score + (a.group === "Scoring" ? 3 : 0) })).sort((a, b) => b.gap - a.gap);
+  }
+  var strongest = (axes) => axes.filter((a) => a.score !== null).sort((a, b) => b.score - a.score).slice(0, 3);
+
+  // camera/skills.ts
+  var SIZE = 320;
+  var C = SIZE / 2;
+  var RAD = 104;
+  var pt = (i, n, v) => {
+    const a = -Math.PI / 2 + i / n * Math.PI * 2;
+    return [C + Math.cos(a) * RAD * (v / 100), C + Math.sin(a) * RAD * (v / 100)];
+  };
+  var poly = (vals) => vals.map((v, i) => pt(i, vals.length, v ?? 0).map((x) => x.toFixed(1)).join(",")).join(" ");
+  var fmt3 = (a, v) => a.unit.trim() === "%" ? `${v.toFixed(1)}%` : a.unit.trim() === "\xB0" ? `${v.toFixed(1)}\xB0` : `${v.toFixed(a.id === "speed" ? 2 : 1)}${a.unit}`;
+  var targetText = (a) => `${a.higherBetter ? "at least " : "under "}${fmt3(a, a.target)}`;
+  function radarSvg(axes, sel) {
+    const n = axes.length;
+    const rings = [25, 50, 75, 100].map((r) => `<polygon points="${poly(axes.map(() => r))}" fill="none" stroke="rgba(255,255,255,${r === 100 ? 0.35 : 0.12})" stroke-width="${r === 100 ? 1.5 : 1}" ${r === 100 ? 'stroke-dasharray="4 3"' : ""}/>`).join("");
+    const spokes = axes.map((_, i) => {
+      const [x, y] = pt(i, n, 100);
+      return `<line x1="${C}" y1="${C}" x2="${x}" y2="${y}" stroke="rgba(255,255,255,.1)"/>`;
+    }).join("");
+    const earlier = axes.some((a) => a.earlierScore !== null) ? `<polygon points="${poly(axes.map((a) => a.earlierScore))}" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.5" stroke-dasharray="3 3"/>` : "";
+    const now = `<polygon points="${poly(axes.map((a) => a.score))}" fill="rgba(70,230,255,.22)" stroke="#46e6ff" stroke-width="2.2" stroke-linejoin="round"/>`;
+    const dots = axes.map((a, i) => {
+      const [x, y] = pt(i, n, a.score ?? 0);
+      const col = a.score === null ? "none" : a.score >= 85 ? "#5affb0" : a.score >= 60 ? "#ffd25a" : "#ff5a6e";
+      return `<circle cx="${x}" cy="${y}" r="${i === sel ? 6 : 4.2}" fill="${col}" stroke="${a.score === null ? "rgba(255,255,255,.5)" : "#0b1220"}" stroke-width="1.5"/>`;
+    }).join("");
+    const ticks = axes.map((a, i) => {
+      if (a.score200 === null) return "";
+      const [x, y] = pt(i, n, a.score200);
+      return `<path d="M${x},${y - 5} l5,5 l-5,5 l-5,-5 z" fill="#ffd25a" stroke="#0b1220" stroke-width="1"/>`;
+    }).join("");
+    const labels = axes.map((a, i) => {
+      const [x, y] = pt(i, n, 126);
+      const anchor = x < C - 12 ? "end" : x > C + 12 ? "start" : "middle";
+      return `<g data-ax="${i}" style="cursor:pointer"><text x="${x}" y="${y + 4}" text-anchor="${anchor}" font-size="11.5" font-weight="${i === sel ? 800 : 600}" fill="${i === sel ? "#fff" : "#b6c2d9"}">${esc(a.label)}</text></g>`;
+    }).join("");
+    return `<svg viewBox="-62 -4 ${SIZE + 124} ${SIZE + 8}" style="width:100%;max-width:420px;display:block;margin:0 auto" role="img" aria-label="Skills radar">${rings}${spokes}${earlier}${now}${ticks}${dots}${labels}</svg>`;
+  }
+  function detail(a) {
+    const have = a.value !== null;
+    const bar = a.score === null ? 0 : a.score;
+    const col = a.score === null ? "#555" : a.score >= 85 ? "#5affb0" : a.score >= 60 ? "#ffd25a" : "#ff5a6e";
+    return `<div class="k">${esc(a.label)} \xB7 ${esc(a.group)}</div>
+    <div style="height:8px;border-radius:4px;background:rgba(255,255,255,.1);margin:6px 0"><div style="width:${bar}%;height:8px;border-radius:4px;background:${col}"></div></div>
+    <table><tr><td>You</td><td class="n">${have ? fmt3(a, a.value) : "not enough data yet"}</td></tr>
+    <tr><td>Target</td><td class="n">${esc(targetText(a))}</td></tr>
+    ${a.at200 !== void 0 ? `<tr><td>200-average bowlers</td><td class="n">${esc(fmt3(a, a.at200))}</td></tr>` : ""}
+    ${a.earlierScore !== null && a.score !== null ? `<tr><td>Change since earlier</td><td class="n">${a.score - a.earlierScore >= 0 ? "+" : ""}${a.score - a.earlierScore} points</td></tr>` : ""}</table>
+    <div class="u">${esc(a.drill)}</div>
+    <div class="note"><span class="badge ${a.basis === "benchmark" ? "good" : "moderate"}">${a.basis === "benchmark" ? "published benchmark" : "LaneIQ coaching target"}</span> ${esc(a.source)}</div>`;
+  }
+  async function mountSkills(host2) {
+    const games2 = await loadGames();
+    const axes = skillsProfile(games2, S.shots);
+    const scored = axes.filter((a) => a.score !== null);
+    const card = document.createElement("div");
+    card.className = "card";
+    card.id = "skills-card";
+    host2.querySelectorAll("#skills-card").forEach((x) => x.remove());
+    const focus = focusList(axes);
+    let sel = focus.length ? axes.indexOf(focus[0].axis) : 0;
+    const draw3 = () => {
+      card.innerHTML = `<div class="k">Your skills</div>
+      ${scored.length ? radarSvg(axes, sel) : `<div class="u">Your skills chart fills in as you bowl. Scoring axes come from games on the Score tab; accuracy and repeatability axes come from tracked camera shots.</div>${radarSvg(axes, sel)}`}
+      <div class="note" style="text-align:center"><span style="color:#46e6ff">\u2501 now</span> \xB7 ${axes.some((a) => a.earlierScore !== null) ? '<span style="color:#ccc">\u2505 when you started</span> \xB7 ' : ""}<span style="color:#ffd25a">\u25C6 200-average bowler</span> \xB7 outer ring = target. Tap a skill.</div>
+      <div id="sk-detail" style="margin-top:8px">${detail(axes[sel])}</div>
+      ${focus.length ? `<div class="k" style="margin-top:12px">Work on these first</div><ol>${focus.slice(0, 3).map((f) => `<li><b>${esc(f.axis.label)}</b> (${f.axis.score}/100): ${esc(f.axis.drill)}</li>`).join("")}</ol>` : scored.length ? `<div class="u">Every scored skill is at its target. Raise the bar by bowling more games.</div>` : ""}
+      ${strongest(axes).length ? `<div class="k" style="margin-top:8px">Your strengths</div><div class="u">${strongest(axes).map((a) => `${esc(a.label)} (${a.score})`).join(" \xB7 ")}</div>` : ""}
+      ${axes.some((a) => a.score === null) ? `<div class="note" style="margin-top:8px">Not scored yet: ${axes.filter((a) => a.score === null).map((a) => esc(a.label)).join(", ")}. They need more games or more tracked shots.</div>` : ""}`;
+      card.querySelectorAll("[data-ax]").forEach((g) => g.addEventListener("click", () => {
+        sel = Number(g.getAttribute("data-ax"));
+        draw3();
+      }));
+    };
+    draw3();
+    const h = host2.querySelector("h2");
+    if (h) h.after(card);
+    else host2.prepend(card);
   }
 
   // core/src/layout.ts
@@ -6021,8 +6299,8 @@
     el.dataset.live = "1";
     const peerName = l.peer ? `${esc(l.peer.name)}${l.peer.username ? ` <span class="note">@${esc(l.peer.username)}</span>` : ""}` : "your friend";
     const last = (a) => a[a.length - 1];
-    const fmt3 = (v, d = 1) => v === null || v === void 0 ? "-" : v.toFixed(d);
-    const row = (label2, a, b, d = 1) => `<tr><td>${label2}</td><td class="n">${fmt3(a, d)}</td><td class="n">${fmt3(b, d)}</td></tr>`;
+    const fmt4 = (v, d = 1) => v === null || v === void 0 ? "-" : v.toFixed(d);
+    const row = (label2, a, b, d = 1) => `<tr><td>${label2}</td><td class="n">${fmt4(a, d)}</td><td class="n">${fmt4(b, d)}</td></tr>`;
     const same = !!myLane && !!l.peerLane && myLane.toLowerCase() === l.peerLane.toLowerCase();
     el.innerHTML = `
     <div class="row"><h2>Live with ${peerName}</h2><button class="btn ghost" id="lv-close">${l.state === "connected" ? "Hide" : "Close"}</button></div>
@@ -6291,7 +6569,7 @@ ${url}`);
     const draw3 = () => {
       const mySess = buildSession(pickMine, S.laneLabels[pickMine] ?? "");
       const cmp = compareSessions(mySess, pickTheirs);
-      const fmt3 = (v, u) => v === null ? "-" : `${v.toFixed(1)}${u === "\xB0" ? "\xB0" : u ? " " + u : ""}`;
+      const fmt4 = (v, u) => v === null ? "-" : `${v.toFixed(1)}${u === "\xB0" ? "\xB0" : u ? " " + u : ""}`;
       el.innerHTML = `
       <div class="row"><h2>Compare shots</h2><button class="btn ghost" id="fr-close">Close</button></div>
       <div class="field"><label>Their session</label><select id="cp-theirs">${S.shared.map((x, i) => `<option value="${i}" ${x === pickTheirs ? "selected" : ""}>${esc(x.from.name)} \xB7 ${esc(x.lane)} \xB7 ${esc(x.date)}</option>`).join("")}</select></div>
@@ -6299,7 +6577,7 @@ ${url}`);
       <div class="field"><label>Where was your session? (so it can be matched to their lane)</label><input id="cp-lane" value="${esc(S.laneLabels[pickMine] ?? "")}" placeholder="Center and lane"></div>
       <div class="card"><span class="badge ${cmp.sameLane ? "good" : "tentative"}">${cmp.sameLane ? "same lane" : "different lanes"}</span><div class="stagebox" style="margin-top:10px"><canvas id="cp-map" width="360" height="600" style="width:100%;height:auto;aspect-ratio:360/600"></canvas></div>
         <div class="note"><span style="color:#46e6ff">Cyan: you</span> \xB7 <span style="color:#ffd25a">Gold: ${esc(pickTheirs.from.name)}</span></div></div>
-      <div class="card"><table><tr><th></th><th class="n">You</th><th class="n">${esc(pickTheirs.from.name)}</th></tr>${cmp.rows.map((r) => `<tr><td>${esc(r.label)}</td><td class="n">${fmt3(r.mine, r.unit)}</td><td class="n">${fmt3(r.theirs, r.unit)}</td></tr>`).join("")}</table></div>
+      <div class="card"><table><tr><th></th><th class="n">You</th><th class="n">${esc(pickTheirs.from.name)}</th></tr>${cmp.rows.map((r) => `<tr><td>${esc(r.label)}</td><td class="n">${fmt4(r.mine, r.unit)}</td><td class="n">${fmt4(r.theirs, r.unit)}</td></tr>`).join("")}</table></div>
       <div class="card"><ul>${cmp.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>`;
       $("fr-close").onclick = close4;
       $("cp-theirs").onchange = (e) => (pickTheirs = S.shared[Number(e.target.value)], draw3());
@@ -6960,12 +7238,12 @@ ${url}`);
     function basis(w, h) {
       const th = yaw * Math.PI / 180;
       const ph = Math.min(89.5, Math.max(4, pitch)) * Math.PI / 180;
-      const C = [target[0] + dist * Math.sin(th) * Math.cos(ph), target[1] - dist * Math.cos(th) * Math.cos(ph), target[2] + dist * Math.sin(ph)];
-      const F = norm3(sub2(target, C));
+      const C2 = [target[0] + dist * Math.sin(th) * Math.cos(ph), target[1] - dist * Math.cos(th) * Math.cos(ph), target[2] + dist * Math.sin(ph)];
+      const F = norm3(sub2(target, C2));
       const R2 = norm3(cross2(F, [0, 0, 1]));
       const U = cross2(R2, F);
       const f = h / 2 / Math.tan(50 * Math.PI / 360);
-      return { C, F, R: R2, U, f, w, h };
+      return { C: C2, F, R: R2, U, f, w, h };
     }
     const NEAR = 4;
     const proj = (cam, P) => {
@@ -7011,7 +7289,7 @@ ${url}`);
       ctx2.clearRect(0, 0, w, h);
       ctx2.lineJoin = "round";
       ctx2.lineCap = "round";
-      const poly = (pts, fill, stroke, lw = 1) => {
+      const poly2 = (pts, fill, stroke, lw = 1) => {
         const q = pts.map((p) => proj(cam, p));
         if (q.some((x) => !x)) return;
         ctx2.beginPath();
@@ -7036,11 +7314,11 @@ ${url}`);
         ctx2.stroke();
       };
       const hw = LANE_W / 2;
-      poly([[-hw - GUTTER - 14, -15 * FT, -0.2], [hw + GUTTER + 14, -15 * FT, -0.2], [hw + GUTTER + 14, 0, -0.2], [-hw - GUTTER - 14, 0, -0.2]], "rgba(140,105,70,.55)");
-      poly([[-hw - GUTTER, 0, -0.2], [-hw, 0, -0.2], [-hw, DECK_END, -0.2], [-hw - GUTTER, DECK_END, -0.2]], "rgba(8,10,16,.95)");
-      poly([[hw, 0, -0.2], [hw + GUTTER, 0, -0.2], [hw + GUTTER, DECK_END, -0.2], [hw, DECK_END, -0.2]], "rgba(8,10,16,.95)");
-      poly([[-hw, 0, 0], [hw, 0, 0], [hw, DECK_END, 0], [-hw, DECK_END, 0]], "rgba(214,170,110,.78)");
-      poly([[-hw - GUTTER, DECK_END, -0.2], [hw + GUTTER, DECK_END, -0.2], [hw + GUTTER, DECK_END + 40, -0.2], [-hw - GUTTER, DECK_END + 40, -0.2]], "rgba(5,6,10,.97)");
+      poly2([[-hw - GUTTER - 14, -15 * FT, -0.2], [hw + GUTTER + 14, -15 * FT, -0.2], [hw + GUTTER + 14, 0, -0.2], [-hw - GUTTER - 14, 0, -0.2]], "rgba(140,105,70,.55)");
+      poly2([[-hw - GUTTER, 0, -0.2], [-hw, 0, -0.2], [-hw, DECK_END, -0.2], [-hw - GUTTER, DECK_END, -0.2]], "rgba(8,10,16,.95)");
+      poly2([[hw, 0, -0.2], [hw + GUTTER, 0, -0.2], [hw + GUTTER, DECK_END, -0.2], [hw, DECK_END, -0.2]], "rgba(8,10,16,.95)");
+      poly2([[-hw, 0, 0], [hw, 0, 0], [hw, DECK_END, 0], [-hw, DECK_END, 0]], "rgba(214,170,110,.78)");
+      poly2([[-hw - GUTTER, DECK_END, -0.2], [hw + GUTTER, DECK_END, -0.2], [hw + GUTTER, DECK_END + 40, -0.2], [-hw - GUTTER, DECK_END + 40, -0.2]], "rgba(5,6,10,.97)");
       for (let i = 0; i <= LANE_BOARDS; i++) {
         const x = toX(i);
         const major = (LANE_BOARDS - i) % 5 === 0;
@@ -7051,7 +7329,7 @@ ${url}`);
       for (let b = 5; b <= 35; b += 5) {
         const x = toX(LANE_BOARDS + 0.5 - b);
         const tip = (12 + 4 * (1 - Math.abs(b - 20) / 15)) * FT;
-        poly([[x - 1.1, tip - 20, 0.15], [x + 1.1, tip - 20, 0.15], [x, tip, 0.15]], "rgba(255,210,90,.95)");
+        poly2([[x - 1.1, tip - 20, 0.15], [x + 1.1, tip - 20, 0.15], [x, tip, 0.15]], "rgba(255,210,90,.95)");
       }
       const pins = [];
       for (let r = 0; r < 4; r++) for (let i = 0; i <= r; i++) pins.push([(i - r / 2) * PIN_SP, 60 * FT + r * ROW, 0]);
@@ -7338,6 +7616,10 @@ ${url}`);
   }
   var STATE_PLAN_RECENT = 15;
   function renderInsights() {
+    renderInsightsBody();
+    void mountSkills($("insights-page"));
+  }
+  function renderInsightsBody() {
     const el = $("insights-page");
     const shots = S.shots;
     if (!shots.length) {
@@ -8217,7 +8499,7 @@ ${url}`);
     if (saved) {
       applyCalibration(saved, "your saved setup, verifying");
       verifyUntil = performance.now() + 12e3;
-    } else status.textContent = `Camera on (${fps ? Math.round(fps) : "?"} fps). Looking for the lane\xE2\u20AC\xA6`;
+    } else status.textContent = `Camera on (${fps ? Math.round(fps) : "?"} fps). Looking for the lane\u2026`;
     schedule();
   }
   var mode = "auto";
@@ -8310,9 +8592,9 @@ ${url}`);
   var solid = isSolid;
   var chooseList = [];
   var chooseSeen = 0;
-  var polyHas = (poly, x, y) => {
+  var polyHas = (poly2, x, y) => {
     let inside = false;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) if (poly[i].y > y !== poly[j].y > y && x < (poly[j].x - poly[i].x) * (y - poly[i].y) / (poly[j].y - poly[i].y) + poly[i].x) inside = !inside;
+    for (let i = 0, j = poly2.length - 1; i < poly2.length; j = i++) if (poly2[i].y > y !== poly2[j].y > y && x < (poly2[j].x - poly2[i].x) * (y - poly2[i].y) / (poly2[j].y - poly2[i].y) + poly2[i].x) inside = !inside;
     return inside;
   };
   var centerOf = (c) => ({ x: c.reduce((s, p) => s + p.x, 0) / c.length, y: c.reduce((s, p) => s + p.y, 0) / c.length });
@@ -8368,11 +8650,11 @@ ${url}`);
     $("snapbtn").classList.toggle("hide", !(show && adjusted && pending));
     if (!show) return;
     if (mode === "choose") {
-      el.innerHTML = `<span class="sc ask">\xE2\u02DC\x9D Tap your lane</span><div class="note" style="flex-basis:100%">${hint || "I can see more than one lane. Tap the one you are bowling on."}</div>`;
+      el.innerHTML = `<span class="sc ask">\u261D Tap your lane</span><div class="note" style="flex-basis:100%">${hint || "I can see more than one lane. Tap the one you are bowling on."}</div>`;
       return;
     }
     if (mode === "tap") {
-      el.innerHTML = `<span class="sc ask">\xE2\u02DC\x9D Tap your lane</span><div class="note" style="flex-basis:100%">${hint || "Tap on the lane surface, between its two gutters, and I'll follow the edges from there."}</div>`;
+      el.innerHTML = `<span class="sc ask">\u261D Tap your lane</span><div class="note" style="flex-basis:100%">${hint || "Tap on the lane surface, between its two gutters, and I'll follow the edges from there."}</div>`;
       return;
     }
     const g = diagView;
@@ -8384,7 +8666,7 @@ ${url}`);
       ["Lane end", g?.pitRow != null],
       [`Steady ${Math.min(locks.length, 3)}/3`, locks.length >= 3]
     ];
-    el.innerHTML = items.map(([l, ok]) => `<span class="sc ${ok ? "ok" : ""}">${ok ? "\xE2\u0153\u201C" : "\xE2\u2014\u2039"} ${l}</span>`).join("") + (hint ? `<div class="note" style="flex-basis:100%">${hint}</div>` : "");
+    el.innerHTML = items.map(([l, ok]) => `<span class="sc ${ok ? "ok" : ""}">${ok ? "\u2713" : "\u25CB"} ${l}</span>`).join("") + (hint ? `<div class="note" style="flex-basis:100%">${hint}</div>` : "");
   }
   function drawScanner(now) {
     const s = overlay.width / 1280;
@@ -8542,7 +8824,7 @@ ${url}`);
     lastLockConf = ch.pick?.confidence ?? lastCandidates[0]?.confidence ?? null;
     if (chooseSeen >= 2) return enterChoose(ch.choices.map((c) => c.corners));
     const d = ch.pick ?? lastCandidates[0] ?? null;
-    pill("SCANNING\xE2\u20AC\xA6", "scan");
+    pill("SCANNING\u2026", "scan");
     const tol = video.videoWidth * 0.03;
     if (d && solid(d)) {
       pending = null;
@@ -8551,7 +8833,7 @@ ${url}`);
       locks.push(d.corners);
       locks = locks.slice(-3);
       setStep(Math.min(3, locks.length));
-      status.textContent = "Found the lane, confirming\xE2\u20AC\xA6";
+      status.textContent = "Found the lane, confirming\u2026";
       renderScan("Hold still for a moment while I confirm it.");
       if (locks.length === 3 && locks.every((l) => detectionsAgree(locks[0], l, tol))) {
         applyCalibration(d.corners, "automatic");
@@ -8623,7 +8905,7 @@ ${url}`);
     if (!driftRef) {
       if (/saved setup/.test(lastLockHow) && !lockFits(cur)) {
         relock(false);
-        status.textContent = "Your saved lane doesn't match what the camera sees now (the phone has moved). Looking for the lane again\xE2\u20AC\xA6";
+        status.textContent = "Your saved lane doesn't match what the camera sees now (the phone has moved). Looking for the lane again\u2026";
         return;
       }
       driftRef = cur;
@@ -8828,8 +9110,8 @@ ${url}`);
     }
     setStep(0);
     setReady(false);
-    status.textContent = "Looking for the lane again\xE2\u20AC\xA6";
-    pill("SCANNING\xE2\u20AC\xA6", "scan");
+    status.textContent = "Looking for the lane again\u2026";
+    pill("SCANNING\u2026", "scan");
     renderScan();
     tracker = null;
     laneMask = null;
@@ -8845,7 +9127,7 @@ ${url}`);
   var DIGITAL_MAX = 6;
   function drawZoomBar() {
     const bar = $("zoombar");
-    bar.innerHTML = zoomLevels.map((z) => `<button class="seg ${Math.abs(z - zoomNow) < 0.05 ? "on" : ""}" data-z="${z}">${z}\xC3\u2014</button>`).join("") + (Math.abs(zoomNow - Math.round(zoomNow * 2) / 2) > 0.05 || !zoomLevels.some((z) => Math.abs(z - zoomNow) < 0.05) ? `<button class="seg on" disabled>${zoomNow.toFixed(1)}\xC3\u2014</button>` : "");
+    bar.innerHTML = zoomLevels.map((z) => `<button class="seg ${Math.abs(z - zoomNow) < 0.05 ? "on" : ""}" data-z="${z}">${z}\xD7</button>`).join("") + (Math.abs(zoomNow - Math.round(zoomNow * 2) / 2) > 0.05 || !zoomLevels.some((z) => Math.abs(z - zoomNow) < 0.05) ? `<button class="seg on" disabled>${zoomNow.toFixed(1)}\xD7</button>` : "");
     bar.querySelectorAll("button[data-z]").forEach((b) => b.onclick = () => void setZoom(Number(b.dataset.z)));
   }
   async function setupZoom() {
@@ -8890,12 +9172,12 @@ ${url}`);
       applyView();
       if (dropLock && (H || pending)) {
         relock(false);
-        status.textContent = `Zoom ${zoomNow.toFixed(1)}\xC3\u2014: looking for the lane again at this zoom\xE2\u20AC\xA6`;
+        status.textContent = `Zoom ${zoomNow.toFixed(1)}\xD7: looking for the lane again at this zoom\u2026`;
       }
     } else {
       if (zoomNow === 1) panX = panY = 0;
       applyView();
-      if (zoomNow !== 1) status.textContent = `Zoom ${zoomNow.toFixed(1)}\xC3\u2014 (on screen only: this phone does not let the app zoom the lens, so detection still uses the whole picture).`;
+      if (zoomNow !== 1) status.textContent = `Zoom ${zoomNow.toFixed(1)}\xD7 (on screen only: this phone does not let the app zoom the lens, so detection still uses the whole picture).`;
     }
     try {
       localStorage.setItem(ZOOM_KEY, String(zoomNow));
@@ -8963,7 +9245,7 @@ ${url}`);
           clearTimeout(relockTimer);
           relockTimer = setTimeout(() => {
             relock(false);
-            status.textContent = `Zoom ${zoomNow.toFixed(1)}\xC3\u2014: looking for the lane again at this zoom\xE2\u20AC\xA6`;
+            status.textContent = `Zoom ${zoomNow.toFixed(1)}\xD7: looking for the lane again at this zoom\u2026`;
           }, 500);
         }
       }
@@ -9020,11 +9302,11 @@ ${url}`);
     shown3dKey = key2;
     view3d.setPaths(src ? [{ path: src, color: "ramp", width: 4, ballAt: live2 ? null : void 0 }] : []);
   }
-  function inPolygon(p, poly) {
+  function inPolygon(p, poly2) {
     let inside = false;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-      const a = poly[i];
-      const b = poly[j];
+    for (let i = 0, j = poly2.length - 1; i < poly2.length; j = i++) {
+      const a = poly2[i];
+      const b = poly2[j];
       if (a.y > p.y !== b.y > p.y && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
     }
     return inside;
@@ -9055,7 +9337,7 @@ ${url}`);
     if (!stream) return void (status.textContent = "Start the camera first, then show me the ball.");
     setMode("lane");
     enrolling = { name, catalogKey, sigs: [], nextAt: 0, until: performance.now() + 6e3 };
-    status.textContent = `Hold ${name} inside the circle and rotate it slowly\xE2\u20AC\xA6`;
+    status.textContent = `Hold ${name} inside the circle and rotate it slowly\u2026`;
   });
   function enrollTick(now) {
     if (!enrolling) return;
@@ -9192,7 +9474,7 @@ ${url}`);
       if (here && here.y < 30 && trail.length) captureBall(trail[trail.length - 1].x, trail[trail.length - 1].y, tracker.lastR * (video.videoWidth / GW));
     }
     if (ev === "confirmed") {
-      status.textContent = "Ball detected, tracking\xE2\u20AC\xA6";
+      status.textContent = "Ball detected, tracking\u2026";
       startRecording(path[path.length - 1].t);
     } else if (ev === "finished") void finish();
     else if (ev === "reset") resetTrack();
@@ -9537,7 +9819,7 @@ ${url}`);
     changed();
   })();
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").then(() => navigator.serviceWorker.ready).then(() => setText("offline", "Ready offline \xE2\u0153\u201C")).catch(() => {
+    navigator.serviceWorker.register("sw.js").then(() => navigator.serviceWorker.ready).then(() => setText("offline", "Ready offline \u2713")).catch(() => {
     });
   }
 })();
