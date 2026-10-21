@@ -1474,8 +1474,13 @@
   }
 
   // core/src/balls.ts
+  function specForWeight(b, lb) {
+    const row = b.weightSpecs?.value.find((w) => w.lb === lb);
+    if (row) return { ...row, exact: true };
+    return { rg: b.rg?.value, differential: b.differential?.value, intermediateDifferential: b.intermediateDifferential?.value, lb: b.specWeightLb?.value, exact: false };
+  }
   var ballKey = (manufacturer, name) => `${manufacturer.trim()}|${name.trim()}`.toLowerCase();
-  var SPEC_FIELDS = ["releaseYear", "line", "coverstock", "coverstockType", "core", "coreSymmetry", "rg", "differential", "intermediateDifferential", "factoryFinish", "specWeightLb", "colorway", "status", "availableOn", "imageUrl", "competition"];
+  var SPEC_FIELDS = ["releaseYear", "line", "coverstock", "coverstockType", "core", "coreSymmetry", "rg", "differential", "intermediateDifferential", "factoryFinish", "specWeightLb", "weightSpecs", "colorway", "status", "availableOn", "imageUrl", "competition"];
   var todayIso = (now) => now.toISOString().slice(0, 10);
   var releaseYearOf = (b) => b.availableOn ? Number(b.availableOn.value.slice(0, 4)) : b.releaseYear?.value;
   function recommendable(b, now = /* @__PURE__ */ new Date()) {
@@ -3974,9 +3979,11 @@
     const up = cross(f, right);
     return [right, up, f];
   }
-  function fromCatalog(b) {
+  function fromCatalog(b, weightLb) {
     const sym = b.coreSymmetry?.value !== "asymmetric";
-    return { name: b.name, manufacturer: b.manufacturer, rg: b.rg?.value ?? 2.52, totalDiff: b.differential?.value ?? 0.04, intDiff: sym ? 0 : b.intermediateDifferential?.value ?? 0, symmetric: sym, colorway: b.colorway?.value };
+    const lb = weightLb ?? b.specWeightLb?.value;
+    const sp = lb ? specForWeight(b, lb) : { rg: b.rg?.value, differential: b.differential?.value, intermediateDifferential: b.intermediateDifferential?.value, exact: false };
+    return { name: b.name, manufacturer: b.manufacturer, rg: sp.rg ?? 2.52, totalDiff: sp.differential ?? 0.04, intDiff: sym ? 0 : sp.intermediateDifferential ?? 0, symmetric: sym, colorway: b.colorway?.value, catalogKey: b.key, weights: b.weightSpecs?.value, weightLb: sp.exact ? lb : b.specWeightLb?.value };
   }
   function startingLab(ball, layout) {
     const bp = bowlerProfile();
@@ -4183,7 +4190,7 @@
     const found = opts.catalogKey ? S.catalog.find((c) => c.key === opts.catalogKey) : void 0;
     const first = found ? fromCatalog(found) : (() => {
       const mine = S.arsenal.map((b) => b.catalogKey ? S.catalog.find((c) => c.key === b.catalogKey) : void 0).find((c) => c && c.rg && c.differential);
-      return mine ? fromCatalog(mine) : { name: "Sample ball", rg: 2.52, totalDiff: 0.045, intDiff: 0, symmetric: true };
+      return mine ? fromCatalog(mine, S.arsenal.find((a) => a.catalogKey === mine.key)?.weightLb) : { name: "Sample ball", rg: 2.52, totalDiff: 0.045, intDiff: 0, symmetric: true };
     })();
     lab = startingLab(first, { ...rest, ...dualAngle ? { dual: dualAngle, system: "dual" } : {} });
     if (opts.photo) lab.photo = opts.photo;
@@ -4211,7 +4218,8 @@
       <div class="chips"><button class="btn ghost" id="lb-scan">Scan my drilled ball to read its layout</button></div>
       ${mine.length ? `<div class="field"><label>From my arsenal</label><select id="lb-mine"><option value="">choose\u2026</option>${mine.map((x) => `<option value="${esc(x.c.key)}">${esc(x.b.name)}</option>`).join("")}</select></div>` : ""}
       <div class="field"><label>Or search the catalog</label><input id="lb-search" placeholder="Type a ball name" autocomplete="off"><div class="suggest" id="lb-hits"></div></div>
-      <div class="u"><b>${esc(l.ball.manufacturer ? l.ball.manufacturer + " " : "")}${esc(l.ball.name)}</b>: RG ${fmt2(l.ball.rg, 3)}, differential ${fmt2(l.ball.totalDiff, 3)}${l.ball.symmetric ? ", symmetric core" : `, asymmetric core (intermediate ${fmt2(l.ball.intDiff, 3)})`}</div>
+      <div class="u"><b>${esc(l.ball.manufacturer ? l.ball.manufacturer + " " : "")}${esc(l.ball.name)}</b>${l.ball.weightLb ? ` (${l.ball.weightLb} lb)` : ""}: RG ${fmt2(l.ball.rg, 3)}, differential ${fmt2(l.ball.totalDiff, 3)}${l.ball.symmetric ? ", symmetric core" : `, asymmetric core (intermediate ${fmt2(l.ball.intDiff, 3)})`}</div>
+      ${l.ball.weights && l.ball.weights.length > 1 ? `<div class="k" style="margin-top:6px">Ball weight (its RG and differential change with weight)</div><div class="chips">${l.ball.weights.map((w) => `<button class="chip ${w.lb === l.ball.weightLb ? "sel" : ""}" data-wt="${w.lb}">${w.lb} lb</button>`).join("")}</div>` : l.ball.weightLb ? `<div class="note">Specs are for the ${l.ball.weightLb} lb ball; other weights aren't published for this one.</div>` : ""}
       <div class="chips"><button class="chip ${l.ball.symmetric ? "" : "sel"}" id="lb-asym">Mass bias: ${l.ball.symmetric ? "off (symmetric ball)" : "on (asymmetric ball)"}</button></div>
       <div class="two"><div class="field"><label>Pin to CG (in)</label><input id="lb-cg" value="${l.ball.pinToCg ?? ""}" placeholder="from the layout sheet" inputmode="decimal"></div>${l.ball.symmetric ? "" : `<div class="field"><label>Mass bias: in from pin, \xB0 from pin-to-PSA</label><div class="two"><input id="lb-mbd" value="${l.ball.mb?.dist ?? ""}" placeholder="in" inputmode="decimal"><input id="lb-mba" value="${l.ball.mb?.angle ?? ""}" placeholder="\xB0" inputmode="decimal"></div></div>`}</div>
       ${l.ball.symmetric ? "" : `<div class="field"><label>Intermediate differential</label><input id="lb-int" value="${fmt2(l.ball.intDiff, 3)}" inputmode="decimal"></div>`}
@@ -4325,7 +4333,7 @@
     $("lb-mine")?.addEventListener("change", (e) => {
       const key = e.target.value;
       const c = S.catalog.find((x) => x.key === key);
-      if (c) swapBall(fromCatalog(c));
+      if (c) swapBall(fromCatalog(c, S.arsenal.find((a) => a.catalogKey === key)?.weightLb));
     });
     const search = $("lb-search");
     search.addEventListener("input", () => {
@@ -4337,6 +4345,17 @@
     sheet2().querySelectorAll("[data-sys]").forEach((b) => b.onclick = () => switchSystem(b.dataset.sys));
     sheet2().querySelectorAll("[data-show]").forEach((b) => b.onclick = () => (l.show[b.dataset.show] = !l.show[b.dataset.show], b.classList.toggle("sel"), update(true)));
     sheet2().querySelectorAll("[data-view]").forEach((b) => b.onclick = () => faceView(b.dataset.view));
+    sheet2().querySelectorAll("[data-wt]").forEach((b) => b.onclick = () => {
+      readFields();
+      readHand();
+      const row = l.ball.weights?.find((w) => w.lb === Number(b.dataset.wt));
+      if (!row) return;
+      l.ball.weightLb = row.lb;
+      l.ball.rg = row.rg;
+      l.ball.totalDiff = row.differential;
+      if (!l.ball.symmetric) l.ball.intDiff = row.intermediateDifferential ?? l.ball.intDiff;
+      draw2();
+    });
     $("lb-asym")?.addEventListener("click", () => {
       readFields();
       readHand();
@@ -7089,7 +7108,7 @@ ${url}`);
   var nextRole = "start";
   var ROLE_OFFSET = { start: 0, early: -0.35, carry: 0.35 };
   var ROLE_LABEL = { start: "Start ball", early: "When it hooks early", carry: "When it skids or carries down" };
-  var specLine2 = (b) => [b.rg && `RG ${b.rg.value}`, b.differential && `diff ${b.differential.value}`, b.coverstock?.value, b.core?.value, b.coreSymmetry?.value, b.specWeightLb && `${b.specWeightLb.value} lb specs`].filter(Boolean).join(" \xB7 ");
+  var specLine2 = (b) => [b.rg && `RG ${b.rg.value}`, b.differential && `diff ${b.differential.value}`, b.coverstock?.value, b.core?.value, b.coreSymmetry?.value, b.specWeightLb && `${b.specWeightLb.value} lb specs`, b.weightSpecs && b.weightSpecs.value.length > 1 && `specs for ${b.weightSpecs.value.map((w) => w.lb).join("/")} lb in the Layout Lab`].filter(Boolean).join(" \xB7 ");
   function layoutHtml(ball, bowler, role) {
     const adv = suggestLayouts(ball, bowler, role);
     return `<details style="margin-top:6px"><summary class="u" style="cursor:pointer;color:var(--cy)">Suggested layout</summary>
