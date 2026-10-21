@@ -58,7 +58,7 @@
       title: "Scorecard and spare coach",
       items: [
         "New Score tab: a scorecard that keeps itself. Tap the pins left standing after each roll.",
-        "Spare coach after every first ball: names the leave and tells you how far to move your feet (3-6-9 spare system).",
+        "Spare coach after every first ball: names the leave and tells you how far to move your feet (3-6-9 spare system), with every direction reversed for left-handers.",
         "Your statistics: average, strike %, spare conversion, single-pin and multi-pin spares, and every leave you've shot.",
         "Use the camera's pin read with one tap instead of entering the leave yourself."
       ]
@@ -5326,14 +5326,14 @@
   function keyPinOf(leave) {
     return sorted(leave).sort((a, b) => PIN_XY[a].row - PIN_XY[b].row || Math.abs(PIN_XY[a].x) - Math.abs(PIN_XY[b].x))[0];
   }
-  function adviseSpare(leaveIn) {
+  function adviseSpare(leaveIn, hand = "R") {
     const leave = sorted(leaveIn);
     const split = isSplit(leave);
     const k2 = leave.join("-");
     const name = NAMES[k2] ?? (leave.length === 1 ? `the ${leave[0]} pin` : split ? `a split (${k2})` : `${k2}`);
     const keyPin = keyPinOf(leave);
     const notes = [];
-    const raw = MOVE_RIGHT_HANDED[keyPin] ?? 0;
+    const raw = (MOVE_RIGHT_HANDED[keyPin] ?? 0) * (hand === "L" ? -1 : 1);
     const boards = Math.abs(raw);
     const direction = raw === 0 ? "none" : raw > 0 ? "right" : "left";
     let text;
@@ -5420,13 +5420,13 @@
     const g = current();
     const rp = g ? replay(g.rolls) : null;
     const standing = rp?.standing ?? ALL_PINS;
-    const advice = g && standing.length < 10 ? adviseSpare(standing) : null;
+    const advice = g && standing.length < 10 ? adviseSpare(standing, bowlerProfile().hand) : null;
     const cam = g ? cameraSuggestion() : null;
     const done = games.slice().reverse().slice(0, 12);
     el.innerHTML = `
     <h2>Score</h2>
     <div class="note">A scorecard that keeps itself, with spare coaching after every first ball and statistics for your game. Free, and it stays on this phone.</div>
-    ${g ? `<div class="card"><div class="k">Game ${games.length} \xB7 ${rp.frame <= 10 ? `frame ${rp.frame}, ball ${rp.ball}` : ""}</div>${cardHtml(g)}</div>` : `<div class="card"><div class="u">${games.length ? "Game over. Start the next one." : "No game in progress."}</div><div class="chips"><button class="btn" id="sc-new">Start a game</button></div></div>`}
+    ${g ? `<div class="card"><div class="k">Game ${games.length} \xC2\xB7 ${rp.frame <= 10 ? `frame ${rp.frame}, ball ${rp.ball}` : ""}</div>${cardHtml(g)}</div>` : `<div class="card"><div class="u">${games.length ? "Game over. Start the next one." : "No game in progress."}</div><div class="chips"><button class="btn" id="sc-new">Start a game</button></div></div>`}
     ${g ? `<div class="card"><div class="k">${standing.length === 10 ? "How many pins are standing after this roll? Tap them" : "Tap the pins still standing"}</div>
       ${deckSvg(standing, leaveSel)}
       <div class="chips" style="justify-content:center">
@@ -5438,7 +5438,7 @@
     <div class="card"><div class="k">Your statistics</div>${statsHtml()}</div>
     ${done.length ? `<div class="card"><div class="k">Games</div>${done.map((x) => {
       const s = scoreGame(x.rolls);
-      return `<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${s.total}</b> <span class="note">${replay(x.rolls).complete ? "" : "in progress \xB7 "}${esc(new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</span></div><button class="chip danger" data-del="${x.id}">Delete</button></div>`;
+      return `<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${s.total}</b> <span class="note">${replay(x.rolls).complete ? "" : "in progress \xC2\xB7 "}${esc(new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</span></div><button class="chip danger" data-del="${x.id}">Delete</button></div>`;
     }).join("")}</div>` : ""}`;
     $("sc-new")?.addEventListener("click", async () => {
       games.push({ id: newId(), at: (/* @__PURE__ */ new Date()).toISOString(), rolls: [] });
