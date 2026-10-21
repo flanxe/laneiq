@@ -50,1177 +50,61 @@
     return { ballId: ranking[0].id, confidence, auto, ranking };
   }
 
-  // core/src/vision.ts
-  var LANE_BOARDS = 39;
-  var LANE_LENGTH_FT = 60;
-  var ARROWS_FT = 15;
-  function solveHomography(src, dst) {
-    const A = [];
-    for (let i = 0; i < 4; i++) {
-      const { x, y } = src[i];
-      const { x: u, y: v } = dst[i];
-      A.push([x, y, 1, 0, 0, 0, -u * x, -u * y, u]);
-      A.push([0, 0, 0, x, y, 1, -v * x, -v * y, v]);
+  // core/src/patchnotes.ts
+  var PATCH_NOTES = [
+    {
+      id: "2026-10-21-score",
+      date: "2026-10-21",
+      title: "Scorecard and spare coach",
+      items: [
+        "New Score tab: a scorecard that keeps itself. Tap the pins left standing after each roll.",
+        "Spare coach after every first ball: names the leave and tells you how far to move your feet (3-6-9 spare system).",
+        "Your statistics: average, strike %, spare conversion, single-pin and multi-pin spares, and every leave you've shot.",
+        "Use the camera's pin read with one tap instead of entering the leave yourself."
+      ]
+    },
+    {
+      id: "2026-10-21-weights",
+      date: "2026-10-21",
+      title: "Specs for every ball weight",
+      items: [
+        "RG, differential and intermediate differential for each ball weight (12 to 16 lb) on 808 balls.",
+        "Pick your ball's weight in the Layout Lab and the numbers change to match your box."
+      ]
+    },
+    {
+      id: "2026-10-21-proshop",
+      date: "2026-10-21",
+      title: "A bigger Pro shop",
+      items: [
+        "Layout advisor in Dual Angle, Pin Buffer and 2LS from your rev rate, speed and axis tilt.",
+        "Layout checker: rule checks, hole clearance, conversion between systems and an estimate of the drilled ball.",
+        "Reaction doctor, surface guide, fit and weight help, static-weight check and a theory library with sources."
+      ]
+    },
+    {
+      id: "2026-10-20-camera",
+      date: "2026-10-20",
+      title: "Lane lock, ball tracking and pin read",
+      items: [
+        "Much better lane finding, with an easy way to trace your lane yourself if it needs help.",
+        "Tell it your lane number so it ignores the bowlers next to you.",
+        "Pinch to zoom, expand the camera view, and a pin read after every shot.",
+        "Speed, entry angle and breakpoint for each shot, with analytics on the result."
+      ]
+    },
+    {
+      id: "2026-10-19-arsenal",
+      date: "2026-10-19",
+      title: "Arsenal, patterns and friends",
+      items: [
+        "A catalog of over a thousand balls with photos and a library of 735 oil patterns.",
+        "Arsenal optimizer: finds the gaps in your bag for the pattern you're bowling.",
+        "Layout Lab, drilled-ball scan, and friend sessions you can compare."
+      ]
     }
-    for (let c = 0; c < 8; c++) {
-      let p = c;
-      for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
-      if (Math.abs(A[p][c]) < 1e-12) throw new Error("degenerate calibration points");
-      [A[c], A[p]] = [A[p], A[c]];
-      for (let r = 0; r < 8; r++) {
-        if (r === c) continue;
-        const f = A[r][c] / A[c][c];
-        for (let k2 = c; k2 < 9; k2++) A[r][k2] -= f * A[c][k2];
-      }
-    }
-    return [...A.map((row, i) => row[8] / row[i]), 1];
-  }
-  function applyHomography(h, p) {
-    const w = h[6] * p.x + h[7] * p.y + h[8];
-    return { x: (h[0] * p.x + h[1] * p.y + h[2]) / w, y: (h[3] * p.x + h[4] * p.y + h[5]) / w };
-  }
-  var boardFromRight = (xBoards) => LANE_BOARDS + 0.5 - xBoards;
-  var boardToX = (board) => LANE_BOARDS + 0.5 - board;
-  function linearFit(xs, ys) {
-    const n = xs.length;
-    const mx = xs.reduce((a, b) => a + b, 0) / n;
-    const my = ys.reduce((a, b) => a + b, 0) / n;
-    let sxx = 0;
-    let sxy = 0;
-    for (let i = 0; i < n; i++) {
-      sxx += (xs[i] - mx) ** 2;
-      sxy += (xs[i] - mx) * (ys[i] - my);
-    }
-    const slope = sxy / sxx;
-    const intercept = my - slope * mx;
-    const rmse = Math.sqrt(xs.reduce((a, x, i) => a + (ys[i] - (slope * x + intercept)) ** 2, 0) / n);
-    return { slope, intercept, rmse };
-  }
-  function interp(path2, yFt) {
-    for (let i = 1; i < path2.length; i++) {
-      const a = path2[i - 1];
-      const b = path2[i];
-      if (a.y <= yFt && b.y >= yFt && b.y > a.y) return a.x + (yFt - a.y) / (b.y - a.y) * (b.x - a.x);
-    }
-    return null;
-  }
-  var ENTRY_FT = 59.5;
-  var BOARD_IN = 41.5 / LANE_BOARDS;
-  function headingDeg(path2, y0, y1) {
-    const w = path2.filter((s) => s.y >= y0 && s.y <= y1);
-    if (w.length < 4 || w[w.length - 1].y - w[0].y < 4) return null;
-    const f = linearFit(w.map((s) => s.y), w.map((s) => s.x));
-    return { deg: Math.atan(f.slope * BOARD_IN / 12) * 180 / Math.PI, slopeBoardsPerFt: f.slope };
-  }
-  function analyzeShot(path2) {
-    const p = path2.filter((s) => s.y >= 3 && s.y <= 58).sort((a, b) => a.t - b.t);
-    if (p.length < 8 || p[p.length - 1].y - p[0].y < 20) return null;
-    const fit = linearFit(p.map((s) => s.t), p.map((s) => s.y));
-    if (fit.slope <= 0) return null;
-    const fps = fit.slope;
-    const speed = fps * (3600 / 5280);
-    const speedUnc = fit.rmse / (p[p.length - 1].t - p[0].t) * (3600 / 5280) * 2;
-    const mid = p.filter((s) => s.y >= ARROWS_FT && s.y <= 55);
-    let bpBoard = null;
-    let bpFt = null;
-    if (mid.length >= 4) {
-      const c = LANE_BOARDS / 2;
-      const ext = mid.reduce((best, s) => Math.abs(s.x - c) > Math.abs(best.x - c) ? s : best);
-      bpBoard = boardFromRight(ext.x);
-      bpFt = ext.y;
-    }
-    const arrows = interp(p, ARROWS_FT);
-    const tail = p.filter((s) => s.y >= 50);
-    let entry = null;
-    if (tail.length >= 4 && tail[tail.length - 1].y - tail[0].y >= 3) {
-      const f = linearFit(tail.map((s) => s.y), tail.map((s) => s.x));
-      entry = f.slope * ENTRY_FT + f.intercept;
-    }
-    const launch = headingDeg(p, 3, 20);
-    const impact = headingDeg(p, 50, 58);
-    const coverage = Math.min(1, (p[p.length - 1].y - p[0].y) / 45);
-    const confidence = Math.max(0, Math.min(1, coverage * (1 - Math.min(1, fit.rmse / 5))));
-    return {
-      speedMph: speed,
-      speedUncertainty: speedUnc,
-      boardAtArrows: arrows === null ? null : boardFromRight(arrows),
-      breakpointBoard: bpBoard,
-      breakpointFt: bpFt,
-      entryBoard: entry === null ? null : boardFromRight(entry),
-      launchAngleDeg: launch?.deg ?? null,
-      impactAngleDeg: impact?.deg ?? null,
-      samples: p.length,
-      confidence
-    };
-  }
-
-  // core/src/metrics.ts
-  var POCKET_BOARD = { R: 17.5, L: 22.5 };
-  var MPH = 3600 / 5280;
-  function speedBetween(path2, y0, y1) {
-    const w = path2.filter((s) => s.y >= y0 && s.y <= y1);
-    if (w.length < 4) return null;
-    const dt = w[w.length - 1].t - w[0].t;
-    const dy = w[w.length - 1].y - w[0].y;
-    return dt > 0.05 && dy > 3 ? dy / dt * MPH : null;
-  }
-  function classifyZone(miss) {
-    const a = Math.abs(miss);
-    if (a <= 1) return "pocket";
-    if (a <= 2.5) return miss > 0 ? "high" : "light";
-    return miss > 0 ? "very-high" : "very-light";
-  }
-  function deriveMetrics(a, path2, hand) {
-    const early = path2.filter((s) => s.y >= 2 && s.y <= 8);
-    const startBoard = early.length ? boardFromRight(early.reduce((t, s) => t + s.x, 0) / early.length) : null;
-    const launchSpeed = speedBetween(path2, 3, 20);
-    const entrySpeed = speedBetween(path2, 40, 58);
-    const speedLossPct = launchSpeed && entrySpeed ? (launchSpeed - entrySpeed) / launchSpeed * 100 : null;
-    const hookBoards = a.breakpointBoard !== null && a.entryBoard !== null ? Math.abs(a.entryBoard - a.breakpointBoard) : null;
-    const hookLengthFt = a.breakpointFt !== null ? Math.max(0, 59.5 - a.breakpointFt) : null;
-    const pocket = POCKET_BOARD[hand];
-    const pocketMiss = a.entryBoard === null ? null : hand === "R" ? a.entryBoard - pocket : pocket - a.entryBoard;
-    return {
-      hand,
-      startBoard,
-      arrowsBoard: a.boardAtArrows,
-      breakpointBoard: a.breakpointBoard,
-      breakpointFt: a.breakpointFt,
-      entryBoard: a.entryBoard,
-      launchAngle: a.launchAngleDeg,
-      entryAngle: a.impactAngleDeg === null ? null : Math.abs(a.impactAngleDeg),
-      launchSpeed,
-      entrySpeed,
-      speedLossPct,
-      hookBoards,
-      hookLengthFt,
-      pocketMiss,
-      zone: pocketMiss === null ? null : classifyZone(pocketMiss)
-    };
-  }
-
-  // core/src/lanedetect.ts
-  var LANE_END_FT = 62.85;
-  var ASSUMED_HFOV_DEG = 63;
-  var LANE_LEN = 60;
-  var newDiag = () => ({ edgePixels: 0, leftLines: 0, rightLines: 0, pairs: 0, guess: null, foulRow: null, pitRow: null, hint: "" });
-  function detectLanes(gray, w, h, maxCandidates = 3, seed, diag) {
-    const first = detectLanesOnce(gray, w, h, maxCandidates, seed, diag);
-    if (first.length && first.some(isSolid)) return first;
-    const inv = new Uint8ClampedArray(w * h);
-    for (let i = 0; i < inv.length; i++) inv[i] = 255 - gray[i];
-    const dg2 = diag ? newDiag() : void 0;
-    const second = detectLanesOnce(inv, w, h, maxCandidates, seed, dg2);
-    const best = (l) => l.reduce((m, d) => Math.max(m, d.confidence), 0);
-    if (best(second) > best(first)) {
-      if (diag && dg2) Object.assign(diag, dg2);
-      return second;
-    }
-    return first;
-  }
-  function detectLanesOnce(gray, w, h, maxCandidates = 3, seed, diag) {
-    const dbg = (m) => globalThis.__laneDbg?.push(m);
-    const sm = new Float32Array(w * h);
-    for (let y = 1; y < h - 1; y++)
-      for (let x = 1; x < w - 1; x++) {
-        const i = y * w + x;
-        sm[i] = (4 * gray[i] + 2 * (gray[i - 1] + gray[i + 1] + gray[i - w] + gray[i + w]) + gray[i - w - 1] + gray[i - w + 1] + gray[i + w - 1] + gray[i + w + 1]) / 16;
-      }
-    const gx = new Float32Array(w * h);
-    const gy = new Float32Array(w * h);
-    const mag = new Float32Array(w * h);
-    for (let y = 2; y < h - 2; y++)
-      for (let x = 2; x < w - 2; x++) {
-        const i = y * w + x;
-        const dx = -sm[i - w - 1] + sm[i - w + 1] - 2 * sm[i - 1] + 2 * sm[i + 1] - sm[i + w - 1] + sm[i + w + 1];
-        const dy = -sm[i - w - 1] - 2 * sm[i - w] - sm[i - w + 1] + sm[i + w - 1] + 2 * sm[i + w] + sm[i + w + 1];
-        gx[i] = dx;
-        gy[i] = dy;
-        mag[i] = Math.hypot(dx, dy);
-      }
-    const sample2 = Float32Array.from({ length: 4e3 }, (_, k2) => mag[Math.floor(k2 / 4e3 * mag.length)]).sort();
-    let thr = Math.max(14, sample2[Math.floor(sample2.length * 0.9)], 7 * sample2[Math.floor(sample2.length * 0.5)]);
-    if (seed) {
-      const near = [];
-      for (let y = Math.max(2, Math.round(seed.y - h * 0.2)); y < Math.min(h - 2, Math.round(seed.y + h * 0.2)); y += 2)
-        for (let x = Math.max(2, Math.round(seed.x - w * 0.25)); x < Math.min(w - 2, Math.round(seed.x + w * 0.25)); x += 2) near.push(mag[y * w + x]);
-      near.sort((a, b) => a - b);
-      thr = Math.max(14, near[Math.floor(near.length * 0.85)] * 0.7, 6 * near[Math.floor(near.length * 0.5)]);
-    }
-    const yA = Math.round(h * 0.1);
-    const yB = Math.round(h * 0.9);
-    const span = yB - yA;
-    const yMin = seed ? 2 : Math.round(h * 0.1);
-    const STEP = Math.max(1, Math.round(w / 320));
-    const PHI_MAX = 68 * Math.PI / 180;
-    const DPHI = 0.4 * Math.PI / 180;
-    const WIN = 15 * Math.PI / 180;
-    const NPHI = Math.floor(2 * PHI_MAX / DPHI) + 1;
-    const tanTab = Float32Array.from({ length: NPHI }, (_, k2) => Math.tan(-PHI_MAX + k2 * DPHI));
-    const lo = -w * 1.5;
-    const NX = Math.ceil(w * 4 / STEP);
-    const accL = new Float32Array(seed ? 0 : NPHI * NX);
-    const accR = new Float32Array(seed ? 0 : NPHI * NX);
-    const agrees = (i, slope, sign) => (gx[i] - gy[i] * slope) / Math.sqrt(1 + slope * slope) / mag[i] * sign > 0.93;
-    const edges = [];
-    for (let y = yMin; y < h - 2; y++)
-      for (let x = 2; x < w - 2; x++) {
-        const i = y * w + x;
-        if (mag[i] < thr || Math.abs(gx[i]) < (seed ? 0.55 : 0.4) * Math.abs(gy[i])) continue;
-        edges.push(i);
-        if (seed) continue;
-        const acc = gx[i] > 0 ? accL : accR;
-        const sgn = gx[i] > 0 ? 1 : -1;
-        void sgn;
-        const phiE = Math.atan(-gy[i] / gx[i]);
-        const k0 = Math.max(0, Math.ceil((phiE - WIN + PHI_MAX) / DPHI));
-        const k1 = Math.min(NPHI - 1, Math.floor((phiE + WIN + PHI_MAX) / DPHI));
-        for (let k2 = k0; k2 <= k1; k2++) {
-          const xi = Math.round((x - tanTab[k2] * (y - yA) - lo) / STEP);
-          if (xi >= 0 && xi < NX) acc[k2 * NX + xi]++;
-        }
-      }
-    dbg(`thr ${thr.toFixed(1)} edges ${edges.length}`);
-    if (diag) diag.edgePixels = edges.length;
-    if (edges.length < 60) {
-      if (diag) diag.hint = "I can barely see any edges: the picture may be too dark, blurry or flat.";
-      return [];
-    }
-    const xAt = (l, y) => l.xa + (l.xb - l.xa) * (y - yA) / span;
-    const supportOf = (xa, xb, sign) => {
-      const rows = new Uint8Array(h);
-      const slope = (xb - xa) / span;
-      for (const i of edges) {
-        if (gx[i] * sign <= 0 || !agrees(i, slope, sign)) continue;
-        const y = Math.floor(i / w);
-        if (Math.abs(i % w - (xa + (xb - xa) * (y - yA) / span)) <= 2.5 * STEP * Math.sqrt(1 + slope * slope)) rows[y] = 1;
-      }
-      let top = -1;
-      let bot = -1;
-      for (let y = 0; y < h - 8; y++) {
-        let c = 0;
-        for (let k2 = 0; k2 < 8; k2++) c += rows[y + k2];
-        if (c >= 6) {
-          if (top < 0) top = y;
-          bot = y + 7;
-        }
-      }
-      return { top, bot, rows };
-    };
-    const refine = (xa, xb, sign, top, bot, tol = 2.5 * STEP) => {
-      for (let it = 0; it < 3; it++) {
-        let sw = 0, sy = 0, sx = 0, syy = 0, sxy = 0;
-        const cur = (xb - xa) / span;
-        for (const i of edges) {
-          if (gx[i] * sign <= 0 || !agrees(i, cur, sign)) continue;
-          const y = Math.floor(i / w);
-          if (y < top || y > bot) continue;
-          const px = i % w;
-          const lx = xa + (xb - xa) * (y - yA) / span;
-          if (Math.abs(px - lx) > tol * Math.sqrt(1 + cur * cur)) continue;
-          const wgt = mag[i];
-          sw += wgt;
-          sy += wgt * y;
-          sx += wgt * px;
-          syy += wgt * y * y;
-          sxy += wgt * y * px;
-        }
-        const den = sw * syy - sy * sy;
-        if (sw < 1 || Math.abs(den) < 1e-6) break;
-        const slope = (sw * sxy - sy * sx) / den;
-        const icpt = (sx - slope * sy) / sw;
-        xa = icpt + slope * yA;
-        xb = icpt + slope * yB;
-      }
-      return { xa, xb };
-    };
-    const linesOf = (acc, sign, k2) => {
-      let best = 0;
-      for (let i = 0; i < acc.length; i++) if (acc[i] > best) best = acc[i];
-      const floorV = Math.max(10, best * 0.15);
-      const cells = [];
-      for (let i = 0; i < acc.length; i++) if (acc[i] >= floorV) cells.push(i);
-      cells.sort((p, q) => acc[q] - acc[p]);
-      const out = [];
-      const taken = [];
-      for (const c of cells.slice(0, 8e3)) {
-        const xa = lo + c % NX * STEP;
-        const xb = xa + tanTab[Math.floor(c / NX)] * span;
-        if (taken.some((p) => Math.abs(p.a - xa) <= 6 * STEP && Math.abs(p.b - xb) <= 8 * STEP)) continue;
-        taken.push({ a: xa, b: xb });
-        let s = supportOf(xa, xb, sign);
-        if (s.top < 0 || s.bot - s.top < h * 0.06) continue;
-        const ref = refine(xa, xb, sign, s.top, s.bot);
-        s = supportOf(ref.xa, ref.xb, sign);
-        if (s.top < 0 || s.bot - s.top < h * 0.06) continue;
-        out.push({ xa: ref.xa, xb: ref.xb, votes: acc[c], top: s.top, bot: s.bot, rows: s.rows });
-        if (out.length >= k2) break;
-      }
-      return out;
-    };
-    const seededLines = (sign) => {
-      if (!seed) return [];
-      const sx = Math.round(seed.x);
-      const sy = Math.round(seed.y);
-      const g = (x, y) => x < 2 || x >= w - 2 || y < 2 || y >= h - 2 ? 0 : gx[y * w + x] * sign;
-      let x0 = -1;
-      for (let d = 4; d < w; d++) {
-        const x = sign > 0 ? sx - d : sx + d;
-        if (x < 3 || x > w - 4) break;
-        if (g(x, sy) > thr) {
-          let bx = x;
-          for (let k2 = -3; k2 <= 3; k2++) if (g(x + k2, sy) > g(bx, sy)) bx = x + k2;
-          x0 = bx;
-          break;
-        }
-      }
-      if (x0 < 0) return [];
-      const pts = [{ x: x0, y: sy }];
-      for (const dir of [1, -1]) {
-        let x = x0;
-        let slope = 0;
-        let miss = 0;
-        const recent = [{ x: x0, y: sy }];
-        for (let y = sy + dir; y > 2 && y < h - 3; y += dir) {
-          const tol = recent.length < 12 ? 6 : 3;
-          const pred = x + slope * dir;
-          let best = -1;
-          let bv = thr * 0.6;
-          for (let cx = Math.round(pred - tol); cx <= Math.round(pred + tol); cx++) {
-            const v = g(cx, y);
-            if (v > bv && Math.abs(gx[y * w + cx]) >= 0.4 * Math.abs(gy[y * w + cx])) {
-              bv = v;
-              best = cx;
-            }
-          }
-          if (best < 0) {
-            if (++miss > 8) break;
-            x = pred;
-            continue;
-          }
-          miss = 0;
-          x = best;
-          pts.push({ x, y });
-          recent.push({ x, y });
-          if (recent.length > 14) recent.shift();
-          if (recent.length >= 6) slope = (recent[recent.length - 1].x - recent[0].x) / (recent[recent.length - 1].y - recent[0].y);
-        }
-      }
-      if (pts.length < 40) return [];
-      let inl = pts;
-      let a = 0;
-      let b = 0;
-      for (let round = 0; round < 4; round++) {
-        let sw = 0, sy2 = 0, sx2 = 0, syy = 0, sxy = 0;
-        for (const p of inl) {
-          sw++;
-          sy2 += p.y;
-          sx2 += p.x;
-          syy += p.y * p.y;
-          sxy += p.y * p.x;
-        }
-        const den = sw * syy - sy2 * sy2;
-        if (Math.abs(den) < 1e-9) return [];
-        b = (sw * sxy - sy2 * sx2) / den;
-        a = (sx2 - b * sy2) / sw;
-        const res = pts.map((p) => Math.abs(p.x - (a + b * p.y)));
-        const med = [...res].sort((p, q) => p - q)[Math.floor(res.length / 2)];
-        const lim = Math.max(1.5, 2.5 * med);
-        inl = pts.filter((_, k2) => res[k2] <= lim);
-        if (inl.length < 30) return [];
-      }
-      const ys = inl.map((p) => p.y);
-      const top = Math.min(...ys);
-      const bot = Math.max(...ys);
-      const rows = new Uint8Array(h);
-      for (const p of inl) for (let k2 = -2; k2 <= 2; k2++) if (p.y + k2 >= 0 && p.y + k2 < h) rows[p.y + k2] = 1;
-      return [{ xa: a + b * yA, xb: a + b * yB, votes: inl.length, top, bot, rows }];
-    };
-    const Ls = seed ? seededLines(1) : linesOf(accL, 1, 16);
-    const Rs = seed ? seededLines(-1) : linesOf(accR, -1, 16);
-    globalThis.__laneLines = { Ls, Rs, yA, span };
-    dbg(`lines L ${Ls.length} R ${Rs.length}`);
-    if (diag) {
-      diag.leftLines = Ls.length;
-      diag.rightLines = Rs.length;
-    }
-    dbg("L lines @row200: " + Ls.map((l) => `${(l.xa + (l.xb - l.xa) * (200 - yA) / span).toFixed(0)}[v${l.votes},${l.top}-${l.bot}]`).join(" "));
-    dbg("R lines @row200: " + Rs.map((l) => `${(l.xa + (l.xb - l.xa) * (200 - yA) / span).toFixed(0)}[v${l.votes},${l.top}-${l.bot}]`).join(" "));
-    if (!Ls.length || !Rs.length) {
-      if (diag) diag.hint = Ls.length || Rs.length ? "I can see one edge of the lane but not the other. Make sure both gutters are in view." : "I can't pick out the lane edges. Aim so the whole lane, with both gutters, fills the middle of the picture.";
-      return [];
-    }
-    const rowMean = (y, xl, xr) => {
-      let s = 0;
-      let n = 0;
-      for (let x = Math.max(0, Math.ceil(xl)); x <= Math.min(w - 1, Math.floor(xr)); x++) {
-        s += sm[Math.round(y) * w + x];
-        n++;
-      }
-      return n ? s / n : NaN;
-    };
-    const cands = [];
-    const maxV = Math.max(Ls[0].votes, Rs[0].votes);
-    let why = { range: 0, shape: 0, contrast: 0 };
-    for (const L of Ls)
-      for (const R2 of Rs) {
-        const t = Math.max(L.top, R2.top);
-        const b = Math.min(L.bot, R2.bot);
-        if (b - t < h * 0.06) {
-          why.range++;
-          continue;
-        }
-        const wt = xAt(R2, t) - xAt(L, t);
-        const wb = xAt(R2, b) - xAt(L, b);
-        if (wt < 2 || wb < wt * 1.02 || wb > w * 1.05) {
-          why.shape++;
-          continue;
-        }
-        let good = 0;
-        let rowsN = 0;
-        let strengthSum = 0;
-        for (let y = t + 2; y <= b - 2; y += 3) {
-          const xl = xAt(L, y);
-          const xr = xAt(R2, y);
-          const wid = xr - xl;
-          if (wid < 3) continue;
-          const inside = rowMean(y, xl + wid * 0.2, xr - wid * 0.2);
-          const left = xl - wid * 0.2 < 1 ? NaN : rowMean(y, xl - wid * 0.3, xl - wid * 0.08);
-          const right = xr + wid * 0.2 > w - 2 ? NaN : rowMean(y, xr + wid * 0.08, xr + wid * 0.3);
-          if (!Number.isFinite(left) && !Number.isFinite(right)) continue;
-          rowsN++;
-          if ((!Number.isFinite(left) || inside - left > 6) && (!Number.isFinite(right) || inside - right > 6)) good++;
-          strengthSum += Math.max(0, Math.min(100, Math.min(Number.isFinite(left) ? inside - left : 100, Number.isFinite(right) ? inside - right : 100)));
-        }
-        if (rowsN < 5 || good / rowsN < 0.45) {
-          why.contrast++;
-          continue;
-        }
-        const contrast = good / rowsN;
-        const votes = (L.votes + R2.votes) / (2 * maxV);
-        const cb = (xAt(L, b) + xAt(R2, b)) / 2;
-        const centered = 1 - 0.12 * Math.min(1, Math.abs(cb - w / 2) / (w * 0.5));
-        const lenScore = Math.min(1, (b - t) / (h * 0.25));
-        cands.push({ L, R: R2, t, b, base: (votes + contrast + 0.5 * lenScore + 1.2 * (strengthSum / rowsN / 100)) * centered });
-      }
-    dbg(`pairs ${cands.length}; rejected ${JSON.stringify(why)}`);
-    if (diag) {
-      diag.pairs = cands.length;
-      if (!cands.length) diag.hint = "I see edges, but nothing that looks like a bright lane between two dark gutters yet.";
-    }
-    cands.sort((p, q) => q.base - p.base);
-    const distinct = [];
-    for (const c of cands) {
-      const cb = (xAt(c.L, c.b) + xAt(c.R, c.b)) / 2;
-      const isSame = (d) => {
-        if (Math.abs((xAt(d.L, d.b) + xAt(d.R, d.b)) / 2 - cb) > 0.04 * w) return false;
-        const y = Math.min(c.b, d.b) - 2;
-        const wc = xAt(c.R, y) - xAt(c.L, y);
-        const wd = xAt(d.R, y) - xAt(d.L, y);
-        return wd > 0 && wc / wd > 0.85 && wc / wd < 1.18;
-      };
-      if (!distinct.some(isSame)) distinct.push(c);
-      if (distinct.length >= maxCandidates + 9) break;
-    }
-    if (diag && distinct[0]) {
-      const c = distinct[0];
-      diag.guess = { left: { x0: xAt(c.L, c.t), y0: c.t, x1: xAt(c.L, c.b), y1: c.b }, right: { x0: xAt(c.R, c.t), y0: c.t, x1: xAt(c.R, c.b), y1: c.b } };
-    }
-    dbg(`candidates: ${distinct.map((c) => `[${xAt(c.L, c.b).toFixed(0)}-${xAt(c.R, c.b).toFixed(0)}@${c.b} t${c.t} base ${c.base.toFixed(2)}]`).join(" ")}`);
-    const results = [];
-    for (const c of distinct) {
-      const r = geometry(c);
-      if (r) results.push(r);
-    }
-    const sorted2 = results.sort((p, q) => q.confidence - p.confidence).slice(0, maxCandidates);
-    if (diag && sorted2.length) diag.hint = "";
-    return sorted2;
-    function geometry(c) {
-      let { L, R: R2 } = c;
-      const { t, b } = c;
-      const notes = [];
-      const sL = (L.xb - L.xa) / span;
-      const sR = (R2.xb - R2.xa) / span;
-      if (Math.abs(sL - sR) < 1e-6) return dbg("reject: parallel lines"), null;
-      const yv = yA + (R2.xa - L.xa) / (sL - sR);
-      if (!Number.isFinite(yv) || yv > t - 3) return dbg(`reject: vanishing row ${yv.toFixed(1)} vs top ${t}`), null;
-      const prof = new Float32Array(h);
-      const up = new Float32Array(h);
-      const yStart = Math.max(3, Math.ceil(yv) + 3);
-      for (let y = yStart; y < h - 3; y++) {
-        const cl = xAt(L, y) + 2 * STEP;
-        const cr = xAt(R2, y) - 2 * STEP;
-        if (cr - cl < 4) continue;
-        let cnt = 0;
-        let s = 0;
-        let n = 0;
-        for (let x = Math.max(2, Math.ceil(cl)); x <= Math.min(w - 3, Math.floor(cr)); x++) {
-          const i = y * w + x;
-          n++;
-          if (Math.abs(gy[i]) > thr * 0.6 && Math.abs(gy[i]) > 1.3 * Math.abs(gx[i])) {
-            cnt++;
-            s += gy[i];
-          }
-        }
-        if (n) {
-          prof[y] = cnt / n;
-          up[y] = s / n / Math.max(1, thr);
-        }
-      }
-      const localMax = (arr, min, k2, from = yStart + 1, to = h - 4) => {
-        const out = [];
-        for (let y = Math.max(from, yStart + 1); y < to; y++) if (arr[y] >= min && arr[y] >= arr[y - 1] && arr[y] >= arr[y + 1]) out.push(y);
-        return out.sort((p, q) => arr[q] - arr[p]).slice(0, k2);
-      };
-      const topRows = (arr) => Array.from({ length: h }, (_, y) => y).filter((y) => y >= yStart && y < h - 4).sort((p, q) => arr[q] - arr[p]).slice(0, 6).map((y) => `${y}:${arr[y].toFixed(2)}`).join(" ");
-      const prow = new Float32Array(h).fill(NaN);
-      const plow = new Float32Array(h).fill(NaN);
-      const phigh = new Float32Array(h).fill(NaN);
-      for (let y = yStart; y < h - 3; y++) {
-        const wid = xAt(R2, y) - xAt(L, y);
-        if (wid < 6) continue;
-        const a = Math.max(2, Math.ceil(xAt(L, y) + 0.2 * wid));
-        const b2 = Math.min(w - 3, Math.floor(xAt(R2, y) - 0.2 * wid));
-        if (b2 - a < 3) continue;
-        const vals = [];
-        for (let x = a; x <= b2; x++) vals.push(sm[y * w + x]);
-        vals.sort((p, q) => p - q);
-        prow[y] = vals[vals.length >> 1];
-        plow[y] = vals[vals.length >> 2];
-        phigh[y] = vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.9))];
-      }
-      const pAvg = (ya, yb, y, src = prow) => {
-        let s = 0, n = 0;
-        for (let k2 = ya; k2 <= yb; k2++) {
-          const v = src[Math.round(y + k2)];
-          if (Number.isFinite(v)) {
-            s += v;
-            n++;
-          }
-        }
-        return n >= Math.max(1, (yb - ya + 1) / 2) ? s / n : NaN;
-      };
-      const foulCands = localMax(prof, 0.2, 8, Math.floor(t + h * 0.05), h - 4);
-      const pitBefore = Math.max(14, Math.round(0.045 * h));
-      const pitAfter = Math.max(18, Math.round(0.055 * h));
-      const pitCands = localMax(up, 0.3, 6, Math.floor(t - pitBefore), Math.floor(t + pitAfter));
-      {
-        const dip = new Float32Array(h);
-        const stp = new Float32Array(h);
-        for (let y = yStart + 11; y < h - 12; y++) {
-          const a = pAvg(-9, -4, y), b2 = pAvg(4, 9, y), m = pAvg(-1, 1, y);
-          if (Number.isFinite(a) && Number.isFinite(b2) && Number.isFinite(m)) dip[y] = Math.max(Math.min(a, b2) - m, m - Math.max(a, b2));
-          const la = pAvg(-9, -4, y, plow), lb = pAvg(4, 9, y, plow), lm = pAvg(-1, 1, y, plow);
-          if (Number.isFinite(la) && Number.isFinite(lb)) stp[y] = Math.abs(la - lb) - 0.5 * (Number.isFinite(lm) ? Math.max(0, Math.max(Math.min(la, lb) - lm, lm - Math.max(la, lb))) : 0);
-        }
-        const peaks = (arr, min, k2, from, to) => {
-          const out = [];
-          for (let y = Math.max(from, yStart + 12); y < Math.min(to, h - 13); y++) if (arr[y] >= min && arr[y] >= arr[y - 1] && arr[y] >= arr[y + 1]) out.push(y);
-          return out.sort((p, q) => arr[q] - arr[p]).slice(0, k2);
-        };
-        for (const y of peaks(dip, 2.5, 8, Math.floor(t + h * 0.05), h - 4)) if (!foulCands.some((c2) => Math.abs(c2 - y) <= 2)) foulCands.push(y);
-        for (const y of peaks(stp, 6, 6, Math.floor(t - pitBefore), Math.floor(t + pitAfter))) if (!pitCands.some((c2) => Math.abs(c2 - y) <= 2)) pitCands.push(y);
-        for (const y of peaks(stp, 4, 4, Math.floor(b - 0.05 * h), Math.floor(b + 0.05 * h))) if (!foulCands.some((c2) => Math.abs(c2 - y) <= 2)) foulCands.push(y);
-      }
-      const supported = (y) => (L.rows[y] || L.rows[y - 1] || L.rows[y + 1] || L.rows[y - 2] || L.rows[y + 2]) && (R2.rows[y] || R2.rows[y - 1] || R2.rows[y + 1] || R2.rows[y - 2] || R2.rows[y + 2]);
-      const bandMean = (ya, yb, y) => {
-        let s = 0, n = 0;
-        for (let k2 = ya; k2 <= yb; k2++) {
-          const yy = Math.round(y + k2);
-          if (yy < 2 || yy >= h - 2) return NaN;
-          const wid = xAt(R2, yy) - xAt(L, yy);
-          if (wid < 3) return NaN;
-          const m = rowMean(yy, xAt(L, yy) + 0.2 * wid, xAt(R2, yy) - 0.2 * wid);
-          if (Number.isFinite(m)) {
-            s += m;
-            n++;
-          }
-        }
-        return n ? s / n : NaN;
-      };
-      const isThinLine = (f) => {
-        const above = pAvg(-9, -4, f);
-        const below = pAvg(4, 9, f);
-        const mid = pAvg(-1, 1, f);
-        if (![above, below, mid].every(Number.isFinite)) return false;
-        const margin = Math.max(2.5, (above + below) / 2 * 0.03);
-        return mid < Math.min(above, below) - margin || mid > Math.max(above, below) + margin;
-      };
-      const isLaneToApproach = (f) => {
-        const a = pAvg(-9, -4, f);
-        const c2 = pAvg(4, 9, f);
-        return Number.isFinite(a) && Number.isFinite(c2) && Math.abs(a - c2) > Math.max(5, Math.max(a, c2) * 0.07);
-      };
-      const isPitStep = (p) => {
-        const above = pAvg(-10, -4, p, plow);
-        const below = pAvg(4, 10, p, plow);
-        return Number.isFinite(above) && Number.isFinite(below) && Math.abs(above - below) > Math.max(6, Math.max(above, below) * 0.12);
-      };
-      let walk2 = NaN;
-      {
-        const lane0 = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
-        const lowRun = Math.max(6, Math.round(0.022 * h));
-        if (Number.isFinite(lane0)) {
-          let low = 0;
-          for (let y = Math.floor(b) - 3; y > yStart + 2; y--) {
-            const v = plow[y];
-            if (!Number.isFinite(v)) continue;
-            if (v < lane0 * 0.78) {
-              if (++low >= lowRun) {
-                walk2 = y + low;
-                break;
-              }
-            } else low = 0;
-          }
-        }
-        if (Number.isFinite(walk2) && !pitCands.some((c2) => Math.abs(c2 - walk2) <= 2)) pitCands.push(Math.round(walk2));
-      }
-      const lane1 = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
-      const validPits = pitCands.filter((p) => {
-        const below = pAvg(4, 10, p, plow);
-        return Number.isFinite(lane1) && Number.isFinite(below) && Math.abs(below - lane1) <= Math.max(20, lane1 * 0.2) && isPitStep(p);
-      });
-      let lowestPit = validPits.length ? Math.max(...validPits) : NaN;
-      let pinPit = NaN;
-      {
-        const ref = pAvg(10, 18, Math.round(t), prow);
-        const whiteAt = Number.isFinite(ref) ? Math.max(150, ref + 34) : 230;
-        for (let y = Math.max(yStart + 2, Math.floor(t - pitBefore)); y < Math.min(h - 3, Math.floor(t + pitAfter)); y++) {
-          const white = (yy) => Number.isFinite(phigh[yy]) && phigh[yy] >= whiteAt;
-          if (!white(y) || white(y - 1)) continue;
-          let e = y;
-          while (e < h - 3 && white(e + 1)) e++;
-          const wid = xAt(R2, y) - xAt(L, y);
-          const pinH = wid * (15 / 41.5) * 0.95;
-          if (e - y + 1 >= 0.55 * pinH && e - y + 1 <= 2.8 * pinH + 1) {
-            pinPit = y + 0.85 * pinH;
-            break;
-          }
-        }
-      }
-      const laneMed = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), prow);
-      if (!Number.isFinite(pinPit) && Number.isFinite(laneMed)) {
-        const bright = (y) => Number.isFinite(prow[y]) && prow[y] >= laneMed * 1.08 + 4;
-        for (let y = Math.max(yStart + 2, Math.floor(t - pitBefore)); y < Math.min(h - 3, Math.floor(t + pitAfter)); y++) {
-          if (!bright(y) || bright(y - 1)) continue;
-          let e = y;
-          while (e < h - 3 && bright(e + 1)) e++;
-          const wid = xAt(R2, y) - xAt(L, y);
-          const pinH = wid * (15 / 41.5) * 0.95;
-          if (e - y + 1 >= 0.45 * pinH && e - y + 1 <= 1.6 * pinH + 1) {
-            pinPit = y + pinH;
-            break;
-          }
-        }
-      }
-      if (Number.isFinite(pinPit) && !pitCands.some((c2) => Math.abs(c2 - pinPit) <= 1.5)) pitCands.push(Math.round(pinPit));
-      if (Number.isFinite(pinPit)) {
-        const pc = pitCands.find((c2) => Math.abs(c2 - pinPit) <= 2);
-        if (pc !== void 0 && (!Number.isFinite(lowestPit) || pc > lowestPit)) lowestPit = pc;
-      }
-      const laneLevel = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
-      let best = null;
-      const tried = [];
-      for (const f of foulCands) {
-        if (!isThinLine(f) && !(Math.abs(f - b) <= 0.05 * h && isLaneToApproach(f))) continue;
-        for (const p of pitCands) {
-          if (f - p < h * 0.06 || !(isPitStep(p) || Number.isFinite(pinPit) && Math.abs(p - pinPit) <= 2)) continue;
-          const rho = (p - yv) / (f - yv);
-          if (!(rho > 0.03 && rho < 0.75)) continue;
-          let cov = 0;
-          let n = 0;
-          for (let y = p + 3; y <= f - 3; y += 2) {
-            n++;
-            if (supported(y)) cov++;
-          }
-          tried.push(`f${f}/p${p}:cov${n ? (cov / n).toFixed(2) : "-"}`);
-          if (!n || cov / n < 0.5) continue;
-          const nearB = Math.max(0, 1 - Math.abs(f - b) / (0.06 * h));
-          const nearT = Math.max(0, 1 - Math.abs(p - t) / (0.05 * h));
-          const pitLow = Math.max(0, Math.min(1, (p - (t - pitBefore)) / (pitBefore + pitAfter)));
-          const belowP = pAvg(4, 10, p, plow);
-          const laneMatch = Number.isFinite(laneLevel) && Number.isFinite(belowP) ? 1 - Math.min(1, Math.abs(belowP - laneLevel) / Math.max(20, laneLevel * 0.35)) : 0;
-          const wF = Math.max(1, xAt(R2, f) - xAt(L, f));
-          const dRows = LANE_END_FT * rho / (1 - rho);
-          const fovDeg = 2 * Math.atan(w / 2 * (41.5 / 12) / (wF * dRows)) * 180 / Math.PI;
-          const fovFit = Math.exp(-0.5 * ((fovDeg - 66) / 22) ** 2);
-          const score = cov / n * 1 + prof[f] * 0.5 + Math.min(1, up[p]) * 0.5 + 1.2 * nearB + 0.6 * nearT + 0.8 * pitLow + 1.3 * laneMatch + 1.6 * fovFit + (Number.isFinite(walk2) && Math.abs(p - walk2) <= 2.5 ? 0.6 : 0) + (p === lowestPit ? 1.6 : 0) + (Number.isFinite(pinPit) && Math.abs(p - pinPit) <= 2 ? 2.2 : 0);
-          if (!best || score > best.score) best = { pit: p, foul: f, score };
-        }
-      }
-      if (!best && diag && !diag.hint) diag.hint = "I found both lane edges but not the foul line and the end of the lane together. Tilt the phone so the foul line, the arrows and the pins are all in view.";
-      if (!best) return fallback(L, R2, t, b, yv, up, notes) ?? (dbg(`reject: no foul/pit pair foul ${foulCands.join(",")} pit ${pitCands.join(",")} yv ${yv.toFixed(1)} t ${t} b ${b} | ${tried.slice(0, 8).join(" ")} | L(${L.xa.toFixed(0)},${L.xb.toFixed(0)}) R(${R2.xa.toFixed(0)},${R2.xb.toFixed(0)})`), null);
-      const centroid = (arr, y, r, base) => {
-        let sw = 0;
-        let sy = 0;
-        for (let k2 = Math.max(3, y - r); k2 <= Math.min(h - 4, y + r); k2++) {
-          const v = Math.max(0, arr[k2] - base);
-          sw += v;
-          sy += v * k2;
-        }
-        return sw > 0 ? sy / sw : y;
-      };
-      const foul = prof[best.foul] > 0.05 ? centroid(prof, best.foul, 4, prof[best.foul] * 0.4) : best.foul;
-      const halfway = (p) => {
-        const A = pAvg(-10, -4, p, plow);
-        const B = pAvg(4, 10, p, plow);
-        if (!Number.isFinite(A) || !Number.isFinite(B) || Math.abs(A - B) < 6) return NaN;
-        const mid = (A + B) / 2;
-        const rising = B > A;
-        for (let y = p - 5; y <= p + 5; y++) {
-          const a = plow[y], c2 = plow[y + 1];
-          if (!Number.isFinite(a) || !Number.isFinite(c2)) continue;
-          if (rising ? a < mid && c2 >= mid : a > mid && c2 <= mid) return y + (mid - a) / (c2 - a || 1) + 0.5;
-        }
-        return NaN;
-      };
-      const hw = halfway(best.pit);
-      const pit = Number.isFinite(pinPit) && Math.abs(best.pit - pinPit) <= 2 ? pinPit : Number.isFinite(hw) && Math.abs(hw - best.pit) <= (Number.isFinite(pinPit) ? 1.5 : 4) ? hw : up[best.pit] > 0.1 ? centroid(up, best.pit, 3, up[best.pit] * 0.3) : best.pit;
-      if (diag && !diag.foulRow) {
-        diag.foulRow = foul;
-        diag.pitRow = pit;
-      }
-      const foulOk = true;
-      const pitOk = true;
-      const LR = refine(L.xa, L.xb, 1, Math.ceil(pit) + 4, Math.floor(foul) - 3, 2 * STEP);
-      const RR = refine(R2.xa, R2.xb, -1, Math.ceil(pit) + 4, Math.floor(foul) - 3, 2 * STEP);
-      L = { ...L, xa: LR.xa, xb: LR.xb };
-      R2 = { ...R2, xa: RR.xa, xb: RR.xb };
-      const sideRow = (guess, side, kind) => {
-        let sw = 0;
-        let sy = 0;
-        for (let y = Math.round(guess) - 7; y <= Math.round(guess) + 7; y++) {
-          if (y < 3 || y >= h - 3) continue;
-          const xl = xAt(L, y);
-          const xr = xAt(R2, y);
-          const wid = xr - xl;
-          if (wid < 6) continue;
-          const x0 = side === "L" ? xl + 0.08 * wid : xl + 0.55 * wid;
-          const x1 = side === "L" ? xl + 0.45 * wid : xr - 0.08 * wid;
-          let c2 = 0;
-          let n = 0;
-          for (let x = Math.max(2, Math.ceil(x0)); x <= Math.min(w - 3, Math.floor(x1)); x++) {
-            const i = y * w + x;
-            n++;
-            if (kind === "foul") {
-              if (Math.abs(gy[i]) > thr * 0.6 && Math.abs(gy[i]) > 1.3 * Math.abs(gx[i])) c2++;
-            } else if (gy[i] > thr * 0.6 && gy[i] > 1.3 * Math.abs(gx[i])) c2++;
-          }
-          const v = n ? c2 / n : 0;
-          sw += v * v;
-          sy += v * v * y;
-        }
-        return sw > 0 ? sy / sw : guess;
-      };
-      let fyL = sideRow(foul, "L", "foul");
-      let fyR = sideRow(foul, "R", "foul");
-      let pL = sideRow(pit, "L", "pit");
-      let pR = sideRow(pit, "R", "pit");
-      const dF = fyR - fyL;
-      const dP = pR - pL;
-      if (Math.abs(dF) < 1.5 || Math.abs(dP) < 1.5 || Math.sign(dF) !== Math.sign(dP) || Math.abs(dP / dF) > 1.6 || Math.abs(dP / dF) < 0.15) {
-        fyL = fyR = foul;
-        pL = pR = pit;
-      }
-      const rowFor = (fyS, pS) => {
-        const rho = (pS - yv) / (fyS - yv);
-        if (!(rho > 0.03 && rho < 0.75)) return null;
-        const K = LANE_END_FT * rho / (1 - rho);
-        return yv + (fyS - yv) * K / (K + LANE_LEN);
-      };
-      const r60L = rowFor(fyL, pL);
-      const r60R = rowFor(fyR, pR);
-      if (r60L === null || r60R === null) return dbg(`reject: rho out of range yv ${yv.toFixed(1)} foul ${fyL.toFixed(1)}/${fyR.toFixed(1)} pit ${pL.toFixed(1)}/${pR.toFixed(1)}`), null;
-      if (!(r60L < fyL - 4 && r60R < fyR - 4)) return dbg(`reject: row60 ${r60L} ${r60R}`), null;
-      const fy = (fyL + fyR) / 2;
-      const row60 = (r60L + r60R) / 2;
-      const corners2 = [
-        { x: xAt(L, fyL), y: fyL },
-        { x: xAt(R2, fyR), y: fyR },
-        { x: xAt(R2, r60R), y: r60R },
-        { x: xAt(L, r60L), y: r60L }
-      ];
-      const wFoul = corners2[1].x - corners2[0].x;
-      const fPx = w / 2 / Math.tan(ASSUMED_HFOV_DEG * Math.PI / 360);
-      const distFromWidth = fPx * (41.5 / 12) / Math.max(1, wFoul);
-      const rhoMid = (pit - yv) / (fy - yv);
-      const distFromRows = LANE_END_FT * rhoMid / (1 - rhoMid);
-      const impliedHfov = 2 * Math.atan(w / 2 * (41.5 / 12) / (Math.max(1, wFoul) * distFromRows)) * 180 / Math.PI;
-      if (!(impliedHfov > 30 && impliedHfov < 118)) return dbg(`reject: the rows and the lane width imply a ${impliedHfov.toFixed(0)} degree field of view`), null;
-      const agree = distFromWidth / distFromRows;
-      const wBot = corners2[1].x - corners2[0].x;
-      const wTop = corners2[2].x - corners2[3].x;
-      if (!(wBot > 6 && wTop > 0.3 && wTop < wBot)) return dbg(`reject: widths ${wBot.toFixed(1)} ${wTop.toFixed(1)}`), null;
-      const confidence = Math.max(0, Math.min(1, 0.35 * Math.min(1, c.base / 1.6) + 0.25 * (foulOk ? 1 : 0.2) + 0.3 * (pitOk ? 1 : 0) + 0.1 * Math.min(1, (fy - row60) / (h * 0.15))));
-      return { corners: corners2, confidence, notes, rows: { foul: foulOk ? foul : null, pit: pitOk ? pit : null, vanishing: yv } };
-    }
-    function fallback(L, R2, t, b, yv, up, notes) {
-      let pit = t;
-      let pv = 0;
-      for (let y = Math.max(3, Math.floor(t - 12)); y <= Math.min(h - 4, Math.floor(t + 16)); y++) if (up[y] > pv) pv = up[y], pit = y;
-      const stepFound = pv > 0.2;
-      if (!stepFound) pit = t;
-      const wPit = xAt(R2, pit) - xAt(L, pit);
-      if (wPit < 4) return null;
-      const fPx = w / 2 / Math.tan(ASSUMED_HFOV_DEG * Math.PI / 360);
-      const zPit = fPx * (41.5 / 12) / wPit;
-      const zFoul = zPit - LANE_END_FT;
-      if (zFoul < 3 || pit - yv < 2) return null;
-      const c = (pit - yv) * zPit;
-      const rowAt = (ft) => yv + c / (zFoul + ft);
-      const fy = rowAt(0);
-      const r60 = rowAt(LANE_LEN);
-      const corners2 = [
-        { x: xAt(L, fy), y: fy },
-        { x: xAt(R2, fy), y: fy },
-        { x: xAt(R2, r60), y: r60 },
-        { x: xAt(L, r60), y: r60 }
-      ];
-      notes.push("foul line not visible: distances come from the lane's width and a typical phone field of view, so they are approximate");
-      if (!stepFound) notes.push("end of lane not clearly visible");
-      return { corners: corners2, confidence: stepFound ? 0.6 : 0.45, notes, rows: { foul: null, pit: stepFound ? pit : null, vanishing: yv } };
-    }
-  }
-  var isSolid = (d) => d.confidence >= 0.85 && d.rows.foul !== null && d.rows.pit !== null;
-  function oneOfEach(list, w) {
-    const mid = (d) => (d.corners[0].x + d.corners[1].x) / 2;
-    const wid = (d) => Math.abs(d.corners[1].x - d.corners[0].x);
-    const out = [];
-    for (const d of [...list].sort((a, b) => b.confidence - a.confidence)) {
-      const i = out.findIndex((o) => Math.abs(mid(o) - mid(d)) < 0.05 * w && wid(o) / Math.max(1, wid(d)) > 0.6 && wid(o) / Math.max(1, wid(d)) < 1.7);
-      if (i < 0) out.push(d);
-      else if (wid(d) < 0.85 * wid(out[i])) out[i] = d;
-    }
-    return out;
-  }
-  function chooseLane(cands, w) {
-    const solid2 = oneOfEach(cands.filter(isSolid), w);
-    if (solid2.length <= 1) return { pick: solid2[0] ?? null, choices: solid2 };
-    const off = (d) => Math.abs((d.corners[0].x + d.corners[1].x) / 2 - w / 2) / w;
-    const ranked = [...solid2].sort((a, b) => off(a) - off(b));
-    if (off(ranked[0]) < 0.12 && off(ranked[1]) - off(ranked[0]) > 0.1) return { pick: ranked[0], choices: solid2 };
-    return { pick: null, choices: ranked };
-  }
-  function detectLaneAt(gray, w, h, x, y) {
-    return detectLanes(gray, w, h, 1, { x, y })[0] ?? null;
-  }
-  function detectionsAgree(a, b, tol) {
-    return a.every((p, i) => Math.hypot(p.x - b[i].x, p.y - b[i].y) <= tol);
-  }
-
-  // core/src/recommend.ts
-  var COVER_BONUS = { solid: 0.5, hybrid: 0.2, pearl: -0.3, urethane: -0.8, plastic: -1 };
-  function motionIndex(b) {
-    const rg = b.rg?.value;
-    const diff = b.differential?.value;
-    if (rg === void 0 || diff === void 0) return null;
-    const cover = b.coverstockType ? COVER_BONUS[b.coverstockType.value] ?? 0 : 0;
-    return (2.55 - rg) * 6 + (diff - 0.04) * 20 + cover;
-  }
-  function recommendBall(read2, currentBallId, arsenal) {
-    const scored = arsenal.map((b) => ({ b, m: b.catalog ? motionIndex(b.catalog) : null })).filter((x) => x.m !== null);
-    if (read2.status !== "ok") return { status: "none", text: "No equipment change suggested yet: I need a lane read first.", basis: [] };
-    if (scored.length < 2) {
-      return { status: "none", text: "I need at least two arsenal balls matched to the catalog to compare options.", basis: [`${scored.length} of your balls have catalog specs.`] };
-    }
-    const drying = /earlier/.test(read2.headline);
-    const carrydown = /skidding farther/.test(read2.headline);
-    if (!drying && !carrydown) return { status: "none", text: "The lane looks stable, so stay with your current ball.", basis: [] };
-    const cur = scored.find((x) => x.b.id === currentBallId);
-    if (!cur) return { status: "none", text: "Tell me which ball you're throwing so I can compare against it.", basis: [] };
-    const want = drying ? scored.filter((x) => x.m < cur.m) : scored.filter((x) => x.m > cur.m);
-    if (!want.length) {
-      return { status: "none", text: `Nothing in your arsenal is ${drying ? "cleaner" : "stronger"} than ${cur.b.name} by published specs. Consider a surface or line change instead.`, basis: [] };
-    }
-    const pick = want.sort((x, y) => drying ? y.m - x.m : x.m - y.m)[0];
-    const c = pick.b.catalog;
-    const basis = [
-      `${cur.b.name}: motion index ${cur.m.toFixed(2)}; ${pick.b.name}: ${pick.m.toFixed(2)} (from RG ${c.rg?.value}, differential ${c.differential?.value}${c.coverstockType ? `, ${c.coverstockType.value} cover` : ""}).`,
-      "Spec-based estimate, not a measurement of how this ball behaves for you. Confirm with two shots."
-    ];
-    return {
-      status: "ok",
-      ballId: pick.b.id,
-      text: `${drying ? "Try the cleaner" : "Try the stronger"} ${pick.b.name}: ${drying ? "your current ball is reading the lane early" : "oil is carrying down and your current ball is skidding long"}. Change only the ball and keep your line, then judge two shots.`,
-      basis
-    };
-  }
-
-  // camera/render.ts
-  var k = (v) => v.width / 1280;
-  var lerp = (a, b, t) => a + (b - a) * t;
-  var ramp = (t, alpha = 1) => `hsla(${lerp(190, 320, t)}, 100%, ${lerp(62, 58, t)}%, ${alpha})`;
-  var DECK_END_FT = 63;
-  var ROW_FT = 10.39 / 12;
-  var PIN_SPACING_BOARDS = 12 / (41.5 / LANE_BOARDS);
-  function strokeTrail(v, points, baseAlpha, headBoost) {
-    const n = points.length;
-    if (n < 2) return;
-    const { ctx: ctx2 } = v;
-    const s = k(v);
-    ctx2.save();
-    ctx2.globalCompositeOperation = "lighter";
-    ctx2.lineCap = "round";
-    ctx2.lineJoin = "round";
-    for (let i = 1; i < n; i++) {
-      const t = i / (n - 1);
-      const a = points[i - 1];
-      const b = points[i];
-      ctx2.shadowBlur = 24 * s;
-      ctx2.shadowColor = ramp(t);
-      ctx2.strokeStyle = ramp(t, baseAlpha * (headBoost ? 0.15 + 0.85 * t : 0.9));
-      ctx2.lineWidth = (headBoost ? lerp(3, 14, t) : 10) * s;
-      ctx2.beginPath();
-      ctx2.moveTo(a.x, a.y);
-      ctx2.lineTo(b.x, b.y);
-      ctx2.stroke();
-      ctx2.shadowBlur = 0;
-      ctx2.strokeStyle = `rgba(255,255,255,${baseAlpha * (headBoost ? t : 0.8)})`;
-      ctx2.lineWidth = (headBoost ? lerp(1, 4, t) : 3.5) * s;
-      ctx2.beginPath();
-      ctx2.moveTo(a.x, a.y);
-      ctx2.lineTo(b.x, b.y);
-      ctx2.stroke();
-    }
-    ctx2.restore();
-  }
-  function drawBallHead(v, h) {
-    const s = k(v);
-    const g = v.ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, 26 * s);
-    g.addColorStop(0, "rgba(255,255,255,.95)");
-    g.addColorStop(0.25, "rgba(120,230,255,.6)");
-    g.addColorStop(1, "rgba(120,230,255,0)");
-    v.ctx.save();
-    v.ctx.globalCompositeOperation = "lighter";
-    v.ctx.fillStyle = g;
-    v.ctx.beginPath();
-    v.ctx.arc(h.x, h.y, 26 * s, 0, 7);
-    v.ctx.fill();
-    v.ctx.restore();
-  }
-  function label(v, text, p, color) {
-    const { ctx: ctx2 } = v;
-    const s = k(v);
-    ctx2.save();
-    ctx2.font = `600 ${15 * s}px -apple-system, system-ui, sans-serif`;
-    const w = ctx2.measureText(text).width + 16 * s;
-    const h = 24 * s;
-    ctx2.fillStyle = "rgba(10,14,22,.75)";
-    ctx2.strokeStyle = color;
-    ctx2.lineWidth = 1.5 * s;
-    ctx2.beginPath();
-    ctx2.roundRect(p.x - w / 2, p.y - h - 10 * s, w, h, 12 * s);
-    ctx2.fill();
-    ctx2.stroke();
-    ctx2.fillStyle = "#fff";
-    ctx2.textAlign = "center";
-    ctx2.textBaseline = "middle";
-    ctx2.fillText(text, p.x, p.y - h / 2 - 10 * s);
-    ctx2.beginPath();
-    ctx2.fillStyle = color;
-    ctx2.arc(p.x, p.y, 5 * s, 0, 7);
-    ctx2.fill();
-    ctx2.restore();
-  }
-  function drawShotMarkers(v, a) {
-    if (a.boardAtArrows !== null) label(v, `Arrows ${a.boardAtArrows.toFixed(1)}`, v.P(boardToX(a.boardAtArrows), 15), "#ffd25a");
-    if (a.breakpointBoard !== null && a.breakpointFt !== null) label(v, `Breakpoint ${a.breakpointBoard.toFixed(1)}`, v.P(boardToX(a.breakpointBoard), a.breakpointFt), "#ff5ad6");
-    if (a.entryBoard !== null) label(v, `Entry ${a.entryBoard.toFixed(1)}`, v.P(boardToX(a.entryBoard), 59.5), "#5affb0");
-  }
-  function drawCorners(v, corners2) {
-    const { ctx: ctx2 } = v;
-    const s = k(v);
-    ctx2.save();
-    corners2.forEach((c, i) => {
-      ctx2.fillStyle = "#4da3ff";
-      ctx2.shadowColor = "#4da3ff";
-      ctx2.shadowBlur = 16 * s;
-      ctx2.beginPath();
-      ctx2.arc(c.x, c.y, 9 * s, 0, 7);
-      ctx2.fill();
-      ctx2.shadowBlur = 0;
-      ctx2.fillStyle = "#06101c";
-      ctx2.font = `700 ${12 * s}px system-ui`;
-      ctx2.textAlign = "center";
-      ctx2.textBaseline = "middle";
-      ctx2.fillText(String(i + 1), c.x, c.y + 0.5 * s);
-      if (i > 0) {
-        ctx2.strokeStyle = "rgba(77,163,255,.8)";
-        ctx2.lineWidth = 2 * s;
-        ctx2.beginPath();
-        ctx2.moveTo(corners2[i - 1].x, corners2[i - 1].y);
-        ctx2.lineTo(c.x, c.y);
-        ctx2.stroke();
-      }
-    });
-    ctx2.restore();
-  }
-  function line(v, a, b) {
-    v.ctx.beginPath();
-    v.ctx.moveTo(a.x, a.y);
-    v.ctx.lineTo(b.x, b.y);
-    v.ctx.stroke();
-  }
-  function drawLaneGrid(v) {
-    const { ctx: ctx2, P } = v;
-    const s = k(v);
-    ctx2.save();
-    const quad = [P(0, 0), P(LANE_BOARDS, 0), P(LANE_BOARDS, DECK_END_FT), P(0, DECK_END_FT)];
-    ctx2.beginPath();
-    quad.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
-    ctx2.closePath();
-    ctx2.fillStyle = "rgba(255,214,150,.07)";
-    ctx2.fill();
-    for (let i = 0; i <= LANE_BOARDS; i++) {
-      const fromRight = LANE_BOARDS - i;
-      const major = fromRight % 5 === 0;
-      const edge = i === 0 || i === LANE_BOARDS;
-      ctx2.strokeStyle = edge ? "rgba(120,200,255,.8)" : major ? "rgba(255,255,255,.3)" : "rgba(255,255,255,.12)";
-      ctx2.lineWidth = (edge ? 2.4 : major ? 1.3 : 0.8) * s;
-      line(v, P(i, 0), P(i, LANE_LENGTH_FT));
-    }
-    ctx2.strokeStyle = "rgba(255,90,110,.95)";
-    ctx2.lineWidth = 3 * s;
-    ctx2.shadowColor = "rgba(255,90,110,.9)";
-    ctx2.shadowBlur = 10 * s;
-    line(v, P(0, 0), P(LANE_BOARDS, 0));
-    ctx2.shadowBlur = 0;
-    ctx2.setLineDash([6 * s, 8 * s]);
-    ctx2.lineWidth = 1 * s;
-    for (const ft of [30, 45]) {
-      ctx2.strokeStyle = "rgba(255,255,255,.2)";
-      line(v, P(0, ft), P(LANE_BOARDS, ft));
-    }
-    ctx2.setLineDash([]);
-    ctx2.strokeStyle = "rgba(255,255,255,.35)";
-    ctx2.lineWidth = 1.5 * s;
-    line(v, P(0, LANE_LENGTH_FT), P(LANE_BOARDS, LANE_LENGTH_FT));
-    line(v, P(0, DECK_END_FT), P(LANE_BOARDS, DECK_END_FT));
-    ctx2.fillStyle = "rgba(255,255,255,.55)";
-    for (let b = 5; b <= 35; b += 5) {
-      const c = P(boardToX(b), 7);
-      ctx2.beginPath();
-      ctx2.arc(c.x, c.y, 2.5 * s, 0, 7);
-      ctx2.fill();
-    }
-    for (let b = 5; b <= 35; b += 5) {
-      const cx = boardToX(b);
-      const tip = 12 + 4 * (1 - Math.abs(b - 20) / 15);
-      const tri = [P(cx - 1.2, tip - 1.6), P(cx + 1.2, tip - 1.6), P(cx, tip)];
-      ctx2.beginPath();
-      tri.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
-      ctx2.closePath();
-      ctx2.fillStyle = b === 20 ? "rgba(255,210,90,.95)" : "rgba(255,210,90,.7)";
-      ctx2.shadowColor = "rgba(255,210,90,.8)";
-      ctx2.shadowBlur = 8 * s;
-      ctx2.fill();
-    }
-    ctx2.shadowBlur = 0;
-    ctx2.font = `600 ${12 * s}px -apple-system, system-ui, sans-serif`;
-    ctx2.textAlign = "center";
-    ctx2.textBaseline = "middle";
-    ctx2.fillStyle = "rgba(255,255,255,.75)";
-    for (let b = 5; b <= 35; b += 5) {
-      const c = P(boardToX(b), 3.2);
-      ctx2.fillText(String(b), c.x, c.y);
-    }
-    ctx2.fillStyle = "rgba(255,255,255,.88)";
-    ctx2.shadowColor = "rgba(255,255,255,.6)";
-    ctx2.shadowBlur = 6 * s;
-    for (let r = 0; r < 4; r++) {
-      for (let i = 0; i <= r; i++) {
-        const x = LANE_BOARDS / 2 + (i - r / 2) * PIN_SPACING_BOARDS;
-        const y = LANE_LENGTH_FT + r * ROW_FT;
-        const c = P(x, y);
-        const edge = P(x + 1.2, y);
-        ctx2.beginPath();
-        ctx2.arc(c.x, c.y, Math.max(2, Math.hypot(edge.x - c.x, edge.y - c.y)), 0, 7);
-        ctx2.fill();
-      }
-    }
-    ctx2.restore();
-  }
-  function drawTopDown(ctx2, w, h, paths, pocket) {
-    const padX = 18;
-    const top = 24;
-    const bottom = 18;
-    const laneW = w - padX * 2;
-    const laneH = h - top - bottom;
-    const px = (x) => padX + x / LANE_BOARDS * laneW;
-    const py = (ft) => h - bottom - ft / DECK_END_FT * laneH;
-    ctx2.clearRect(0, 0, w, h);
-    ctx2.save();
-    ctx2.fillStyle = "rgba(255,214,150,.08)";
-    ctx2.fillRect(px(0), py(DECK_END_FT), laneW, laneH);
-    ctx2.lineWidth = 1;
-    for (let i = 0; i <= LANE_BOARDS; i++) {
-      const major = (LANE_BOARDS - i) % 5 === 0;
-      ctx2.strokeStyle = i === 0 || i === LANE_BOARDS ? "rgba(120,200,255,.8)" : major ? "rgba(255,255,255,.22)" : "rgba(255,255,255,.07)";
-      ctx2.beginPath();
-      ctx2.moveTo(px(i), py(0));
-      ctx2.lineTo(px(i), py(LANE_LENGTH_FT));
-      ctx2.stroke();
-    }
-    ctx2.strokeStyle = "rgba(255,90,110,.95)";
-    ctx2.lineWidth = 2.5;
-    ctx2.beginPath();
-    ctx2.moveTo(px(0), py(0));
-    ctx2.lineTo(px(LANE_BOARDS), py(0));
-    ctx2.stroke();
-    ctx2.setLineDash([4, 6]);
-    ctx2.strokeStyle = "rgba(255,255,255,.18)";
-    ctx2.lineWidth = 1;
-    for (const ft of [15, 30, 45, 60]) {
-      ctx2.beginPath();
-      ctx2.moveTo(px(0), py(ft));
-      ctx2.lineTo(px(LANE_BOARDS), py(ft));
-      ctx2.stroke();
-    }
-    ctx2.setLineDash([]);
-    ctx2.fillStyle = "rgba(255,210,90,.85)";
-    for (let b = 5; b <= 35; b += 5) {
-      const tip = 12 + 4 * (1 - Math.abs(b - 20) / 15);
-      const cx = px(boardToX(b));
-      ctx2.beginPath();
-      ctx2.moveTo(cx - 4, py(tip - 1.6));
-      ctx2.lineTo(cx + 4, py(tip - 1.6));
-      ctx2.lineTo(cx, py(tip));
-      ctx2.closePath();
-      ctx2.fill();
-    }
-    ctx2.fillStyle = "rgba(255,255,255,.55)";
-    ctx2.font = "600 10px system-ui, sans-serif";
-    ctx2.textAlign = "center";
-    for (let b = 5; b <= 35; b += 5) ctx2.fillText(String(b), px(boardToX(b)), py(0) + 12);
-    ctx2.fillStyle = "rgba(255,255,255,.88)";
-    for (let r = 0; r < 4; r++)
-      for (let i = 0; i <= r; i++) {
-        ctx2.beginPath();
-        ctx2.arc(px(LANE_BOARDS / 2 + (i - r / 2) * PIN_SPACING_BOARDS), py(LANE_LENGTH_FT + r * ROW_FT), 3.2, 0, 7);
-        ctx2.fill();
-      }
-    if (pocket) {
-      ctx2.strokeStyle = "rgba(90,255,176,.7)";
-      ctx2.lineWidth = 1.5;
-      ctx2.setLineDash([3, 3]);
-      ctx2.beginPath();
-      ctx2.moveTo(px(boardToX(pocket.board)), py(45));
-      ctx2.lineTo(px(boardToX(pocket.board)), py(LANE_LENGTH_FT));
-      ctx2.stroke();
-      ctx2.setLineDash([]);
-    }
-    for (const m of paths) {
-      if (m.path.length < 2) continue;
-      ctx2.strokeStyle = m.color;
-      ctx2.globalAlpha = m.alpha ?? 1;
-      ctx2.lineWidth = m.width ?? 2;
-      ctx2.lineJoin = "round";
-      ctx2.beginPath();
-      m.path.forEach((s, i) => i ? ctx2.lineTo(px(s.x), py(s.y)) : ctx2.moveTo(px(s.x), py(s.y)));
-      ctx2.stroke();
-    }
-    ctx2.restore();
-  }
+  ];
+  var LATEST_NOTE_ID = PATCH_NOTES[0].id;
 
   // core/src/lanereads.ts
   var MIN_SHOTS = 4;
@@ -1311,6 +195,44 @@
       if (Math.abs(ta.t) >= 2 && Math.abs(drift) >= 1.5) points.push(`Observed: your ball is crossing the arrows ${Math.abs(drift).toFixed(1)} boards ${drift > 0 ? "farther left (toward board 39)" : "farther right (toward board 1)"} than at the start, so you may be drifting, not the lane.`);
     }
     return { status: "ok", confidence, headline, points, next, shotsUsed: n };
+  }
+
+  // core/src/recommend.ts
+  var COVER_BONUS = { solid: 0.5, hybrid: 0.2, pearl: -0.3, urethane: -0.8, plastic: -1 };
+  function motionIndex(b) {
+    const rg = b.rg?.value;
+    const diff = b.differential?.value;
+    if (rg === void 0 || diff === void 0) return null;
+    const cover = b.coverstockType ? COVER_BONUS[b.coverstockType.value] ?? 0 : 0;
+    return (2.55 - rg) * 6 + (diff - 0.04) * 20 + cover;
+  }
+  function recommendBall(read2, currentBallId, arsenal) {
+    const scored = arsenal.map((b) => ({ b, m: b.catalog ? motionIndex(b.catalog) : null })).filter((x) => x.m !== null);
+    if (read2.status !== "ok") return { status: "none", text: "No equipment change suggested yet: I need a lane read first.", basis: [] };
+    if (scored.length < 2) {
+      return { status: "none", text: "I need at least two arsenal balls matched to the catalog to compare options.", basis: [`${scored.length} of your balls have catalog specs.`] };
+    }
+    const drying = /earlier/.test(read2.headline);
+    const carrydown = /skidding farther/.test(read2.headline);
+    if (!drying && !carrydown) return { status: "none", text: "The lane looks stable, so stay with your current ball.", basis: [] };
+    const cur = scored.find((x) => x.b.id === currentBallId);
+    if (!cur) return { status: "none", text: "Tell me which ball you're throwing so I can compare against it.", basis: [] };
+    const want = drying ? scored.filter((x) => x.m < cur.m) : scored.filter((x) => x.m > cur.m);
+    if (!want.length) {
+      return { status: "none", text: `Nothing in your arsenal is ${drying ? "cleaner" : "stronger"} than ${cur.b.name} by published specs. Consider a surface or line change instead.`, basis: [] };
+    }
+    const pick = want.sort((x, y) => drying ? y.m - x.m : x.m - y.m)[0];
+    const c = pick.b.catalog;
+    const basis = [
+      `${cur.b.name}: motion index ${cur.m.toFixed(2)}; ${pick.b.name}: ${pick.m.toFixed(2)} (from RG ${c.rg?.value}, differential ${c.differential?.value}${c.coverstockType ? `, ${c.coverstockType.value} cover` : ""}).`,
+      "Spec-based estimate, not a measurement of how this ball behaves for you. Confirm with two shots."
+    ];
+    return {
+      status: "ok",
+      ballId: pick.b.id,
+      text: `${drying ? "Try the cleaner" : "Try the stronger"} ${pick.b.name}: ${drying ? "your current ball is reading the lane early" : "oil is carrying down and your current ball is skidding long"}. Change only the ball and keep your line, then judge two shots.`,
+      basis
+    };
   }
 
   // core/src/identify.ts
@@ -2304,6 +1226,1170 @@
     renderLane();
   }
 
+  // camera/patchnotes.ts
+  var KEY = "laneiq.notesSeen";
+  var seen = () => {
+    try {
+      return localStorage.getItem(KEY);
+    } catch {
+      return null;
+    }
+  };
+  var markSeen = () => {
+    try {
+      localStorage.setItem(KEY, LATEST_NOTE_ID);
+    } catch {
+    }
+  };
+  function initPatchNotes() {
+    const box = document.getElementById("whatsnew");
+    if (!box) return;
+    const fresh = seen() !== LATEST_NOTE_ID;
+    box.innerHTML = `<button class="chip" id="notes-open">${fresh ? "NEW \xB7 " : ""}What's new: ${esc(PATCH_NOTES[0].title)}</button>`;
+    document.getElementById("notes-open").onclick = () => {
+      const sheet5 = document.getElementById("notes");
+      sheet5.classList.add("on");
+      sheet5.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc(n.title)} <span class="note">${esc(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}`;
+      document.getElementById("notes-close").onclick = () => (sheet5.classList.remove("on"), sheet5.innerHTML = "");
+      markSeen();
+      document.getElementById("notes-open").textContent = `What's new: ${PATCH_NOTES[0].title}`;
+    };
+  }
+
+  // core/src/vision.ts
+  var LANE_BOARDS = 39;
+  var LANE_LENGTH_FT = 60;
+  var ARROWS_FT = 15;
+  function solveHomography(src, dst) {
+    const A = [];
+    for (let i = 0; i < 4; i++) {
+      const { x, y } = src[i];
+      const { x: u, y: v } = dst[i];
+      A.push([x, y, 1, 0, 0, 0, -u * x, -u * y, u]);
+      A.push([0, 0, 0, x, y, 1, -v * x, -v * y, v]);
+    }
+    for (let c = 0; c < 8; c++) {
+      let p = c;
+      for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+      if (Math.abs(A[p][c]) < 1e-12) throw new Error("degenerate calibration points");
+      [A[c], A[p]] = [A[p], A[c]];
+      for (let r = 0; r < 8; r++) {
+        if (r === c) continue;
+        const f = A[r][c] / A[c][c];
+        for (let k2 = c; k2 < 9; k2++) A[r][k2] -= f * A[c][k2];
+      }
+    }
+    return [...A.map((row, i) => row[8] / row[i]), 1];
+  }
+  function applyHomography(h, p) {
+    const w = h[6] * p.x + h[7] * p.y + h[8];
+    return { x: (h[0] * p.x + h[1] * p.y + h[2]) / w, y: (h[3] * p.x + h[4] * p.y + h[5]) / w };
+  }
+  var boardFromRight = (xBoards) => LANE_BOARDS + 0.5 - xBoards;
+  var boardToX = (board) => LANE_BOARDS + 0.5 - board;
+  function linearFit(xs, ys) {
+    const n = xs.length;
+    const mx = xs.reduce((a, b) => a + b, 0) / n;
+    const my = ys.reduce((a, b) => a + b, 0) / n;
+    let sxx = 0;
+    let sxy = 0;
+    for (let i = 0; i < n; i++) {
+      sxx += (xs[i] - mx) ** 2;
+      sxy += (xs[i] - mx) * (ys[i] - my);
+    }
+    const slope = sxy / sxx;
+    const intercept = my - slope * mx;
+    const rmse = Math.sqrt(xs.reduce((a, x, i) => a + (ys[i] - (slope * x + intercept)) ** 2, 0) / n);
+    return { slope, intercept, rmse };
+  }
+  function interp(path2, yFt) {
+    for (let i = 1; i < path2.length; i++) {
+      const a = path2[i - 1];
+      const b = path2[i];
+      if (a.y <= yFt && b.y >= yFt && b.y > a.y) return a.x + (yFt - a.y) / (b.y - a.y) * (b.x - a.x);
+    }
+    return null;
+  }
+  var ENTRY_FT = 59.5;
+  var BOARD_IN = 41.5 / LANE_BOARDS;
+  function headingDeg(path2, y0, y1) {
+    const w = path2.filter((s) => s.y >= y0 && s.y <= y1);
+    if (w.length < 4 || w[w.length - 1].y - w[0].y < 4) return null;
+    const f = linearFit(w.map((s) => s.y), w.map((s) => s.x));
+    return { deg: Math.atan(f.slope * BOARD_IN / 12) * 180 / Math.PI, slopeBoardsPerFt: f.slope };
+  }
+  function analyzeShot(path2) {
+    const p = path2.filter((s) => s.y >= 3 && s.y <= 58).sort((a, b) => a.t - b.t);
+    if (p.length < 8 || p[p.length - 1].y - p[0].y < 20) return null;
+    const fit = linearFit(p.map((s) => s.t), p.map((s) => s.y));
+    if (fit.slope <= 0) return null;
+    const fps = fit.slope;
+    const speed = fps * (3600 / 5280);
+    const speedUnc = fit.rmse / (p[p.length - 1].t - p[0].t) * (3600 / 5280) * 2;
+    const mid = p.filter((s) => s.y >= ARROWS_FT && s.y <= 55);
+    let bpBoard = null;
+    let bpFt = null;
+    if (mid.length >= 4) {
+      const c = LANE_BOARDS / 2;
+      const ext = mid.reduce((best, s) => Math.abs(s.x - c) > Math.abs(best.x - c) ? s : best);
+      bpBoard = boardFromRight(ext.x);
+      bpFt = ext.y;
+    }
+    const arrows = interp(p, ARROWS_FT);
+    const tail = p.filter((s) => s.y >= 50);
+    let entry = null;
+    if (tail.length >= 4 && tail[tail.length - 1].y - tail[0].y >= 3) {
+      const f = linearFit(tail.map((s) => s.y), tail.map((s) => s.x));
+      entry = f.slope * ENTRY_FT + f.intercept;
+    }
+    const launch = headingDeg(p, 3, 20);
+    const impact = headingDeg(p, 50, 58);
+    const coverage = Math.min(1, (p[p.length - 1].y - p[0].y) / 45);
+    const confidence = Math.max(0, Math.min(1, coverage * (1 - Math.min(1, fit.rmse / 5))));
+    return {
+      speedMph: speed,
+      speedUncertainty: speedUnc,
+      boardAtArrows: arrows === null ? null : boardFromRight(arrows),
+      breakpointBoard: bpBoard,
+      breakpointFt: bpFt,
+      entryBoard: entry === null ? null : boardFromRight(entry),
+      launchAngleDeg: launch?.deg ?? null,
+      impactAngleDeg: impact?.deg ?? null,
+      samples: p.length,
+      confidence
+    };
+  }
+
+  // core/src/metrics.ts
+  var POCKET_BOARD = { R: 17.5, L: 22.5 };
+  var MPH = 3600 / 5280;
+  function speedBetween(path2, y0, y1) {
+    const w = path2.filter((s) => s.y >= y0 && s.y <= y1);
+    if (w.length < 4) return null;
+    const dt = w[w.length - 1].t - w[0].t;
+    const dy = w[w.length - 1].y - w[0].y;
+    return dt > 0.05 && dy > 3 ? dy / dt * MPH : null;
+  }
+  function classifyZone(miss) {
+    const a = Math.abs(miss);
+    if (a <= 1) return "pocket";
+    if (a <= 2.5) return miss > 0 ? "high" : "light";
+    return miss > 0 ? "very-high" : "very-light";
+  }
+  function deriveMetrics(a, path2, hand) {
+    const early = path2.filter((s) => s.y >= 2 && s.y <= 8);
+    const startBoard = early.length ? boardFromRight(early.reduce((t, s) => t + s.x, 0) / early.length) : null;
+    const launchSpeed = speedBetween(path2, 3, 20);
+    const entrySpeed = speedBetween(path2, 40, 58);
+    const speedLossPct = launchSpeed && entrySpeed ? (launchSpeed - entrySpeed) / launchSpeed * 100 : null;
+    const hookBoards = a.breakpointBoard !== null && a.entryBoard !== null ? Math.abs(a.entryBoard - a.breakpointBoard) : null;
+    const hookLengthFt = a.breakpointFt !== null ? Math.max(0, 59.5 - a.breakpointFt) : null;
+    const pocket = POCKET_BOARD[hand];
+    const pocketMiss = a.entryBoard === null ? null : hand === "R" ? a.entryBoard - pocket : pocket - a.entryBoard;
+    return {
+      hand,
+      startBoard,
+      arrowsBoard: a.boardAtArrows,
+      breakpointBoard: a.breakpointBoard,
+      breakpointFt: a.breakpointFt,
+      entryBoard: a.entryBoard,
+      launchAngle: a.launchAngleDeg,
+      entryAngle: a.impactAngleDeg === null ? null : Math.abs(a.impactAngleDeg),
+      launchSpeed,
+      entrySpeed,
+      speedLossPct,
+      hookBoards,
+      hookLengthFt,
+      pocketMiss,
+      zone: pocketMiss === null ? null : classifyZone(pocketMiss)
+    };
+  }
+
+  // core/src/lanedetect.ts
+  var LANE_END_FT = 62.85;
+  var ASSUMED_HFOV_DEG = 63;
+  var LANE_LEN = 60;
+  var newDiag = () => ({ edgePixels: 0, leftLines: 0, rightLines: 0, pairs: 0, guess: null, foulRow: null, pitRow: null, hint: "" });
+  function detectLanes(gray, w, h, maxCandidates = 3, seed, diag) {
+    const first = detectLanesOnce(gray, w, h, maxCandidates, seed, diag);
+    if (first.length && first.some(isSolid)) return first;
+    const inv = new Uint8ClampedArray(w * h);
+    for (let i = 0; i < inv.length; i++) inv[i] = 255 - gray[i];
+    const dg2 = diag ? newDiag() : void 0;
+    const second = detectLanesOnce(inv, w, h, maxCandidates, seed, dg2);
+    const best = (l) => l.reduce((m, d) => Math.max(m, d.confidence), 0);
+    if (best(second) > best(first)) {
+      if (diag && dg2) Object.assign(diag, dg2);
+      return second;
+    }
+    return first;
+  }
+  function detectLanesOnce(gray, w, h, maxCandidates = 3, seed, diag) {
+    const dbg = (m) => globalThis.__laneDbg?.push(m);
+    const sm = new Float32Array(w * h);
+    for (let y = 1; y < h - 1; y++)
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        sm[i] = (4 * gray[i] + 2 * (gray[i - 1] + gray[i + 1] + gray[i - w] + gray[i + w]) + gray[i - w - 1] + gray[i - w + 1] + gray[i + w - 1] + gray[i + w + 1]) / 16;
+      }
+    const gx = new Float32Array(w * h);
+    const gy = new Float32Array(w * h);
+    const mag = new Float32Array(w * h);
+    for (let y = 2; y < h - 2; y++)
+      for (let x = 2; x < w - 2; x++) {
+        const i = y * w + x;
+        const dx = -sm[i - w - 1] + sm[i - w + 1] - 2 * sm[i - 1] + 2 * sm[i + 1] - sm[i + w - 1] + sm[i + w + 1];
+        const dy = -sm[i - w - 1] - 2 * sm[i - w] - sm[i - w + 1] + sm[i + w - 1] + 2 * sm[i + w] + sm[i + w + 1];
+        gx[i] = dx;
+        gy[i] = dy;
+        mag[i] = Math.hypot(dx, dy);
+      }
+    const sample2 = Float32Array.from({ length: 4e3 }, (_, k2) => mag[Math.floor(k2 / 4e3 * mag.length)]).sort();
+    let thr = Math.max(14, sample2[Math.floor(sample2.length * 0.9)], 7 * sample2[Math.floor(sample2.length * 0.5)]);
+    if (seed) {
+      const near = [];
+      for (let y = Math.max(2, Math.round(seed.y - h * 0.2)); y < Math.min(h - 2, Math.round(seed.y + h * 0.2)); y += 2)
+        for (let x = Math.max(2, Math.round(seed.x - w * 0.25)); x < Math.min(w - 2, Math.round(seed.x + w * 0.25)); x += 2) near.push(mag[y * w + x]);
+      near.sort((a, b) => a - b);
+      thr = Math.max(14, near[Math.floor(near.length * 0.85)] * 0.7, 6 * near[Math.floor(near.length * 0.5)]);
+    }
+    const yA = Math.round(h * 0.1);
+    const yB = Math.round(h * 0.9);
+    const span = yB - yA;
+    const yMin = seed ? 2 : Math.round(h * 0.1);
+    const STEP = Math.max(1, Math.round(w / 320));
+    const PHI_MAX = 68 * Math.PI / 180;
+    const DPHI = 0.4 * Math.PI / 180;
+    const WIN = 15 * Math.PI / 180;
+    const NPHI = Math.floor(2 * PHI_MAX / DPHI) + 1;
+    const tanTab = Float32Array.from({ length: NPHI }, (_, k2) => Math.tan(-PHI_MAX + k2 * DPHI));
+    const lo = -w * 1.5;
+    const NX = Math.ceil(w * 4 / STEP);
+    const accL = new Float32Array(seed ? 0 : NPHI * NX);
+    const accR = new Float32Array(seed ? 0 : NPHI * NX);
+    const agrees = (i, slope, sign) => (gx[i] - gy[i] * slope) / Math.sqrt(1 + slope * slope) / mag[i] * sign > 0.93;
+    const edges = [];
+    for (let y = yMin; y < h - 2; y++)
+      for (let x = 2; x < w - 2; x++) {
+        const i = y * w + x;
+        if (mag[i] < thr || Math.abs(gx[i]) < (seed ? 0.55 : 0.4) * Math.abs(gy[i])) continue;
+        edges.push(i);
+        if (seed) continue;
+        const acc = gx[i] > 0 ? accL : accR;
+        const sgn = gx[i] > 0 ? 1 : -1;
+        void sgn;
+        const phiE = Math.atan(-gy[i] / gx[i]);
+        const k0 = Math.max(0, Math.ceil((phiE - WIN + PHI_MAX) / DPHI));
+        const k1 = Math.min(NPHI - 1, Math.floor((phiE + WIN + PHI_MAX) / DPHI));
+        for (let k2 = k0; k2 <= k1; k2++) {
+          const xi = Math.round((x - tanTab[k2] * (y - yA) - lo) / STEP);
+          if (xi >= 0 && xi < NX) acc[k2 * NX + xi]++;
+        }
+      }
+    dbg(`thr ${thr.toFixed(1)} edges ${edges.length}`);
+    if (diag) diag.edgePixels = edges.length;
+    if (edges.length < 60) {
+      if (diag) diag.hint = "I can barely see any edges: the picture may be too dark, blurry or flat.";
+      return [];
+    }
+    const xAt = (l, y) => l.xa + (l.xb - l.xa) * (y - yA) / span;
+    const supportOf = (xa, xb, sign) => {
+      const rows = new Uint8Array(h);
+      const slope = (xb - xa) / span;
+      for (const i of edges) {
+        if (gx[i] * sign <= 0 || !agrees(i, slope, sign)) continue;
+        const y = Math.floor(i / w);
+        if (Math.abs(i % w - (xa + (xb - xa) * (y - yA) / span)) <= 2.5 * STEP * Math.sqrt(1 + slope * slope)) rows[y] = 1;
+      }
+      let top = -1;
+      let bot = -1;
+      for (let y = 0; y < h - 8; y++) {
+        let c = 0;
+        for (let k2 = 0; k2 < 8; k2++) c += rows[y + k2];
+        if (c >= 6) {
+          if (top < 0) top = y;
+          bot = y + 7;
+        }
+      }
+      return { top, bot, rows };
+    };
+    const refine = (xa, xb, sign, top, bot, tol = 2.5 * STEP) => {
+      for (let it = 0; it < 3; it++) {
+        let sw = 0, sy = 0, sx = 0, syy = 0, sxy = 0;
+        const cur = (xb - xa) / span;
+        for (const i of edges) {
+          if (gx[i] * sign <= 0 || !agrees(i, cur, sign)) continue;
+          const y = Math.floor(i / w);
+          if (y < top || y > bot) continue;
+          const px = i % w;
+          const lx = xa + (xb - xa) * (y - yA) / span;
+          if (Math.abs(px - lx) > tol * Math.sqrt(1 + cur * cur)) continue;
+          const wgt = mag[i];
+          sw += wgt;
+          sy += wgt * y;
+          sx += wgt * px;
+          syy += wgt * y * y;
+          sxy += wgt * y * px;
+        }
+        const den = sw * syy - sy * sy;
+        if (sw < 1 || Math.abs(den) < 1e-6) break;
+        const slope = (sw * sxy - sy * sx) / den;
+        const icpt = (sx - slope * sy) / sw;
+        xa = icpt + slope * yA;
+        xb = icpt + slope * yB;
+      }
+      return { xa, xb };
+    };
+    const linesOf = (acc, sign, k2) => {
+      let best = 0;
+      for (let i = 0; i < acc.length; i++) if (acc[i] > best) best = acc[i];
+      const floorV = Math.max(10, best * 0.15);
+      const cells = [];
+      for (let i = 0; i < acc.length; i++) if (acc[i] >= floorV) cells.push(i);
+      cells.sort((p, q) => acc[q] - acc[p]);
+      const out = [];
+      const taken = [];
+      for (const c of cells.slice(0, 8e3)) {
+        const xa = lo + c % NX * STEP;
+        const xb = xa + tanTab[Math.floor(c / NX)] * span;
+        if (taken.some((p) => Math.abs(p.a - xa) <= 6 * STEP && Math.abs(p.b - xb) <= 8 * STEP)) continue;
+        taken.push({ a: xa, b: xb });
+        let s = supportOf(xa, xb, sign);
+        if (s.top < 0 || s.bot - s.top < h * 0.06) continue;
+        const ref = refine(xa, xb, sign, s.top, s.bot);
+        s = supportOf(ref.xa, ref.xb, sign);
+        if (s.top < 0 || s.bot - s.top < h * 0.06) continue;
+        out.push({ xa: ref.xa, xb: ref.xb, votes: acc[c], top: s.top, bot: s.bot, rows: s.rows });
+        if (out.length >= k2) break;
+      }
+      return out;
+    };
+    const seededLines = (sign) => {
+      if (!seed) return [];
+      const sx = Math.round(seed.x);
+      const sy = Math.round(seed.y);
+      const g = (x, y) => x < 2 || x >= w - 2 || y < 2 || y >= h - 2 ? 0 : gx[y * w + x] * sign;
+      let x0 = -1;
+      for (let d = 4; d < w; d++) {
+        const x = sign > 0 ? sx - d : sx + d;
+        if (x < 3 || x > w - 4) break;
+        if (g(x, sy) > thr) {
+          let bx = x;
+          for (let k2 = -3; k2 <= 3; k2++) if (g(x + k2, sy) > g(bx, sy)) bx = x + k2;
+          x0 = bx;
+          break;
+        }
+      }
+      if (x0 < 0) return [];
+      const pts = [{ x: x0, y: sy }];
+      for (const dir of [1, -1]) {
+        let x = x0;
+        let slope = 0;
+        let miss = 0;
+        const recent = [{ x: x0, y: sy }];
+        for (let y = sy + dir; y > 2 && y < h - 3; y += dir) {
+          const tol = recent.length < 12 ? 6 : 3;
+          const pred = x + slope * dir;
+          let best = -1;
+          let bv = thr * 0.6;
+          for (let cx = Math.round(pred - tol); cx <= Math.round(pred + tol); cx++) {
+            const v = g(cx, y);
+            if (v > bv && Math.abs(gx[y * w + cx]) >= 0.4 * Math.abs(gy[y * w + cx])) {
+              bv = v;
+              best = cx;
+            }
+          }
+          if (best < 0) {
+            if (++miss > 8) break;
+            x = pred;
+            continue;
+          }
+          miss = 0;
+          x = best;
+          pts.push({ x, y });
+          recent.push({ x, y });
+          if (recent.length > 14) recent.shift();
+          if (recent.length >= 6) slope = (recent[recent.length - 1].x - recent[0].x) / (recent[recent.length - 1].y - recent[0].y);
+        }
+      }
+      if (pts.length < 40) return [];
+      let inl = pts;
+      let a = 0;
+      let b = 0;
+      for (let round = 0; round < 4; round++) {
+        let sw = 0, sy2 = 0, sx2 = 0, syy = 0, sxy = 0;
+        for (const p of inl) {
+          sw++;
+          sy2 += p.y;
+          sx2 += p.x;
+          syy += p.y * p.y;
+          sxy += p.y * p.x;
+        }
+        const den = sw * syy - sy2 * sy2;
+        if (Math.abs(den) < 1e-9) return [];
+        b = (sw * sxy - sy2 * sx2) / den;
+        a = (sx2 - b * sy2) / sw;
+        const res = pts.map((p) => Math.abs(p.x - (a + b * p.y)));
+        const med = [...res].sort((p, q) => p - q)[Math.floor(res.length / 2)];
+        const lim = Math.max(1.5, 2.5 * med);
+        inl = pts.filter((_, k2) => res[k2] <= lim);
+        if (inl.length < 30) return [];
+      }
+      const ys = inl.map((p) => p.y);
+      const top = Math.min(...ys);
+      const bot = Math.max(...ys);
+      const rows = new Uint8Array(h);
+      for (const p of inl) for (let k2 = -2; k2 <= 2; k2++) if (p.y + k2 >= 0 && p.y + k2 < h) rows[p.y + k2] = 1;
+      return [{ xa: a + b * yA, xb: a + b * yB, votes: inl.length, top, bot, rows }];
+    };
+    const Ls = seed ? seededLines(1) : linesOf(accL, 1, 16);
+    const Rs = seed ? seededLines(-1) : linesOf(accR, -1, 16);
+    globalThis.__laneLines = { Ls, Rs, yA, span };
+    dbg(`lines L ${Ls.length} R ${Rs.length}`);
+    if (diag) {
+      diag.leftLines = Ls.length;
+      diag.rightLines = Rs.length;
+    }
+    dbg("L lines @row200: " + Ls.map((l) => `${(l.xa + (l.xb - l.xa) * (200 - yA) / span).toFixed(0)}[v${l.votes},${l.top}-${l.bot}]`).join(" "));
+    dbg("R lines @row200: " + Rs.map((l) => `${(l.xa + (l.xb - l.xa) * (200 - yA) / span).toFixed(0)}[v${l.votes},${l.top}-${l.bot}]`).join(" "));
+    if (!Ls.length || !Rs.length) {
+      if (diag) diag.hint = Ls.length || Rs.length ? "I can see one edge of the lane but not the other. Make sure both gutters are in view." : "I can't pick out the lane edges. Aim so the whole lane, with both gutters, fills the middle of the picture.";
+      return [];
+    }
+    const rowMean = (y, xl, xr) => {
+      let s = 0;
+      let n = 0;
+      for (let x = Math.max(0, Math.ceil(xl)); x <= Math.min(w - 1, Math.floor(xr)); x++) {
+        s += sm[Math.round(y) * w + x];
+        n++;
+      }
+      return n ? s / n : NaN;
+    };
+    const cands = [];
+    const maxV = Math.max(Ls[0].votes, Rs[0].votes);
+    let why = { range: 0, shape: 0, contrast: 0 };
+    for (const L of Ls)
+      for (const R2 of Rs) {
+        const t = Math.max(L.top, R2.top);
+        const b = Math.min(L.bot, R2.bot);
+        if (b - t < h * 0.06) {
+          why.range++;
+          continue;
+        }
+        const wt = xAt(R2, t) - xAt(L, t);
+        const wb = xAt(R2, b) - xAt(L, b);
+        if (wt < 2 || wb < wt * 1.02 || wb > w * 1.05) {
+          why.shape++;
+          continue;
+        }
+        let good = 0;
+        let rowsN = 0;
+        let strengthSum = 0;
+        for (let y = t + 2; y <= b - 2; y += 3) {
+          const xl = xAt(L, y);
+          const xr = xAt(R2, y);
+          const wid = xr - xl;
+          if (wid < 3) continue;
+          const inside = rowMean(y, xl + wid * 0.2, xr - wid * 0.2);
+          const left = xl - wid * 0.2 < 1 ? NaN : rowMean(y, xl - wid * 0.3, xl - wid * 0.08);
+          const right = xr + wid * 0.2 > w - 2 ? NaN : rowMean(y, xr + wid * 0.08, xr + wid * 0.3);
+          if (!Number.isFinite(left) && !Number.isFinite(right)) continue;
+          rowsN++;
+          if ((!Number.isFinite(left) || inside - left > 6) && (!Number.isFinite(right) || inside - right > 6)) good++;
+          strengthSum += Math.max(0, Math.min(100, Math.min(Number.isFinite(left) ? inside - left : 100, Number.isFinite(right) ? inside - right : 100)));
+        }
+        if (rowsN < 5 || good / rowsN < 0.45) {
+          why.contrast++;
+          continue;
+        }
+        const contrast = good / rowsN;
+        const votes = (L.votes + R2.votes) / (2 * maxV);
+        const cb = (xAt(L, b) + xAt(R2, b)) / 2;
+        const centered = 1 - 0.12 * Math.min(1, Math.abs(cb - w / 2) / (w * 0.5));
+        const lenScore = Math.min(1, (b - t) / (h * 0.25));
+        cands.push({ L, R: R2, t, b, base: (votes + contrast + 0.5 * lenScore + 1.2 * (strengthSum / rowsN / 100)) * centered });
+      }
+    dbg(`pairs ${cands.length}; rejected ${JSON.stringify(why)}`);
+    if (diag) {
+      diag.pairs = cands.length;
+      if (!cands.length) diag.hint = "I see edges, but nothing that looks like a bright lane between two dark gutters yet.";
+    }
+    cands.sort((p, q) => q.base - p.base);
+    const distinct = [];
+    for (const c of cands) {
+      const cb = (xAt(c.L, c.b) + xAt(c.R, c.b)) / 2;
+      const isSame = (d) => {
+        if (Math.abs((xAt(d.L, d.b) + xAt(d.R, d.b)) / 2 - cb) > 0.04 * w) return false;
+        const y = Math.min(c.b, d.b) - 2;
+        const wc = xAt(c.R, y) - xAt(c.L, y);
+        const wd = xAt(d.R, y) - xAt(d.L, y);
+        return wd > 0 && wc / wd > 0.85 && wc / wd < 1.18;
+      };
+      if (!distinct.some(isSame)) distinct.push(c);
+      if (distinct.length >= maxCandidates + 9) break;
+    }
+    if (diag && distinct[0]) {
+      const c = distinct[0];
+      diag.guess = { left: { x0: xAt(c.L, c.t), y0: c.t, x1: xAt(c.L, c.b), y1: c.b }, right: { x0: xAt(c.R, c.t), y0: c.t, x1: xAt(c.R, c.b), y1: c.b } };
+    }
+    dbg(`candidates: ${distinct.map((c) => `[${xAt(c.L, c.b).toFixed(0)}-${xAt(c.R, c.b).toFixed(0)}@${c.b} t${c.t} base ${c.base.toFixed(2)}]`).join(" ")}`);
+    const results = [];
+    for (const c of distinct) {
+      const r = geometry(c);
+      if (r) results.push(r);
+    }
+    const sorted2 = results.sort((p, q) => q.confidence - p.confidence).slice(0, maxCandidates);
+    if (diag && sorted2.length) diag.hint = "";
+    return sorted2;
+    function geometry(c) {
+      let { L, R: R2 } = c;
+      const { t, b } = c;
+      const notes = [];
+      const sL = (L.xb - L.xa) / span;
+      const sR = (R2.xb - R2.xa) / span;
+      if (Math.abs(sL - sR) < 1e-6) return dbg("reject: parallel lines"), null;
+      const yv = yA + (R2.xa - L.xa) / (sL - sR);
+      if (!Number.isFinite(yv) || yv > t - 3) return dbg(`reject: vanishing row ${yv.toFixed(1)} vs top ${t}`), null;
+      const prof = new Float32Array(h);
+      const up = new Float32Array(h);
+      const yStart = Math.max(3, Math.ceil(yv) + 3);
+      for (let y = yStart; y < h - 3; y++) {
+        const cl = xAt(L, y) + 2 * STEP;
+        const cr = xAt(R2, y) - 2 * STEP;
+        if (cr - cl < 4) continue;
+        let cnt = 0;
+        let s = 0;
+        let n = 0;
+        for (let x = Math.max(2, Math.ceil(cl)); x <= Math.min(w - 3, Math.floor(cr)); x++) {
+          const i = y * w + x;
+          n++;
+          if (Math.abs(gy[i]) > thr * 0.6 && Math.abs(gy[i]) > 1.3 * Math.abs(gx[i])) {
+            cnt++;
+            s += gy[i];
+          }
+        }
+        if (n) {
+          prof[y] = cnt / n;
+          up[y] = s / n / Math.max(1, thr);
+        }
+      }
+      const localMax = (arr, min, k2, from = yStart + 1, to = h - 4) => {
+        const out = [];
+        for (let y = Math.max(from, yStart + 1); y < to; y++) if (arr[y] >= min && arr[y] >= arr[y - 1] && arr[y] >= arr[y + 1]) out.push(y);
+        return out.sort((p, q) => arr[q] - arr[p]).slice(0, k2);
+      };
+      const topRows = (arr) => Array.from({ length: h }, (_, y) => y).filter((y) => y >= yStart && y < h - 4).sort((p, q) => arr[q] - arr[p]).slice(0, 6).map((y) => `${y}:${arr[y].toFixed(2)}`).join(" ");
+      const prow = new Float32Array(h).fill(NaN);
+      const plow = new Float32Array(h).fill(NaN);
+      const phigh = new Float32Array(h).fill(NaN);
+      for (let y = yStart; y < h - 3; y++) {
+        const wid = xAt(R2, y) - xAt(L, y);
+        if (wid < 6) continue;
+        const a = Math.max(2, Math.ceil(xAt(L, y) + 0.2 * wid));
+        const b2 = Math.min(w - 3, Math.floor(xAt(R2, y) - 0.2 * wid));
+        if (b2 - a < 3) continue;
+        const vals = [];
+        for (let x = a; x <= b2; x++) vals.push(sm[y * w + x]);
+        vals.sort((p, q) => p - q);
+        prow[y] = vals[vals.length >> 1];
+        plow[y] = vals[vals.length >> 2];
+        phigh[y] = vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.9))];
+      }
+      const pAvg = (ya, yb, y, src = prow) => {
+        let s = 0, n = 0;
+        for (let k2 = ya; k2 <= yb; k2++) {
+          const v = src[Math.round(y + k2)];
+          if (Number.isFinite(v)) {
+            s += v;
+            n++;
+          }
+        }
+        return n >= Math.max(1, (yb - ya + 1) / 2) ? s / n : NaN;
+      };
+      const foulCands = localMax(prof, 0.2, 8, Math.floor(t + h * 0.05), h - 4);
+      const pitBefore = Math.max(14, Math.round(0.045 * h));
+      const pitAfter = Math.max(18, Math.round(0.055 * h));
+      const pitCands = localMax(up, 0.3, 6, Math.floor(t - pitBefore), Math.floor(t + pitAfter));
+      {
+        const dip = new Float32Array(h);
+        const stp = new Float32Array(h);
+        for (let y = yStart + 11; y < h - 12; y++) {
+          const a = pAvg(-9, -4, y), b2 = pAvg(4, 9, y), m = pAvg(-1, 1, y);
+          if (Number.isFinite(a) && Number.isFinite(b2) && Number.isFinite(m)) dip[y] = Math.max(Math.min(a, b2) - m, m - Math.max(a, b2));
+          const la = pAvg(-9, -4, y, plow), lb = pAvg(4, 9, y, plow), lm = pAvg(-1, 1, y, plow);
+          if (Number.isFinite(la) && Number.isFinite(lb)) stp[y] = Math.abs(la - lb) - 0.5 * (Number.isFinite(lm) ? Math.max(0, Math.max(Math.min(la, lb) - lm, lm - Math.max(la, lb))) : 0);
+        }
+        const peaks = (arr, min, k2, from, to) => {
+          const out = [];
+          for (let y = Math.max(from, yStart + 12); y < Math.min(to, h - 13); y++) if (arr[y] >= min && arr[y] >= arr[y - 1] && arr[y] >= arr[y + 1]) out.push(y);
+          return out.sort((p, q) => arr[q] - arr[p]).slice(0, k2);
+        };
+        for (const y of peaks(dip, 2.5, 8, Math.floor(t + h * 0.05), h - 4)) if (!foulCands.some((c2) => Math.abs(c2 - y) <= 2)) foulCands.push(y);
+        for (const y of peaks(stp, 6, 6, Math.floor(t - pitBefore), Math.floor(t + pitAfter))) if (!pitCands.some((c2) => Math.abs(c2 - y) <= 2)) pitCands.push(y);
+        for (const y of peaks(stp, 4, 4, Math.floor(b - 0.05 * h), Math.floor(b + 0.05 * h))) if (!foulCands.some((c2) => Math.abs(c2 - y) <= 2)) foulCands.push(y);
+      }
+      const supported = (y) => (L.rows[y] || L.rows[y - 1] || L.rows[y + 1] || L.rows[y - 2] || L.rows[y + 2]) && (R2.rows[y] || R2.rows[y - 1] || R2.rows[y + 1] || R2.rows[y - 2] || R2.rows[y + 2]);
+      const bandMean = (ya, yb, y) => {
+        let s = 0, n = 0;
+        for (let k2 = ya; k2 <= yb; k2++) {
+          const yy = Math.round(y + k2);
+          if (yy < 2 || yy >= h - 2) return NaN;
+          const wid = xAt(R2, yy) - xAt(L, yy);
+          if (wid < 3) return NaN;
+          const m = rowMean(yy, xAt(L, yy) + 0.2 * wid, xAt(R2, yy) - 0.2 * wid);
+          if (Number.isFinite(m)) {
+            s += m;
+            n++;
+          }
+        }
+        return n ? s / n : NaN;
+      };
+      const isThinLine = (f) => {
+        const above = pAvg(-9, -4, f);
+        const below = pAvg(4, 9, f);
+        const mid = pAvg(-1, 1, f);
+        if (![above, below, mid].every(Number.isFinite)) return false;
+        const margin = Math.max(2.5, (above + below) / 2 * 0.03);
+        return mid < Math.min(above, below) - margin || mid > Math.max(above, below) + margin;
+      };
+      const isLaneToApproach = (f) => {
+        const a = pAvg(-9, -4, f);
+        const c2 = pAvg(4, 9, f);
+        return Number.isFinite(a) && Number.isFinite(c2) && Math.abs(a - c2) > Math.max(5, Math.max(a, c2) * 0.07);
+      };
+      const isPitStep = (p) => {
+        const above = pAvg(-10, -4, p, plow);
+        const below = pAvg(4, 10, p, plow);
+        return Number.isFinite(above) && Number.isFinite(below) && Math.abs(above - below) > Math.max(6, Math.max(above, below) * 0.12);
+      };
+      let walk2 = NaN;
+      {
+        const lane0 = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
+        const lowRun = Math.max(6, Math.round(0.022 * h));
+        if (Number.isFinite(lane0)) {
+          let low = 0;
+          for (let y = Math.floor(b) - 3; y > yStart + 2; y--) {
+            const v = plow[y];
+            if (!Number.isFinite(v)) continue;
+            if (v < lane0 * 0.78) {
+              if (++low >= lowRun) {
+                walk2 = y + low;
+                break;
+              }
+            } else low = 0;
+          }
+        }
+        if (Number.isFinite(walk2) && !pitCands.some((c2) => Math.abs(c2 - walk2) <= 2)) pitCands.push(Math.round(walk2));
+      }
+      const lane1 = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
+      const validPits = pitCands.filter((p) => {
+        const below = pAvg(4, 10, p, plow);
+        return Number.isFinite(lane1) && Number.isFinite(below) && Math.abs(below - lane1) <= Math.max(20, lane1 * 0.2) && isPitStep(p);
+      });
+      let lowestPit = validPits.length ? Math.max(...validPits) : NaN;
+      let pinPit = NaN;
+      {
+        const ref = pAvg(10, 18, Math.round(t), prow);
+        const whiteAt = Number.isFinite(ref) ? Math.max(150, ref + 34) : 230;
+        for (let y = Math.max(yStart + 2, Math.floor(t - pitBefore)); y < Math.min(h - 3, Math.floor(t + pitAfter)); y++) {
+          const white = (yy) => Number.isFinite(phigh[yy]) && phigh[yy] >= whiteAt;
+          if (!white(y) || white(y - 1)) continue;
+          let e = y;
+          while (e < h - 3 && white(e + 1)) e++;
+          const wid = xAt(R2, y) - xAt(L, y);
+          const pinH = wid * (15 / 41.5) * 0.95;
+          if (e - y + 1 >= 0.55 * pinH && e - y + 1 <= 2.8 * pinH + 1) {
+            pinPit = y + 0.85 * pinH;
+            break;
+          }
+        }
+      }
+      const laneMed = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), prow);
+      if (!Number.isFinite(pinPit) && Number.isFinite(laneMed)) {
+        const bright = (y) => Number.isFinite(prow[y]) && prow[y] >= laneMed * 1.08 + 4;
+        for (let y = Math.max(yStart + 2, Math.floor(t - pitBefore)); y < Math.min(h - 3, Math.floor(t + pitAfter)); y++) {
+          if (!bright(y) || bright(y - 1)) continue;
+          let e = y;
+          while (e < h - 3 && bright(e + 1)) e++;
+          const wid = xAt(R2, y) - xAt(L, y);
+          const pinH = wid * (15 / 41.5) * 0.95;
+          if (e - y + 1 >= 0.45 * pinH && e - y + 1 <= 1.6 * pinH + 1) {
+            pinPit = y + pinH;
+            break;
+          }
+        }
+      }
+      if (Number.isFinite(pinPit) && !pitCands.some((c2) => Math.abs(c2 - pinPit) <= 1.5)) pitCands.push(Math.round(pinPit));
+      if (Number.isFinite(pinPit)) {
+        const pc = pitCands.find((c2) => Math.abs(c2 - pinPit) <= 2);
+        if (pc !== void 0 && (!Number.isFinite(lowestPit) || pc > lowestPit)) lowestPit = pc;
+      }
+      const laneLevel = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
+      let best = null;
+      const tried = [];
+      for (const f of foulCands) {
+        if (!isThinLine(f) && !(Math.abs(f - b) <= 0.05 * h && isLaneToApproach(f))) continue;
+        for (const p of pitCands) {
+          if (f - p < h * 0.06 || !(isPitStep(p) || Number.isFinite(pinPit) && Math.abs(p - pinPit) <= 2)) continue;
+          const rho = (p - yv) / (f - yv);
+          if (!(rho > 0.03 && rho < 0.75)) continue;
+          let cov = 0;
+          let n = 0;
+          for (let y = p + 3; y <= f - 3; y += 2) {
+            n++;
+            if (supported(y)) cov++;
+          }
+          tried.push(`f${f}/p${p}:cov${n ? (cov / n).toFixed(2) : "-"}`);
+          if (!n || cov / n < 0.5) continue;
+          const nearB = Math.max(0, 1 - Math.abs(f - b) / (0.06 * h));
+          const nearT = Math.max(0, 1 - Math.abs(p - t) / (0.05 * h));
+          const pitLow = Math.max(0, Math.min(1, (p - (t - pitBefore)) / (pitBefore + pitAfter)));
+          const belowP = pAvg(4, 10, p, plow);
+          const laneMatch = Number.isFinite(laneLevel) && Number.isFinite(belowP) ? 1 - Math.min(1, Math.abs(belowP - laneLevel) / Math.max(20, laneLevel * 0.35)) : 0;
+          const wF = Math.max(1, xAt(R2, f) - xAt(L, f));
+          const dRows = LANE_END_FT * rho / (1 - rho);
+          const fovDeg = 2 * Math.atan(w / 2 * (41.5 / 12) / (wF * dRows)) * 180 / Math.PI;
+          const fovFit = Math.exp(-0.5 * ((fovDeg - 66) / 22) ** 2);
+          const score = cov / n * 1 + prof[f] * 0.5 + Math.min(1, up[p]) * 0.5 + 1.2 * nearB + 0.6 * nearT + 0.8 * pitLow + 1.3 * laneMatch + 1.6 * fovFit + (Number.isFinite(walk2) && Math.abs(p - walk2) <= 2.5 ? 0.6 : 0) + (p === lowestPit ? 1.6 : 0) + (Number.isFinite(pinPit) && Math.abs(p - pinPit) <= 2 ? 2.2 : 0);
+          if (!best || score > best.score) best = { pit: p, foul: f, score };
+        }
+      }
+      if (!best && diag && !diag.hint) diag.hint = "I found both lane edges but not the foul line and the end of the lane together. Tilt the phone so the foul line, the arrows and the pins are all in view.";
+      if (!best) return fallback(L, R2, t, b, yv, up, notes) ?? (dbg(`reject: no foul/pit pair foul ${foulCands.join(",")} pit ${pitCands.join(",")} yv ${yv.toFixed(1)} t ${t} b ${b} | ${tried.slice(0, 8).join(" ")} | L(${L.xa.toFixed(0)},${L.xb.toFixed(0)}) R(${R2.xa.toFixed(0)},${R2.xb.toFixed(0)})`), null);
+      const centroid = (arr, y, r, base) => {
+        let sw = 0;
+        let sy = 0;
+        for (let k2 = Math.max(3, y - r); k2 <= Math.min(h - 4, y + r); k2++) {
+          const v = Math.max(0, arr[k2] - base);
+          sw += v;
+          sy += v * k2;
+        }
+        return sw > 0 ? sy / sw : y;
+      };
+      const foul = prof[best.foul] > 0.05 ? centroid(prof, best.foul, 4, prof[best.foul] * 0.4) : best.foul;
+      const halfway = (p) => {
+        const A = pAvg(-10, -4, p, plow);
+        const B = pAvg(4, 10, p, plow);
+        if (!Number.isFinite(A) || !Number.isFinite(B) || Math.abs(A - B) < 6) return NaN;
+        const mid = (A + B) / 2;
+        const rising = B > A;
+        for (let y = p - 5; y <= p + 5; y++) {
+          const a = plow[y], c2 = plow[y + 1];
+          if (!Number.isFinite(a) || !Number.isFinite(c2)) continue;
+          if (rising ? a < mid && c2 >= mid : a > mid && c2 <= mid) return y + (mid - a) / (c2 - a || 1) + 0.5;
+        }
+        return NaN;
+      };
+      const hw = halfway(best.pit);
+      const pit = Number.isFinite(pinPit) && Math.abs(best.pit - pinPit) <= 2 ? pinPit : Number.isFinite(hw) && Math.abs(hw - best.pit) <= (Number.isFinite(pinPit) ? 1.5 : 4) ? hw : up[best.pit] > 0.1 ? centroid(up, best.pit, 3, up[best.pit] * 0.3) : best.pit;
+      if (diag && !diag.foulRow) {
+        diag.foulRow = foul;
+        diag.pitRow = pit;
+      }
+      const foulOk = true;
+      const pitOk = true;
+      const LR = refine(L.xa, L.xb, 1, Math.ceil(pit) + 4, Math.floor(foul) - 3, 2 * STEP);
+      const RR = refine(R2.xa, R2.xb, -1, Math.ceil(pit) + 4, Math.floor(foul) - 3, 2 * STEP);
+      L = { ...L, xa: LR.xa, xb: LR.xb };
+      R2 = { ...R2, xa: RR.xa, xb: RR.xb };
+      const sideRow = (guess, side, kind) => {
+        let sw = 0;
+        let sy = 0;
+        for (let y = Math.round(guess) - 7; y <= Math.round(guess) + 7; y++) {
+          if (y < 3 || y >= h - 3) continue;
+          const xl = xAt(L, y);
+          const xr = xAt(R2, y);
+          const wid = xr - xl;
+          if (wid < 6) continue;
+          const x0 = side === "L" ? xl + 0.08 * wid : xl + 0.55 * wid;
+          const x1 = side === "L" ? xl + 0.45 * wid : xr - 0.08 * wid;
+          let c2 = 0;
+          let n = 0;
+          for (let x = Math.max(2, Math.ceil(x0)); x <= Math.min(w - 3, Math.floor(x1)); x++) {
+            const i = y * w + x;
+            n++;
+            if (kind === "foul") {
+              if (Math.abs(gy[i]) > thr * 0.6 && Math.abs(gy[i]) > 1.3 * Math.abs(gx[i])) c2++;
+            } else if (gy[i] > thr * 0.6 && gy[i] > 1.3 * Math.abs(gx[i])) c2++;
+          }
+          const v = n ? c2 / n : 0;
+          sw += v * v;
+          sy += v * v * y;
+        }
+        return sw > 0 ? sy / sw : guess;
+      };
+      let fyL = sideRow(foul, "L", "foul");
+      let fyR = sideRow(foul, "R", "foul");
+      let pL = sideRow(pit, "L", "pit");
+      let pR = sideRow(pit, "R", "pit");
+      const dF = fyR - fyL;
+      const dP = pR - pL;
+      if (Math.abs(dF) < 1.5 || Math.abs(dP) < 1.5 || Math.sign(dF) !== Math.sign(dP) || Math.abs(dP / dF) > 1.6 || Math.abs(dP / dF) < 0.15) {
+        fyL = fyR = foul;
+        pL = pR = pit;
+      }
+      const rowFor = (fyS, pS) => {
+        const rho = (pS - yv) / (fyS - yv);
+        if (!(rho > 0.03 && rho < 0.75)) return null;
+        const K = LANE_END_FT * rho / (1 - rho);
+        return yv + (fyS - yv) * K / (K + LANE_LEN);
+      };
+      const r60L = rowFor(fyL, pL);
+      const r60R = rowFor(fyR, pR);
+      if (r60L === null || r60R === null) return dbg(`reject: rho out of range yv ${yv.toFixed(1)} foul ${fyL.toFixed(1)}/${fyR.toFixed(1)} pit ${pL.toFixed(1)}/${pR.toFixed(1)}`), null;
+      if (!(r60L < fyL - 4 && r60R < fyR - 4)) return dbg(`reject: row60 ${r60L} ${r60R}`), null;
+      const fy = (fyL + fyR) / 2;
+      const row60 = (r60L + r60R) / 2;
+      const corners2 = [
+        { x: xAt(L, fyL), y: fyL },
+        { x: xAt(R2, fyR), y: fyR },
+        { x: xAt(R2, r60R), y: r60R },
+        { x: xAt(L, r60L), y: r60L }
+      ];
+      const wFoul = corners2[1].x - corners2[0].x;
+      const fPx = w / 2 / Math.tan(ASSUMED_HFOV_DEG * Math.PI / 360);
+      const distFromWidth = fPx * (41.5 / 12) / Math.max(1, wFoul);
+      const rhoMid = (pit - yv) / (fy - yv);
+      const distFromRows = LANE_END_FT * rhoMid / (1 - rhoMid);
+      const impliedHfov = 2 * Math.atan(w / 2 * (41.5 / 12) / (Math.max(1, wFoul) * distFromRows)) * 180 / Math.PI;
+      if (!(impliedHfov > 30 && impliedHfov < 118)) return dbg(`reject: the rows and the lane width imply a ${impliedHfov.toFixed(0)} degree field of view`), null;
+      const agree = distFromWidth / distFromRows;
+      const wBot = corners2[1].x - corners2[0].x;
+      const wTop = corners2[2].x - corners2[3].x;
+      if (!(wBot > 6 && wTop > 0.3 && wTop < wBot)) return dbg(`reject: widths ${wBot.toFixed(1)} ${wTop.toFixed(1)}`), null;
+      const confidence = Math.max(0, Math.min(1, 0.35 * Math.min(1, c.base / 1.6) + 0.25 * (foulOk ? 1 : 0.2) + 0.3 * (pitOk ? 1 : 0) + 0.1 * Math.min(1, (fy - row60) / (h * 0.15))));
+      return { corners: corners2, confidence, notes, rows: { foul: foulOk ? foul : null, pit: pitOk ? pit : null, vanishing: yv } };
+    }
+    function fallback(L, R2, t, b, yv, up, notes) {
+      let pit = t;
+      let pv = 0;
+      for (let y = Math.max(3, Math.floor(t - 12)); y <= Math.min(h - 4, Math.floor(t + 16)); y++) if (up[y] > pv) pv = up[y], pit = y;
+      const stepFound = pv > 0.2;
+      if (!stepFound) pit = t;
+      const wPit = xAt(R2, pit) - xAt(L, pit);
+      if (wPit < 4) return null;
+      const fPx = w / 2 / Math.tan(ASSUMED_HFOV_DEG * Math.PI / 360);
+      const zPit = fPx * (41.5 / 12) / wPit;
+      const zFoul = zPit - LANE_END_FT;
+      if (zFoul < 3 || pit - yv < 2) return null;
+      const c = (pit - yv) * zPit;
+      const rowAt = (ft) => yv + c / (zFoul + ft);
+      const fy = rowAt(0);
+      const r60 = rowAt(LANE_LEN);
+      const corners2 = [
+        { x: xAt(L, fy), y: fy },
+        { x: xAt(R2, fy), y: fy },
+        { x: xAt(R2, r60), y: r60 },
+        { x: xAt(L, r60), y: r60 }
+      ];
+      notes.push("foul line not visible: distances come from the lane's width and a typical phone field of view, so they are approximate");
+      if (!stepFound) notes.push("end of lane not clearly visible");
+      return { corners: corners2, confidence: stepFound ? 0.6 : 0.45, notes, rows: { foul: null, pit: stepFound ? pit : null, vanishing: yv } };
+    }
+  }
+  var isSolid = (d) => d.confidence >= 0.85 && d.rows.foul !== null && d.rows.pit !== null;
+  function oneOfEach(list, w) {
+    const mid = (d) => (d.corners[0].x + d.corners[1].x) / 2;
+    const wid = (d) => Math.abs(d.corners[1].x - d.corners[0].x);
+    const out = [];
+    for (const d of [...list].sort((a, b) => b.confidence - a.confidence)) {
+      const i = out.findIndex((o) => Math.abs(mid(o) - mid(d)) < 0.05 * w && wid(o) / Math.max(1, wid(d)) > 0.6 && wid(o) / Math.max(1, wid(d)) < 1.7);
+      if (i < 0) out.push(d);
+      else if (wid(d) < 0.85 * wid(out[i])) out[i] = d;
+    }
+    return out;
+  }
+  function chooseLane(cands, w) {
+    const solid2 = oneOfEach(cands.filter(isSolid), w);
+    if (solid2.length <= 1) return { pick: solid2[0] ?? null, choices: solid2 };
+    const off = (d) => Math.abs((d.corners[0].x + d.corners[1].x) / 2 - w / 2) / w;
+    const ranked = [...solid2].sort((a, b) => off(a) - off(b));
+    if (off(ranked[0]) < 0.12 && off(ranked[1]) - off(ranked[0]) > 0.1) return { pick: ranked[0], choices: solid2 };
+    return { pick: null, choices: ranked };
+  }
+  function detectLaneAt(gray, w, h, x, y) {
+    return detectLanes(gray, w, h, 1, { x, y })[0] ?? null;
+  }
+  function detectionsAgree(a, b, tol) {
+    return a.every((p, i) => Math.hypot(p.x - b[i].x, p.y - b[i].y) <= tol);
+  }
+
+  // camera/render.ts
+  var k = (v) => v.width / 1280;
+  var lerp = (a, b, t) => a + (b - a) * t;
+  var ramp = (t, alpha = 1) => `hsla(${lerp(190, 320, t)}, 100%, ${lerp(62, 58, t)}%, ${alpha})`;
+  var DECK_END_FT = 63;
+  var ROW_FT = 10.39 / 12;
+  var PIN_SPACING_BOARDS = 12 / (41.5 / LANE_BOARDS);
+  function strokeTrail(v, points, baseAlpha, headBoost) {
+    const n = points.length;
+    if (n < 2) return;
+    const { ctx: ctx2 } = v;
+    const s = k(v);
+    ctx2.save();
+    ctx2.globalCompositeOperation = "lighter";
+    ctx2.lineCap = "round";
+    ctx2.lineJoin = "round";
+    for (let i = 1; i < n; i++) {
+      const t = i / (n - 1);
+      const a = points[i - 1];
+      const b = points[i];
+      ctx2.shadowBlur = 24 * s;
+      ctx2.shadowColor = ramp(t);
+      ctx2.strokeStyle = ramp(t, baseAlpha * (headBoost ? 0.15 + 0.85 * t : 0.9));
+      ctx2.lineWidth = (headBoost ? lerp(3, 14, t) : 10) * s;
+      ctx2.beginPath();
+      ctx2.moveTo(a.x, a.y);
+      ctx2.lineTo(b.x, b.y);
+      ctx2.stroke();
+      ctx2.shadowBlur = 0;
+      ctx2.strokeStyle = `rgba(255,255,255,${baseAlpha * (headBoost ? t : 0.8)})`;
+      ctx2.lineWidth = (headBoost ? lerp(1, 4, t) : 3.5) * s;
+      ctx2.beginPath();
+      ctx2.moveTo(a.x, a.y);
+      ctx2.lineTo(b.x, b.y);
+      ctx2.stroke();
+    }
+    ctx2.restore();
+  }
+  function drawBallHead(v, h) {
+    const s = k(v);
+    const g = v.ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, 26 * s);
+    g.addColorStop(0, "rgba(255,255,255,.95)");
+    g.addColorStop(0.25, "rgba(120,230,255,.6)");
+    g.addColorStop(1, "rgba(120,230,255,0)");
+    v.ctx.save();
+    v.ctx.globalCompositeOperation = "lighter";
+    v.ctx.fillStyle = g;
+    v.ctx.beginPath();
+    v.ctx.arc(h.x, h.y, 26 * s, 0, 7);
+    v.ctx.fill();
+    v.ctx.restore();
+  }
+  function label(v, text, p, color) {
+    const { ctx: ctx2 } = v;
+    const s = k(v);
+    ctx2.save();
+    ctx2.font = `600 ${15 * s}px -apple-system, system-ui, sans-serif`;
+    const w = ctx2.measureText(text).width + 16 * s;
+    const h = 24 * s;
+    ctx2.fillStyle = "rgba(10,14,22,.75)";
+    ctx2.strokeStyle = color;
+    ctx2.lineWidth = 1.5 * s;
+    ctx2.beginPath();
+    ctx2.roundRect(p.x - w / 2, p.y - h - 10 * s, w, h, 12 * s);
+    ctx2.fill();
+    ctx2.stroke();
+    ctx2.fillStyle = "#fff";
+    ctx2.textAlign = "center";
+    ctx2.textBaseline = "middle";
+    ctx2.fillText(text, p.x, p.y - h / 2 - 10 * s);
+    ctx2.beginPath();
+    ctx2.fillStyle = color;
+    ctx2.arc(p.x, p.y, 5 * s, 0, 7);
+    ctx2.fill();
+    ctx2.restore();
+  }
+  function drawShotMarkers(v, a) {
+    if (a.boardAtArrows !== null) label(v, `Arrows ${a.boardAtArrows.toFixed(1)}`, v.P(boardToX(a.boardAtArrows), 15), "#ffd25a");
+    if (a.breakpointBoard !== null && a.breakpointFt !== null) label(v, `Breakpoint ${a.breakpointBoard.toFixed(1)}`, v.P(boardToX(a.breakpointBoard), a.breakpointFt), "#ff5ad6");
+    if (a.entryBoard !== null) label(v, `Entry ${a.entryBoard.toFixed(1)}`, v.P(boardToX(a.entryBoard), 59.5), "#5affb0");
+  }
+  function drawCorners(v, corners2) {
+    const { ctx: ctx2 } = v;
+    const s = k(v);
+    ctx2.save();
+    corners2.forEach((c, i) => {
+      ctx2.fillStyle = "#4da3ff";
+      ctx2.shadowColor = "#4da3ff";
+      ctx2.shadowBlur = 16 * s;
+      ctx2.beginPath();
+      ctx2.arc(c.x, c.y, 9 * s, 0, 7);
+      ctx2.fill();
+      ctx2.shadowBlur = 0;
+      ctx2.fillStyle = "#06101c";
+      ctx2.font = `700 ${12 * s}px system-ui`;
+      ctx2.textAlign = "center";
+      ctx2.textBaseline = "middle";
+      ctx2.fillText(String(i + 1), c.x, c.y + 0.5 * s);
+      if (i > 0) {
+        ctx2.strokeStyle = "rgba(77,163,255,.8)";
+        ctx2.lineWidth = 2 * s;
+        ctx2.beginPath();
+        ctx2.moveTo(corners2[i - 1].x, corners2[i - 1].y);
+        ctx2.lineTo(c.x, c.y);
+        ctx2.stroke();
+      }
+    });
+    ctx2.restore();
+  }
+  function line(v, a, b) {
+    v.ctx.beginPath();
+    v.ctx.moveTo(a.x, a.y);
+    v.ctx.lineTo(b.x, b.y);
+    v.ctx.stroke();
+  }
+  function drawLaneGrid(v) {
+    const { ctx: ctx2, P } = v;
+    const s = k(v);
+    ctx2.save();
+    const quad = [P(0, 0), P(LANE_BOARDS, 0), P(LANE_BOARDS, DECK_END_FT), P(0, DECK_END_FT)];
+    ctx2.beginPath();
+    quad.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
+    ctx2.closePath();
+    ctx2.fillStyle = "rgba(255,214,150,.07)";
+    ctx2.fill();
+    for (let i = 0; i <= LANE_BOARDS; i++) {
+      const fromRight = LANE_BOARDS - i;
+      const major = fromRight % 5 === 0;
+      const edge = i === 0 || i === LANE_BOARDS;
+      ctx2.strokeStyle = edge ? "rgba(120,200,255,.8)" : major ? "rgba(255,255,255,.3)" : "rgba(255,255,255,.12)";
+      ctx2.lineWidth = (edge ? 2.4 : major ? 1.3 : 0.8) * s;
+      line(v, P(i, 0), P(i, LANE_LENGTH_FT));
+    }
+    ctx2.strokeStyle = "rgba(255,90,110,.95)";
+    ctx2.lineWidth = 3 * s;
+    ctx2.shadowColor = "rgba(255,90,110,.9)";
+    ctx2.shadowBlur = 10 * s;
+    line(v, P(0, 0), P(LANE_BOARDS, 0));
+    ctx2.shadowBlur = 0;
+    ctx2.setLineDash([6 * s, 8 * s]);
+    ctx2.lineWidth = 1 * s;
+    for (const ft of [30, 45]) {
+      ctx2.strokeStyle = "rgba(255,255,255,.2)";
+      line(v, P(0, ft), P(LANE_BOARDS, ft));
+    }
+    ctx2.setLineDash([]);
+    ctx2.strokeStyle = "rgba(255,255,255,.35)";
+    ctx2.lineWidth = 1.5 * s;
+    line(v, P(0, LANE_LENGTH_FT), P(LANE_BOARDS, LANE_LENGTH_FT));
+    line(v, P(0, DECK_END_FT), P(LANE_BOARDS, DECK_END_FT));
+    ctx2.fillStyle = "rgba(255,255,255,.55)";
+    for (let b = 5; b <= 35; b += 5) {
+      const c = P(boardToX(b), 7);
+      ctx2.beginPath();
+      ctx2.arc(c.x, c.y, 2.5 * s, 0, 7);
+      ctx2.fill();
+    }
+    for (let b = 5; b <= 35; b += 5) {
+      const cx = boardToX(b);
+      const tip = 12 + 4 * (1 - Math.abs(b - 20) / 15);
+      const tri = [P(cx - 1.2, tip - 1.6), P(cx + 1.2, tip - 1.6), P(cx, tip)];
+      ctx2.beginPath();
+      tri.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
+      ctx2.closePath();
+      ctx2.fillStyle = b === 20 ? "rgba(255,210,90,.95)" : "rgba(255,210,90,.7)";
+      ctx2.shadowColor = "rgba(255,210,90,.8)";
+      ctx2.shadowBlur = 8 * s;
+      ctx2.fill();
+    }
+    ctx2.shadowBlur = 0;
+    ctx2.font = `600 ${12 * s}px -apple-system, system-ui, sans-serif`;
+    ctx2.textAlign = "center";
+    ctx2.textBaseline = "middle";
+    ctx2.fillStyle = "rgba(255,255,255,.75)";
+    for (let b = 5; b <= 35; b += 5) {
+      const c = P(boardToX(b), 3.2);
+      ctx2.fillText(String(b), c.x, c.y);
+    }
+    ctx2.fillStyle = "rgba(255,255,255,.88)";
+    ctx2.shadowColor = "rgba(255,255,255,.6)";
+    ctx2.shadowBlur = 6 * s;
+    for (let r = 0; r < 4; r++) {
+      for (let i = 0; i <= r; i++) {
+        const x = LANE_BOARDS / 2 + (i - r / 2) * PIN_SPACING_BOARDS;
+        const y = LANE_LENGTH_FT + r * ROW_FT;
+        const c = P(x, y);
+        const edge = P(x + 1.2, y);
+        ctx2.beginPath();
+        ctx2.arc(c.x, c.y, Math.max(2, Math.hypot(edge.x - c.x, edge.y - c.y)), 0, 7);
+        ctx2.fill();
+      }
+    }
+    ctx2.restore();
+  }
+  function drawTopDown(ctx2, w, h, paths, pocket) {
+    const padX = 18;
+    const top = 24;
+    const bottom = 18;
+    const laneW = w - padX * 2;
+    const laneH = h - top - bottom;
+    const px = (x) => padX + x / LANE_BOARDS * laneW;
+    const py = (ft) => h - bottom - ft / DECK_END_FT * laneH;
+    ctx2.clearRect(0, 0, w, h);
+    ctx2.save();
+    ctx2.fillStyle = "rgba(255,214,150,.08)";
+    ctx2.fillRect(px(0), py(DECK_END_FT), laneW, laneH);
+    ctx2.lineWidth = 1;
+    for (let i = 0; i <= LANE_BOARDS; i++) {
+      const major = (LANE_BOARDS - i) % 5 === 0;
+      ctx2.strokeStyle = i === 0 || i === LANE_BOARDS ? "rgba(120,200,255,.8)" : major ? "rgba(255,255,255,.22)" : "rgba(255,255,255,.07)";
+      ctx2.beginPath();
+      ctx2.moveTo(px(i), py(0));
+      ctx2.lineTo(px(i), py(LANE_LENGTH_FT));
+      ctx2.stroke();
+    }
+    ctx2.strokeStyle = "rgba(255,90,110,.95)";
+    ctx2.lineWidth = 2.5;
+    ctx2.beginPath();
+    ctx2.moveTo(px(0), py(0));
+    ctx2.lineTo(px(LANE_BOARDS), py(0));
+    ctx2.stroke();
+    ctx2.setLineDash([4, 6]);
+    ctx2.strokeStyle = "rgba(255,255,255,.18)";
+    ctx2.lineWidth = 1;
+    for (const ft of [15, 30, 45, 60]) {
+      ctx2.beginPath();
+      ctx2.moveTo(px(0), py(ft));
+      ctx2.lineTo(px(LANE_BOARDS), py(ft));
+      ctx2.stroke();
+    }
+    ctx2.setLineDash([]);
+    ctx2.fillStyle = "rgba(255,210,90,.85)";
+    for (let b = 5; b <= 35; b += 5) {
+      const tip = 12 + 4 * (1 - Math.abs(b - 20) / 15);
+      const cx = px(boardToX(b));
+      ctx2.beginPath();
+      ctx2.moveTo(cx - 4, py(tip - 1.6));
+      ctx2.lineTo(cx + 4, py(tip - 1.6));
+      ctx2.lineTo(cx, py(tip));
+      ctx2.closePath();
+      ctx2.fill();
+    }
+    ctx2.fillStyle = "rgba(255,255,255,.55)";
+    ctx2.font = "600 10px system-ui, sans-serif";
+    ctx2.textAlign = "center";
+    for (let b = 5; b <= 35; b += 5) ctx2.fillText(String(b), px(boardToX(b)), py(0) + 12);
+    ctx2.fillStyle = "rgba(255,255,255,.88)";
+    for (let r = 0; r < 4; r++)
+      for (let i = 0; i <= r; i++) {
+        ctx2.beginPath();
+        ctx2.arc(px(LANE_BOARDS / 2 + (i - r / 2) * PIN_SPACING_BOARDS), py(LANE_LENGTH_FT + r * ROW_FT), 3.2, 0, 7);
+        ctx2.fill();
+      }
+    if (pocket) {
+      ctx2.strokeStyle = "rgba(90,255,176,.7)";
+      ctx2.lineWidth = 1.5;
+      ctx2.setLineDash([3, 3]);
+      ctx2.beginPath();
+      ctx2.moveTo(px(boardToX(pocket.board)), py(45));
+      ctx2.lineTo(px(boardToX(pocket.board)), py(LANE_LENGTH_FT));
+      ctx2.stroke();
+      ctx2.setLineDash([]);
+    }
+    for (const m of paths) {
+      if (m.path.length < 2) continue;
+      ctx2.strokeStyle = m.color;
+      ctx2.globalAlpha = m.alpha ?? 1;
+      ctx2.lineWidth = m.width ?? 2;
+      ctx2.lineJoin = "round";
+      ctx2.beginPath();
+      m.path.forEach((s, i) => i ? ctx2.lineTo(px(s.x), py(s.y)) : ctx2.moveTo(px(s.x), py(s.y)));
+      ctx2.stroke();
+    }
+    ctx2.restore();
+  }
+
   // core/src/patterns.ts
   function lengthClass(lengthFt) {
     return lengthFt <= 37 ? "short" : lengthFt <= 41 ? "medium" : "long";
@@ -2452,11 +2538,11 @@
   }
 
   // camera/health.ts
-  var KEY = "laneiq.locklog";
+  var KEY2 = "laneiq.locklog";
   var MAX = 120;
   function read() {
     try {
-      const v = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+      const v = JSON.parse(localStorage.getItem(KEY2) ?? "[]");
       return Array.isArray(v) ? v : [];
     } catch {
       return [];
@@ -2464,7 +2550,7 @@
   }
   function write(v) {
     try {
-      localStorage.setItem(KEY, JSON.stringify(v.slice(-MAX)));
+      localStorage.setItem(KEY2, JSON.stringify(v.slice(-MAX)));
     } catch {
     }
   }
@@ -3126,12 +3212,12 @@
     if (vals.length < 50) return [];
     vals.sort((a, b) => a - b);
     const t = Math.max(14, vals[Math.floor(vals.length * 0.97)] * 0.55);
-    const seen = new Uint8Array(sw * sh);
+    const seen2 = new Uint8Array(sw * sh);
     const blobs = [];
     for (let s = 0; s < sw * sh; s++) {
-      if (seen[s] || dark[s] < t) continue;
+      if (seen2[s] || dark[s] < t) continue;
       const stack = [s];
-      seen[s] = 1;
+      seen2[s] = 1;
       let n = 0, sx = 0, sy = 0, x0 = sw, x1 = 0, y0 = sh, y1 = 0, dsum = 0;
       while (stack.length) {
         const i = stack.pop();
@@ -3144,7 +3230,7 @@
         if (x > x1) x1 = x;
         if (y < y0) y0 = y;
         if (y > y1) y1 = y;
-        for (const j of [i - 1, i + 1, i - sw, i + sw]) if (j >= 0 && j < sw * sh && !seen[j] && dark[j] >= t) seen[j] = 1, stack.push(j);
+        for (const j of [i - 1, i + 1, i - sw, i + sw]) if (j >= 0 && j < sw * sh && !seen2[j] && dark[j] >= t) seen2[j] = 1, stack.push(j);
       }
       const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
       const rEq = Math.sqrt(n / Math.PI);
@@ -3346,12 +3432,12 @@
     if (vals.length < 50) return [];
     vals.sort((a, b) => a - b);
     const t = Math.min(70, Math.max(40, vals[Math.floor(vals.length * 0.995)] * 0.5));
-    const seen = new Uint8Array(sw * sh);
+    const seen2 = new Uint8Array(sw * sh);
     const out = [];
     for (let s = 0; s < sw * sh; s++) {
-      if (seen[s] || dist[s] < t) continue;
+      if (seen2[s] || dist[s] < t) continue;
       const stack = [s];
-      seen[s] = 1;
+      seen2[s] = 1;
       let n = 0, sx = 0, sy = 0, x0 = sw, x1 = 0, y0 = sh, y1 = 0, dsum = 0, ssum = 0;
       while (stack.length) {
         const i = stack.pop();
@@ -3365,7 +3451,7 @@
         if (x > x1) x1 = x;
         if (y < y0) y0 = y;
         if (y > y1) y1 = y;
-        for (const j of [i - 1, i + 1, i - sw, i + sw]) if (j >= 0 && j < sw * sh && !seen[j] && dist[j] >= t) seen[j] = 1, stack.push(j);
+        for (const j of [i - 1, i + 1, i - sw, i + sw]) if (j >= 0 && j < sw * sh && !seen2[j] && dist[j] >= t) seen2[j] = 1, stack.push(j);
       }
       const coreContrast = dsum / n;
       {
@@ -3375,7 +3461,7 @@
         const q = [];
         for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) {
           const i = yy * sw + xx;
-          if (seen[i] && dist[i] >= t) grown[i] = 1, q.push(i);
+          if (seen2[i] && dist[i] >= t) grown[i] = 1, q.push(i);
         }
         let gn = 0, gx = 0, gy = 0, gx0 = sw, gx1 = 0, gy0 = sh, gy1 = 0, gs = 0;
         while (q.length && gn < cap * 1.2) {
@@ -3395,7 +3481,7 @@
           }
         }
         if (gn > n && gn < cap * 1.2) {
-          for (let yy = gy0; yy <= gy1; yy++) for (let xx = gx0; xx <= gx1; xx++) if (grown[yy * sw + xx]) seen[yy * sw + xx] = 1;
+          for (let yy = gy0; yy <= gy1; yy++) for (let xx = gx0; xx <= gx1; xx++) if (grown[yy * sw + xx]) seen2[yy * sw + xx] = 1;
           n = gn;
           sx = gx;
           sy = gy;
@@ -5215,13 +5301,13 @@
   var sorted = (pins) => pins.slice().sort((a, b) => a - b);
   function isSplit(leave) {
     if (leave.length < 2 || leave.includes(1)) return false;
-    const seen = /* @__PURE__ */ new Set([leave[0]]);
+    const seen2 = /* @__PURE__ */ new Set([leave[0]]);
     const queue = [leave[0]];
     while (queue.length) {
       const p = queue.pop();
-      for (const q of leave) if (!seen.has(q) && touching(p, q)) seen.add(q), queue.push(q);
+      for (const q of leave) if (!seen2.has(q) && touching(p, q)) seen2.add(q), queue.push(q);
     }
-    return seen.size < leave.length;
+    return seen2.size < leave.length;
   }
   var NAMES = {
     "7-10": "the bedposts (7-10)",
@@ -7701,15 +7787,15 @@ ${url}`);
     }
     blobs(fg) {
       const { w, h } = this.s;
-      const seen = new Uint8Array(w * h);
+      const seen2 = new Uint8Array(w * h);
       const out = [];
       const stack = [];
       for (let i = 0; i < fg.length; i++) {
-        if (!fg[i] || seen[i]) continue;
+        if (!fg[i] || seen2[i]) continue;
         let sx = 0, sy = 0, n = 0;
         let x0 = w, x1 = 0, y0 = h, y1 = 0;
         stack.push(i);
-        seen[i] = 1;
+        seen2[i] = 1;
         while (stack.length) {
           const k2 = stack.pop();
           const x = k2 % w;
@@ -7722,9 +7808,9 @@ ${url}`);
           if (y < y0) y0 = y;
           if (y > y1) y1 = y;
           for (const q of [k2 - 1, k2 + 1, k2 - w, k2 + w]) {
-            if (q < 0 || q >= fg.length || !fg[q] || seen[q]) continue;
+            if (q < 0 || q >= fg.length || !fg[q] || seen2[q]) continue;
             if (q === k2 - 1 && x === 0 || q === k2 + 1 && x === w - 1) continue;
-            seen[q] = 1;
+            seen2[q] = 1;
             stack.push(q);
           }
         }
@@ -8043,7 +8129,7 @@ ${url}`);
     if (saved) {
       applyCalibration(saved, "your saved setup, verifying");
       verifyUntil = performance.now() + 12e3;
-    } else status.textContent = `Camera on (${fps ? Math.round(fps) : "?"} fps). Looking for the lane\u2026`;
+    } else status.textContent = `Camera on (${fps ? Math.round(fps) : "?"} fps). Looking for the lane\xE2\u20AC\xA6`;
     schedule();
   }
   var mode = "auto";
@@ -8194,11 +8280,11 @@ ${url}`);
     $("snapbtn").classList.toggle("hide", !(show && adjusted && pending));
     if (!show) return;
     if (mode === "choose") {
-      el.innerHTML = `<span class="sc ask">\u261D Tap your lane</span><div class="note" style="flex-basis:100%">${hint || "I can see more than one lane. Tap the one you are bowling on."}</div>`;
+      el.innerHTML = `<span class="sc ask">\xE2\u02DC\x9D Tap your lane</span><div class="note" style="flex-basis:100%">${hint || "I can see more than one lane. Tap the one you are bowling on."}</div>`;
       return;
     }
     if (mode === "tap") {
-      el.innerHTML = `<span class="sc ask">\u261D Tap your lane</span><div class="note" style="flex-basis:100%">${hint || "Tap on the lane surface, between its two gutters, and I'll follow the edges from there."}</div>`;
+      el.innerHTML = `<span class="sc ask">\xE2\u02DC\x9D Tap your lane</span><div class="note" style="flex-basis:100%">${hint || "Tap on the lane surface, between its two gutters, and I'll follow the edges from there."}</div>`;
       return;
     }
     const g = diagView;
@@ -8210,7 +8296,7 @@ ${url}`);
       ["Lane end", g?.pitRow != null],
       [`Steady ${Math.min(locks.length, 3)}/3`, locks.length >= 3]
     ];
-    el.innerHTML = items.map(([l, ok]) => `<span class="sc ${ok ? "ok" : ""}">${ok ? "\u2713" : "\u25CB"} ${l}</span>`).join("") + (hint ? `<div class="note" style="flex-basis:100%">${hint}</div>` : "");
+    el.innerHTML = items.map(([l, ok]) => `<span class="sc ${ok ? "ok" : ""}">${ok ? "\xE2\u0153\u201C" : "\xE2\u2014\u2039"} ${l}</span>`).join("") + (hint ? `<div class="note" style="flex-basis:100%">${hint}</div>` : "");
   }
   function drawScanner(now) {
     const s = overlay.width / 1280;
@@ -8368,7 +8454,7 @@ ${url}`);
     lastLockConf = ch.pick?.confidence ?? lastCandidates[0]?.confidence ?? null;
     if (chooseSeen >= 2) return enterChoose(ch.choices.map((c) => c.corners));
     const d = ch.pick ?? lastCandidates[0] ?? null;
-    pill("SCANNING\u2026", "scan");
+    pill("SCANNING\xE2\u20AC\xA6", "scan");
     const tol = video.videoWidth * 0.03;
     if (d && solid(d)) {
       pending = null;
@@ -8377,7 +8463,7 @@ ${url}`);
       locks.push(d.corners);
       locks = locks.slice(-3);
       setStep(Math.min(3, locks.length));
-      status.textContent = "Found the lane, confirming\u2026";
+      status.textContent = "Found the lane, confirming\xE2\u20AC\xA6";
       renderScan("Hold still for a moment while I confirm it.");
       if (locks.length === 3 && locks.every((l) => detectionsAgree(locks[0], l, tol))) {
         applyCalibration(d.corners, "automatic");
@@ -8449,7 +8535,7 @@ ${url}`);
     if (!driftRef) {
       if (/saved setup/.test(lastLockHow) && !lockFits(cur)) {
         relock(false);
-        status.textContent = "Your saved lane doesn't match what the camera sees now (the phone has moved). Looking for the lane again\u2026";
+        status.textContent = "Your saved lane doesn't match what the camera sees now (the phone has moved). Looking for the lane again\xE2\u20AC\xA6";
         return;
       }
       driftRef = cur;
@@ -8654,8 +8740,8 @@ ${url}`);
     }
     setStep(0);
     setReady(false);
-    status.textContent = "Looking for the lane again\u2026";
-    pill("SCANNING\u2026", "scan");
+    status.textContent = "Looking for the lane again\xE2\u20AC\xA6";
+    pill("SCANNING\xE2\u20AC\xA6", "scan");
     renderScan();
     tracker = null;
     laneMask = null;
@@ -8671,7 +8757,7 @@ ${url}`);
   var DIGITAL_MAX = 6;
   function drawZoomBar() {
     const bar = $("zoombar");
-    bar.innerHTML = zoomLevels.map((z) => `<button class="seg ${Math.abs(z - zoomNow) < 0.05 ? "on" : ""}" data-z="${z}">${z}\xD7</button>`).join("") + (Math.abs(zoomNow - Math.round(zoomNow * 2) / 2) > 0.05 || !zoomLevels.some((z) => Math.abs(z - zoomNow) < 0.05) ? `<button class="seg on" disabled>${zoomNow.toFixed(1)}\xD7</button>` : "");
+    bar.innerHTML = zoomLevels.map((z) => `<button class="seg ${Math.abs(z - zoomNow) < 0.05 ? "on" : ""}" data-z="${z}">${z}\xC3\u2014</button>`).join("") + (Math.abs(zoomNow - Math.round(zoomNow * 2) / 2) > 0.05 || !zoomLevels.some((z) => Math.abs(z - zoomNow) < 0.05) ? `<button class="seg on" disabled>${zoomNow.toFixed(1)}\xC3\u2014</button>` : "");
     bar.querySelectorAll("button[data-z]").forEach((b) => b.onclick = () => void setZoom(Number(b.dataset.z)));
   }
   async function setupZoom() {
@@ -8716,12 +8802,12 @@ ${url}`);
       applyView();
       if (dropLock && (H || pending)) {
         relock(false);
-        status.textContent = `Zoom ${zoomNow.toFixed(1)}\xD7: looking for the lane again at this zoom\u2026`;
+        status.textContent = `Zoom ${zoomNow.toFixed(1)}\xC3\u2014: looking for the lane again at this zoom\xE2\u20AC\xA6`;
       }
     } else {
       if (zoomNow === 1) panX = panY = 0;
       applyView();
-      if (zoomNow !== 1) status.textContent = `Zoom ${zoomNow.toFixed(1)}\xD7 (on screen only: this phone does not let the app zoom the lens, so detection still uses the whole picture).`;
+      if (zoomNow !== 1) status.textContent = `Zoom ${zoomNow.toFixed(1)}\xC3\u2014 (on screen only: this phone does not let the app zoom the lens, so detection still uses the whole picture).`;
     }
     try {
       localStorage.setItem(ZOOM_KEY, String(zoomNow));
@@ -8789,7 +8875,7 @@ ${url}`);
           clearTimeout(relockTimer);
           relockTimer = setTimeout(() => {
             relock(false);
-            status.textContent = `Zoom ${zoomNow.toFixed(1)}\xD7: looking for the lane again at this zoom\u2026`;
+            status.textContent = `Zoom ${zoomNow.toFixed(1)}\xC3\u2014: looking for the lane again at this zoom\xE2\u20AC\xA6`;
           }, 500);
         }
       }
@@ -8881,7 +8967,7 @@ ${url}`);
     if (!stream) return void (status.textContent = "Start the camera first, then show me the ball.");
     setMode("lane");
     enrolling = { name, catalogKey, sigs: [], nextAt: 0, until: performance.now() + 6e3 };
-    status.textContent = `Hold ${name} inside the circle and rotate it slowly\u2026`;
+    status.textContent = `Hold ${name} inside the circle and rotate it slowly\xE2\u20AC\xA6`;
   });
   function enrollTick(now) {
     if (!enrolling) return;
@@ -9018,7 +9104,7 @@ ${url}`);
       if (here && here.y < 30 && trail.length) captureBall(trail[trail.length - 1].x, trail[trail.length - 1].y, tracker.lastR * (video.videoWidth / GW));
     }
     if (ev === "confirmed") {
-      status.textContent = "Ball detected, tracking\u2026";
+      status.textContent = "Ball detected, tracking\xE2\u20AC\xA6";
       startRecording(path[path.length - 1].t);
     } else if (ev === "finished") void finish();
     else if (ev === "reset") resetTrack();
@@ -9055,8 +9141,8 @@ ${url}`);
       idleDeck = cur;
       if (pinsReadable(cur)) fullDeck = cur;
     }
-    const seen = cur.filter((p) => pinContrast(p) >= 8).length;
-    $("pinstat").textContent = seen >= 8 ? `Pins: ready (${seen} of 10 seen)` : seen > 0 ? `Pins: only ${seen} of 10 stand out, so pinfall may be missed. Zoom in on them.` : "Pins: can't tell them from the deck. Zoom in on them or add light.";
+    const seen2 = cur.filter((p) => pinContrast(p) >= 8).length;
+    $("pinstat").textContent = seen2 >= 8 ? `Pins: ready (${seen2} of 10 seen)` : seen2 > 0 ? `Pins: only ${seen2} of 10 stand out, so pinfall may be missed. Zoom in on them.` : "Pins: can't tell them from the deck. Zoom in on them or add light.";
     deckCand = cur;
   }
   function pinfallNow(start, full, now) {
@@ -9238,6 +9324,7 @@ ${url}`);
     refresh();
     const v = Array.from(document.scripts).map((x) => x.src).find((x) => /camera\.js\?v=/.test(x));
     $("ver").textContent = v ? `version ${v.split("?v=")[1]}` : "";
+    initPatchNotes();
   })();
   function takeLane() {
     const input = $("hero-lane");
@@ -9361,7 +9448,7 @@ ${url}`);
     changed();
   })();
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").then(() => navigator.serviceWorker.ready).then(() => setText("offline", "Ready offline \u2713")).catch(() => {
+    navigator.serviceWorker.register("sw.js").then(() => navigator.serviceWorker.ready).then(() => setText("offline", "Ready offline \xE2\u0153\u201C")).catch(() => {
     });
   }
 })();
