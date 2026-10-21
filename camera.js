@@ -1260,14 +1260,14 @@
     const box = document.getElementById("whatsnew");
     if (!box) return;
     const fresh = seen() !== LATEST_NOTE_ID;
-    box.innerHTML = `<button class="chip" id="notes-open">${fresh ? "NEW \xB7 " : ""}What's new: ${esc(PATCH_NOTES[0].title)}</button>`;
+    box.innerHTML = `<button class="chip" id="notes-open">${fresh ? "NEW \xB7 " : ""}What's new</button>`;
     document.getElementById("notes-open").onclick = () => {
       const sheet5 = document.getElementById("notes");
       sheet5.classList.add("on");
       sheet5.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc(n.title)} <span class="note">${esc(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}`;
       document.getElementById("notes-close").onclick = () => (sheet5.classList.remove("on"), sheet5.innerHTML = "");
       markSeen();
-      document.getElementById("notes-open").textContent = `What's new: ${PATCH_NOTES[0].title}`;
+      document.getElementById("notes-open").textContent = "What's new";
     };
   }
 
