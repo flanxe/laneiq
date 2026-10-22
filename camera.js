@@ -53,6 +53,17 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-22-real-clip",
+      date: "2026-10-22",
+      title: "Learned from a real bowling-alley clip",
+      items: [
+        "Ball tracking rebuilt: it now follows several possible balls at once and keeps the one that moves like a delivery (smooth, steady, forward), so a bowler's legs, arms and shoes are no longer mistaken for the ball. On a real clip filmed from beside the approach it followed a blue ball from release to the pins and read speed, arrows, breakpoint, entry board and launch angle.",
+        "Lane lock now works on an upright phone filmed from the side: it found the right lane on its own, and no longer returns two lanes stuck together or a thin sliver.",
+        "An upright phone now shows an upright picture instead of cropping it to a wide strip, and analyses at a size that keeps the phone fast.",
+        "If the camera loses the ball just before the pins, the entry board is carried on from the last stretch it saw."
+      ]
+    },
+    {
       id: "2026-10-22-diag",
       date: "2026-10-22",
       title: "See why the ball isn't tracked",
@@ -2589,14 +2600,16 @@
       bpFt = ext.y;
     }
     const arrows = interp(p, ARROWS_FT);
-    const tail = p.filter((s) => s.y >= 50);
+    const lastY = p[p.length - 1].y;
+    const tailFrom = Math.min(50, lastY - 8);
+    const tail = lastY >= ENTRY_FT - 10 ? p.filter((s) => s.y >= tailFrom) : [];
     let entry = null;
-    if (tail.length >= 4 && tail[tail.length - 1].y - tail[0].y >= 3) {
+    if (tail.length >= 4 && tail[tail.length - 1].y - tail[0].y >= 2.5) {
       const f = linearFit(tail.map((s) => s.y), tail.map((s) => s.x));
       entry = f.slope * ENTRY_FT + f.intercept;
     }
     const launch = headingDeg(p, 3, 20);
-    const impact = headingDeg(p, 50, 58);
+    const impact = lastY >= ENTRY_FT - 10 ? headingDeg(p, tailFrom, 58) : null;
     const coverage = Math.min(1, (p[p.length - 1].y - p[0].y) / 45);
     const confidence = Math.max(0, Math.min(1, coverage * (1 - Math.min(1, fit.rmse / 5))));
     return {
@@ -3180,33 +3193,34 @@
       const laneLevel = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
       let best = null;
       const tried = [];
-      for (const f of foulCands) {
-        if (!isThinLine(f) && !(Math.abs(f - b) <= 0.05 * h && isLaneToApproach(f))) continue;
-        for (const p of pitCands) {
-          if (f - p < h * 0.06 || !(isPitStep(p) || Number.isFinite(pinPit) && Math.abs(p - pinPit) <= 2)) continue;
-          const rho = (p - yv) / (f - yv);
-          if (!(rho > 0.03 && rho < 0.75)) continue;
-          let cov = 0;
-          let n = 0;
-          for (let y = p + 3; y <= f - 3; y += 2) {
-            n++;
-            if (supported(y)) cov++;
+      for (let pass = 0; pass < 2 && !best; pass++)
+        for (const f of foulCands) {
+          if (pass === 0 ? !isThinLine(f) && !(Math.abs(f - b) <= 0.05 * h && isLaneToApproach(f)) : Math.abs(f - b) > 0.04 * h) continue;
+          for (const p of pitCands) {
+            if (f - p < h * 0.06 || !(isPitStep(p) || Number.isFinite(pinPit) && Math.abs(p - pinPit) <= 2)) continue;
+            const rho = (p - yv) / (f - yv);
+            if (!(rho > 0.03 && rho < 0.75)) continue;
+            let cov = 0;
+            let n = 0;
+            for (let y = p + 3; y <= f - 3; y += 2) {
+              n++;
+              if (supported(y)) cov++;
+            }
+            tried.push(`f${f}/p${p}:cov${n ? (cov / n).toFixed(2) : "-"}`);
+            if (!n || cov / n < 0.5) continue;
+            const nearB = Math.max(0, 1 - Math.abs(f - b) / (0.06 * h));
+            const nearT = Math.max(0, 1 - Math.abs(p - t) / (0.05 * h));
+            const pitLow = Math.max(0, Math.min(1, (p - (t - pitBefore)) / (pitBefore + pitAfter)));
+            const belowP = pAvg(4, 10, p, plow);
+            const laneMatch = Number.isFinite(laneLevel) && Number.isFinite(belowP) ? 1 - Math.min(1, Math.abs(belowP - laneLevel) / Math.max(20, laneLevel * 0.35)) : 0;
+            const wF = Math.max(1, xAt(R2, f) - xAt(L, f));
+            const dRows = LANE_END_FT * rho / (1 - rho);
+            const fovDeg = 2 * Math.atan(Math.max(w, h) / 2 * (41.5 / 12) / (wF * dRows)) * 180 / Math.PI;
+            const fovFit = h > w ? Math.exp(-0.5 * ((fovDeg - 58) / 28) ** 2) : Math.exp(-0.5 * ((fovDeg - 66) / 22) ** 2);
+            const score = cov / n * 1 + prof[f] * 0.5 + Math.min(1, up[p]) * 0.5 + 1.2 * nearB + 0.6 * nearT + 0.8 * pitLow + 1.3 * laneMatch + 1.6 * fovFit + (Number.isFinite(walk2) && Math.abs(p - walk2) <= 2.5 ? 0.6 : 0) + (p === lowestPit ? 1.6 : 0) + (Number.isFinite(pinPit) && Math.abs(p - pinPit) <= 2 ? 2.2 : 0);
+            if (!best || score > best.score) best = { pit: p, foul: f, score };
           }
-          tried.push(`f${f}/p${p}:cov${n ? (cov / n).toFixed(2) : "-"}`);
-          if (!n || cov / n < 0.5) continue;
-          const nearB = Math.max(0, 1 - Math.abs(f - b) / (0.06 * h));
-          const nearT = Math.max(0, 1 - Math.abs(p - t) / (0.05 * h));
-          const pitLow = Math.max(0, Math.min(1, (p - (t - pitBefore)) / (pitBefore + pitAfter)));
-          const belowP = pAvg(4, 10, p, plow);
-          const laneMatch = Number.isFinite(laneLevel) && Number.isFinite(belowP) ? 1 - Math.min(1, Math.abs(belowP - laneLevel) / Math.max(20, laneLevel * 0.35)) : 0;
-          const wF = Math.max(1, xAt(R2, f) - xAt(L, f));
-          const dRows = LANE_END_FT * rho / (1 - rho);
-          const fovDeg = 2 * Math.atan(w / 2 * (41.5 / 12) / (wF * dRows)) * 180 / Math.PI;
-          const fovFit = Math.exp(-0.5 * ((fovDeg - 66) / 22) ** 2);
-          const score = cov / n * 1 + prof[f] * 0.5 + Math.min(1, up[p]) * 0.5 + 1.2 * nearB + 0.6 * nearT + 0.8 * pitLow + 1.3 * laneMatch + 1.6 * fovFit + (Number.isFinite(walk2) && Math.abs(p - walk2) <= 2.5 ? 0.6 : 0) + (p === lowestPit ? 1.6 : 0) + (Number.isFinite(pinPit) && Math.abs(p - pinPit) <= 2 ? 2.2 : 0);
-          if (!best || score > best.score) best = { pit: p, foul: f, score };
         }
-      }
       if (!best && diag2 && !diag2.hint) diag2.hint = "I found both lane edges but not the foul line and the end of the lane together. Tilt the phone so the foul line, the arrows and the pins are all in view.";
       if (!best) return fallback(L, R2, t, b, yv, up, notes) ?? (dbg(`reject: no foul/pit pair foul ${foulCands.join(",")} pit ${pitCands.join(",")} yv ${yv.toFixed(1)} t ${t} b ${b} | ${tried.slice(0, 8).join(" ")} | L(${L.xa.toFixed(0)},${L.xb.toFixed(0)}) R(${R2.xa.toFixed(0)},${R2.xb.toFixed(0)})`), null);
       const centroid = (arr, y, r, base) => {
@@ -3300,12 +3314,12 @@
         { x: xAt(L, r60L), y: r60L }
       ];
       const wFoul = corners2[1].x - corners2[0].x;
-      const fPx = w / 2 / Math.tan(ASSUMED_HFOV_DEG * Math.PI / 360);
+      const fPx = Math.max(w, h) / 2 / Math.tan(ASSUMED_HFOV_DEG * Math.PI / 360);
       const distFromWidth = fPx * (41.5 / 12) / Math.max(1, wFoul);
       const rhoMid = (pit - yv) / (fy - yv);
       const distFromRows = LANE_END_FT * rhoMid / (1 - rhoMid);
-      const impliedHfov = 2 * Math.atan(w / 2 * (41.5 / 12) / (Math.max(1, wFoul) * distFromRows)) * 180 / Math.PI;
-      if (!(impliedHfov > 30 && impliedHfov < 118)) return dbg(`reject: the rows and the lane width imply a ${impliedHfov.toFixed(0)} degree field of view`), null;
+      const impliedHfov = 2 * Math.atan(Math.max(w, h) / 2 * (41.5 / 12) / (Math.max(1, wFoul) * distFromRows)) * 180 / Math.PI;
+      if (!(impliedHfov > (h > w ? 10 : 30) && impliedHfov < 118)) return dbg(`reject: the rows and the lane width imply a ${impliedHfov.toFixed(0)} degree field of view`), null;
       const agree = distFromWidth / distFromRows;
       const wBot = corners2[1].x - corners2[0].x;
       const wTop = corners2[2].x - corners2[3].x;
@@ -3346,7 +3360,11 @@
     const wid = (d) => Math.abs(d.corners[1].x - d.corners[0].x);
     const out = [];
     for (const d of [...list].sort((a, b) => b.confidence - a.confidence)) {
-      const i = out.findIndex((o) => Math.abs(mid(o) - mid(d)) < 0.05 * w && wid(o) / Math.max(1, wid(d)) > 0.6 && wid(o) / Math.max(1, wid(d)) < 1.7);
+      const sharesEdge = (o) => {
+        const r = wid(o) / Math.max(1, wid(d));
+        return (r > 1.15 && r < 2.4 || r < 1 / 1.15 && r > 1 / 2.4) && (Math.abs(o.corners[0].x - d.corners[0].x) < 0.03 * w || Math.abs(o.corners[1].x - d.corners[1].x) < 0.03 * w);
+      };
+      const i = out.findIndex((o) => Math.abs(mid(o) - mid(d)) < 0.05 * w && wid(o) / Math.max(1, wid(d)) > 0.6 && wid(o) / Math.max(1, wid(d)) < 1.7 || sharesEdge(o));
       if (i < 0) out.push(d);
       else if (wid(d) < 0.85 * wid(out[i])) out[i] = d;
     }
@@ -9477,7 +9495,7 @@ ${url}`);
     last = null;
     lost = 0;
     /** what the last frame looked like to the tracker, so a silent screen can be explained: moving pixels, blobs, ball-like blobs and why others were dropped */
-    stats = { fg: 0, blobs: 0, cands: 0, tiny: 0, offLane: 0, size: 0, shape: 0 };
+    stats = { fg: 0, blobs: 0, cands: 0, tiny: 0, offLane: 0, size: 0, shape: 0, hyps: 0 };
     /** the ball's expected radius at the last position, in grid pixels */
     lastR = 0;
     t0 = 0;
@@ -9488,7 +9506,14 @@ ${url}`);
     recent = [];
     sampleIdx = [];
     fgAge = new Uint8Array(0);
+    hyps = [];
+    nextId = 1;
+    lead = null;
+    leadSeen = -1;
     s;
+    /** set to true to keep what was seen each frame (candidates and the chains being followed), for drawing what the tracker is doing */
+    debug = false;
+    dbg = null;
     constructor(setup) {
       this.s = setup;
       for (let i = 0; i < setup.mask.length; i += 5) if (setup.mask[i]) this.sampleIdx.push(i);
@@ -9502,6 +9527,9 @@ ${url}`);
       this.lanePrev = -1;
       this.lastLane = null;
       this.recent = [];
+      this.hyps = [];
+      this.lead = null;
+      this.leadSeen = -1;
       if (!keepBackground) {
         this.bg = null;
         this.bgC = null;
@@ -9522,14 +9550,14 @@ ${url}`);
       const b = applyHomography(this.s.Hinv, { x: laneX + r, y: laneY });
       return Math.max(1.2, Math.hypot(b.x - a.x, b.y - a.y) / 2 / this.s.scale);
     }
-    blobs(fg) {
+    blobs(fg, chroma) {
       const { w, h } = this.s;
       const seen2 = new Uint8Array(w * h);
       const out = [];
       const stack = [];
       for (let i = 0; i < fg.length; i++) {
         if (!fg[i] || seen2[i]) continue;
-        let sx = 0, sy = 0, n = 0;
+        let sx = 0, sy = 0, n = 0, sc = 0;
         let x0 = w, x1 = 0, y0 = h, y1 = 0;
         stack.push(i);
         seen2[i] = 1;
@@ -9540,6 +9568,7 @@ ${url}`);
           sx += x;
           sy += y;
           n++;
+          if (chroma) sc += chroma[k2];
           if (x < x0) x0 = x;
           if (x > x1) x1 = x;
           if (y < y0) y0 = y;
@@ -9551,9 +9580,24 @@ ${url}`);
             stack.push(q);
           }
         }
-        out.push({ x: sx / n, y: sy / n, area: n, w: x1 - x0 + 1, h: y1 - y0 + 1 });
+        out.push({ x: sx / n, y: sy / n, area: n, w: x1 - x0 + 1, h: y1 - y0 + 1, c: chroma ? sc / n : 128 });
       }
       return out;
+    }
+    /** Miles per hour between the first and last point of a chain, and the share of its steps that went down the lane. */
+    motion(h) {
+      const a = h.pts[0], b = h.pts[h.pts.length - 1];
+      const mph = (b.ly - a.ly) / Math.max(1e-6, b.t - a.t) * (3600 / 5280);
+      let fwd = 0;
+      for (let i = 1; i < h.pts.length; i++) if (h.pts[i].ly > h.pts[i - 1].ly + 0.05) fwd++;
+      const st2 = [];
+      for (let i = 1; i < h.pts.length; i++) st2.push({ x: h.pts[i].x - h.pts[i - 1].x, y: h.pts[i].y - h.pts[i - 1].y });
+      const mean3 = st2.length ? st2.reduce((acc, v) => acc + Math.hypot(v.x, v.y), 0) / st2.length : 0;
+      let jerk = 0;
+      for (let i = 1; i < st2.length; i++) jerk += Math.hypot(st2[i].x - st2[i - 1].x, st2[i].y - st2[i - 1].y);
+      jerk = st2.length > 1 ? jerk / (st2.length - 1) / Math.max(3, mean3) : 0;
+      const maxStep = st2.reduce((acc, v) => Math.max(acc, Math.hypot(v.x, v.y)), 0);
+      return { mph, fwd: h.pts.length > 1 ? fwd / (h.pts.length - 1) : 0, span: b.ly - a.ly, jerk, jumpy: maxStep > 3 * mean3 + 8 };
     }
     /** Feed one frame (grayscale, grid size, and optionally red-minus-blue). `t` is the frame's time in seconds. */
     step(gray, t, chroma) {
@@ -9578,10 +9622,11 @@ ${url}`);
         offC = dc.length ? dc[dc.length >> 1] : 0;
         const madC = dc.length ? [...dc].map((v) => Math.abs(v - offC)).sort((a, b) => a - b)[dc.length >> 1] * 1.4826 : 4;
         const thrC = Math.max(22, 5 * madC);
-        for (let i = 0; i < gray.length; i++) if (mask[i] && !fg[i] && Math.abs(chroma[i] - offC - bgC[i]) > thrC) fg[i] = 1;
+        for (let i = 0; i < gray.length; i++) if (mask[i] && !fg[i] && Math.abs(chroma[i] - offC - bgC[i]) > thrC) fg[i] = 1, fgCount++;
       }
       if (this.fgAge.length !== fg.length) this.fgAge = new Uint8Array(fg.length);
-      if (this.last) this.fgAge.fill(0);
+      const following = !!this.lead && this.lead.pts.length >= 2;
+      if (following) this.fgAge.fill(0);
       else
         for (let i = 0; i < fg.length; i++) {
           if (!fg[i]) this.fgAge[i] = 0;
@@ -9593,9 +9638,9 @@ ${url}`);
           }
         }
       const cands = [];
-      const st2 = { fg: fgCount, blobs: 0, cands: 0, tiny: 0, offLane: 0, size: 0, shape: 0 };
+      const st2 = { fg: fgCount, blobs: 0, cands: 0, tiny: 0, offLane: 0, size: 0, shape: 0, hyps: 0 };
       this.stats = st2;
-      for (const b of this.blobs(fg)) {
+      for (const b of this.blobs(fg, chroma)) {
         st2.blobs++;
         if (b.area < 2) {
           st2.tiny++;
@@ -9630,69 +9675,133 @@ ${url}`);
           continue;
         }
         st2.cands++;
-        cands.push({ ...b, y: b.y, lx: l.x, ly: l.y, er, q: Math.abs(Math.log(ratio)) + Math.abs(Math.log(Math.max(0.3, Math.min(3, aspect)))) * 0.4 });
+        const blue = (128 - b.c) / 0.6;
+        const q = Math.abs(Math.log(ratio)) + Math.abs(Math.log(Math.max(0.3, Math.min(3, aspect)))) * 0.6 + Math.abs(fill - 0.78) * 1.5 - 0.5 * Math.max(0, Math.min(1, (blue - 15) / 60));
+        cands.push({ ...b, y: b.y, lx: l.x, ly: l.y, er, q });
       }
-      let best;
-      if (this.last) {
-        const px = this.last.x + this.last.vx;
-        const py = this.last.y + this.last.vy;
-        const reach = Math.max(7, 2.4 * Math.hypot(this.last.vx, this.last.vy) + 2.5 * (cands[0]?.er ?? 3));
-        best = cands.filter((c) => Math.hypot(c.x - px, c.y - py) < reach && c.ly >= this.lanePrev - 1.2).sort((a, b) => Math.hypot(a.x - px, a.y - py) + 6 * a.q - (Math.hypot(b.x - px, b.y - py) + 6 * b.q))[0];
-        if (!best && this.lastLane) {
-          const dt = Math.max(5e-3, t - this.lastLane.t);
-          const ll = this.lastLane;
-          best = cands.filter((c) => c.ly >= ll.y - 0.8 && c.ly <= ll.y + 51 * dt + 2 && Math.abs(c.lx - ll.x) <= 4 + 9 * dt).sort((a, b) => a.q - b.q)[0];
+      const used = /* @__PURE__ */ new Set();
+      for (const hy of this.hyps) {
+        const lastPt = hy.pts[hy.pts.length - 1];
+        const px = lastPt.x + hy.vx, py = lastPt.y + hy.vy;
+        const reach = Math.max(8, 2 * Math.hypot(hy.vx, hy.vy) + 1.4 * lastPt.er);
+        let bi = -1, bs = Infinity;
+        cands.forEach((c, i) => {
+          if (used.has(i) || c.ly < lastPt.ly - 1.2) return;
+          const dd = Math.hypot(c.x - px, c.y - py);
+          if (dd >= reach) return;
+          const sc = dd + 6 * c.q;
+          if (sc < bs) bs = sc, bi = i;
+        });
+        if (bi < 0) {
+          const dt = Math.max(5e-3, t - lastPt.t);
+          let bq = Infinity;
+          cands.forEach((c, i) => {
+            if (used.has(i)) return;
+            if (c.ly >= lastPt.ly - 0.8 && c.ly <= lastPt.ly + 51 * dt + 2 && Math.abs(c.lx - lastPt.lx) <= 4 + 9 * dt && c.q < bq) bq = c.q, bi = i;
+          });
+          if (bi >= 0 && hy.pts.length < 3 && dt < 0.12) bi = -1;
         }
-      } else {
-        best = cands.filter((c) => c.ly < 48).sort((a, b) => a.q - b.q || a.ly - b.ly)[0];
+        if (bi >= 0) {
+          const c = cands[bi];
+          used.add(bi);
+          hy.vx = hy.pts.length ? 0.6 * (c.x - lastPt.x) + 0.4 * hy.vx : 0;
+          hy.vy = hy.pts.length ? 0.6 * (c.y - lastPt.y) + 0.4 * hy.vy : 0;
+          hy.pts.push({ x: c.x, y: c.y, lx: c.lx, ly: c.ly, t, er: c.er });
+          hy.qsum += c.q;
+          hy.miss = 0;
+        } else {
+          hy.miss++;
+          lastPt.x += 0;
+        }
       }
-      if (best) {
-        this.lost = 0;
-        const prev = this.last;
-        this.last = { x: best.x, y: best.y, vx: prev ? 0.6 * (best.x - prev.x) + 0.4 * prev.vx : 0, vy: prev ? 0.6 * (best.y - prev.y) + 0.4 * prev.vy : 0 };
-        globalThis.__trk?.push({ x: best.x, y: best.y, area: best.area, er: best.er, ly: best.ly, w: best.w, h: best.h });
-        this.lanePrev = Math.max(this.lanePrev, best.ly);
-        this.lastLane = { x: best.lx, y: best.ly, t };
-        this.lastR = best.er;
-        if (!this.path.length) this.t0 = t;
-        this.path.push({ t: t - this.t0, x: best.lx, y: best.ly });
-        this.trail.push({ x: best.x * this.s.scale, y: best.y * this.s.scale });
-        for (let i = 0; i < bg.length; i++) if (!fg[i]) bg[i] += (gray[i] - off - bg[i]) * 0.01 + 0;
-        if (bgC && chroma) {
-          for (let i = 0; i < bgC.length; i++) if (!fg[i]) bgC[i] += (chroma[i] - offC - bgC[i]) * 0.01;
-        }
-        this.recent.push(best.ly);
-        if (this.recent.length > 12) this.recent.shift();
-        const progress2 = this.recent.length >= 12 ? best.ly - this.recent[0] : Infinity;
-        if (progress2 < 1 && this.confirmed && this.lanePrev > 40) return "finished";
-        if (progress2 < 0.4 && !this.confirmed && this.path.length > 14) return this.reset(), "reset";
-        if (this.path.length > 500) return this.confirmed ? "finished" : (this.reset(), "reset");
-        let event = "tracking";
-        if (!this.confirmed && this.path.length >= 5) {
-          const a = this.path[0];
-          const b = this.path[this.path.length - 1];
-          const mph = (b.y - a.y) / Math.max(1e-6, b.t - a.t) * (3600 / 5280);
-          if (mph >= 6 && mph <= 35) {
-            this.confirmed = true;
-            event = "confirmed";
-          } else if (this.path.length >= 8) {
-            this.reset();
-            return "reset";
+      if (!this.confirmed) {
+        cands.forEach((c, i) => {
+          if (used.has(i) || c.ly >= 48 || this.hyps.length >= 16) return;
+          this.hyps.push({ id: this.nextId++, pts: [{ x: c.x, y: c.y, lx: c.lx, ly: c.ly, t, er: c.er }], vx: 0, vy: 0, miss: 0, qsum: c.q, confirmed: false });
+        });
+      } else if (this.lead && this.lead.miss > 0) {
+        cands.forEach((c, i) => {
+          if (used.has(i)) return;
+          const lp = this.lead.pts[this.lead.pts.length - 1];
+          const dt = Math.max(5e-3, t - lp.t);
+          if (c.ly >= lp.ly - 0.8 && c.ly <= lp.ly + 51 * dt + 2 && Math.abs(c.lx - lp.lx) <= 4 + 9 * dt) {
+            this.lead.pts.push({ x: c.x, y: c.y, lx: c.lx, ly: c.ly, t, er: c.er });
+            this.lead.miss = 0;
+            used.add(i);
           }
-        }
-        if (best.ly > 56) return this.confirmed ? "finished" : (this.reset(), "reset");
-        return event;
+        });
       }
-      if (this.last) {
-        this.last = { x: this.last.x + this.last.vx, y: this.last.y + this.last.vy, vx: this.last.vx, vy: this.last.vy };
+      this.hyps = this.hyps.filter((hy) => hy.miss <= (hy.confirmed ? this.lanePrev > 45 ? 10 : 40 : 4));
+      st2.hyps = this.hyps.length;
+      let justConfirmed = false;
+      if (!this.confirmed) {
+        let pick = null;
+        let pickScore = -Infinity;
+        for (const hy of this.hyps) {
+          if (hy.pts.length < 5) continue;
+          const m = this.motion(hy);
+          if (m.mph >= 6 && m.mph <= 35 && m.fwd >= 0.7 && m.span >= 3 && m.jerk <= 0.8 && !m.jumpy) {
+            const score = hy.pts.length - 3 * (hy.qsum / hy.pts.length) - 2 * m.jerk;
+            if (score > pickScore) pick = hy, pickScore = score;
+          } else if (hy.pts.length >= 9) hy.miss = 99;
+        }
+        if (pick) {
+          pick.confirmed = true;
+          this.confirmed = true;
+          justConfirmed = true;
+          this.hyps = [pick];
+        }
+      }
+      let lead = null;
+      if (this.confirmed) lead = this.hyps[0] ?? this.lead;
+      else lead = this.hyps.filter((x) => x.miss === 0 && x.pts.length >= 1).sort((a, b) => b.pts.length - 3 * (b.qsum / b.pts.length) - 2 * this.motion(b).jerk - (a.pts.length - 3 * (a.qsum / a.pts.length) - 2 * this.motion(a).jerk))[0] ?? null;
+      this.lead = lead;
+      if (this.debug) this.dbg = { cands: cands.map((c) => ({ x: c.x, y: c.y, q: c.q, er: c.er, ly: c.ly, area: c.area })), hyps: this.hyps.map((x) => {
+        const p = x.pts[x.pts.length - 1];
+        return { id: x.id, n: x.pts.length, x: p.x, y: p.y, vx: x.vx, vy: x.vy, conf: x.confirmed, miss: x.miss };
+      }), lead: lead ? lead.id : null, fgBox: null };
+      if (lead) {
+        const n = lead.pts.length;
+        const pt2 = lead.pts[n - 1];
+        const matched = lead.miss === 0;
+        this.last = { x: pt2.x + (matched ? 0 : lead.vx * lead.miss), y: pt2.y + (matched ? 0 : lead.vy * lead.miss), vx: lead.vx, vy: lead.vy };
+        this.lost = lead.miss;
+        this.lastR = pt2.er;
+        this.lanePrev = Math.max(...lead.pts.map((p) => p.ly));
+        if (this.leadSeen !== lead.id) {
+          this.leadSeen = lead.id;
+          this.recent = [];
+        }
+        this.lastLane = { x: pt2.lx, y: pt2.ly, t: pt2.t };
+        this.t0 = lead.pts[0].t;
+        this.path = lead.pts.map((p) => ({ t: p.t - this.t0, x: p.lx, y: p.ly }));
+        this.trail = lead.pts.map((p) => ({ x: p.x * this.s.scale, y: p.y * this.s.scale }));
+        if (matched) {
+          for (let i = 0; i < bg.length; i++) if (!fg[i]) bg[i] += (gray[i] - off - bg[i]) * 0.01;
+          if (bgC && chroma) {
+            for (let i = 0; i < bgC.length; i++) if (!fg[i]) bgC[i] += (chroma[i] - offC - bgC[i]) * 0.01;
+          }
+          this.recent.push(pt2.ly);
+          if (this.recent.length > 12) this.recent.shift();
+          const progress2 = this.recent.length >= 12 ? pt2.ly - this.recent[0] : Infinity;
+          if (progress2 < 1 && this.confirmed && this.lanePrev > 40) return "finished";
+          if (this.path.length > 500) return this.confirmed ? "finished" : (this.reset(), "reset");
+          if (pt2.ly > 56) return this.confirmed ? "finished" : (this.reset(), "reset");
+          return justConfirmed ? "confirmed" : "tracking";
+        }
         const limit = this.lanePrev > 45 ? 10 : 40;
-        if (++this.lost > limit) {
+        if (this.lost > limit) {
           if (this.confirmed && this.lanePrev > 30) return "finished";
           this.reset();
           return "reset";
         }
         return "tracking";
       }
+      if (this.last && !this.hyps.length) {
+        this.reset();
+        return "reset";
+      }
+      this.last = null;
       for (let i = 0; i < bg.length; i++) bg[i] += (gray[i] - off - bg[i]) * 0.04;
       if (bgC && chroma) for (let i = 0; i < bgC.length; i++) bgC[i] += (chroma[i] - offC - bgC[i]) * 0.04;
       return "idle";
@@ -9907,7 +10016,14 @@ ${url}`);
     overlay.width = video.videoWidth;
     overlay.height = video.videoHeight;
     await setupZoom();
-    GH = Math.round(GW * video.videoHeight / video.videoWidth);
+    const portrait = video.videoHeight > video.videoWidth;
+    GW = portrait ? Math.max(240, Math.round(640 * video.videoWidth / video.videoHeight)) : 640;
+    GH = portrait ? 640 : Math.round(GW * video.videoHeight / video.videoWidth);
+    const stageEl2 = document.getElementById("stage");
+    if (stageEl2) {
+      stageEl2.classList.toggle("portrait", portrait);
+      stageEl2.style.setProperty("--par", String(video.videoWidth / video.videoHeight));
+    }
     work.width = GW;
     work.height = GH;
     document.body.classList.add("live");
