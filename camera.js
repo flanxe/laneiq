@@ -61,6 +61,7 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        "Spin for every shot: each recorded shot's rev rate, axis rotation and axis tilt are now read automatically from its own clip and shown in the shot review and the Spin lab. A clip too coarse to read a spin from (30 fps with a small ball, for example) says so plainly and shows no numbers instead of guessing; slow-motion video gives the best reads.",
         "The lane lock runs the full length of the lane, foul line to the head pin. After any lock that was found or picked (not one you traced by hand), the far end is checked against where the pins stand over the next few seconds and moved onto them when the readings agree. A lock saved by an older version, which could stop short of the pins, is dropped so the lane is found afresh.",
         'A guided tour of the app: it starts by itself the first time you use LaneIQ, and "Take the tour" on the start screen replays it. It walks through the camera, the lane lock, fixing a lock, the shot measurements, pinfall, and each tab.',
         "Each shot is now recorded from the bowler's approach until the rack is full again (or the next ball comes), instead of only the roll. Once it is over, the whole recording is searched at once for the ball's path, so nothing is predicted: the chain of blobs that is most ball-like and travels furthest down the lane is the shot.",
@@ -1534,9 +1535,9 @@
   }
   function smoothPath(p, half = 3) {
     if (p.length < 5) return p;
-    const med2 = (a) => [...a].sort((x, y) => x - y)[a.length >> 1];
-    const xm = p.map((_, i) => med2(p.slice(Math.max(0, i - 3), Math.min(p.length, i + 4)).map((s) => s.x)));
-    const ym = p.map((_, i) => med2(p.slice(Math.max(0, i - 3), Math.min(p.length, i + 4)).map((s) => s.y)));
+    const med3 = (a) => [...a].sort((x, y) => x - y)[a.length >> 1];
+    const xm = p.map((_, i) => med3(p.slice(Math.max(0, i - 3), Math.min(p.length, i + 4)).map((s) => s.x)));
+    const ym = p.map((_, i) => med3(p.slice(Math.max(0, i - 3), Math.min(p.length, i + 4)).map((s) => s.y)));
     const out = p.map((s, i) => {
       const lo = Math.max(0, i - half), hi = Math.min(p.length - 1, i + half);
       let n = 0, st2 = 0, sx = 0, sy = 0, stt = 0, stx = 0, sty = 0;
@@ -2975,7 +2976,7 @@
     }
     const sm = new Float32Array(sw * sh);
     for (let y = 1; y < sh - 1; y++) for (let x = 1; x < sw - 1; x++) sm[y * sw + x] = (4 * g[y * sw + x] + g[y * sw + x - 1] + g[y * sw + x + 1] + g[(y - 1) * sw + x] + g[(y + 1) * sw + x]) / 8;
-    const at2 = (x, y) => {
+    const at3 = (x, y) => {
       const xi = Math.max(1, Math.min(sw - 2, Math.round(x))), yi = Math.max(1, Math.min(sh - 2, Math.round(y)));
       return sm[yi * sw + xi];
     };
@@ -2994,7 +2995,7 @@
           row[ri] = 0;
           continue;
         }
-        const inner = (at2(x - ux * 2, y - uy * 2) + at2(x - ux * 3, y - uy * 3)) / 2, outer2 = (at2(x + ux * 2, y + uy * 2) + at2(x + ux * 3, y + uy * 3)) / 2;
+        const inner = (at3(x - ux * 2, y - uy * 2) + at3(x - ux * 3, y - uy * 3)) / 2, outer2 = (at3(x + ux * 2, y + uy * 2) + at3(x + ux * 3, y + uy * 3)) / 2;
         row[ri] = Math.abs(outer2 - inner);
         if (fgScore) {
           const fin = (fgAt(x - ux * 3, y - uy * 3) + fgAt(x - ux * 5, y - uy * 5)) / 2, fout = (fgAt(x + ux * 3, y + uy * 3) + fgAt(x + ux * 5, y + uy * 5)) / 2;
@@ -7899,6 +7900,547 @@ ${url}`);
     return { series, start, end, pap, axisTrack, flareTravelIn, flareMaxIn, notes };
   }
 
+  // core/src/clipspin.ts
+  var BOARD_IN2 = 1.0625;
+  var BALL_DIAMETER_IN = 8.5;
+  var med2 = (v) => v.length ? [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)] : NaN;
+  function laneToPicture(cal) {
+    const lane = [{ x: 0, y: 0 }, { x: LANE_BOARDS, y: 0 }, { x: LANE_BOARDS, y: LANE_LENGTH_FT }, { x: 0, y: LANE_LENGTH_FT }];
+    const Hinv2 = solveHomography(lane, cal);
+    return (x, y) => applyHomography(Hinv2, { x, y });
+  }
+  function ballInPicture(P, x, y) {
+    const half = BALL_DIAMETER_IN / 2 / BOARD_IN2;
+    const a = P(x - half, y), b = P(x + half, y), c = P(x, y);
+    const r = Math.hypot(b.x - a.x, b.y - a.y) / 2;
+    return { cx: c.x, cy: c.y - r * 0.95, r };
+  }
+  function laneBasis(cal, vw, vh) {
+    if (cal.length !== 4) return null;
+    const lane = [{ x: 0, y: 0 }, { x: LANE_BOARDS * BOARD_IN2, y: 0 }, { x: LANE_BOARDS * BOARD_IN2, y: LANE_LENGTH_FT * 12 }, { x: 0, y: LANE_LENGTH_FT * 12 }];
+    const H2 = solveHomography(lane, cal);
+    const cx = vw / 2, cy = vh / 2;
+    const col = (j) => [H2[j], H2[3 + j], H2[6 + j]];
+    const h1 = col(0), h2 = col(1), h3 = col(2);
+    const a = (h) => [h[0] - cx * h[2], h[1] - cy * h[2]];
+    const a1 = a(h1), a2 = a(h2);
+    const A1 = a1[0] * a2[0] + a1[1] * a2[1], B1 = h1[2] * h2[2];
+    const A2 = a1[0] ** 2 + a1[1] ** 2 - a2[0] ** 2 - a2[1] ** 2, B2 = h1[2] ** 2 - h2[2] ** 2;
+    const s1 = Math.hypot(A1, B1) || 1, s2 = Math.hypot(A2, B2) || 1;
+    const uu = -(A1 / s1 * (B1 / s1) + A2 / s2 * (B2 / s2)) / ((A1 / s1) ** 2 + (A2 / s2) ** 2 || 1);
+    if (!(uu > 0)) return null;
+    const f = Math.sqrt(1 / uu);
+    const u1 = -B1 / (A1 || 1e-12), u2 = -B2 / (A2 || 1e-12);
+    const agree = u1 > 0 && u2 > 0 ? Math.max(0, 1 - Math.abs(Math.sqrt(1 / u1) - Math.sqrt(1 / u2)) / f) : 0.3;
+    const g = (h) => [(h[0] - cx * h[2]) / f, (h[1] - cy * h[2]) / f, h[2]];
+    let g1 = g(h1), g2 = g(h2);
+    const g3 = g(h3);
+    if (g3[2] < 0) g1 = g1.map((v) => -v), g2 = g2.map((v) => -v);
+    const u = (v) => {
+      const n = Math.hypot(v[0], v[1], v[2]) || 1;
+      return [v[0] / n, v[1] / n, v[2] / n];
+    };
+    const across = u(g1), down = u(g2);
+    let up = u([across[1] * down[2] - across[2] * down[1], across[2] * down[0] - across[0] * down[2], across[0] * down[1] - across[1] * down[0]]);
+    if (up[1] > 0) up = [-up[0], -up[1], -up[2]];
+    const pitch = Math.asin(Math.max(-1, Math.min(1, down[1]))) * 180 / Math.PI;
+    if (agree < 0.5 || !(f / Math.max(vw, vh) > 0.4 && f / Math.max(vw, vh) < 3)) return null;
+    return { across, down, up, focalPx: f, pitchDeg: pitch, agree };
+  }
+  function omegaInLane(om, b) {
+    const d = (v) => om.x * v[0] + om.y * v[1] + om.z * v[2];
+    return { x: d(b.across), y: -d(b.up), z: d(b.down) };
+  }
+  var at2 = (g, x, y) => {
+    const x0 = Math.floor(x), y0 = Math.floor(y);
+    if (x0 < 0 || y0 < 0 || x0 >= g.w - 1 || y0 >= g.h - 1) return NaN;
+    const fx = x - x0, fy = y - y0, i = y0 * g.w + x0;
+    return g.data[i] * (1 - fx) * (1 - fy) + g.data[i + 1] * fx * (1 - fy) + g.data[i + g.w] * (1 - fx) * fy + g.data[i + g.w + 1] * fx * fy;
+  };
+  function ringScore(g, cx, cy, r) {
+    const n = 40, w = Math.max(2, r * 0.07);
+    let sum = 0, pos = 0, cnt = 0;
+    const ds = [];
+    for (let i = 0; i < n; i++) {
+      const t = i / n * Math.PI * 2, ux = Math.cos(t), uy = Math.sin(t);
+      const d = at2(g, cx + ux * (r - w), cy + uy * (r - w)) - at2(g, cx + ux * (r + w), cy + uy * (r + w));
+      if (!Number.isFinite(d)) continue;
+      ds.push(d);
+      sum += d;
+      cnt++;
+    }
+    if (cnt < n * 0.7) return 0;
+    const s = sum >= 0 ? 1 : -1;
+    for (const d of ds) pos += Math.max(0, s * d);
+    return pos / cnt;
+  }
+  function refineCircle(g, c0, reach = 0.6) {
+    let best = { cx: c0.cx, cy: c0.cy, r: c0.r, s: ringScore(g, c0.cx, c0.cy, c0.r) };
+    for (const [stepF, spanF, rFactors] of [[0.1, reach, [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.12, 1.25, 1.4]], [0.04, 0.12, [0.88, 0.94, 1, 1.06, 1.12]], [0.015, 0.04, [0.97, 1, 1.03]]]) {
+      const base = { ...best };
+      const step = Math.max(0.5, base.r * stepF), span = base.r * spanF;
+      for (let dy = -span; dy <= span + 1e-6; dy += step)
+        for (let dx = -span; dx <= span + 1e-6; dx += step)
+          for (const rf of rFactors) {
+            const r = base.r * rf;
+            const s = ringScore(g, base.cx + dx, base.cy + dy, r);
+            if (s > best.s) best = { cx: base.cx + dx, cy: base.cy + dy, r, s };
+          }
+    }
+    return { circle: { cx: best.cx, cy: best.cy, r: best.r }, score: best.s };
+  }
+  function normalized(g, c, rs) {
+    const out = new Float32Array(g.w * g.h);
+    const k2 = c.r / rs;
+    for (let y = 0; y < g.h; y++)
+      for (let x = 0; x < g.w; x++) {
+        const v = at2(g, c.cx + (x - g.w / 2) * k2, c.cy + (y - g.h / 2) * k2);
+        out[y * g.w + x] = Number.isFinite(v) ? v : 0;
+      }
+    return { data: out, w: g.w, h: g.h };
+  }
+  function markStrength(g, c) {
+    const lim = c.r * 0.75, win = Math.max(3, Math.round(c.r / 7));
+    const vals = [];
+    for (let y = -lim; y <= lim; y += 2)
+      for (let x = -lim; x <= lim; x += 2) {
+        if (x * x + y * y > lim * lim) continue;
+        let s = 0, n = 0;
+        for (let j = -win; j <= win; j += 2) for (let i = -win; i <= win; i += 2) {
+          const v = at2(g, c.cx + x + i, c.cy + y + j);
+          if (Number.isFinite(v)) s += v, n++;
+        }
+        const v0 = at2(g, c.cx + x, c.cy + y);
+        if (n && Number.isFinite(v0)) vals.push(v0 - s / n);
+      }
+    if (vals.length < 20) return 0;
+    const m = vals.reduce((a, b) => a + b, 0) / vals.length;
+    return Math.sqrt(vals.reduce((a, b) => a + (b - m) ** 2, 0) / vals.length);
+  }
+  function searchOmega(a, b, c, maxDeg = 75, seeds = []) {
+    const pts = [];
+    const lim = c.r * 0.86;
+    const stepPx = Math.max(2, c.r / 11);
+    for (let y = -lim; y <= lim; y += stepPx)
+      for (let x = -lim; x <= lim; x += stepPx) {
+        if (x * x + y * y > lim * lim) continue;
+        const va = at2(a, c.cx + x, c.cy + y);
+        if (!Number.isFinite(va)) continue;
+        pts.push({ x, y, z: -Math.sqrt(Math.max(1e-6, c.r * c.r - x * x - y * y)), va });
+      }
+    if (pts.length < 40) return null;
+    const evalOm = (om) => {
+      const Rm = rotation(om);
+      let n = 0, sa = 0, sb = 0, saa = 0, sbb = 0, sab = 0;
+      for (const p of pts) {
+        const x = Rm[0][0] * p.x + Rm[0][1] * p.y + Rm[0][2] * p.z;
+        const y = Rm[1][0] * p.x + Rm[1][1] * p.y + Rm[1][2] * p.z;
+        const z = Rm[2][0] * p.x + Rm[2][1] * p.y + Rm[2][2] * p.z;
+        if (z > -c.r * 0.3 || x * x + y * y > lim * lim) continue;
+        const vb2 = at2(b, c.cx + x, c.cy + y);
+        if (!Number.isFinite(vb2)) continue;
+        n++;
+        sa += p.va;
+        sb += vb2;
+        saa += p.va * p.va;
+        sbb += vb2 * vb2;
+        sab += p.va * vb2;
+      }
+      if (n < pts.length * 0.35) return { s: -1, n };
+      const ma = sa / n, mb = sb / n;
+      const va = saa / n - ma * ma, vb = sbb / n - mb * mb;
+      if (va < 4 || vb < 4) return { s: -1, n };
+      return { s: (sab / n - ma * mb) / Math.sqrt(va * vb), n };
+    };
+    const dirs = [];
+    const N2 = 90;
+    for (let i = 0; i < N2; i++) {
+      const z = 1 - 2 * (i + 0.5) / N2, rr = Math.sqrt(1 - z * z), ph = i * 2.399963;
+      dirs.push({ x: rr * Math.cos(ph), y: rr * Math.sin(ph), z });
+    }
+    const cands = [];
+    for (let deg2 = 3; deg2 <= maxDeg; deg2 += deg2 < 20 ? 3 : 5) {
+      const ang2 = deg2 * Math.PI / 180;
+      for (const d of dirs) {
+        const om = { x: d.x * ang2, y: d.y * ang2, z: d.z * ang2 };
+        const e = evalOm(om);
+        cands.push({ om, s: e.s, n: e.n });
+      }
+    }
+    for (const s of seeds) cands.push({ om: s, ...(() => {
+      const e = evalOm(s);
+      return { s: e.s, n: e.n };
+    })() });
+    cands.sort((p, q) => q.s - p.s);
+    const picks = [];
+    for (const cd of cands) {
+      if (picks.length >= 4) break;
+      if (picks.every((p) => Math.hypot(p.om.x - cd.om.x, p.om.y - cd.om.y, p.om.z - cd.om.z) > 0.12)) picks.push(cd);
+    }
+    const refined = picks.map((p) => {
+      let best = { ...p };
+      for (let stepD = 2.5; stepD >= 0.15; stepD /= 2) {
+        const st2 = stepD * Math.PI / 180;
+        for (let it = 0; it < 6; it++) {
+          let moved = false;
+          for (const [dx, dy, dz] of [[st2, 0, 0], [-st2, 0, 0], [0, st2, 0], [0, -st2, 0], [0, 0, st2], [0, 0, -st2]]) {
+            const om = { x: best.om.x + dx, y: best.om.y + dy, z: best.om.z + dz };
+            const e = evalOm(om);
+            if (e.s > best.s + 1e-4) best = { om, s: e.s, n: e.n }, moved = true;
+          }
+          if (!moved) break;
+        }
+      }
+      return best;
+    });
+    refined.sort((p, q) => q.s - p.s);
+    const top = refined[0];
+    if (!top || top.s < 0.3) return null;
+    const second = refined.find((r) => r !== top && Math.hypot(r.om.x - top.om.x, r.om.y - top.om.y, r.om.z - top.om.z) > 0.2);
+    return { omega: top.om, score: top.s, margin: top.s - (second ? Math.max(0, second.s) : 0), overlap: top.n / pts.length };
+  }
+  function readPair(a, b, c, maxDeg = 75) {
+    const lk = pairOmega(a, b, c, { x: 0, y: 0 }, 6);
+    const lkOk = lk && lk.rmse < 1.2;
+    if (lkOk && Math.hypot(lk.omega.x, lk.omega.y, lk.omega.z) < 9 * Math.PI / 180) return { omega: lk.omega, score: 1 };
+    const sr = searchOmega(a, b, c, maxDeg, lkOk ? [lk.omega] : []);
+    if (!sr || sr.score < 0.75 || sr.margin < 0.08 || sr.overlap < 0.45) return null;
+    return { omega: sr.omega, score: sr.score };
+  }
+  var MAX_DEG_PER_FRAME = 50;
+  var GOOD_DEG_PER_FRAME = 25;
+  var MIN_BALL_PX = 26;
+  var FAST_RPM = 500;
+  var fpsNeeded = (rpm = FAST_RPM) => Math.ceil(rpm / 60 * 360 / GOOD_DEG_PER_FRAME / 60) * 60;
+  var none = (fps, reasons, advice, status2, extra = {}) => ({
+    status: status2,
+    rpm: null,
+    axisRotation: null,
+    axisTilt: null,
+    confidence: 0,
+    fps,
+    texture: null,
+    ballPx: 0,
+    degPerFrame: null,
+    t0: 0,
+    t1: 0,
+    pairsRead: 0,
+    pairsTried: 0,
+    consistency: null,
+    cameraPitchDeg: null,
+    reasons,
+    advice,
+    at: (/* @__PURE__ */ new Date()).toISOString(),
+    ...extra
+  });
+  var angleOf = (m) => Math.acos(Math.max(-1, Math.min(1, (m[0][0] + m[1][1] + m[2][2] - 1) / 2)));
+  var mulM = (a, b) => a.map((row) => [0, 1, 2].map((j) => row[0] * b[0][j] + row[1] * b[1][j] + row[2] * b[2][j]));
+  var transpose = (a) => a[0].map((_, j) => a.map((r) => r[j]));
+  var SLOW_ADVICE = `Film the release in slow motion (iPhone: Camera, Slo-mo, 240 fps) from behind the bowler with the ball as large as you can get it, then use the Spin lab to measure it.`;
+  async function analyzeClipSpin(frames, fps, rs, basis, hand2, pause = async () => {
+  }, debug) {
+    const pitch = basis ? basis.pitchDeg : null;
+    if (frames.length < 5) return none(fps, [`The ball is in only ${frames.length} frame${frames.length === 1 ? "" : "s"} of the clip.`], null, "none", { cameraPitchDeg: pitch });
+    let ballPx = med2(frames.map((f) => f.ballPx));
+    const base = { fps, ballPx, t0: frames[0].t, t1: frames[frames.length - 1].t, cameraPitchDeg: pitch };
+    const held = [];
+    for (const f of frames) {
+      const c0 = { cx: f.crop.w / 2, cy: f.crop.h / 2, r: rs };
+      const { circle, score } = refineCircle(f.crop, c0);
+      await pause();
+      held.push({ t: f.t, g: f.crop, c: circle, score, px: f.ballPx * circle.r / rs });
+    }
+    const sc = med2(held.map((h) => h.score));
+    const useable = held.filter((h) => h.score >= Math.max(3, sc * 0.5));
+    debug?.(held.map((h) => ({ t: h.t, crop: h.g, circle: h.c, score: h.score, kept: useable.includes(h) })));
+    if (useable.length < 5) return none(fps, ["The ball's outline couldn't be found in enough frames."], null, "none", base);
+    ballPx = med2(useable.map((h) => h.px));
+    base.ballPx = ballPx;
+    const texture = med2(useable.map((h) => markStrength(h.g, h.c)));
+    base.texture = texture;
+    if (ballPx < MIN_BALL_PX)
+      return none(fps, [`The ball is only about ${Math.round(ballPx)} pixels across in the clip; the surface can't be followed under about ${MIN_BALL_PX}.`], `Move closer or zoom in so the ball fills at least ${MIN_BALL_PX * 2} pixels at the start of the roll, or ${SLOW_ADVICE.charAt(0).toLowerCase() + SLOW_ADVICE.slice(1)}`, "too-coarse", base);
+    const cenC = { cx: useable[0].g.w / 2, cy: useable[0].g.h / 2, r: rs };
+    const aligned = useable.map((h) => ({ t: h.t, g: normalized(h.g, h.c, rs) }));
+    const omegas = [];
+    let tried = 0, read2 = 0, inl = 0;
+    const period = 1 / fps;
+    for (let i = 0; i + 1 < aligned.length; i++) {
+      const dt = aligned[i + 1].t - aligned[i].t;
+      if (dt < period * 0.5 || dt > period * 1.6) {
+        omegas.push(null);
+        continue;
+      }
+      tried++;
+      const sol = readPair(aligned[i].g, aligned[i + 1].g, cenC);
+      await pause();
+      if (sol) {
+        read2++;
+        inl += sol.score * 100;
+        omegas.push({ x: sol.omega.x * period / dt, y: sol.omega.y * period / dt, z: sol.omega.z * period / dt });
+      } else omegas.push(null);
+    }
+    const firstMags = omegas.filter((o) => !!o).map((o) => Math.hypot(o.x, o.y, o.z));
+    const firstDeg = med2(firstMags) * 180 / Math.PI;
+    let stride = 1;
+    if (firstMags.length >= 4 && firstDeg < 9 && aligned.length >= 8) {
+      stride = Math.min(8, Math.max(2, Math.round(14 / Math.max(firstDeg, 1))), aligned.length - 3);
+      const longer = [];
+      let tr2 = 0, rd2 = 0;
+      for (let i = 0; i + stride < aligned.length; i++) {
+        const dt = aligned[i + stride].t - aligned[i].t;
+        if (dt < period * stride * 0.7 || dt > period * stride * 1.3) {
+          longer.push(null);
+          continue;
+        }
+        tr2++;
+        const sol = readPair(aligned[i].g, aligned[i + stride].g, cenC);
+        await pause();
+        if (sol) {
+          rd2++;
+          longer.push({ x: sol.omega.x * period / dt, y: sol.omega.y * period / dt, z: sol.omega.z * period / dt });
+        } else longer.push(null);
+      }
+      if (rd2 >= 4) {
+        omegas.length = 0;
+        omegas.push(...longer);
+        tried = tr2;
+        read2 = rd2;
+      } else stride = 1;
+    }
+    let agreeN = 0, agreeOf = 0;
+    for (let i = 0; i + 2 < aligned.length && agreeOf < 8 && stride === 1; i++) {
+      const a = omegas[i], b = omegas[i + 1];
+      if (!a || !b) continue;
+      const dt = aligned[i + 2].t - aligned[i].t;
+      if (dt > period * 2.6) continue;
+      const sol = readPair(aligned[i].g, aligned[i + 2].g, cenC, 140);
+      await pause();
+      if (!sol && angleOf(mulM(rotation(b), rotation(a))) > 0.7) continue;
+      agreeOf++;
+      if (!sol) continue;
+      const comp = mulM(rotation(b), rotation(a));
+      const dir = rotation(sol.omega);
+      const resid = angleOf(mulM(transpose(dir), comp));
+      const turn = angleOf(comp);
+      if (resid <= Math.max(0.05, turn * 0.25)) agreeN++;
+    }
+    const got = omegas.filter((o) => !!o);
+    const mags = got.map((o) => Math.hypot(o.x, o.y, o.z));
+    const mx = med2(got.map((o, i) => o.x / (mags[i] || 1))), my = med2(got.map((o, i) => o.y / (mags[i] || 1))), mz = med2(got.map((o, i) => o.z / (mags[i] || 1)));
+    const mn = Math.hypot(mx, my, mz) || 1;
+    const steady = got.length ? got.filter((o, i) => (o.x * mx + o.y * my + o.z * mz) / (mags[i] * mn || 1) > Math.cos(35 * Math.PI / 180)).length / got.length : 0;
+    const consistency = stride > 1 ? steady : agreeOf >= 2 ? agreeN / agreeOf : null;
+    const out = { ...base, pairsRead: read2, pairsTried: tried, consistency, cameraPitchDeg: pitch, t0: aligned[0].t, t1: aligned[aligned.length - 1].t };
+    if (read2 < 4 || tried === 0)
+      return none(fps, [`Only ${read2} of ${tried} frame pairs had enough surface detail to follow. A plain ball with no logo, or a clip too soft to show one, can't be read this way.`], SLOW_ADVICE, "too-coarse", out);
+    const magMed = med2(mags);
+    const deg2 = magMed * 180 / Math.PI;
+    const spread = mags.length > 2 ? Math.sqrt(mags.reduce((a, m) => a + (m - magMed) ** 2, 0) / mags.length) / (magMed || 1) : 1;
+    const usedFrac = read2 / tried;
+    const rpmNow = magMed * fps * 60 / (2 * Math.PI);
+    const reasons = [];
+    let advice = null;
+    const implausible = rpmNow < 60 || rpmNow > 900;
+    const unsteady = steady < 0.6;
+    const coarse = deg2 > MAX_DEG_PER_FRAME || stride === 1 && consistency !== null && consistency < 0.5 || spread > 0.6 || usedFrac < 0.5 || implausible || unsteady;
+    if (deg2 > MAX_DEG_PER_FRAME) reasons.push(`At ${fps.toFixed(0)} frames a second the surface turns about ${deg2.toFixed(0)}\xB0 between frames; the tracking only follows up to about ${MAX_DEG_PER_FRAME}\xB0, so the rev rate can't be trusted.`);
+    if (stride === 1 && consistency !== null && consistency < 0.5) reasons.push(`Two single frame steps don't add up to the direct two-step turn (${Math.round(consistency * 100)}% agree), which is what a spin too fast for the frame rate looks like.`);
+    if (usedFrac < 0.5) reasons.push(`Only ${read2} of ${tried} frame pairs could be read.`);
+    if (implausible || unsteady || spread > 0.6) {
+      const lo = 300 * 6 / fps, hi = 450 * 6 / fps;
+      reasons.push(`The turn between frames could not be followed: ${implausible ? `it read as ${rpmNow.toFixed(0)} rpm, which no bowled ball does,` : "the spin axis it read jumps about from pair to pair,"} so what was followed is glare or shading rather than markings on the ball.`);
+      if (hi > GOOD_DEG_PER_FRAME) reasons.push(`At ${fps.toFixed(0)} fps a ball spinning at 300 to 450 rpm turns ${lo.toFixed(0)}\xB0 to ${hi.toFixed(0)}\xB0 every frame, more than the ${GOOD_DEG_PER_FRAME}\xB0 or so that can be followed.`);
+      if (texture < 3.5) reasons.push("The ball shows hardly any logo or markings in these frames.");
+    }
+    if (coarse) {
+      advice = `${fps.toFixed(0)} fps is too coarse for this ball. To follow about ${FAST_RPM} rpm the camera needs at least ${fpsNeeded()} fps. ${SLOW_ADVICE}`;
+      return none(fps, reasons, advice, "too-coarse", { ...out, degPerFrame: deg2, rpm: null });
+    }
+    const med3 = (k2) => med2(omegas.filter((o) => !!o).map((o) => o[k2]));
+    const om = { x: med3("x"), y: med3("y"), z: med3("z") };
+    const lane = basis ? omegaInLane(om, basis) : om;
+    const s = spinFromOmega(lane, fps, "behind", hand2);
+    if (!s) return none(fps, ["The rotation came out as zero."], SLOW_ADVICE, "too-coarse", out);
+    const caveats = [...s.notes];
+    if (!basis) caveats.push("The lane lock can't say how far the camera tilts down, so axis tilt assumes it looks level down the lane and is off by roughly that tilt.");
+    else if (basis.agree < 0.6) caveats.push("The camera tilt taken from the lane lock is shaky, so axis tilt could be off by a few degrees.");
+    if (ballPx < 40) caveats.push(`The ball is only about ${Math.round(ballPx)} pixels across, so axis rotation and tilt could be off by 10\xB0 or more.`);
+    const sizeF = Math.min(1, ballPx / 60);
+    const confidence = Math.max(0, Math.min(1, s.quality * usedFrac * (consistency ?? 0.6) * (1 - Math.min(0.8, spread)) * (0.5 + 0.5 * sizeF) * (deg2 < MAX_DEG_PER_FRAME * 0.7 ? 1 : 0.8) * Math.min(1, inl / Math.max(1, read2) / 120 + 0.4)));
+    const status2 = confidence >= 0.55 ? "measured" : confidence >= 0.3 ? "rough" : "too-coarse";
+    if (status2 === "too-coarse") return none(fps, [...reasons, `Confidence only ${Math.round(confidence * 100)}%.`], SLOW_ADVICE, "too-coarse", { ...out, degPerFrame: deg2 });
+    void rpmNow;
+    return { ...none(fps, [...reasons, ...caveats], null, status2, out), status: status2, rpm: s.rpm, axisRotation: s.axisRotation, axisTilt: s.axisTilt, confidence, degPerFrame: deg2 };
+  }
+
+  // camera/clipspin.ts
+  var esc2 = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  var RS = 56;
+  var MAX_FRAMES = 26;
+  var pathAt = (path2, t) => {
+    if (path2.length < 2 || t < path2[0].t - 0.05 || t > path2[path2.length - 1].t + 0.05) return null;
+    let i = 1;
+    while (i < path2.length - 1 && path2[i].t < t) i++;
+    const a = path2[i - 1], b = path2[i];
+    const k2 = b.t > a.t ? Math.max(0, Math.min(1, (t - a.t) / (b.t - a.t))) : 0;
+    return { x: a.x + (b.x - a.x) * k2, y: a.y + (b.y - a.y) * k2 };
+  };
+  var waitFor = (el, ev, ms = 2e4) => new Promise((res, rej) => {
+    const to = setTimeout(() => rej(new Error(`The video didn't ${ev}.`)), ms);
+    el.addEventListener(ev, () => (clearTimeout(to), res()), { once: true });
+  });
+  async function measureShotSpin(shot, clip, hand2, onProgress, debug) {
+    const fail = (msg) => ({ status: "none", rpm: null, axisRotation: null, axisTilt: null, confidence: 0, fps: 0, texture: null, ballPx: 0, degPerFrame: null, t0: 0, t1: 0, pairsRead: 0, pairsTried: 0, consistency: null, cameraPitchDeg: null, reasons: [msg], advice: null, at: (/* @__PURE__ */ new Date()).toISOString() });
+    if (shot.cal.length !== 4 || shot.path.length < 4) return fail("This shot has no lane lock or path saved, so the ball can't be found in its video.");
+    const url = URL.createObjectURL(clip);
+    const v = document.createElement("video");
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = "auto";
+    v.style.cssText = "position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.02;pointer-events:none";
+    document.body.appendChild(v);
+    v.src = url;
+    try {
+      onProgress?.("Opening the video\u2026");
+      await waitFor(v, "loadedmetadata");
+      if (!v.requestVideoFrameCallback) return fail("This browser can't step through video frames, so the spin can't be measured here.");
+      const sx = v.videoWidth / shot.vw, sy = v.videoHeight / shot.vh;
+      const cal = shot.cal.map((p) => ({ x: p.x * sx, y: p.y * sy }));
+      const P = laneToPicture(cal);
+      const basis = laneBasis(cal, v.videoWidth, v.videoHeight);
+      const ballAt = (clipT) => {
+        const lp = pathAt(shot.path, clipT + shot.recStartT);
+        return lp ? ballInPicture(P, lp.x, lp.y) : null;
+      };
+      const tFirst = shot.path[0].t - shot.recStartT, tLast = shot.path[shot.path.length - 1].t - shot.recStartT;
+      let tEnd = tFirst;
+      for (let t = tFirst; t <= tLast; t += 0.02) {
+        const b = ballAt(t);
+        if (!b || b.r * 2 < MIN_BALL_PX * 0.8) break;
+        tEnd = t;
+      }
+      const frames = [];
+      const times = [];
+      const cnv = document.createElement("canvas");
+      const ctx2 = cnv.getContext("2d", { willReadFrequently: true });
+      ctx2.imageSmoothingQuality = "high";
+      const startAt = Math.max(0, tFirst - 0.15);
+      const capture = async () => {
+        frames.length = 0;
+        times.length = 0;
+        v.currentTime = startAt;
+        await waitFor(v, "seeked").catch(() => {
+        });
+        v.playbackRate = 0.5;
+        await new Promise((resolve) => {
+          let done2 = false;
+          const finish2 = () => {
+            if (done2) return;
+            done2 = true;
+            v.pause();
+            resolve();
+          };
+          const guard = setTimeout(finish2, Math.max(8e3, (tEnd - startAt) / 0.5 * 1e3 + 8e3));
+          const onFrame2 = (_n, meta) => {
+            if (done2) return;
+            const t = meta.mediaTime;
+            if (t >= tFirst - 0.02 && t <= tEnd + 0.02 && frames.length < MAX_FRAMES) {
+              const b = ballAt(t);
+              if (b) {
+                const Sx = b.r * 1.35;
+                const scale2 = RS / b.r;
+                const size = Math.round(2 * Sx * scale2);
+                cnv.width = cnv.height = size;
+                ctx2.drawImage(v, b.cx - Sx, b.cy - Sx, 2 * Sx, 2 * Sx, 0, 0, size, size);
+                const px = ctx2.getImageData(0, 0, size, size).data;
+                const g = new Float32Array(size * size);
+                for (let i = 0; i < g.length; i++) g[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+                frames.push({ t: t + shot.recStartT, crop: { data: g, w: size, h: size }, ballPx: b.r * 2 });
+                times.push(t);
+                onProgress?.(`Reading the video\u2026 frame ${frames.length}`);
+              }
+            }
+            if (t > tEnd + 0.02 || v.ended || frames.length >= MAX_FRAMES) {
+              clearTimeout(guard);
+              finish2();
+            } else v.requestVideoFrameCallback(onFrame2);
+          };
+          v.requestVideoFrameCallback(onFrame2);
+          v.play().catch(() => {
+            clearTimeout(guard);
+            finish2();
+          });
+        });
+      };
+      await capture();
+      if (!frames.length) await capture();
+      const dts = times.slice(1).map((t, i) => t - times[i]).filter((d) => d > 2e-3).sort((a, b) => a - b);
+      const fps = dts.length ? 1 / dts[Math.floor(dts.length / 2)] : 0;
+      if (!frames.length || !fps) return fail("No video frames could be read from this clip.");
+      onProgress?.("Measuring the spin\u2026");
+      return await analyzeClipSpin(frames, fps, RS, basis, hand2, () => new Promise((r) => setTimeout(r, 0)), debug);
+    } catch (e) {
+      return fail(e instanceof Error ? e.message : "The video could not be read.");
+    } finally {
+      v.remove();
+      v.removeAttribute("src");
+      v.load();
+      URL.revokeObjectURL(url);
+    }
+  }
+  var STATUS_LABEL = { measured: "from the video", rough: "rough, from the video", "too-coarse": "not measurable from this clip", none: "not measured" };
+  function spinCardHtml(s, state = "idle") {
+    if (!s)
+      return `<div class="card"><div class="k">Spin</div><div class="u">${state === "running" ? "Measuring the spin from this shot's video\u2026" : state === "pending" ? "The spin will be measured from this shot's video shortly." : "Not measured yet."}</div></div>`;
+    if (s.status === "measured" || s.status === "rough") {
+      const bad = s.status === "rough";
+      return `<div class="card"><div class="k">Spin (${STATUS_LABEL[s.status]})</div>
+      <div class="grid" style="margin-top:8px">
+        <div class="card"><div class="k">Rev rate</div><div class="v">${Math.round(s.rpm)}</div><div class="u">RPM</div></div>
+        <div class="card"><div class="k">Axis rotation</div><div class="v">${s.axisRotation.toFixed(0)}\xB0</div><div class="u">0\xB0 = forward roll</div></div>
+        <div class="card"><div class="k">Axis tilt</div><div class="v">${s.axisTilt.toFixed(0)}\xB0</div><div class="u">above horizontal</div></div>
+      </div>
+      <span class="badge ${bad ? "tentative" : "moderate"}">${bad ? "rough" : "measured"} \xB7 confidence ${Math.round(s.confidence * 100)}%</span>
+      <div class="note">Read from ${s.pairsRead} frame pairs at ${s.fps.toFixed(0)} fps, ${s.t0.toFixed(2)} to ${s.t1.toFixed(2)} s into the roll, with the ball about ${Math.round(s.ballPx)} pixels across (${s.degPerFrame?.toFixed(0) ?? "?"}\xB0 of turn per frame). Measured near the foul line, not the whole way down the lane.</div>
+      ${s.reasons.length ? `<ul>${s.reasons.map((r) => `<li>${esc2(r)}</li>`).join("")}</ul>` : ""}</div>`;
+    }
+    return `<div class="card"><div class="k">Spin</div><div class="lr-head" style="font-size:17px">${s.status === "none" ? "Couldn't be measured" : "This clip is too coarse to measure the spin"}</div>
+    <ul>${s.reasons.map((r) => `<li>${esc2(r)}</li>`).join("")}</ul>
+    ${s.advice ? `<div class="note">${esc2(s.advice)}</div>` : ""}</div>`;
+  }
+
+  // camera/spinqueue.ts
+  var waiting = /* @__PURE__ */ new Map();
+  var chain = Promise.resolve();
+  var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  function queueSpin(shot, opts = {}) {
+    if (!opts.force && shot.spin) return Promise.resolve(shot.spin);
+    const key2 = shot.id;
+    const have = waiting.get(key2);
+    if (have) return have;
+    const job = new Promise((resolve) => {
+      chain = chain.then(async () => {
+        try {
+          for (let i = 0; opts.busy?.() && i < 120; i++) await sleep(1e3);
+          const blob = opts.blob ?? (shot.hasClip ? await loadClip(shot.id) : void 0);
+          if (!blob) return resolve(void 0);
+          const hand2 = S.profile?.hand ?? "R";
+          const r = await measureShotSpin(shot, blob, hand2, opts.onProgress);
+          shot.spin = r;
+          await updateShot(shot);
+          resolve(r);
+        } catch {
+          resolve(void 0);
+        } finally {
+          waiting.delete(key2);
+        }
+      });
+    });
+    waiting.set(key2, job);
+    return job;
+  }
+
   // camera/spinlab.ts
   function openSpinLab(onSaved) {
     const el = $("spinlab");
@@ -7916,6 +8458,7 @@ ${url}`);
     el.innerHTML = `
     <div class="row"><h2>Spin lab</h2><button class="btn ghost" id="sl-close">Close</button></div>
     <div class="note">Measures your ball's spin through the whole release from a <b>slow-motion video</b>: rev rate, axis rotation and axis tilt <i>over time</i>, and (if you mark the grip) your <b>PAP</b> and how far the axis flares across the ball. Film the ball as large as you can, in good light, camera behind the bowler or to one side, steady (a tripod). 240 fps works best. Validated on simulated footage only, so check a few results against a measurement you trust.</div>
+    <div class="card" id="sl-shots"></div>
     <div class="card">
       <div class="field"><label>1. Choose the video</label><input type="file" id="sl-file" accept="video/*"></div>
       <div class="two">
@@ -7935,6 +8478,42 @@ ${url}`);
       </div>
       <div id="sl-result"></div>
     </div>`;
+    const withClip = S.shots.filter((s) => s.hasClip).slice(-30).reverse();
+    const stat = (s) => !s.spin ? "not measured yet" : s.spin.status === "measured" || s.spin.status === "rough" ? `${Math.round(s.spin.rpm)} rpm (${s.spin.status})` : "too coarse";
+    const paintShots = () => {
+      const done2 = S.shots.filter((s) => s.spin && s.spin.status !== "too-coarse" && s.spin.status !== "none" && s.spin.rpm !== null);
+      const medv = (k2) => {
+        const a = done2.map((s) => s.spin[k2]).sort((x, y) => x - y);
+        return a[Math.floor(a.length / 2)];
+      };
+      $("sl-shots").innerHTML = `<div class="k">From a shot you recorded</div>
+      <div class="note">Every shot's video is read automatically. At 30 or 60 frames a second a ball turning 5 to 7 times a second turns 36\xB0 to 72\xB0 between frames and is only a few dozen pixels wide, so most ordinary clips come back as too coarse; slow-motion clips (120 or 240 fps, ball filling a good part of the frame) can be read.</div>
+      ${withClip.length ? `<div class="field"><select id="sl-shotsel">${withClip.map((s) => `<option value="${s.id}">${esc(new Date(s.at).toLocaleString())} \xB7 ${esc(stat(s))}</option>`).join("")}</select></div>
+      <div class="chips"><button class="btn" id="sl-shotgo">Measure this shot</button>${done2.length ? `<button class="chip" id="sl-usemed">Use the median of ${done2.length} measured shot${done2.length === 1 ? "" : "s"} (${Math.round(medv("rpm"))} rpm)</button>` : ""}</div>
+      <div class="note" id="sl-shotprog"></div><div id="sl-shotres">${spinCardHtml(withClip[0].spin)}</div>` : `<div class="note">No recorded shots with video yet.</div>`}`;
+      const sel2 = document.getElementById("sl-shotsel");
+      if (!sel2) return;
+      sel2.onchange = () => {
+        $("sl-shotres").innerHTML = spinCardHtml(withClip.find((x) => x.id === sel2.value)?.spin);
+      };
+      $("sl-shotgo").onclick = async () => {
+        const shot = withClip.find((x) => x.id === sel2.value);
+        if (!shot) return;
+        $("sl-shotres").innerHTML = spinCardHtml(void 0, "running");
+        await queueSpin(shot, { force: true, onProgress: (m) => {
+          $("sl-shotprog").textContent = m;
+        } });
+        paintShots();
+        document.getElementById("sl-shotsel").value = shot.id;
+        $("sl-shotres").innerHTML = spinCardHtml(shot.spin);
+      };
+      document.getElementById("sl-usemed")?.addEventListener("click", () => {
+        updateProfile({ spin: { ...S.profile?.spin ?? {}, rpm: Math.round(medv("rpm")), axisRotation: Math.round(medv("axisRotation")), axisTilt: Math.round(medv("axisTilt")), source: "video", at: (/* @__PURE__ */ new Date()).toISOString() } });
+        onSaved();
+        $("sl-close").click();
+      });
+    };
+    paintShots();
     const v = $("sl-v");
     const ov = $("sl-ov");
     const octx = ov.getContext("2d");
@@ -8420,8 +8999,8 @@ ${url}`);
           line2(pts[i - 1], pts[i], sp.color.startsWith("ramp") ? `hsl(${190 + 130 * t},100%,62%)` : sp.color, sp.width ?? 3);
         }
         ctx2.globalAlpha = 1;
-        const at2 = sp.ballAt;
-        const idx = at2 === void 0 || at2 === null ? -1 : Math.max(0, sp.path.findIndex((p) => p.t >= at2));
+        const at3 = sp.ballAt;
+        const idx = at3 === void 0 || at3 === null ? -1 : Math.max(0, sp.path.findIndex((p) => p.t >= at3));
         const b = idx >= 0 ? pts[Math.min(idx, pts.length - 1)] : sp.ballAt === void 0 ? null : pts[pts.length - 1];
         if (b) {
           const c = proj(cam, b);
@@ -8569,6 +9148,7 @@ ${url}`);
   var review3d = null;
   var play3dRaf = 0;
   function closeReview() {
+    reviewShotId = "";
     cancelAnimationFrame(reviewRaf);
     cancelAnimationFrame(play3dRaf);
     review3d?.destroy();
@@ -8578,6 +9158,7 @@ ${url}`);
     $("review").classList.remove("on");
     $("review").innerHTML = "";
   }
+  var reviewShotId = "";
   async function openReview(s) {
     const el = $("review");
     el.classList.add("on");
@@ -8599,11 +9180,29 @@ ${url}`);
     <div id="rv-3d" style="display:none"><div class="stagebox"><div id="rv-3d-host" style="position:relative;width:100%;aspect-ratio:4/3"></div></div><div class="chips"><button class="chip" id="rv-replay">Replay shot in 3D</button></div></div>
     <h3>Metrics</h3>
     <div class="card"><table>${FEATURES.map((f) => ({ f, v: s.m[f.key] })).filter((x) => typeof x.v === "number").map(({ f, v }) => `<tr><td>${esc(f.label)}</td><td class="n">${v.toFixed(f.unit === "\xB0" || f.unit === "mph" || f.unit === "ft" ? 1 : 1)} ${esc(f.unit)}</td></tr>`).join("")}</table></div>
+    <h3>Spin</h3>
+    <div id="rv-spin"></div>
     <h3>Result</h3>
     <div class="chips">${[10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((n) => `<button class="chip ${s.result?.pinsDown === n ? "sel" : n === 10 ? "x" : ""}" data-n="${n}">${n === 10 ? "Strike" : n}</button>`).join("")}</div>
     <h3>Ball</h3>
     <div class="chips">${S.arsenal.map((b) => `<button class="chip ${s.ballId === b.id ? "sel" : ""}" data-b="${b.id}">${esc(b.name)}</button>`).join("") || `<span class="note">Add balls in the Arsenal tab.</span>`}</div>
     <div class="chips"><button class="btn ghost danger" id="rv-del">Delete this shot</button></div>`;
+    const paintSpin = (state) => {
+      const box = document.getElementById("rv-spin");
+      if (!box || reviewShotId !== s.id) return;
+      box.innerHTML = spinCardHtml(s.spin, state) + (clip ? `<div class="chips"><button class="btn ghost" id="rv-respin" ${state === "running" ? "disabled" : ""}>Measure the spin again</button></div><div class="note" id="rv-spinprog"></div>` : "");
+      document.getElementById("rv-respin")?.addEventListener("click", () => runSpin(true));
+    };
+    const runSpin = (force) => {
+      paintSpin("running");
+      void queueSpin(s, { force, onProgress: (m) => {
+        const el2 = document.getElementById("rv-spinprog");
+        if (el2 && reviewShotId === s.id) el2.textContent = m;
+      } }).then(() => paintSpin("idle"));
+    };
+    reviewShotId = s.id;
+    if (s.spin || !clip) paintSpin("idle");
+    else runSpin(false);
     const topc = $("rv-topc");
     const drawTop = () => {
       const others = S.shots.filter((x) => x.id !== s.id && x.ballId === s.ballId).slice(-25).map((x) => ({ path: x.path, color: "rgba(255,255,255,.35)", width: 1.2, alpha: 0.5 }));
@@ -9212,15 +9811,15 @@ ${url}`);
   };
   function pinSnap(rgba, w, h, c) {
     const out = c.map((p) => ({ ...p }));
-    const none = { corners: out, moved: 0, found: false };
+    const none2 = { corners: out, moved: 0, found: false };
     const farY = (c[2].y + c[3].y) / 2, nearY = (c[0].y + c[1].y) / 2;
     const len = Math.abs(nearY - farY);
     const dir = Math.sign(nearY - farY) || 1;
-    if (len < 40) return none;
+    if (len < 40) return none2;
     const xa = Math.min(c[2].x, c[3].x), xb = Math.max(c[2].x, c[3].x);
     const pad = (xb - xa) * 0.12;
     const x0 = Math.max(0, Math.round(xa + pad)), x1 = Math.min(w - 1, Math.round(xb - pad));
-    if (x1 - x0 < 8) return none;
+    if (x1 - x0 < 8) return none2;
     const reach = 0.14 * len;
     const y0 = Math.max(0, Math.round(farY - dir * reach - (dir > 0 ? 0 : 0)));
     const rows = [];
@@ -9232,21 +9831,21 @@ ${url}`);
       rows.push({ y, f: n / (x1 - x0 + 1) });
     }
     void y0;
-    if (rows.length < 10) return none;
+    if (rows.length < 10) return none2;
     rows.sort((a, b) => dir > 0 ? a.y - b.y : b.y - a.y);
     const f = rows.map((r, i2) => (rows[Math.max(0, i2 - 1)].f + r.f + rows[Math.min(rows.length - 1, i2 + 1)].f) / 3);
     let i = 0;
     while (i < f.length && f[i] < 0.55) i++;
-    if (i >= f.length) return none;
+    if (i >= f.length) return none2;
     let peak = f[i], j = i;
     while (j < f.length && f[j] >= 0.5 * peak) {
       peak = Math.max(peak, f[j]);
       j++;
     }
-    if (j >= f.length) return none;
+    if (j >= f.length) return none2;
     const baseY = rows[j - 1].y;
     const moved = (baseY - farY) * dir * -1;
-    if (Math.abs(baseY - farY) > reach) return none;
+    if (Math.abs(baseY - farY) > reach) return none2;
     const slide = (near, far) => {
       const dy = far.y - near.y;
       if (Math.abs(dy) < 1e-6) return far;
@@ -9291,19 +9890,19 @@ ${url}`);
       }
     }
     if (!best) return null;
-    const chain = [];
+    const chain2 = [];
     let cur2 = [best.f, best.c];
     while (cur2) {
       const [f, c] = cur2;
-      chain.push({ t: frames[f].t, lx: frames[f].cands[c].lx, ly: frames[f].cands[c].ly });
+      chain2.push({ t: frames[f].t, lx: frames[f].cands[c].lx, ly: frames[f].cands[c].ly });
       cur2 = nodes[f][c].prev;
     }
-    chain.reverse();
-    if (chain.length < 8) return null;
-    const span = chain[chain.length - 1].ly - chain[0].ly;
-    const mph = span / Math.max(1e-6, chain[chain.length - 1].t - chain[0].t) * (3600 / 5280);
+    chain2.reverse();
+    if (chain2.length < 8) return null;
+    const span = chain2[chain2.length - 1].ly - chain2[0].ly;
+    const mph = span / Math.max(1e-6, chain2[chain2.length - 1].t - chain2[0].t) * (3600 / 5280);
     if (span < 12 || mph < 6 || mph > 40) return null;
-    return chain.map((p) => ({ t: p.t, x: p.lx, y: p.ly }));
+    return chain2.map((p) => ({ t: p.t, x: p.lx, y: p.ly }));
   }
 
   // core/src/stabilize.ts
@@ -9707,8 +10306,8 @@ ${url}`);
         b = (sw * sxy - sy2 * sx2) / den;
         a = (sx2 - b * sy2) / sw;
         const res = pts.map((p) => Math.abs(p.x - (a + b * p.y)));
-        const med2 = [...res].sort((p, q) => p - q)[Math.floor(res.length / 2)];
-        const lim = Math.max(1.5, 2.5 * med2);
+        const med3 = [...res].sort((p, q) => p - q)[Math.floor(res.length / 2)];
+        const lim = Math.max(1.5, 2.5 * med3);
         inl = pts.filter((_, k2) => res[k2] <= lim);
         if (inl.length < 30) return [];
       }
@@ -10613,8 +11212,8 @@ ${url}`);
         }
       return c ? s / c : Infinity;
     };
-    const none = score(0, 0);
-    let best = none;
+    const none2 = score(0, 0);
+    let best = none2;
     let bdx = 0;
     let bdy = 0;
     for (let dy = -range; dy <= range; dy++)
@@ -10623,7 +11222,7 @@ ${url}`);
         const v = score(dx, dy);
         if (v < best) best = v, bdx = dx, bdy = dy;
       }
-    return { dx: bdx, dy: bdy, best, none, energy, atLimit: Math.max(Math.abs(bdx), Math.abs(bdy)) >= range };
+    return { dx: bdx, dy: bdy, best, none: none2, energy, atLimit: Math.max(Math.abs(bdx), Math.abs(bdy)) >= range };
   }
 
   // core/src/pins.ts
@@ -11976,6 +12575,7 @@ ${url}`);
       p.shot.hasClip = false;
     }
     await updateShot(p.shot);
+    if (p.shot.hasClip) void queueSpin(p.shot, { blob: clip.blob, busy: () => recActive || !!pendingClip });
   }
   function approachWatch(g, media, now) {
     const sm = new Float32Array(Math.ceil(g.length / MOTION_STEP));
@@ -12156,13 +12756,13 @@ ${url}`);
     }
     ctx.restore();
   }
-  var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
   async function readPinfall(shot, start, full) {
     if (!start && !full) return;
     const counts = [];
     const stands = [];
     for (const wait of [900, 400, 400, 400, 400, 400]) {
-      await sleep(wait);
+      await sleep2(wait);
       const cur2 = lookAtPins();
       const r = cur2 ? pinfallNow(start, full, cur2) : null;
       counts.push(r ? r.down : null);
@@ -12171,8 +12771,8 @@ ${url}`);
     }
     const n = settledCount(counts);
     if (n === null || shot.result) return;
-    const at2 = counts.findIndex((c, i) => c === n && (counts[i + 1] === n || i === counts.length - 1));
-    const standing = stands[Math.max(0, at2)] ?? [];
+    const at3 = counts.findIndex((c, i) => c === n && (counts[i + 1] === n || i === counts.length - 1));
+    const standing = stands[Math.max(0, at3)] ?? [];
     const leave = n === 10 ? [] : standing.map((s, i) => s ? i + 1 : 0).filter(Boolean);
     shot.result = { pinsDown: n, auto: true, ...leave.length ? { leave } : {} };
     lastPinRead = { standing, at: performance.now(), down: n };
