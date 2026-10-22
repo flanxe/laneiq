@@ -53,6 +53,14 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-22-diag",
+      date: "2026-10-22",
+      title: "See why the ball isn't tracked",
+      items: [
+        "The status line under the camera now says how much of the picture the lane lock covers, how many things are moving, how many look like a ball, and why others were dropped (wrong size, wrong shape, off the lane). If no metrics appear, it says where the tracking is failing."
+      ]
+    },
+    {
       id: "2026-10-22-spin-lab",
       date: "2026-10-22",
       title: "A much more advanced Spin lab",
@@ -9468,6 +9476,8 @@ ${url}`);
     /** last blob (grid pixels) and its speed per frame */
     last = null;
     lost = 0;
+    /** what the last frame looked like to the tracker, so a silent screen can be explained: moving pixels, blobs, ball-like blobs and why others were dropped */
+    stats = { fg: 0, blobs: 0, cands: 0, tiny: 0, offLane: 0, size: 0, shape: 0 };
     /** the ball's expected radius at the last position, in grid pixels */
     lastR = 0;
     t0 = 0;
@@ -9560,7 +9570,8 @@ ${url}`);
       const mad = d.length ? [...d].map((v) => Math.abs(v - off)).sort((a, b) => a - b)[d.length >> 1] * 1.4826 : 4;
       const thr = Math.max(18, 4.5 * mad);
       const fg = new Uint8Array(w * h);
-      for (let i = 0; i < gray.length; i++) if (mask[i] && Math.abs(gray[i] - off - bg[i]) > thr) fg[i] = 1;
+      let fgCount = 0;
+      for (let i = 0; i < gray.length; i++) if (mask[i] && Math.abs(gray[i] - off - bg[i]) > thr) fg[i] = 1, fgCount++;
       let offC = 0;
       if (bgC && chroma) {
         const dc = this.sampleIdx.map((i) => chroma[i] - bgC[i]).sort((a, b) => a - b);
@@ -9582,21 +9593,43 @@ ${url}`);
           }
         }
       const cands = [];
+      const st2 = { fg: fgCount, blobs: 0, cands: 0, tiny: 0, offLane: 0, size: 0, shape: 0 };
+      this.stats = st2;
       for (const b of this.blobs(fg)) {
-        if (b.area < 2) continue;
+        st2.blobs++;
+        if (b.area < 2) {
+          st2.tiny++;
+          continue;
+        }
         const l0 = this.lane(b.x, b.y);
         const cy = Math.min(h - 1, b.y + 0.95 * this.expectedRadius(l0.x, l0.y));
-        if (!mask[Math.round(cy) * w + Math.round(b.x)]) continue;
+        if (!mask[Math.round(cy) * w + Math.round(b.x)]) {
+          st2.offLane++;
+          continue;
+        }
         const l = this.lane(b.x, cy);
-        if (l.y < -4 || l.y > 66 || l.x < -1 || l.x > 40) continue;
+        if (l.y < -4 || l.y > 66 || l.x < -1 || l.x > 40) {
+          st2.offLane++;
+          continue;
+        }
         const er = this.expectedRadius(l.x, l.y);
         const r = Math.sqrt(b.area / Math.PI);
         const ratio = r / er;
-        if (ratio < 0.3 || ratio > 2.6) continue;
+        if (ratio < 0.3 || ratio > 2.6) {
+          st2.size++;
+          continue;
+        }
         const aspect = b.h / Math.max(1, b.w);
-        if (aspect > 3.5 || aspect < 0.25) continue;
+        if (aspect > 3.5 || aspect < 0.25) {
+          st2.shape++;
+          continue;
+        }
         const fill = b.area / (b.w * b.h);
-        if (fill < 0.28) continue;
+        if (fill < 0.28) {
+          st2.shape++;
+          continue;
+        }
+        st2.cands++;
         cands.push({ ...b, y: b.y, lx: l.x, ly: l.y, er, q: Math.abs(Math.log(ratio)) + Math.abs(Math.log(Math.max(0.3, Math.min(3, aspect)))) * 0.4 });
       }
       let best;
@@ -10850,7 +10883,9 @@ ${url}`);
     diag.frames = diag.ballFrames = 0;
     diag.since = now;
     const el = document.getElementById("diag");
-    if (el) el.textContent = `Camera ${cameraFps || "?"} fps${cameraFps && cameraFps < 50 ? " (this phone's limit)" : ""} \xB7 analysing ${diag.perSec}/s \xB7 ball ${diag.ballSeen ? "seen" : "not seen"} \xB7 lane lock ${H ? armed ? "on" : "paused" : "searching"}`;
+    const ts = tracker?.stats;
+    const lockPct = laneMask ? Math.round(laneMask.reduce((a, m) => a + m, 0) / laneMask.length * 100) : 0;
+    if (el) el.textContent = `Camera ${cameraFps || "?"} fps${cameraFps && cameraFps < 50 ? " (this phone's limit)" : ""} \xB7 analysing ${diag.perSec}/s \xB7 ball ${diag.ballSeen ? "seen" : "not seen"} \xB7 lane lock ${H ? armed ? `on, covers ${lockPct}% of the picture` : "paused" : "searching"}${ts && H && armed ? ` \xB7 moving pixels ${ts.fg}, blobs ${ts.blobs}, ball-like ${ts.cands} (dropped: wrong size ${ts.size}, wrong shape ${ts.shape}, off the lane ${ts.offLane})` : ""}`;
   }
   function onFrame(_now, meta) {
     schedule();
