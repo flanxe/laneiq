@@ -61,6 +61,8 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        "Smoother paths before the arrows: the ball is biggest in the picture near the foul line and where its centre lands wobbles the most, so the first stretch is now smoothed over a longer window (easing to the normal one by about 22 ft), and sideways jumps no ball could make are dropped. The shot map and replays draw every path this way, including shots saved before, so old shots look cleaner too.",
+        "No dead end for spin: a clip that cannot be read for spin (a ball turns 36 to 72 degrees a frame at 30 or 60 fps) now says it needs a slow-motion pass and has one tap to read it from a slow-motion clip, instead of a plain refusal. Where a browser offers more than 60 frames a second (some Android phones show 120 or 240), the app now asks for it and records every frame while feeding the tracker about 60 a second. No spin numbers are invented for a clip that cannot give them.",
         "A sharpen filter for the ball tracker: an unsharp mask on the picture the ball is looked for in, so the edge of a ball, a pin or a foot stands out more cleanly. It is applied to the tracker's copy only (the lane lock and the shake stabilizer keep the plain picture), and tried on a real clip it finds the same shot with the same path.",
         "Replays: shot recordings now save in one-second chunks, a clip still waiting for the rack to reset is saved when you switch apps or the page closes, a stored clip handed back without its type is given one, the spin measurement now waits until the replay has played (two video decoders at once stall a phone), and a clip that will not play says why on screen and in the diagnostics, along with the recording steps (started, stopped, size, saved).",
         "Balls were being followed in pieces: a phone's log showed each shot confirmed twice, partway down the lane, with only 6 to 11 points, then finished with too little to measure. At 60 fps a chain was dropped after four missed frames (0.07 s), and a ball is not seen in every frame. A chain may now go unseen for about a quarter of a second at any frame rate, and the whole-recording search bridges gaps of up to a third of a second.",
@@ -1542,12 +1544,34 @@
       reachedDeck: last.y >= 60
     };
   }
-  function smoothPath(p, half = 3) {
+  function gatePath(p) {
+    if (p.length < 3) return p;
+    const out = [p[0]];
+    let rejected2 = 0;
+    for (let i = 1; i < p.length; i++) {
+      const a = out[out.length - 1];
+      const b = p[i];
+      const dy = Math.max(0, b.y - a.y);
+      if (Math.abs(b.x - a.x) <= 1.2 + 1.5 * dy || ++rejected2 > 14) {
+        out.push(b);
+        rejected2 = 0;
+      }
+    }
+    return out;
+  }
+  var halfAt = (y, base) => Math.max(base, Math.round(base + 5 * (1 - Math.min(1, Math.max(0, y - 6) / 16))));
+  function smoothPath(raw, base = 3) {
+    if (raw.length < 5) return raw;
+    const p = gatePath(raw);
     if (p.length < 5) return p;
     const med3 = (a) => [...a].sort((x, y) => x - y)[a.length >> 1];
-    const xm = p.map((_, i) => med3(p.slice(Math.max(0, i - 3), Math.min(p.length, i + 4)).map((s) => s.x)));
+    const xm = p.map((s, i) => {
+      const m = Math.max(3, halfAt(s.y, base) - 2);
+      return med3(p.slice(Math.max(0, i - m), Math.min(p.length, i + m + 1)).map((q) => q.x));
+    });
     const ym = p.map((_, i) => med3(p.slice(Math.max(0, i - 3), Math.min(p.length, i + 4)).map((s) => s.y)));
     const out = p.map((s, i) => {
+      const half = halfAt(s.y, base);
       const lo = Math.max(0, i - half), hi = Math.min(p.length - 1, i + half);
       let n = 0, st2 = 0, sx = 0, sy = 0, stt = 0, stx = 0, sty = 0;
       for (let j = lo; j <= hi; j++) {
@@ -6853,7 +6877,7 @@
       ctx2.lineWidth = m.width ?? 2;
       ctx2.lineJoin = "round";
       ctx2.beginPath();
-      m.path.forEach((s, i) => i ? ctx2.lineTo(px(s.x), py(s.y)) : ctx2.moveTo(px(s.x), py(s.y)));
+      smoothPath(m.path).forEach((s, i) => i ? ctx2.lineTo(px(s.x), py(s.y)) : ctx2.moveTo(px(s.x), py(s.y)));
       ctx2.stroke();
     }
     ctx2.restore();
@@ -8466,9 +8490,10 @@ ${url}`);
       <div class="note">Read from ${s.pairsRead} frame pairs at ${s.fps.toFixed(0)} fps, ${s.t0.toFixed(2)} to ${s.t1.toFixed(2)} s into the roll, with the ball about ${Math.round(s.ballPx)} pixels across (${s.degPerFrame?.toFixed(0) ?? "?"}\xB0 of turn per frame). Measured near the foul line, not the whole way down the lane.</div>
       ${s.reasons.length ? `<ul>${s.reasons.map((r) => `<li>${esc2(r)}</li>`).join("")}</ul>` : ""}</div>`;
     }
-    return `<div class="card"><div class="k">Spin</div><div class="lr-head" style="font-size:17px">${s.status === "none" ? "Couldn't be measured" : "This clip is too coarse to measure the spin"}</div>
+    return `<div class="card"><div class="k">Spin</div><div class="lr-head" style="font-size:17px">${s.status === "none" ? "Couldn't be measured" : "Needs a slow-motion pass to read the spin"}</div>
     <ul>${s.reasons.map((r) => `<li>${esc2(r)}</li>`).join("")}</ul>
-    ${s.advice ? `<div class="note">${esc2(s.advice)}</div>` : ""}</div>`;
+    ${s.advice ? `<div class="note">${esc2(s.advice)}</div>` : ""}
+    <div class="chips"><button class="btn" data-act="slowmo">Read the spin from a slow-motion clip</button></div></div>`;
   }
 
   // camera/spinqueue.ts
@@ -9254,6 +9279,8 @@ ${url}`);
       if (!box || reviewShotId !== s.id) return;
       box.innerHTML = spinCardHtml(s.spin, state) + (clip ? `<div class="chips"><button class="btn ghost" id="rv-respin" ${state === "running" ? "disabled" : ""}>Measure the spin again</button></div><div class="note" id="rv-spinprog"></div>` : "");
       document.getElementById("rv-respin")?.addEventListener("click", () => runSpin(true));
+      box.querySelector("[data-act=slowmo]")?.addEventListener("click", () => openSpinLab(() => {
+      }));
     };
     const runSpin = (force) => {
       paintSpin("running");
@@ -11518,6 +11545,17 @@ ${url}`);
         }
       }
     } else capFps = track.getCapabilities?.()?.frameRate?.max ?? bestFps;
+    if (capFps >= 100) {
+      for (const f of [Math.min(capFps, 240), 120]) {
+        try {
+          await track.applyConstraints({ frameRate: { exact: f } });
+          const got = track.getSettings().frameRate ?? 0;
+          if (got > bestFps) bestFps = got;
+          if (bestFps >= 100) break;
+        } catch {
+        }
+      }
+    }
     return best;
   }
   var capFps = 0;
@@ -12819,6 +12857,7 @@ ${url}`);
       return true;
     }
   })();
+  var skipCount = 0;
   var lastFrameT = -1;
   var lastPres = -1;
   function frameClock(meta, now) {
@@ -12853,6 +12892,7 @@ ${url}`);
     if (!H) autoDetectTick(now);
     else if (armed) driftCheck(now), pinWatch(now), pinRefineTick(now), arrowTick(now), resetWatch(now);
     if (!H || !laneMask || !armed || enrolling) return;
+    if (cameraFps > 90 && ++skipCount % Math.round(cameraFps / 60) !== 0) return;
     wctx.drawImage(video, 0, 0, GW, GH);
     const px = wctx.getImageData(0, 0, GW, GH).data;
     const gray = new Float32Array(GW * GH);
