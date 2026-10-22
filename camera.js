@@ -53,6 +53,19 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-22-lane-trace",
+      date: "2026-10-22",
+      title: "Drawing your lane is easy now",
+      items: [
+        "Trace your lane opens on a frozen picture, so nothing lags while you work.",
+        "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
+        "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
+        "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        "The drawn arrows now sit on the right boards (they were half a board off).",
+        "Snap to edges tightens your outline onto the real lane edges; Reset starts over."
+      ]
+    },
+    {
       id: "2026-10-22-real-clip",
       date: "2026-10-22",
       title: "Learned from a real bowling-alley clip",
@@ -1379,6 +1392,492 @@
     };
   }
 
+  // core/src/vision.ts
+  var LANE_BOARDS = 39;
+  var LANE_LENGTH_FT = 60;
+  var ARROWS_FT = 15;
+  function solveHomography(src, dst) {
+    const A = [];
+    for (let i = 0; i < 4; i++) {
+      const { x, y } = src[i];
+      const { x: u, y: v } = dst[i];
+      A.push([x, y, 1, 0, 0, 0, -u * x, -u * y, u]);
+      A.push([0, 0, 0, x, y, 1, -v * x, -v * y, v]);
+    }
+    for (let c = 0; c < 8; c++) {
+      let p = c;
+      for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+      if (Math.abs(A[p][c]) < 1e-12) throw new Error("degenerate calibration points");
+      [A[c], A[p]] = [A[p], A[c]];
+      for (let r = 0; r < 8; r++) {
+        if (r === c) continue;
+        const f = A[r][c] / A[c][c];
+        for (let k2 = c; k2 < 9; k2++) A[r][k2] -= f * A[c][k2];
+      }
+    }
+    return [...A.map((row, i) => row[8] / row[i]), 1];
+  }
+  function applyHomography(h, p) {
+    const w = h[6] * p.x + h[7] * p.y + h[8];
+    return { x: (h[0] * p.x + h[1] * p.y + h[2]) / w, y: (h[3] * p.x + h[4] * p.y + h[5]) / w };
+  }
+  var boardFromRight = (xBoards) => LANE_BOARDS + 0.5 - xBoards;
+  var boardToX = (board) => LANE_BOARDS + 0.5 - board;
+  function linearFit(xs, ys) {
+    const n = xs.length;
+    const mx = xs.reduce((a, b) => a + b, 0) / n;
+    const my = ys.reduce((a, b) => a + b, 0) / n;
+    let sxx = 0;
+    let sxy = 0;
+    for (let i = 0; i < n; i++) {
+      sxx += (xs[i] - mx) ** 2;
+      sxy += (xs[i] - mx) * (ys[i] - my);
+    }
+    const slope = sxy / sxx;
+    const intercept = my - slope * mx;
+    const rmse = Math.sqrt(xs.reduce((a, x, i) => a + (ys[i] - (slope * x + intercept)) ** 2, 0) / n);
+    return { slope, intercept, rmse };
+  }
+  function interp(path2, yFt) {
+    for (let i = 1; i < path2.length; i++) {
+      const a = path2[i - 1];
+      const b = path2[i];
+      if (a.y <= yFt && b.y >= yFt && b.y > a.y) return a.x + (yFt - a.y) / (b.y - a.y) * (b.x - a.x);
+    }
+    return null;
+  }
+  var ENTRY_FT = 59.5;
+  var BOARD_IN = 41.5 / LANE_BOARDS;
+  function headingDeg(path2, y0, y1) {
+    const w = path2.filter((s) => s.y >= y0 && s.y <= y1);
+    if (w.length < 4 || w[w.length - 1].y - w[0].y < 4) return null;
+    const f = linearFit(w.map((s) => s.y), w.map((s) => s.x));
+    return { deg: Math.atan(f.slope * BOARD_IN / 12) * 180 / Math.PI, slopeBoardsPerFt: f.slope };
+  }
+  function forwardPath(path2) {
+    const sorted2 = [...path2].sort((a, b) => a.t - b.t);
+    const out = [];
+    let far = -Infinity;
+    for (const s of sorted2) {
+      if (s.y < far - 0.6) continue;
+      out.push(s);
+      far = Math.max(far, s.y);
+    }
+    return out;
+  }
+  function analyzeShot(rawPath) {
+    const path2 = forwardPath(rawPath);
+    const p = path2.filter((s) => s.y >= 3 && s.y <= 58).sort((a, b) => a.t - b.t);
+    if (p.length < 8 || p[p.length - 1].y - p[0].y < 20) return null;
+    const fit = linearFit(p.map((s) => s.t), p.map((s) => s.y));
+    if (fit.slope <= 0) return null;
+    const fps = fit.slope;
+    const speed = fps * (3600 / 5280);
+    const speedUnc = fit.rmse / (p[p.length - 1].t - p[0].t) * (3600 / 5280) * 2;
+    const mid = p.filter((s) => s.y >= ARROWS_FT && s.y <= 55);
+    let bpBoard = null;
+    let bpFt = null;
+    if (mid.length >= 4) {
+      const c = LANE_BOARDS / 2;
+      const ext = mid.reduce((best, s) => Math.abs(s.x - c) > Math.abs(best.x - c) ? s : best);
+      bpBoard = boardFromRight(ext.x);
+      bpFt = ext.y;
+    }
+    const arrows = interp(p, ARROWS_FT);
+    const lastY = p[p.length - 1].y;
+    const tailFrom = Math.min(50, lastY - 8);
+    const tail = lastY >= ENTRY_FT - 10 ? p.filter((s) => s.y >= tailFrom) : [];
+    let entry = null;
+    if (tail.length >= 4 && tail[tail.length - 1].y - tail[0].y >= 2.5) {
+      const f = linearFit(tail.map((s) => s.y), tail.map((s) => s.x));
+      entry = f.slope * ENTRY_FT + f.intercept;
+    }
+    const launch = headingDeg(p, 3, 20);
+    const impact = lastY >= ENTRY_FT - 10 ? headingDeg(p, tailFrom, 58) : null;
+    const coverage = Math.min(1, (p[p.length - 1].y - p[0].y) / 45);
+    const confidence = Math.max(0, Math.min(1, coverage * (1 - Math.min(1, fit.rmse / 5))));
+    return {
+      speedMph: speed,
+      speedUncertainty: speedUnc,
+      boardAtArrows: arrows === null ? null : boardFromRight(arrows),
+      breakpointBoard: bpBoard,
+      breakpointFt: bpFt,
+      entryBoard: entry === null ? null : boardFromRight(entry),
+      launchAngleDeg: launch?.deg ?? null,
+      impactAngleDeg: impact?.deg ?? null,
+      samples: p.length,
+      confidence
+    };
+  }
+
+  // camera/lanetrace.ts
+  var LANE = [{ x: 0, y: 0 }, { x: LANE_BOARDS, y: 0 }, { x: LANE_BOARDS, y: LANE_LENGTH_FT }, { x: 0, y: LANE_LENGTH_FT }];
+  var NAMES = ["1  foul line, left", "2  foul line, right", "3  pins end, right", "4  pins end, left"];
+  var IN_PER_BOARD = 41.5 / LANE_BOARDS;
+  var PIN_SIDE = 18 / IN_PER_BOARD;
+  var MID = LANE_BOARDS / 2;
+  var makeAnchors = () => [
+    { id: "a1", group: "arrows", name: "left outer arrow tip", short: "L", lane: { x: 4.5, y: 12 }, img: null },
+    { id: "a2", group: "arrows", name: "centre arrow tip", short: "C", lane: { x: MID, y: 16 }, img: null },
+    { id: "a3", group: "arrows", name: "right outer arrow tip", short: "R", lane: { x: LANE_BOARDS - 4.5, y: 12 }, img: null },
+    { id: "p7", group: "pins", name: "7 pin base", short: "7", lane: { x: MID - PIN_SIDE, y: LANE_LENGTH_FT + 31.2 / 12 }, img: null },
+    { id: "p1", group: "pins", name: "head pin base", short: "1", lane: { x: MID, y: LANE_LENGTH_FT }, img: null },
+    { id: "p10", group: "pins", name: "10 pin base", short: "10", lane: { x: MID + PIN_SIDE, y: LANE_LENGTH_FT + 31.2 / 12 }, img: null }
+  ];
+  function fitHomography(src, dst, sw, sh) {
+    const n = src.length;
+    const N2 = Array.from({ length: 8 }, () => new Array(9).fill(0));
+    for (let i = 0; i < n; i++) {
+      const x = src[i].x / LANE_BOARDS, y = src[i].y / LANE_LENGTH_FT;
+      const u = dst[i].x / sw, v = dst[i].y / sh;
+      const rows = [
+        [[x, y, 1, 0, 0, 0, -u * x, -u * y], u],
+        [[0, 0, 0, x, y, 1, -v * x, -v * y], v]
+      ];
+      for (const [r, b] of rows) for (let a = 0; a < 8; a++) {
+        for (let c2 = 0; c2 < 8; c2++) N2[a][c2] += r[a] * r[c2];
+        N2[a][8] += r[a] * b;
+      }
+    }
+    for (let c2 = 0; c2 < 8; c2++) {
+      let p = c2;
+      for (let r = c2 + 1; r < 8; r++) if (Math.abs(N2[r][c2]) > Math.abs(N2[p][c2])) p = r;
+      if (Math.abs(N2[p][c2]) < 1e-14) return null;
+      [N2[c2], N2[p]] = [N2[p], N2[c2]];
+      for (let r = 0; r < 8; r++) {
+        if (r === c2) continue;
+        const f = N2[r][c2] / N2[c2][c2];
+        for (let k2 = c2; k2 < 9; k2++) N2[r][k2] -= f * N2[c2][k2];
+      }
+    }
+    const h = N2.map((row, i) => row[8] / row[i]);
+    return [h[0] * sw / LANE_BOARDS, h[1] * sw / LANE_LENGTH_FT, h[2] * sw, h[3] * sh / LANE_BOARDS, h[4] * sh / LANE_LENGTH_FT, h[5] * sh, h[6] / LANE_BOARDS, h[7] / LANE_LENGTH_FT, 1];
+  }
+  var inside = (p, c) => {
+    let r = false;
+    for (let i = 0, j = c.length - 1; i < c.length; j = i++) if (c[i].y > p.y !== c[j].y > p.y && p.x < (c[j].x - c[i].x) * (p.y - c[i].y) / (c[j].y - c[i].y) + c[i].x) r = !r;
+    return r;
+  };
+  function openLaneTrace(o) {
+    document.getElementById("tracelane")?.remove();
+    const root = document.createElement("div");
+    root.id = "tracelane";
+    root.style.cssText = "position:fixed;inset:0;z-index:120;background:#000;display:flex;flex-direction:column;touch-action:none;user-select:none;-webkit-user-select:none;padding-top:env(safe-area-inset-top)";
+    root.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;color:#fff;font:700 16px system-ui"><span>Trace your lane</span><button id="tl-cancel" class="btn ghost" style="padding:8px 14px">Cancel</button></div>
+    <div style="padding:0 12px 6px;color:#9fb0cc;font:13px system-ui;line-height:1.35" id="tl-hint">Drag the four numbered dots so the green lane sits on your lane. <b style="color:#fff">1 and 2</b> go on the foul line at the lane's edges (inside the gutters), <b style="color:#fff">3 and 4</b> where the lane reaches the pins. Drag inside the lane to move all of it. The grid should line up with the arrows and the pins.</div>
+    <div id="tl-wrap" style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative"><canvas id="tl-cv" style="touch-action:none;max-width:100%;max-height:100%"></canvas></div>
+    <div style="display:flex;gap:6px;padding:6px 12px 0"><button class="btn ghost tl-mode" data-mode="lane" style="flex:1;padding:9px 6px">1 Lane</button><button class="btn ghost tl-mode" data-mode="arrows" style="flex:1;padding:9px 6px">2 Arrows</button><button class="btn ghost tl-mode" data-mode="pins" style="flex:1;padding:9px 6px">3 Pins</button></div>
+    <div style="display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));flex-wrap:wrap"><button id="tl-snap" class="btn ghost" style="flex:1">Snap to edges</button><button id="tl-reset" class="btn ghost" style="flex:1">Reset</button><button id="tl-ok" class="btn" style="flex:2">Confirm lane</button></div>`;
+    document.body.append(root);
+    const cv = root.querySelector("#tl-cv");
+    const hint = root.querySelector("#tl-hint");
+    const g = cv.getContext("2d");
+    const W = o.frame.width, Hh = o.frame.height;
+    const k0 = Math.min(1, 1280 / Math.max(W, Hh));
+    cv.width = Math.round(W * k0);
+    cv.height = Math.round(Hh * k0);
+    const fit = () => {
+      const wrap2 = root.querySelector("#tl-wrap");
+      const maxW = wrap2.clientWidth, maxH = wrap2.clientHeight;
+      const sc = Math.min(maxW / cv.width, maxH / cv.height);
+      cv.style.width = `${cv.width * sc}px`;
+      cv.style.height = `${cv.height * sc}px`;
+    };
+    fit();
+    const onResize = () => (fit(), draw3());
+    window.addEventListener("resize", onResize);
+    let c = o.start.map((p) => ({ x: p.x * k0, y: p.y * k0 }));
+    const initial = c.map((p) => ({ ...p }));
+    let mode2 = "lane";
+    let anchors = makeAnchors();
+    const HINTS = {
+      lane: "Drag the four numbered dots so the green lane sits on your lane. 1 and 2 go on the foul line at the lane's edges (inside the gutters), 3 and 4 where the lane reaches the pins. Drag inside the lane to move all of it.",
+      arrows: "Drag each yellow dot onto the tip of the real arrow it names: the centre arrow and the two outside ones. The grid refits to them, so the arrows line up exactly.",
+      pins: "Drag each white dot onto the base of the real pin it names: the head pin, then the 7 and the 10. The grid refits to them, so the pin deck lines up exactly."
+    };
+    let drag2 = null;
+    let touched = false;
+    let pointer = null;
+    const cssPerPx = () => cv.getBoundingClientRect().width / cv.width;
+    const pt2 = (e) => {
+      const r = cv.getBoundingClientRect();
+      return { x: (e.clientX - r.left) / r.width * cv.width, y: (e.clientY - r.top) / r.height * cv.height };
+    };
+    const anchorPos = (a) => {
+      if (a.img) return a.img;
+      try {
+        return applyHomography(solveHomography(LANE, c), a.lane);
+      } catch {
+        return null;
+      }
+    };
+    const refit = () => {
+      const placed = anchors.filter((a) => a.img);
+      if (!placed.length) return;
+      const src = [...LANE, ...placed.map((a) => a.lane)];
+      const dst = [...c, ...placed.map((a) => a.img)];
+      const h = fitHomography(src, dst, cv.width, cv.height);
+      if (!h) return;
+      const nc = LANE.map((p) => applyHomography(h, p));
+      if (nc.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))) c = nc;
+    };
+    const setMode2 = (m) => {
+      mode2 = m;
+      hint.textContent = HINTS[m];
+      root.querySelectorAll(".tl-mode").forEach((b) => {
+        const on = b.dataset.mode === m;
+        b.style.background = on ? "linear-gradient(90deg,#46e6ff,#ff4fd8)" : "";
+        b.style.color = on ? "#06101c" : "";
+      });
+      redraw2();
+    };
+    let raf2 = 0;
+    const draw3 = () => {
+      raf2 = 0;
+      const px = 1 / cssPerPx();
+      g.clearRect(0, 0, cv.width, cv.height);
+      g.drawImage(o.frame, 0, 0, cv.width, cv.height);
+      let Hinv2 = null;
+      try {
+        Hinv2 = solveHomography(LANE, c);
+      } catch {
+      }
+      const P = (b, ft) => applyHomography(Hinv2, { x: b, y: ft });
+      g.beginPath();
+      c.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y));
+      g.closePath();
+      g.fillStyle = "rgba(90,255,176,.10)";
+      g.fill();
+      if (Hinv2) {
+        g.lineWidth = 1.2 * px;
+        for (let b = 0; b <= LANE_BOARDS; b += 1) {
+          const major = b % 5 === 0;
+          g.strokeStyle = major ? "rgba(255,255,255,.55)" : "rgba(255,255,255,.18)";
+          const a = P(b, 0), z = P(b, LANE_LENGTH_FT);
+          g.beginPath();
+          g.moveTo(a.x, a.y);
+          g.lineTo(z.x, z.y);
+          g.stroke();
+        }
+        g.setLineDash([8 * px, 6 * px]);
+        g.strokeStyle = "rgba(255,255,255,.5)";
+        for (const ft of [15, 30, 45]) {
+          const a = P(0, ft), z = P(LANE_BOARDS, ft);
+          g.beginPath();
+          g.moveTo(a.x, a.y);
+          g.lineTo(z.x, z.y);
+          g.stroke();
+        }
+        g.setLineDash([]);
+        g.fillStyle = "rgba(255,210,90,.95)";
+        for (let b = 5; b <= 35; b += 5) {
+          const tip = 12 + 4 * (1 - Math.abs(b - 20) / 15);
+          const cx = b - 0.5;
+          const tri = [P(cx - 0.6, tip - 1.6), P(cx + 0.6, tip - 1.6), P(cx, tip)];
+          g.beginPath();
+          tri.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y));
+          g.closePath();
+          g.fill();
+        }
+        g.fillStyle = "rgba(255,255,255,.9)";
+        const PINS2 = [[0, 0], [-6, 10.4], [6, 10.4], [-12, 20.8], [0, 20.8], [12, 20.8], [-18, 31.2], [-6, 31.2], [6, 31.2], [18, 31.2]];
+        for (const [lat, beh] of PINS2) {
+          const q = P(LANE_BOARDS / 2 + lat / (41.5 / LANE_BOARDS), LANE_LENGTH_FT + beh / 12);
+          g.beginPath();
+          g.arc(q.x, q.y, 3 * px, 0, 7);
+          g.fill();
+        }
+        const f0 = P(0, 0), f12 = P(LANE_BOARDS, 0);
+        g.strokeStyle = "rgba(255,90,110,1)";
+        g.lineWidth = 3 * px;
+        g.beginPath();
+        g.moveTo(f0.x, f0.y);
+        g.lineTo(f12.x, f12.y);
+        g.stroke();
+      }
+      g.strokeStyle = "rgba(90,255,176,.95)";
+      g.lineWidth = 3 * px;
+      g.beginPath();
+      c.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y));
+      g.closePath();
+      g.stroke();
+      c.forEach((p, i) => {
+        if (mode2 !== "lane") {
+          g.fillStyle = "rgba(90,255,176,.9)";
+          g.beginPath();
+          g.arc(p.x, p.y, 5 * px, 0, 7);
+          g.fill();
+          return;
+        }
+        const r = (drag2 && drag2.kind === "handle" && drag2.i === i ? 26 : 22) * px;
+        g.fillStyle = touched ? "rgba(90,255,176,1)" : "rgba(255,255,255,.96)";
+        g.strokeStyle = "rgba(0,0,0,.85)";
+        g.lineWidth = 3 * px;
+        g.beginPath();
+        g.arc(p.x, p.y, r, 0, 7);
+        g.fill();
+        g.stroke();
+        g.fillStyle = "#06101c";
+        g.font = `800 ${18 * px}px system-ui`;
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillText(String(i + 1), p.x, p.y + 1 * px);
+      });
+      for (const a of anchors) {
+        const active = a.group === mode2;
+        if (!active && !a.img) continue;
+        const p = anchorPos(a);
+        if (!p) continue;
+        const col = a.group === "arrows" ? "255,210,90" : "120,225,255";
+        const r = (active ? drag2 && drag2.kind === "anchor" && drag2.id === a.id ? 18 : 14 : 5) * px;
+        g.fillStyle = `rgba(${col},${active ? a.img ? 1 : 0.55 : 0.9})`;
+        g.strokeStyle = "rgba(0,0,0,.85)";
+        g.lineWidth = 2.5 * px;
+        g.beginPath();
+        g.arc(p.x, p.y, r, 0, 7);
+        g.fill();
+        g.stroke();
+        if (active) {
+          g.fillStyle = "#06101c";
+          g.font = `800 ${12 * px}px system-ui`;
+          g.textAlign = "center";
+          g.textBaseline = "middle";
+          g.fillText(a.short, p.x, p.y + 1 * px);
+        }
+      }
+      const dragA = drag2 && drag2.kind === "anchor" ? anchors.find((a) => a.id === drag2.id) : void 0;
+      if (drag2 && (drag2.kind === "handle" || dragA) && pointer) {
+        const p = drag2.kind === "handle" ? c[drag2.i] : anchorPos(dragA);
+        const R2 = 62 * px, Z = 3;
+        let cx = p.x, cy = p.y - 120 * px;
+        if (cy - R2 < 0) cy = p.y + 120 * px;
+        cx = Math.max(R2, Math.min(cv.width - R2, cx));
+        g.save();
+        g.beginPath();
+        g.arc(cx, cy, R2, 0, 7);
+        g.clip();
+        g.fillStyle = "#000";
+        g.fillRect(cx - R2, cy - R2, 2 * R2, 2 * R2);
+        const sw = 2 * R2 / Z;
+        g.drawImage(o.frame, p.x / k0 - sw / (2 * k0), p.y / k0 - sw / (2 * k0), sw / k0, sw / k0, cx - R2, cy - R2, 2 * R2, 2 * R2);
+        g.restore();
+        g.strokeStyle = "rgba(90,255,176,.95)";
+        g.lineWidth = 2 * px;
+        g.beginPath();
+        g.arc(cx, cy, R2, 0, 7);
+        g.stroke();
+        g.strokeStyle = "rgba(255,255,255,.9)";
+        g.lineWidth = 1.5 * px;
+        g.beginPath();
+        g.moveTo(cx - 14 * px, cy);
+        g.lineTo(cx + 14 * px, cy);
+        g.moveTo(cx, cy - 14 * px);
+        g.lineTo(cx, cy + 14 * px);
+        g.stroke();
+        g.fillStyle = "#fff";
+        g.font = `700 ${12 * px}px system-ui`;
+        g.textBaseline = "alphabetic";
+        g.fillText(drag2.kind === "handle" ? NAMES[drag2.i] : dragA.name, cx, cy - R2 - 6 * px);
+      }
+    };
+    const redraw2 = () => {
+      if (!raf2) raf2 = requestAnimationFrame(draw3);
+    };
+    setMode2("lane");
+    cv.addEventListener("pointerdown", (e) => {
+      const p = pt2(e);
+      pointer = p;
+      const reach = 64 / cssPerPx();
+      if (mode2 !== "lane") {
+        const group = anchors.filter((a) => a.group === mode2);
+        let best = null, bd2 = Infinity;
+        for (const a of group) {
+          const q = anchorPos(a);
+          if (!q) continue;
+          const d = Math.hypot(q.x - p.x, q.y - p.y);
+          if (d < bd2) bd2 = d, best = a;
+        }
+        if (best) {
+          if (bd2 > reach) best.img = p;
+          else best.img = best.img ?? anchorPos(best);
+          drag2 = { kind: "anchor", id: best.id };
+          touched = true;
+          cv.setPointerCapture?.(e.pointerId);
+          redraw2();
+        }
+        return;
+      }
+      anchors.forEach((a) => a.img = null);
+      let bi = -1, bd = reach;
+      c.forEach((q, i) => {
+        const d = Math.hypot(q.x - p.x, q.y - p.y);
+        if (d < bd) bd = d, bi = i;
+      });
+      if (bi >= 0) drag2 = { kind: "handle", i: bi };
+      else if (inside(p, c)) drag2 = { kind: "all", last: p };
+      else {
+        let ni = 0, nd = Infinity;
+        c.forEach((q, i) => {
+          const d = Math.hypot(q.x - p.x, q.y - p.y);
+          if (d < nd) nd = d, ni = i;
+        });
+        c[ni] = p;
+        drag2 = { kind: "handle", i: ni };
+      }
+      touched = true;
+      cv.setPointerCapture?.(e.pointerId);
+      redraw2();
+    });
+    cv.addEventListener("pointermove", (e) => {
+      if (!drag2) return;
+      const p = pt2(e);
+      pointer = p;
+      if (drag2.kind === "anchor") {
+        const a = anchors.find((q) => q.id === drag2.id);
+        a.img = { x: Math.max(0, Math.min(cv.width, p.x)), y: Math.max(0, Math.min(cv.height, p.y)) };
+      } else if (drag2.kind === "handle") c[drag2.i] = { x: Math.max(0, Math.min(cv.width, p.x)), y: Math.max(0, Math.min(cv.height, p.y)) };
+      else {
+        const dx = p.x - drag2.last.x, dy = p.y - drag2.last.y;
+        c = c.map((q) => ({ x: q.x + dx, y: q.y + dy }));
+        drag2.last = p;
+      }
+      redraw2();
+    });
+    const up = () => {
+      if (drag2 && drag2.kind === "anchor") refit();
+      drag2 = null;
+      pointer = null;
+      redraw2();
+    };
+    cv.addEventListener("pointerup", up);
+    cv.addEventListener("pointercancel", up);
+    const close6 = () => {
+      cancelAnimationFrame(raf2);
+      window.removeEventListener("resize", onResize);
+      root.remove();
+    };
+    root.querySelector("#tl-cancel").onclick = () => (close6(), o.onCancel());
+    root.querySelectorAll(".tl-mode").forEach((b) => b.onclick = () => setMode2(b.dataset.mode));
+    root.querySelector("#tl-reset").onclick = () => (c = initial.map((p) => ({ ...p })), anchors = makeAnchors(), touched = false, setMode2("lane"));
+    root.querySelector("#tl-snap").onclick = () => {
+      const r = o.snap(c.map((p) => ({ x: p.x / k0, y: p.y / k0 })));
+      if (!r) return void (hint.textContent = "I couldn't find clear lane edges there. Drag the corners onto the lane yourself, then Confirm.");
+      c = r.map((p) => ({ x: p.x * k0, y: p.y * k0 }));
+      anchors = makeAnchors();
+      touched = true;
+      hint.textContent = "Snapped to the lane edges. If the grid lines up with the arrows and pins, Confirm; otherwise drag a dot to fix it.";
+      redraw2();
+    };
+    root.querySelector("#tl-ok").onclick = () => {
+      const area = Math.abs(c.reduce((a, p, i) => a + (p.x * c[(i + 1) % 4].y - c[(i + 1) % 4].x * p.y), 0)) / 2;
+      if (area < cv.width * cv.height * 0.01) return void (hint.textContent = "The lane outline is too small. Drag the dots out onto the lane.");
+      const out = c.map((p) => ({ x: p.x / k0, y: p.y / k0 }));
+      close6();
+      o.onConfirm(out);
+    };
+  }
+
   // core/src/stabilize.ts
   var POINTS = 3500;
   var Stabilizer = class {
@@ -1460,11 +1959,11 @@
       const cap = Math.max(4, 2.5 * this.meanRef);
       const cx = Math.round(this.dx), cy = Math.round(this.dy);
       const reg = this.region;
-      const inside = (dx, dy) => reg.x0 + dx >= 1 && reg.x1 + dx <= this.w - 1 && reg.y0 + dy >= 1 && reg.y1 + dy <= this.h - 1;
+      const inside2 = (dx, dy) => reg.x0 + dx >= 1 && reg.x1 + dx <= this.w - 1 && reg.y0 + dy >= 1 && reg.y1 + dy <= this.h - 1;
       let best = Infinity, bx = cx, by = cy;
       for (let dy = cy - R2; dy <= cy + R2; dy += 2)
         for (let dx = cx - R2; dx <= cx + R2; dx += 2) {
-          if (!inside(dx, dy)) continue;
+          if (!inside2(dx, dy)) continue;
           const v = this.cost(dx, dy, cap, 3);
           if (v < best) best = v, bx = dx, by = dy;
         }
@@ -1472,7 +1971,7 @@
       best = Infinity;
       for (let dy = cy2 - 2; dy <= cy2 + 2; dy++)
         for (let dx = cx2 - 2; dx <= cx2 + 2; dx++) {
-          if (!inside(dx, dy)) continue;
+          if (!inside2(dx, dy)) continue;
           const v = this.cost(dx, dy, cap);
           if (v < best) best = v, bx = dx, by = dy;
         }
@@ -1481,7 +1980,7 @@
         return d > 1e-9 ? Math.max(-0.5, Math.min(0.5, (p - t) / (2 * d))) : 0;
       };
       let fx = bx, fy = by;
-      if (inside(bx - 1, by) && inside(bx + 1, by) && inside(bx, by - 1) && inside(bx, by + 1)) {
+      if (inside2(bx - 1, by) && inside2(bx + 1, by) && inside2(bx, by - 1) && inside2(bx, by + 1)) {
         fx = bx + sub3(this.cost(bx - 1, by, cap), best, this.cost(bx + 1, by, cap));
         fy = by + sub3(this.cost(bx, by - 1, cap), best, this.cost(bx, by + 1, cap));
       }
@@ -1778,7 +2277,7 @@
     }
     return seen2.size < leave.length;
   }
-  var NAMES = {
+  var NAMES2 = {
     "7-10": "the bedposts (7-10)",
     "2-7": "a baby split (2-7)",
     "3-10": "a baby split (3-10)",
@@ -1799,7 +2298,7 @@
     const leave = sorted(leaveIn);
     const split = isSplit(leave);
     const k2 = leave.join("-");
-    const name = NAMES[k2] ?? (leave.length === 1 ? `the ${leave[0]} pin` : split ? `a split (${k2})` : `${k2}`);
+    const name = NAMES2[k2] ?? (leave.length === 1 ? `the ${leave[0]} pin` : split ? `a split (${k2})` : `${k2}`);
     const keyPin = keyPinOf(leave);
     const notes = [];
     const raw = (MOVE_RIGHT_HANDED[keyPin] ?? 0) * (hand2 === "L" ? -1 : 1);
@@ -2521,124 +3020,6 @@
     return games;
   }
 
-  // core/src/vision.ts
-  var LANE_BOARDS = 39;
-  var LANE_LENGTH_FT = 60;
-  var ARROWS_FT = 15;
-  function solveHomography(src, dst) {
-    const A = [];
-    for (let i = 0; i < 4; i++) {
-      const { x, y } = src[i];
-      const { x: u, y: v } = dst[i];
-      A.push([x, y, 1, 0, 0, 0, -u * x, -u * y, u]);
-      A.push([0, 0, 0, x, y, 1, -v * x, -v * y, v]);
-    }
-    for (let c = 0; c < 8; c++) {
-      let p = c;
-      for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
-      if (Math.abs(A[p][c]) < 1e-12) throw new Error("degenerate calibration points");
-      [A[c], A[p]] = [A[p], A[c]];
-      for (let r = 0; r < 8; r++) {
-        if (r === c) continue;
-        const f = A[r][c] / A[c][c];
-        for (let k2 = c; k2 < 9; k2++) A[r][k2] -= f * A[c][k2];
-      }
-    }
-    return [...A.map((row, i) => row[8] / row[i]), 1];
-  }
-  function applyHomography(h, p) {
-    const w = h[6] * p.x + h[7] * p.y + h[8];
-    return { x: (h[0] * p.x + h[1] * p.y + h[2]) / w, y: (h[3] * p.x + h[4] * p.y + h[5]) / w };
-  }
-  var boardFromRight = (xBoards) => LANE_BOARDS + 0.5 - xBoards;
-  var boardToX = (board) => LANE_BOARDS + 0.5 - board;
-  function linearFit(xs, ys) {
-    const n = xs.length;
-    const mx = xs.reduce((a, b) => a + b, 0) / n;
-    const my = ys.reduce((a, b) => a + b, 0) / n;
-    let sxx = 0;
-    let sxy = 0;
-    for (let i = 0; i < n; i++) {
-      sxx += (xs[i] - mx) ** 2;
-      sxy += (xs[i] - mx) * (ys[i] - my);
-    }
-    const slope = sxy / sxx;
-    const intercept = my - slope * mx;
-    const rmse = Math.sqrt(xs.reduce((a, x, i) => a + (ys[i] - (slope * x + intercept)) ** 2, 0) / n);
-    return { slope, intercept, rmse };
-  }
-  function interp(path2, yFt) {
-    for (let i = 1; i < path2.length; i++) {
-      const a = path2[i - 1];
-      const b = path2[i];
-      if (a.y <= yFt && b.y >= yFt && b.y > a.y) return a.x + (yFt - a.y) / (b.y - a.y) * (b.x - a.x);
-    }
-    return null;
-  }
-  var ENTRY_FT = 59.5;
-  var BOARD_IN = 41.5 / LANE_BOARDS;
-  function headingDeg(path2, y0, y1) {
-    const w = path2.filter((s) => s.y >= y0 && s.y <= y1);
-    if (w.length < 4 || w[w.length - 1].y - w[0].y < 4) return null;
-    const f = linearFit(w.map((s) => s.y), w.map((s) => s.x));
-    return { deg: Math.atan(f.slope * BOARD_IN / 12) * 180 / Math.PI, slopeBoardsPerFt: f.slope };
-  }
-  function forwardPath(path2) {
-    const sorted2 = [...path2].sort((a, b) => a.t - b.t);
-    const out = [];
-    let far = -Infinity;
-    for (const s of sorted2) {
-      if (s.y < far - 0.6) continue;
-      out.push(s);
-      far = Math.max(far, s.y);
-    }
-    return out;
-  }
-  function analyzeShot(rawPath) {
-    const path2 = forwardPath(rawPath);
-    const p = path2.filter((s) => s.y >= 3 && s.y <= 58).sort((a, b) => a.t - b.t);
-    if (p.length < 8 || p[p.length - 1].y - p[0].y < 20) return null;
-    const fit = linearFit(p.map((s) => s.t), p.map((s) => s.y));
-    if (fit.slope <= 0) return null;
-    const fps = fit.slope;
-    const speed = fps * (3600 / 5280);
-    const speedUnc = fit.rmse / (p[p.length - 1].t - p[0].t) * (3600 / 5280) * 2;
-    const mid = p.filter((s) => s.y >= ARROWS_FT && s.y <= 55);
-    let bpBoard = null;
-    let bpFt = null;
-    if (mid.length >= 4) {
-      const c = LANE_BOARDS / 2;
-      const ext = mid.reduce((best, s) => Math.abs(s.x - c) > Math.abs(best.x - c) ? s : best);
-      bpBoard = boardFromRight(ext.x);
-      bpFt = ext.y;
-    }
-    const arrows = interp(p, ARROWS_FT);
-    const lastY = p[p.length - 1].y;
-    const tailFrom = Math.min(50, lastY - 8);
-    const tail = lastY >= ENTRY_FT - 10 ? p.filter((s) => s.y >= tailFrom) : [];
-    let entry = null;
-    if (tail.length >= 4 && tail[tail.length - 1].y - tail[0].y >= 2.5) {
-      const f = linearFit(tail.map((s) => s.y), tail.map((s) => s.x));
-      entry = f.slope * ENTRY_FT + f.intercept;
-    }
-    const launch = headingDeg(p, 3, 20);
-    const impact = lastY >= ENTRY_FT - 10 ? headingDeg(p, tailFrom, 58) : null;
-    const coverage = Math.min(1, (p[p.length - 1].y - p[0].y) / 45);
-    const confidence = Math.max(0, Math.min(1, coverage * (1 - Math.min(1, fit.rmse / 5))));
-    return {
-      speedMph: speed,
-      speedUncertainty: speedUnc,
-      boardAtArrows: arrows === null ? null : boardFromRight(arrows),
-      breakpointBoard: bpBoard,
-      breakpointFt: bpFt,
-      entryBoard: entry === null ? null : boardFromRight(entry),
-      launchAngleDeg: launch?.deg ?? null,
-      impactAngleDeg: impact?.deg ?? null,
-      samples: p.length,
-      confidence
-    };
-  }
-
   // core/src/metrics.ts
   var POCKET_BOARD = { R: 17.5, L: 22.5 };
   var MPH = 3600 / 5280;
@@ -2969,13 +3350,13 @@
           const xr = xAt(R2, y);
           const wid = xr - xl;
           if (wid < 3) continue;
-          const inside = rowMean(y, xl + wid * 0.2, xr - wid * 0.2);
+          const inside2 = rowMean(y, xl + wid * 0.2, xr - wid * 0.2);
           const left = xl - wid * 0.2 < 1 ? NaN : rowMean(y, xl - wid * 0.3, xl - wid * 0.08);
           const right = xr + wid * 0.2 > w - 2 ? NaN : rowMean(y, xr + wid * 0.08, xr + wid * 0.3);
           if (!Number.isFinite(left) && !Number.isFinite(right)) continue;
           rowsN++;
-          if ((!Number.isFinite(left) || inside - left > 6) && (!Number.isFinite(right) || inside - right > 6)) good++;
-          strengthSum += Math.max(0, Math.min(100, Math.min(Number.isFinite(left) ? inside - left : 100, Number.isFinite(right) ? inside - right : 100)));
+          if ((!Number.isFinite(left) || inside2 - left > 6) && (!Number.isFinite(right) || inside2 - right > 6)) good++;
+          strengthSum += Math.max(0, Math.min(100, Math.min(Number.isFinite(left) ? inside2 - left : 100, Number.isFinite(right) ? inside2 - right : 100)));
         }
         if (rowsN < 5 || good / rowsN < 0.45) {
           why.contrast++;
@@ -4454,11 +4835,11 @@
     const rand = rng(12345);
     const minR = hint.minR !== void 0 ? hint.minR / k2 : Math.min(sw, sh) * 0.15;
     const maxR = hint.maxR !== void 0 ? hint.maxR / k2 : Math.min(sw, sh) * 0.52;
-    const inside = (hint.contain ?? []).map((p) => ({ x: p.x / k2, y: p.y / k2 }));
+    const inside2 = (hint.contain ?? []).map((p) => ({ x: p.x / k2, y: p.y / k2 }));
     const tol = Math.max(1.8, Math.min(sw, sh) * 0.012);
     let best = null;
     const pt2 = (i) => ({ x: i % sw, y: Math.floor(i / sw) });
-    for (let it = 0; it < (inside.length ? 4e3 : 900); it++) {
+    for (let it = 0; it < (inside2.length ? 4e3 : 900); it++) {
       const a = pt2(edges[Math.floor(rand() * edges.length)]), b = pt2(edges[Math.floor(rand() * edges.length)]), c = pt2(edges[Math.floor(rand() * edges.length)]);
       const d = 2 * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));
       if (Math.abs(d) < 1e-6) continue;
@@ -4466,8 +4847,8 @@
       const uy = ((a.x * a.x + a.y * a.y) * (c.x - b.x) + (b.x * b.x + b.y * b.y) * (a.x - c.x) + (c.x * c.x + c.y * c.y) * (b.x - a.x)) / d;
       const r = Math.hypot(a.x - ux, a.y - uy);
       if (r < minR || r > maxR) continue;
-      if (inside.some((q) => Math.hypot(q.x - ux, q.y - uy) > r * 0.85)) continue;
-      if (inside.length && Math.hypot(inside.reduce((a2, q) => a2 + q.x, 0) / inside.length - ux, inside.reduce((a2, q) => a2 + q.y, 0) / inside.length - uy) > r * 0.5) continue;
+      if (inside2.some((q) => Math.hypot(q.x - ux, q.y - uy) > r * 0.85)) continue;
+      if (inside2.length && Math.hypot(inside2.reduce((a2, q) => a2 + q.x, 0) / inside2.length - ux, inside2.reduce((a2, q) => a2 + q.y, 0) / inside2.length - uy) > r * 0.5) continue;
       let n = 0;
       const bins2 = new Uint8Array(24);
       for (let q = 0; q < edges.length; q += 2) {
@@ -10144,9 +10525,9 @@ ${url}`);
   var chooseList = [];
   var chooseSeen = 0;
   var polyHas = (poly2, x, y) => {
-    let inside = false;
-    for (let i = 0, j = poly2.length - 1; i < poly2.length; j = i++) if (poly2[i].y > y !== poly2[j].y > y && x < (poly2[j].x - poly2[i].x) * (y - poly2[i].y) / (poly2[j].y - poly2[i].y) + poly2[i].x) inside = !inside;
-    return inside;
+    let inside2 = false;
+    for (let i = 0, j = poly2.length - 1; i < poly2.length; j = i++) if (poly2[i].y > y !== poly2[j].y > y && x < (poly2[j].x - poly2[i].x) * (y - poly2[i].y) / (poly2[j].y - poly2[i].y) + poly2[i].x) inside2 = !inside2;
+    return inside2;
   };
   var centerOf = (c) => ({ x: c.reduce((s, p) => s + p.x, 0) / c.length, y: c.reduce((s, p) => s + p.y, 0) / c.length });
   window.__lane = { get tracker() {
@@ -10308,7 +10689,7 @@ ${url}`);
         ctx.strokeStyle = "rgba(0,0,0,.7)";
         ctx.lineWidth = 3 * s;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, (i === dragIx ? 17 : 13) * s, 0, 7);
+        ctx.arc(p.x, p.y, (i === dragIx ? 24 : 18) * (overlay.width / Math.max(1, overlay.getBoundingClientRect().width)), 0, 7);
         ctx.fill();
         ctx.stroke();
       });
@@ -10348,19 +10729,6 @@ ${url}`);
     $("manualbtn").classList.remove("hide");
     status.textContent = `I can see ${list.length} lanes. Tap the one you are bowling on.`;
     pill("TAP YOUR LANE", "ask");
-    renderScan();
-  }
-  function enterManual(reason) {
-    mode = "manual";
-    corners = [];
-    candidate = null;
-    pending = null;
-    setStep(0);
-    setReady(false);
-    $("confirm").classList.add("hide");
-    $("manualbtn").classList.add("hide");
-    status.textContent = `${reason} ${CORNER_PROMPTS[0]}`;
-    pill("PLACE CORNERS", "ask");
     renderScan();
   }
   var nearMid = (d) => (d.corners[0].x + d.corners[1].x) / 2 / video.videoWidth;
@@ -10517,7 +10885,7 @@ ${url}`);
     if (H) return;
     if (pending && (mode === "auto" || mode === "tap")) {
       const p = overlayPt(e);
-      const reach = 46 * (overlay.width / 1280);
+      const reach = 56 * (overlay.width / Math.max(1, overlay.getBoundingClientRect().width));
       let bi = -1;
       let bd = reach;
       pending.corners.forEach((c, i) => {
@@ -10596,30 +10964,64 @@ ${url}`);
     pending = null;
     adjusted = false;
   };
-  $("manualbtn").onclick = () => enterManual("Placing the corners yourself.");
-  $("tracebtn").onclick = () => {
+  var tracing = false;
+  $("manualbtn").onclick = () => openTrace();
+  $("tracebtn").onclick = () => openTrace();
+  function openTrace() {
     const W = video.videoWidth;
     const Hh = video.videoHeight;
-    if (!W) return;
+    if (!W || tracing) return;
+    const frame = document.createElement("canvas");
+    frame.width = W;
+    frame.height = Hh;
+    frame.getContext("2d").drawImage(video, 0, 0);
     const start = lastCandidates[0]?.corners ?? [
       { x: W * 0.22, y: Hh * 0.92 },
       { x: W * 0.78, y: Hh * 0.92 },
       { x: W * 0.55, y: Hh * 0.36 },
       { x: W * 0.45, y: Hh * 0.36 }
     ];
+    tracing = true;
     chooseList = [];
     chooseSeen = 0;
     mode = "auto";
     locks = [];
-    pending = { corners: start.map((p) => ({ ...p })), confidence: 0.3, notes: [], rows: { foul: null, pit: null, vanishing: null } };
-    candidate = pending.corners;
-    adjusted = true;
-    $("confirm").classList.remove("hide");
+    pending = null;
+    candidate = null;
+    adjusted = false;
+    $("confirm").classList.add("hide");
     $("manualbtn").classList.add("hide");
-    status.textContent = "Drag the four white dots onto the lane: the two near ones on the foul line at the edges of the lane (inside the gutters), the two far ones where the lane reaches the pins. Tap Snap to edges to tighten it, then Confirm lane.";
-    pill("TRACE YOUR LANE", "ask");
-    renderScan();
-  };
+    openLaneTrace({
+      frame,
+      start,
+      snap: (c) => {
+        const k2 = Math.min(1, 640 / Math.max(W, Hh));
+        const tmp = document.createElement("canvas");
+        tmp.width = Math.round(W * k2);
+        tmp.height = Math.round(Hh * k2);
+        const tctx = tmp.getContext("2d", { willReadFrequently: true });
+        tctx.drawImage(frame, 0, 0, tmp.width, tmp.height);
+        const px = tctx.getImageData(0, 0, tmp.width, tmp.height).data;
+        const gr = new Uint8ClampedArray(tmp.width * tmp.height);
+        for (let i = 0; i < gr.length; i++) gr[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+        const mid = { x: (c[0].x + c[1].x + c[2].x + c[3].x) / 4, y: (c[0].y + c[1].y + c[2].y + c[3].y) / 4 };
+        let d = detectLaneAt(gr, tmp.width, tmp.height, mid.x * k2, mid.y * k2);
+        if (!d) {
+          const alts = detectLanes(gr, tmp.width, tmp.height, 4);
+          d = alts.sort((a, b) => Math.hypot(centerOf(a.corners).x - mid.x * k2, centerOf(a.corners).y - mid.y * k2) - Math.hypot(centerOf(b.corners).x - mid.x * k2, centerOf(b.corners).y - mid.y * k2))[0] ?? null;
+        }
+        return d ? d.corners.map((p) => ({ x: p.x / k2, y: p.y / k2 })) : null;
+      },
+      onConfirm: (c) => {
+        tracing = false;
+        applyCalibration(c, "placed by hand from my guess");
+      },
+      onCancel: () => {
+        tracing = false;
+        status.textContent = "Looking for the lane again\u2026";
+      }
+    });
+  }
   $("snapbtn").onclick = () => {
     if (!pending) return;
     const f = grabGray();
@@ -10876,13 +11278,13 @@ ${url}`);
     view3d.setPaths(src ? [{ path: src, color: "ramp", width: 4, ballAt: live2 ? null : void 0 }] : []);
   }
   function inPolygon(p, poly2) {
-    let inside = false;
+    let inside2 = false;
     for (let i = 0, j = poly2.length - 1; i < poly2.length; j = i++) {
       const a = poly2[i];
       const b = poly2[j];
-      if (a.y > p.y !== b.y > p.y && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+      if (a.y > p.y !== b.y > p.y && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) inside2 = !inside2;
     }
-    return inside;
+    return inside2;
   }
   function buildMask() {
     const sx = video.videoWidth / GW;
@@ -11039,6 +11441,7 @@ ${url}`);
   }
   function onFrame(_now, meta) {
     schedule();
+    if (tracing) return;
     const now = performance.now();
     diagTick(now, !!(H && laneMask && armed && !enrolling), !!lastBlob);
     drawOverlay(now);
