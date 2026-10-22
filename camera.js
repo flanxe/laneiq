@@ -61,6 +61,8 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        "A sharpen filter for the ball tracker: an unsharp mask on the picture the ball is looked for in, so the edge of a ball, a pin or a foot stands out more cleanly. It is applied to the tracker's copy only (the lane lock and the shake stabilizer keep the plain picture), and tried on a real clip it finds the same shot with the same path.",
+        "Replays: shot recordings now save in one-second chunks, a clip still waiting for the rack to reset is saved when you switch apps or the page closes, a stored clip handed back without its type is given one, the spin measurement now waits until the replay has played (two video decoders at once stall a phone), and a clip that will not play says why on screen and in the diagnostics, along with the recording steps (started, stopped, size, saved).",
         "Balls were being followed in pieces: a phone's log showed each shot confirmed twice, partway down the lane, with only 6 to 11 points, then finished with too little to measure. At 60 fps a chain was dropped after four missed frames (0.07 s), and a ball is not seen in every frame. A chain may now go unseen for about a quarter of a second at any frame rate, and the whole-recording search bridges gaps of up to a third of a second.",
         "A roll the camera saw only part of is now kept instead of thrown away: speed over the stretch seen, where the ball started, where it was last seen and which way it was heading, and the board at the arrows if it crossed them. It is marked partial, and nothing is filled in beyond what was seen.",
         "Updates install themselves: when a newer LaneIQ is published while the camera is running, the app now counts down and reloads between shots (never while a ball is being followed, a clip is recording, or you are in the lane editor). Your saved lane lock comes straight back. Before, a running camera never updated, so a fix could sit unused for a whole session.",
@@ -9221,7 +9223,8 @@ ${url}`);
   async function openReview(s) {
     const el = $("review");
     el.classList.add("on");
-    const clip = s.hasClip ? await loadClip(s.id) : void 0;
+    const stored = s.hasClip ? await loadClip(s.id) : void 0;
+    const clip = stored ? stored.type ? stored : new Blob([stored], { type: "video/mp4" }) : void 0;
     reviewUrl = clip ? URL.createObjectURL(clip) : null;
     const canOverlay = s.cal.length === 4;
     let modeSel = clip && canOverlay ? "lane" : "top";
@@ -9260,8 +9263,22 @@ ${url}`);
       } }).then(() => paintSpin("idle"));
     };
     reviewShotId = s.id;
+    const player = document.getElementById("rv-v");
+    if (player) {
+      player.addEventListener("error", () => {
+        const err = player.error;
+        logTrack("replay failed", { code: err?.code ?? null, message: err?.message ?? null, type: clip?.type ?? null, bytes: clip?.size ?? 0 });
+        const note = document.createElement("div");
+        note.className = "note";
+        note.textContent = `This clip would not play (${err?.message || "error " + (err?.code ?? "?")}, ${clip ? Math.round(clip.size / 1024) + " KB" : "no data"}). It is kept; Copy diagnostics in the Me tab has the details.`;
+        player.insertAdjacentElement("afterend", note);
+      });
+    }
     if (s.spin || !clip) paintSpin("idle");
-    else runSpin(false);
+    else {
+      paintSpin("idle");
+      player?.addEventListener("ended", () => runSpin(false), { once: true });
+    }
     const topc = $("rv-topc");
     const drawTop = () => {
       const others = S.shots.filter((x) => x.id !== s.id && x.ballId === s.ballId).slice(-25).map((x) => ({ path: x.path, color: "rgba(255,255,255,.35)", width: 1.2, alpha: 0.5 }));
@@ -9861,6 +9878,25 @@ ${url}`);
       return true;
     }
   };
+
+  // core/src/sharpen.ts
+  function sharpen(src, w, h, out, tmp, amount = 0.8) {
+    for (let y = 0; y < h; y++) {
+      const r = y * w;
+      tmp[r] = (src[r] * 2 + src[r + 1]) / 3;
+      for (let x = 1; x < w - 1; x++) tmp[r + x] = (src[r + x - 1] + src[r + x] + src[r + x + 1]) / 3;
+      tmp[r + w - 1] = (src[r + w - 2] + src[r + w - 1] * 2) / 3;
+    }
+    for (let y = 0; y < h; y++) {
+      const up = (y > 0 ? y - 1 : 0) * w, mid = y * w, dn = (y < h - 1 ? y + 1 : h - 1) * w;
+      for (let x = 0; x < w; x++) {
+        const blur = (tmp[up + x] + tmp[mid + x] + tmp[dn + x]) / 3;
+        const v = src[mid + x] + amount * (src[mid + x] - blur);
+        out[mid + x] = v < 0 ? 0 : v > 255 ? 255 : v;
+      }
+    }
+    return out;
+  }
 
   // core/src/lanefit.ts
   var white = (rgba, i) => {
@@ -12614,10 +12650,12 @@ ${url}`);
       const mr = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 6e6 } : void 0);
       const chunks = [];
       mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-      mr.start();
+      mr.onerror = (e) => logTrack("recorder error", { error: String(e.error ?? e) });
+      mr.start(1e3);
       rec = { mr, chunks, startT };
-    } catch {
+    } catch (e) {
       rec = null;
+      logTrack("recorder could not start", { error: String(e) });
     }
   }
   function stopRecording(tailMs) {
@@ -12715,6 +12753,7 @@ ${url}`);
     recActive = true;
     recBeganAt = performance.now();
     startRecording(media);
+    logTrack("recording started", { recorder: !!rec, mime: pickMime() ?? "default", hasMediaRecorder: !!window.MediaRecorder });
   }
   function discardRecording() {
     recActive = false;
@@ -12726,13 +12765,16 @@ ${url}`);
     resetLooks = 0;
     recActive = false;
     const clip = await stopRecording(250);
+    logTrack("recording stopped", { clip: !!clip, bytes: clip ? clip.blob.size : 0, type: clip ? clip.blob.type : null, forShot: !!p });
     if (!p || !clip) return;
     p.shot.recStartT = clip.startT - p.t0Abs;
     p.shot.hasClip = true;
     try {
       await saveClip(p.shot.id, clip.blob);
-    } catch {
+      logTrack("clip saved", { bytes: clip.blob.size });
+    } catch (e) {
       p.shot.hasClip = false;
+      logTrack("clip save failed", { error: String(e) });
     }
     await updateShot(p.shot);
     if (p.shot.hasClip) void queueSpin(p.shot, { blob: clip.blob, busy: () => recActive || !!pendingClip });
@@ -12749,6 +12791,12 @@ ${url}`);
     }
     prevMotion = sm;
   }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && pendingClip) void attachClip();
+  });
+  window.addEventListener("pagehide", () => {
+    if (pendingClip) void attachClip();
+  });
   function resetWatch(now) {
     const p = pendingClip;
     if (!p) return;
@@ -12762,6 +12810,15 @@ ${url}`);
       if (++resetLooks >= 2) void attachClip();
     } else resetLooks = 0;
   }
+  var sharpA = null;
+  var sharpB = null;
+  var sharpenOn = (() => {
+    try {
+      return localStorage.getItem("laneiq.sharpen") !== "0";
+    } catch {
+      return true;
+    }
+  })();
   var lastFrameT = -1;
   var lastPres = -1;
   function frameClock(meta, now) {
@@ -12830,7 +12887,13 @@ ${url}`);
       approachAfter = now + 5e3;
     }
     if (now < cooldownUntil) return;
-    const ev = tracker.step(g2, ft, c2);
+    let gT = g2;
+    if (sharpenOn) {
+      sharpA ??= new Float32Array(GW * GH);
+      sharpB ??= new Float32Array(GW * GH);
+      gT = sharpen(g2, GW, GH, sharpA, sharpB, 0.8);
+    }
+    const ev = tracker.step(gT, ft, c2);
     candHist.push({ t: ft, cands: tracker.lastCands.map((c) => ({ ...c })) });
     while (candHist.length && candHist[0].t < ft - 14) candHist.shift();
     if (tracker.rejects.length) for (const r of tracker.rejects.splice(0)) logTrack("chain thrown out", r);
