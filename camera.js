@@ -59,7 +59,10 @@
       items: [
         "A friend's invite link is now remembered for two weeks, so it isn't lost when the tab closes or you add the app to your home screen.",
         "On first setup there's an 'Invited by a friend?' box: enter their tag or paste their link and they're added when you finish.",
-        "When the app is added to the home screen from an invite link, the icon is set to open on that invite (on phones that allow it)."
+        "When the app is added to the home screen from an invite link, the icon is set to open on that invite (on phones that allow it).",
+        "The invite screen now shows your friend tag with Copy tag and Copy link, and the message you send tells your friend what to do and includes your tag as a fallback.",
+        "Accepting a request is one tap: it adds them and opens the share sheet so they can add you back.",
+        "Requests you tap 'Not now' on wait on Me \u2192 Friends instead of vanishing. People opening an invite in a browser are told how to keep their data."
       ]
     },
     {
@@ -6938,10 +6941,24 @@ ${url}`);
     <div class="row"><h2>Invite a player</h2><button class="btn ghost" id="fr-close">Close</button></div>
     <div class="note">This link brings someone to the app and sends them a friend request from you. When they accept, they can send theirs back so you're both friends. Nothing is uploaded: the link itself carries your name and friend code.</div>
     ${warn ? `<div class="card"><div class="lr-head" style="font-size:16px">This address only works on your own network</div><div class="u">The link points at ${esc(appLink())}, which friends can't open. Set the public address of the app in <b>Me \u2192 Friends</b> before inviting people.</div></div>` : ""}
+    <div class="card"><div class="k">Your friend tag</div><div class="u" style="font-size:18px;font-weight:700;word-break:break-all;user-select:all">${esc(friendTag(myUser(), myCode()))}</div>
+      <div class="note">If the link doesn't add you, your friend can type this tag in <b>Me \u2192 Friends \u2192 Add a friend</b>, or in the "Invited by a friend?" box when they first set up.</div>
+      <div class="chips"><button class="chip" id="fr-copytag2">Copy tag</button><button class="chip" id="fr-copylink">Copy link</button></div></div>
     <div class="card"><div class="k">Your invite link</div><div class="u" style="word-break:break-all;user-select:all">${esc(link)}</div>
       <div class="chips"><button class="btn" id="fr-send">Send invite / friend request</button></div><div class="note" id="fr-msg"></div></div>`;
     $("fr-close").onclick = close4;
-    $("fr-send").onclick = async () => ($("fr-msg").textContent = await shareLink("Join me on LaneIQ", `${myName()} invited you to LaneIQ and wants to be friends so you can compare shots on the same lane.`, link), void 0);
+    const tag = friendTag(myUser(), myCode());
+    $("fr-send").onclick = async () => ($("fr-msg").textContent = await shareLink("Join me on LaneIQ", `${myName()} invited you to LaneIQ, a free bowling coach that uses your phone's camera, and wants to be friends. Open the link, then add it to your Home Screen. If I don't show up as a friend, add me with my tag: ${tag}`, link), void 0);
+    const copy = (id, text, label2) => $(id).onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        $(id).textContent = "Copied";
+      } catch {
+        prompt(label2, text);
+      }
+    };
+    copy("fr-copytag2", tag, "Your friend tag:");
+    copy("fr-copylink", link, "Your invite link:");
   }
   function openFriendRequest(from, kind) {
     const el = sheet4();
@@ -6951,18 +6968,24 @@ ${url}`);
     el.innerHTML = `
     <div class="row"><h2>${kind === "invite" ? "Friend request" : "Friend request accepted"}</h2><button class="btn ghost" id="fr-close">Close</button></div>
     ${self ? `<div class="card"><div class="u">That's your own link.</div></div>` : `<div class="card"><div class="lr-head">${esc(from.name)}${from.username ? ` <span class="note">@${esc(from.username)}</span>` : ""}</div><div class="u">${kind === "invite" ? "wants to be friends so you can compare shots on the same lane." : "added you. Add them back to finish connecting."}</div><div class="u">Friend code ${esc(from.code)}</div>
-    <div class="chips">${already ? `<span class="tag">Already friends</span>` : `<button class="btn" id="fr-accept">Add ${esc(from.name)} as a friend</button>`}<button class="chip" id="fr-no">Not now</button></div><div class="note" id="fr-msg"></div></div>`}`;
+    <div class="chips">${already ? `<span class="tag">Already friends</span>` : `<button class="btn" id="fr-accept">${kind === "invite" ? `Add ${esc(from.name)} and let them know` : `Add ${esc(from.name)} as a friend`}</button>`}<button class="chip" id="fr-no">Not now</button></div><div class="note" id="fr-msg"></div></div>`}`;
     $("fr-close").onclick = close4;
-    $("fr-no")?.addEventListener("click", close4);
+    $("fr-no")?.addEventListener("click", () => {
+      if (!self && !already) deferInvite(from);
+      close4();
+    });
     $("fr-accept")?.addEventListener("click", async () => {
       S.friends.push({ code: from.code, name: from.name, username: from.username, addedAt: (/* @__PURE__ */ new Date()).toISOString() });
+      dropDeferred(from.code);
       await saveSocial();
       if (kind === "reply") return close4();
-      $("fr-msg").innerHTML = `Added. Send your code back so ${esc(from.name)} can add you too.`;
+      $("fr-msg").innerHTML = `Added ${esc(from.name)}. Send the confirmation so they can add you back.`;
+      const send2 = async () => $("fr-msg").textContent = await shareLink("Friend request accepted", `${myName()} accepted your friend request on LaneIQ. Tap to add them back.`, `${appLink()}/#reply=${encodeInvite(myName(), myCode(), myUser())}`);
+      void send2();
       const btn = document.createElement("button");
       btn.className = "btn";
-      btn.textContent = "Send confirmation";
-      btn.onclick = async () => ($("fr-msg").textContent = await shareLink("Friend request accepted", `${myName()} accepted your friend request on LaneIQ. Tap to add them back.`, `${appLink()}/#reply=${encodeInvite(myName(), myCode(), myUser())}`), void 0);
+      btn.textContent = "Send confirmation again";
+      btn.onclick = () => void send2();
       $("fr-msg").append(document.createElement("br"), btn);
     });
   }
@@ -7104,6 +7127,26 @@ ${url}`);
     if (!inv) return void alert("That friend link is damaged.");
     openFriendRequest(inv, kind);
   }
+  var DEFER_KEY = "laneiq.deferredInvites";
+  var deferred = () => {
+    try {
+      return JSON.parse(localStorage.getItem(DEFER_KEY) ?? "[]");
+    } catch {
+      return [];
+    }
+  };
+  var setDeferred = (v) => {
+    try {
+      localStorage.setItem(DEFER_KEY, JSON.stringify(v.slice(-20)));
+    } catch {
+    }
+  };
+  function deferInvite(from) {
+    if (!deferred().some((d) => d.code === from.code)) setDeferred([...deferred(), from]);
+  }
+  function dropDeferred(code) {
+    setDeferred(deferred().filter((d) => d.code !== code));
+  }
   async function addPendingTag() {
     const raw = readPendingTag();
     if (!raw) return;
@@ -7119,6 +7162,7 @@ ${url}`);
     return `<div class="card"><div class="k">Friends</div>
     ${myUser() ? `<div class="note">Your account name: <b>@${esc(myUser())}</b> \xB7 your friend tag: <b>${esc(friendTag(myUser(), myCode()))}</b></div><div class="chips"><button class="chip" id="fr-copytag">Copy my tag</button></div>` : `<div class="note">Choose an account name so friends can add you.</div><div class="chips"><button class="btn" id="fr-setuser">Choose account name</button></div>`}
     <div class="field"><label>Add a friend by their tag</label><div class="chips"><input id="fr-addtag" placeholder="name#CODE, e.g. strikeking22#K7QP2MXA" autocomplete="off" autocapitalize="none" spellcheck="false" style="flex:1"><button class="chip add" id="fr-addbtn">Add</button></div><div class="note" id="fr-addmsg">Ask your friend for their tag (it is on their Me tab), or send them an invite link. There is no server to search, so a name alone cannot be looked up.</div></div>
+    ${deferred().filter((d) => !S.friends.some((f) => f.code === d.code)).map((d) => `<div class="card" style="margin:8px 0"><div class="u"><b>${esc(d.name)}</b>${d.username ? ` <span class="note">@${esc(d.username)}</span>` : ""} sent you a friend request.</div><div class="chips"><button class="chip add" data-def-add="${esc(d.code)}">Add</button><button class="chip" data-def-no="${esc(d.code)}">Dismiss</button></div></div>`).join("")}
     <div class="chips"><button class="btn" id="fr-invite">Invite a player</button><button class="btn ghost" id="fr-sharesess">Share a session</button><button class="btn ghost" id="fr-compare">Compare shots</button><button class="btn" id="fr-live">Bowl together, live</button></div>
     ${S.friends.length ? `<table>${S.friends.map((f) => `<tr><td>${esc(f.name)}${f.username ? ` <span class="note">@${esc(f.username)}</span>` : ""}</td><td class="note">${esc(f.code)}</td><td class="n"><button class="chip" data-rmf="${f.code}">Remove</button></td></tr>`).join("")}</table>` : `<div class="u" style="margin-top:8px">No friends yet.</div>`}
     ${S.shared.length ? `<div class="note" style="margin-top:8px">${S.shared.length} saved session${S.shared.length === 1 ? "" : "s"} from friends.</div>` : ""}
@@ -7145,6 +7189,14 @@ ${url}`);
       await saveSocial();
       rerender();
     });
+    document.querySelectorAll("[data-def-add]").forEach((b) => b.onclick = async () => {
+      const d = deferred().find((x) => x.code === b.dataset.defAdd);
+      if (d) S.friends.push({ code: d.code, name: d.name, username: d.username, addedAt: (/* @__PURE__ */ new Date()).toISOString() });
+      dropDeferred(b.dataset.defAdd);
+      await saveSocial();
+      rerender();
+    });
+    document.querySelectorAll("[data-def-no]").forEach((b) => b.onclick = () => (dropDeferred(b.dataset.defNo), rerender()));
     $("fr-invite")?.addEventListener("click", openInvite);
     $("fr-sharesess")?.addEventListener("click", openShareSession);
     $("fr-compare")?.addEventListener("click", () => openCompare());
@@ -7201,7 +7253,11 @@ ${url}`);
     if (m[1] === "session") return `<div class="invitebox"><b>A friend shared a session with you</b><div class="note">Set up your profile first. Then you can compare their shots with yours on the same lane.</div></div>`;
     const inv = decodeInvite(m[2]);
     if (!inv) return "";
-    return `<div class="invitebox"><b>${esc(inv.name)} invited you</b><div class="note">${m[1] === "invite" ? "Set up your profile first, then you'll see their friend request and can compare shots on the same lane." : "Set up your profile first, then you can add them back."}</div></div>`;
+    const standalone = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+    const tag = inv.username ? friendTag(inv.username, inv.code) : "";
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const install = standalone ? "" : `<div class="note" style="margin-top:6px"><b>Keep your data:</b> ${ios ? "tap the Share button, then Add to Home Screen" : "open the browser menu, then Add to Home Screen"}, and open LaneIQ from there. ${tag ? `If ${esc(inv.name)} isn't waiting for you in the app, enter their tag in the "Invited by a friend?" box: <b style="user-select:all">${esc(tag)}</b>` : ""}</div>`;
+    return `<div class="invitebox"><b>${esc(inv.name)} invited you</b><div class="note">${m[1] === "invite" ? "Set up your profile first, then you'll see their friend request and can compare shots on the same lane." : "Set up your profile first, then you can add them back."}</div>${install}</div>`;
   }
   function showQuiz(mode2, onDone) {
     const el = $("onboard");
