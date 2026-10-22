@@ -61,6 +61,8 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        "Balls were being followed in pieces: a phone's log showed each shot confirmed twice, partway down the lane, with only 6 to 11 points, then finished with too little to measure. At 60 fps a chain was dropped after four missed frames (0.07 s), and a ball is not seen in every frame. A chain may now go unseen for about a quarter of a second at any frame rate, and the whole-recording search bridges gaps of up to a third of a second.",
+        "A roll the camera saw only part of is now kept instead of thrown away: speed over the stretch seen, where the ball started, where it was last seen and which way it was heading, and the board at the arrows if it crossed them. It is marked partial, and nothing is filled in beyond what was seen.",
         "Updates install themselves: when a newer LaneIQ is published while the camera is running, the app now counts down and reloads between shots (never while a ball is being followed, a clip is recording, or you are in the lane editor). Your saved lane lock comes straight back. Before, a running camera never updated, so a fix could sit unused for a whole session.",
         "FIXED: balls were never tracked on iPhone. A phone's own log showed every moving chain rejected at millions of miles an hour: the camera's frame clock stood still, so the app saw no time pass between points. The tracker now uses the time each frame was presented (or the page's own clock), which always moves forward.",
         "Copy diagnostics now also carries a ball-tracking log: every few seconds how many moving blobs were seen and why they were dropped, when a ball was found, why a chain was thrown out (speed, steadiness, distance), and how each shot ended. Paste it and a miss can be explained from your own phone's numbers.",
@@ -1251,7 +1253,7 @@
     setText("c-miss", m.pocketMiss === null ? "n/a" : `${m.pocketMiss > 0 ? "+" : ""}${m.pocketMiss.toFixed(1)}`);
     setText("c-miss-u", m.zone ? ZONE_TEXT[m.zone] : "+ high, \u2212 light");
     $("c-conf").style.width = `${Math.round(a.confidence * 100)}%`;
-    setText("c-conf-t", `${Math.round(a.confidence * 100)}% confidence \xB7 ${a.samples} pts`);
+    setText("c-conf-t", a.partial ? `partial: the camera saw ${a.lastSeen && a.release ? Math.round(a.lastSeen.ft - a.release.ft) : "part of"} ft of the roll \xB7 ${a.samples} pts` : `${Math.round(a.confidence * 100)}% confidence \xB7 ${a.samples} pts`);
     document.querySelectorAll("#tab-live .card").forEach((el) => {
       el.classList.remove("pop");
       void el.offsetWidth;
@@ -1562,6 +1564,39 @@
     });
     for (let i = 1; i < out.length; i++) if (out[i].y < out[i - 1].y) out[i] = { ...out[i], y: out[i - 1].y };
     return out;
+  }
+  function partialShot(rawPath) {
+    const path2 = forwardPath(rawPath);
+    if (path2.length < 6) return null;
+    const first = path2[0];
+    const last = path2[path2.length - 1];
+    const span = last.y - first.y;
+    if (span < 5 || last.t - first.t < 0.15) return null;
+    const fit = linearFit(path2.map((s) => s.t), path2.map((s) => s.y));
+    if (!(fit.slope > 0)) return null;
+    const speed = fit.slope * (3600 / 5280);
+    if (speed < 5 || speed > 40) return null;
+    const arrows = interp(path2, ARROWS_FT);
+    const exitH = headingDeg(path2, last.y - 10, last.y + 0.01);
+    const launch = headingDeg(path2, Math.max(first.y, 3), Math.max(first.y, 3) + 17);
+    return {
+      speedMph: speed,
+      speedUncertainty: fit.rmse / (last.t - first.t) * (3600 / 5280) * 2,
+      boardAtArrows: arrows === null ? null : boardFromRight(arrows),
+      breakpointBoard: null,
+      breakpointFt: null,
+      entryBoard: null,
+      launchAngleDeg: launch?.deg ?? null,
+      impactAngleDeg: null,
+      samples: path2.length,
+      confidence: Math.max(0, Math.min(1, span / 45 * (1 - Math.min(1, fit.rmse / 5)))) * 0.6,
+      release: { board: boardFromRight(first.x), ft: first.y },
+      lastSeen: { board: boardFromRight(last.x), ft: last.y, t: last.t },
+      exitHeadingDeg: exitH?.deg ?? null,
+      entryMeasured: false,
+      reachedDeck: last.y >= 60,
+      partial: true
+    };
   }
 
   // core/src/arrows.ts
@@ -9882,7 +9917,8 @@ ${url}`);
   }
 
   // core/src/retrace.ts
-  var MAX_SKIP = 6;
+  var MAX_SKIP = 24;
+  var MAX_GAP = 0.32;
   function tracePath(frames) {
     const nodes = frames.map((fr2) => fr2.cands.map(() => ({ f: 0, c: 0, q: 0, score: 0, prev: null })));
     let best = null;
@@ -9896,6 +9932,7 @@ ${url}`);
           const fi = f - g;
           const dt = frames[f].t - frames[fi].t;
           if (dt <= 0) continue;
+          if (dt > MAX_GAP) break;
           for (let i = 0; i < frames[fi].cands.length; i++) {
             const ci = frames[fi].cands[i];
             const dly = cj.ly - ci.ly;
@@ -9904,7 +9941,7 @@ ${url}`);
             const progress2 = Math.min(dly, 4);
             const link = progress2 >= 0.06 ? 0.35 * progress2 : -0.9;
             const sideways = 0.12 * Math.max(0, dlx / dt - 3);
-            const skip = 0.25 * (g - 1);
+            const skip = 0.5 * Math.max(0, dt - 0.045);
             const s = nodes[fi][i].score + reward + link - sideways - skip;
             if (s > bestScore) bestScore = s, bestPrev = [fi, i];
           }
@@ -10891,6 +10928,9 @@ ${url}`);
     /** every ball-like blob seen in the latest frame, in lane coordinates (the recording of these, over a whole shot, is what the shot is traced from) */
     lastCands = [];
     /** chains that were thrown out as "something else" (a person, a pin), and how they moved: so a ball that is missed can be explained */
+    /** the frame interval, smoothed: how long a missed frame is depends on the frame rate (60 fps gives 17 ms, 30 fps 33 ms) */
+    dtEma = 1 / 30;
+    lastT = -1;
     rejects = [];
     /** last blob (grid pixels) and its speed per frame */
     last = null;
@@ -11003,6 +11043,11 @@ ${url}`);
     /** Feed one frame (grayscale, grid size, and optionally red-minus-blue). `t` is the frame's time in seconds. */
     step(gray, t, chroma) {
       const { w, h, mask } = this.s;
+      if (this.lastT >= 0) {
+        const d2 = t - this.lastT;
+        if (d2 > 0 && d2 < 0.5) this.dtEma = 0.9 * this.dtEma + 0.1 * d2;
+      }
+      this.lastT = t;
       if (!this.bg) {
         this.bg = gray.slice();
         this.bgC = chroma ? chroma.slice() : null;
@@ -11133,7 +11178,9 @@ ${url}`);
           }
         });
       }
-      this.hyps = this.hyps.filter((hy) => hy.miss <= (hy.confirmed ? this.lanePrev > 45 ? 10 : 40 : 4));
+      const perFrame = Math.max(1, 0.0333 / this.dtEma);
+      const maxMiss = (hy) => hy.confirmed ? Math.round((this.lanePrev > 45 ? 10 : 40) * perFrame) : Math.max(4, Math.round(0.28 / this.dtEma));
+      this.hyps = this.hyps.filter((hy) => hy.miss <= maxMiss(hy));
       st2.hyps = this.hyps.length;
       let justConfirmed = false;
       if (!this.confirmed) {
@@ -12936,7 +12983,7 @@ ${url}`);
     const wholeSmooth = wholeRel ? smoothPath(wholeRel) : null;
     const reach = (p) => p.length ? p[p.length - 1].y - p[0].y : 0;
     const smooth = wholeSmooth && reach(wholeSmooth) >= reach(liveSmooth) - 0.5 ? wholeSmooth : liveSmooth;
-    const a = analyzeShot(smooth);
+    const a = analyzeShot(smooth) ?? partialShot(smooth);
     const saved = forwardPath(smooth);
     const r2 = (n) => Math.round(n * 100) / 100;
     const rawRecord = {
