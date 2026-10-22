@@ -61,6 +61,7 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        "Tapping Re-lock now means it: the lock you threw away is not handed back, and a second Re-lock in a row opens Trace your lane, starting from the last outline.",
         "The drawn arrows now sit on the right boards (they were half a board off).",
         "Snap to edges tightens your outline onto the real lane edges; Reset starts over."
       ]
@@ -10446,6 +10447,7 @@ ${url}`);
   var calKey = () => laneNo ? `laneiq.calibration.${laneNo}` : "laneiq.calibration";
   var lastLockConf = null;
   function applyCalibration(c, how) {
+    if (how !== "automatic") rejected = [], redoStreak = 0;
     logLock({ how, secs: /saved setup/.test(how) || !detectStartedAt ? null : Math.round((performance.now() - detectStartedAt) / 100) / 10, confidence: lastLockConf, foulSeen: lastCandidates[0] ? lastCandidates[0].rows.foul !== null : null });
     corners = c;
     lastLockHow = how;
@@ -10747,6 +10749,7 @@ ${url}`);
     if (now - lastDetectAt < Math.max(400, detectMs * 2)) return;
     lastDetectAt = now;
     detectNow();
+    if (rejected.length) lastCandidates = lastCandidates.filter((d2) => !rejected.some((r) => detectionsAgree(r, d2.corners, video.videoWidth * 0.05)));
     const ch = chooseLane(lastCandidates, video.videoWidth);
     let picked = ch.pick;
     if (!picked && ch.choices.length > 1) {
@@ -10967,7 +10970,7 @@ ${url}`);
   var tracing = false;
   $("manualbtn").onclick = () => openTrace();
   $("tracebtn").onclick = () => openTrace();
-  function openTrace() {
+  function openTrace(from) {
     const W = video.videoWidth;
     const Hh = video.videoHeight;
     if (!W || tracing) return;
@@ -10975,7 +10978,7 @@ ${url}`);
     frame.width = W;
     frame.height = Hh;
     frame.getContext("2d").drawImage(video, 0, 0);
-    const start = lastCandidates[0]?.corners ?? [
+    const start = from ?? lastCandidates[0]?.corners ?? [
       { x: W * 0.22, y: Hh * 0.92 },
       { x: W * 0.78, y: Hh * 0.92 },
       { x: W * 0.55, y: Hh * 0.36 },
@@ -11061,8 +11064,22 @@ ${url}`);
     full.toBlob((b) => b && dl(b, `laneiq-frame-${stamp}.jpg`), "image/jpeg", 0.92);
     status.textContent = "Saved the frame and the detector's results to your downloads.";
   };
+  var rejected = [];
+  var redoStreak = 0;
+  var lastRedoAt = 0;
   function relock(logMiss = true) {
-    if (logMiss) markRedone();
+    let traceFrom = null;
+    if (logMiss) {
+      markRedone();
+      const now = performance.now();
+      redoStreak = now - lastRedoAt < 18e4 ? redoStreak + 1 : 1;
+      if (redoStreak === 1) rejected = [];
+      lastRedoAt = now;
+      if (corners.length === 4) {
+        rejected = [...rejected, corners.map((p) => ({ ...p }))].slice(-4);
+        if (redoStreak >= 2) traceFrom = corners.map((p) => ({ ...p }));
+      }
+    }
     $("confirm").classList.add("hide");
     $("manualbtn").classList.add("hide");
     pending = null;
@@ -11091,6 +11108,10 @@ ${url}`);
     tracker = null;
     laneMask = null;
     armed = false;
+    if (traceFrom) {
+      status.textContent = "The automatic lock keeps missing here, so trace it by hand.";
+      openTrace(traceFrom);
+    }
   }
   $("reset").onclick = () => relock();
   var ZOOM_KEY = "laneiq.zoom";
