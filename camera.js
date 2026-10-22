@@ -53,6 +53,16 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-22-spin-lab",
+      date: "2026-10-22",
+      title: "A much more advanced Spin lab",
+      items: [
+        "The Spin lab now reads the whole release, not one instant: rev rate, axis rotation and axis tilt through time, with charts, so you can see how your ball's motion changes down the lane.",
+        "Mark the grip holes in the first frame and it follows the spin axis ON the ball. Where it starts is your PAP (saved to your profile with one tap); how far it wanders is the flare, drawn on a diagram of the ball.",
+        "It follows the ball through the clip on its own, keeps frames in step even if the player repeats or skips one, and labels anything unreliable instead of saving it."
+      ]
+    },
+    {
       id: "2026-10-22-pap-photos",
       date: "2026-10-22",
       title: "PAP from flare-ring photos",
@@ -670,7 +680,7 @@
     return x.length ? x.reduce((a, b) => a + b, 0) / x.length : null;
   };
   function compareSessions(mine, theirs) {
-    const row = (label2, unit3, pick) => ({ label: label2, unit: unit3, mine: avg(mine.shots.map(pick)), theirs: avg(theirs.shots.map(pick)) });
+    const row = (label2, unit4, pick) => ({ label: label2, unit: unit4, mine: avg(mine.shots.map(pick)), theirs: avg(theirs.shots.map(pick)) });
     const rows = [
       row("Speed", "mph", (s) => s.sp),
       row("Arrows board", "", (s) => s.ar),
@@ -2865,8 +2875,8 @@
         b = (sw * sxy - sy2 * sx2) / den;
         a = (sx2 - b * sy2) / sw;
         const res = pts.map((p) => Math.abs(p.x - (a + b * p.y)));
-        const med = [...res].sort((p, q) => p - q)[Math.floor(res.length / 2)];
-        const lim = Math.max(1.5, 2.5 * med);
+        const med2 = [...res].sort((p, q) => p - q)[Math.floor(res.length / 2)];
+        const lim = Math.max(1.5, 2.5 * med2);
         inl = pts.filter((_, k2) => res[k2] <= lim);
         if (inl.length < 30) return [];
       }
@@ -5421,7 +5431,7 @@
       ctx2.stroke();
       ctx2.restore();
     };
-    const dot4 = (v, color, label2, size = 6, dy = -10) => {
+    const dot5 = (v, color, label2, size = 6, dy = -10) => {
       const p = proj(v);
       if (p.z <= 0.02) return;
       ctx2.save();
@@ -5482,19 +5492,19 @@
       hole(pts.middle, l.grip.fingerDia);
       hole(pts.ring, l.grip.fingerDia);
     }
-    dot4(pts.grip, "#ffffff", "grip center", 4, -4);
-    dot4(pts.pap, "#5affb0", "PAP", 7);
-    dot4(pts.pin, "#46e6ff", "PIN (low RG)", 7);
-    dot4(pts.psa, "#ff4fd8", l.ball.symmetric ? "PSA (CG line)" : "PSA (high RG)", 7);
-    dot4(pts.inter, "rgba(255,255,255,.7)", "intermediate", 4, -4);
+    dot5(pts.grip, "#ffffff", "grip center", 4, -4);
+    dot5(pts.pap, "#5affb0", "PAP", 7);
+    dot5(pts.pin, "#46e6ff", "PIN (low RG)", 7);
+    dot5(pts.psa, "#ff4fd8", l.ball.symmetric ? "PSA (CG line)" : "PSA (high RG)", 7);
+    dot5(pts.inter, "rgba(255,255,255,.7)", "intermediate", 4, -4);
     if (l.ball.pinToCg !== void 0 && l.ball.pinToCg > 0) {
       const cg = walk(pts.pin, unit(cross(cross(pts.pin, pts.psa), pts.pin)), Math.min(QUARTER, l.ball.pinToCg));
-      dot4(cg, "#ffd25a", "CG", 6);
+      dot5(cg, "#ffd25a", "CG", 6);
     }
     if (l.ball.mb && !l.ball.symmetric) {
       const base = unit(cross(cross(pts.pin, pts.psa), pts.pin));
       const d = rotate(base, pts.pin, l.ball.mb.angle * Math.PI / 180);
-      dot4(walk(pts.pin, d, Math.min(QUARTER, l.ball.mb.dist)), "#ff8a3d", "MB", 6);
+      dot5(walk(pts.pin, d, Math.min(QUARTER, l.ball.mb.dist)), "#ff8a3d", "MB", 6);
     }
     ctx2.fillStyle = "rgba(255,255,255,.35)";
     ctx2.font = `${Math.round(r * 0.06)}px system-ui`;
@@ -6741,7 +6751,7 @@
     g.beginPath();
     g.arc(c.circle.x, c.circle.y, c.circle.r, 0, 7);
     g.stroke();
-    const dot4 = (p, col, label2) => {
+    const dot5 = (p, col, label2) => {
       if (!p) return;
       g.fillStyle = col;
       g.strokeStyle = "#000";
@@ -6756,15 +6766,15 @@
         g.fillText(label2, p.x + 10 * s, p.y - 8 * s);
       }
     };
-    if (kind === "thumb") dot4(c.thumb, "#ffffff", "thumb");
-    dot4(c.fingerA, "#ff4fd8", "1");
-    dot4(c.fingerB, "#ff4fd8", "2");
+    if (kind === "thumb") dot5(c.thumb, "#ffffff", "thumb");
+    dot5(c.fingerA, "#ff4fd8", "1");
+    dot5(c.fingerB, "#ff4fd8", "2");
     g.strokeStyle = "rgba(255,210,90,.7)";
     g.lineWidth = 2 * s;
     g.beginPath();
     c.ring.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y));
     g.stroke();
-    c.ring.forEach((p) => dot4(p, "#ffd25a"));
+    c.ring.forEach((p) => dot5(p, "#ffd25a"));
   }
   function between() {
     sheet3().innerHTML = `
@@ -8054,42 +8064,6 @@ ${url}`);
       notes
     };
   }
-  function estimateSpin(frames, circles, fps, view3, hand2, step = 4) {
-    const omegas = [];
-    let pts = 0;
-    const pyr = frames.map((f) => pyramid(f));
-    for (let i = 0; i + 1 < frames.length; i++) {
-      const c0 = circles[i];
-      const c1 = circles[i + 1];
-      const vc = { x: c1.cx - c0.cx, y: c1.cy - c0.cy };
-      const samples = [];
-      for (let y = -c0.r * 0.8; y <= c0.r * 0.8; y += step)
-        for (let x = -c0.r * 0.8; x <= c0.r * 0.8; x += step) {
-          if (x * x + y * y > (c0.r * 0.8) ** 2) continue;
-          const fl = flowAt(pyr[i], pyr[i + 1], c0.cx + x, c0.cy + y);
-          if (fl) samples.push({ x, y, vx: fl.u - vc.x, vy: fl.v - vc.y });
-        }
-      const sol = solveOmega(samples, c0.r);
-      if (sol && sol.inliers >= 20) {
-        omegas.push(sol.omega);
-        pts += sol.inliers;
-      }
-    }
-    if (omegas.length < 1) return null;
-    const med = (v) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)];
-    const om = { x: med(omegas.map((o) => o.x)), y: med(omegas.map((o) => o.y)), z: med(omegas.map((o) => o.z)) };
-    const res = spinFromOmega(om, fps, view3, hand2);
-    if (!res) return null;
-    const mags = omegas.map((o) => Math.hypot(o.x, o.y, o.z));
-    const spread = omegas.length > 1 ? Math.sqrt(mags.reduce((a, m) => a + (m - mags.reduce((s, x) => s + x, 0) / mags.length) ** 2, 0) / (mags.length - 1)) / (mags.reduce((s, x) => s + x, 0) / mags.length) : 0.5;
-    const agree = Math.max(0, 1 - spread * 4);
-    const coverage = Math.min(1, pts / omegas.length / 150);
-    const quality = Math.max(0, Math.min(1, res.quality * agree * (0.4 + 0.6 * coverage)));
-    const notes = [...res.notes];
-    if (omegas.length < 3) notes.push("Few frame pairs were usable, so treat this as rough.");
-    if (spread > 0.15) notes.push("The frame pairs disagree with each other: the footage may be too fast or too blurry for this method.");
-    return { ...res, quality, notes, pairs: omegas.length, pointsPerPair: Math.round(pts / omegas.length) };
-  }
   function trackCircle(prev, next, c, search = 24) {
     const half = Math.max(8, Math.floor(c.r * 0.45));
     let best = { dx: 0, dy: 0, cost: Infinity };
@@ -8115,58 +8089,196 @@ ${url}`);
     return { cx: c.cx + best.dx, cy: c.cy + best.dy, r: c.r };
   }
 
+  // core/src/spinpro.ts
+  var I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  var mul2 = (a, b) => a.map((row) => [0, 1, 2].map((j) => row[0] * b[0][j] + row[1] * b[1][j] + row[2] * b[2][j]));
+  var tvec = (m, v) => [m[0][0] * v[0] + m[1][0] * v[1] + m[2][0] * v[2], m[0][1] * v[0] + m[1][1] * v[1] + m[2][1] * v[2], m[0][2] * v[0] + m[1][2] * v[1] + m[2][2] * v[2]];
+  var dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  var unit3 = (a) => {
+    const n = Math.hypot(a[0], a[1], a[2]) || 1;
+    return [a[0] / n, a[1] / n, a[2] / n];
+  };
+  function rotation(om) {
+    const a = Math.hypot(om.x, om.y, om.z);
+    if (a < 1e-12) return I3;
+    const k2 = [om.x / a, om.y / a, om.z / a];
+    const c = Math.cos(a), s = Math.sin(a), v = 1 - c;
+    return [
+      [c + k2[0] * k2[0] * v, k2[0] * k2[1] * v - k2[2] * s, k2[0] * k2[2] * v + k2[1] * s],
+      [k2[1] * k2[0] * v + k2[2] * s, c + k2[1] * k2[1] * v, k2[1] * k2[2] * v - k2[0] * s],
+      [k2[2] * k2[0] * v - k2[1] * s, k2[2] * k2[1] * v + k2[0] * s, c + k2[2] * k2[2] * v]
+    ];
+  }
+  function pairOmega(a, b, c, vc, step = 5) {
+    const pa = pyramid(a), pb = pyramid(b);
+    const samples = [];
+    const lim = (c.r * 0.8) ** 2;
+    for (let y = -c.r * 0.8; y <= c.r * 0.8; y += step)
+      for (let x = -c.r * 0.8; x <= c.r * 0.8; x += step) {
+        if (x * x + y * y > lim) continue;
+        const fl = flowAt(pa, pb, c.cx + x, c.cy + y);
+        if (fl) samples.push({ x, y, vx: fl.u - vc.x, vy: fl.v - vc.y });
+      }
+    const sol = solveOmega(samples, c.r);
+    return sol && sol.inliers >= 20 ? sol : null;
+  }
+  var med = (v) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)];
+  function analyzeClip(omegas, fps, view3, hand2, grip) {
+    const notes = [];
+    const n = omegas.length;
+    const good = omegas.map((o, i) => o ? i : -1).filter((i) => i >= 0);
+    if (good.length < 2) return { series: [], start: null, end: null, pap: null, axisTrack: [], flareTravelIn: null, flareMaxIn: null, notes: ["Too few frame pairs could be read."] };
+    const filled = omegas.map((o, i) => o ?? omegas[good.reduce((b, j) => Math.abs(j - i) < Math.abs(b - i) ? j : b, good[0])]);
+    const half = 2;
+    const smooth = filled.map((_, i) => {
+      const lo = Math.max(0, i - half), hi = Math.min(n - 1, i + half);
+      const w = filled.slice(lo, hi + 1);
+      return { x: med(w.map((o) => o.x)), y: med(w.map((o) => o.y)), z: med(w.map((o) => o.z)) };
+    });
+    const series = [];
+    smooth.forEach((o, i) => {
+      const s = spinFromOmega(o, fps, view3, hand2);
+      if (!s) return;
+      const lo = Math.max(0, i - half), hi = Math.min(n - 1, i + half);
+      const mags = filled.slice(lo, hi + 1).map((q) => Math.hypot(q.x, q.y, q.z));
+      const mean3 = mags.reduce((a, b) => a + b, 0) / mags.length;
+      const spread = mags.length > 1 ? Math.sqrt(mags.reduce((a, m) => a + (m - mean3) ** 2, 0) / (mags.length - 1)) / (mean3 || 1) : 0.3;
+      series.push({ t: (i + 0.5) / fps, rpm: s.rpm, rotation: s.axisRotation, tilt: s.axisTilt, quality: Math.max(0, Math.min(1, s.quality * (1 - spread * 4))) });
+    });
+    const take = (a) => a.length ? { t: med(a.map((p) => p.t)), rpm: med(a.map((p) => p.rpm)), rotation: med(a.map((p) => p.rotation)), tilt: med(a.map((p) => p.tilt)), quality: med(a.map((p) => p.quality)) } : null;
+    const k2 = Math.max(3, Math.floor(series.length / 4));
+    const start = take(series.slice(0, k2));
+    const end = series.length >= 8 ? take(series.slice(-k2)) : null;
+    if (start && end && end.rpm < start.rpm * 0.7) notes.push(`The rev rate fell ${Math.round((1 - end.rpm / start.rpm) * 100)}% over the clip, which is a lot. Check the ball stayed in frame and the footage is sharp.`);
+    let pap = null;
+    const axisTrack = [];
+    let flareTravelIn = null;
+    let flareMaxIn = null;
+    if (grip) {
+      const toSphere2 = (o) => [o.x, -o.y, -o.z];
+      let Rk = I3;
+      const g0 = grip.g;
+      const raw = [];
+      smooth.forEach((o, i) => {
+        const os = toSphere2(o);
+        const axisNow = unit3(os);
+        let body = tvec(Rk, axisNow);
+        if (dot3(body, g0) < 0) body = [-body[0], -body[1], -body[2]];
+        raw.push({ t: (i + 0.5) / fps, v: [dot3(body, grip.ex), dot3(body, grip.up), dot3(body, grip.g)] });
+        Rk = mul2(rotation({ x: os[0], y: os[1], z: os[2] }), Rk);
+      });
+      const early = raw.slice(0, Math.max(3, Math.min(8, raw.length)));
+      const pv = unit3([med(early.map((p) => p.v[0])), med(early.map((p) => p.v[1])), med(early.map((p) => p.v[2]))]);
+      const ou = overUpOf(pv, hand2);
+      pap = { over: ou.over, up: ou.up, vec: pv };
+      for (const p of raw) {
+        const v = unit3(p.v);
+        const o = overUpOf(v, hand2);
+        axisTrack.push({ t: p.t, over: o.over, up: o.up, vec: v });
+      }
+      let travel = 0, far = 0;
+      for (let i = 1; i < axisTrack.length; i++) travel += surfDist(axisTrack[i - 1].vec, axisTrack[i].vec);
+      for (const p of axisTrack) far = Math.max(far, surfDist(p.vec, pv));
+      flareTravelIn = travel;
+      flareMaxIn = far;
+      if (pap.vec[2] < 0.2) notes.push("The axis came out far from the grip's side of the ball. Check the grip holes were marked on the right spots in the first frame.");
+    }
+    return { series, start, end, pap, axisTrack, flareTravelIn, flareMaxIn, notes };
+  }
+
   // camera/spinlab.ts
   function openSpinLab(onSaved) {
     const el = $("spinlab");
     el.classList.add("on");
     let view3 = "behind";
     let fps = 240;
+    let frames = 60;
     let circle = null;
+    let thumb = null, fingerA = null, fingerB = null;
+    let noThumb = (S.profile?.quiz?.style ?? "one-hand-thumb") !== "one-hand-thumb";
+    let mark = "ball";
     let tapStage = 0;
     let result2 = null;
+    let running = false;
     el.innerHTML = `
     <div class="row"><h2>Spin lab</h2><button class="btn ghost" id="sl-close">Close</button></div>
-    <div class="note">Measures rev rate, axis rotation and axis tilt from a <b>slow-motion video of the release</b>. Film the ball as large as you can, in good light, with the camera behind the bowler or to one side, steady on a tripod. 240 fps works best. This method is validated on simulated footage only, so check a few results against a measurement you trust before relying on it.</div>
+    <div class="note">Measures your ball's spin through the whole release from a <b>slow-motion video</b>: rev rate, axis rotation and axis tilt <i>over time</i>, and (if you mark the grip) your <b>PAP</b> and how far the axis flares across the ball. Film the ball as large as you can, in good light, camera behind the bowler or to one side, steady (a tripod). 240 fps works best. Validated on simulated footage only, so check a few results against a measurement you trust.</div>
     <div class="card">
       <div class="field"><label>1. Choose the video</label><input type="file" id="sl-file" accept="video/*"></div>
       <div class="two">
         <div class="field"><label>Camera position</label><select id="sl-view"><option value="behind">Behind the bowler</option><option value="side-right">Side, on the bowler's right</option><option value="side-left">Side, on the bowler's left</option></select></div>
         <div class="field"><label>Frames per second</label><input id="sl-fps" inputmode="numeric" value="240"></div>
       </div>
+      <div class="field"><label>How much of the release to read</label><select id="sl-len"><option value="30">Quick (30 frames)</option><option value="60" selected>Standard (60 frames)</option><option value="120">Long (120 frames, slower)</option></select></div>
     </div>
     <div id="sl-work" class="hide">
       <div class="card">
-        <div class="field"><label>2. Find a frame just after release, with the ball large</label><input type="range" id="sl-scrub" min="0" max="1" step="0.001" value="0" style="width:100%"></div>
+        <div class="field"><label>2. Find a frame just after release, with the ball large and the grip toward the camera if you can</label><input type="range" id="sl-scrub" min="0" max="1" step="0.001" value="0" style="width:100%"></div>
         <div class="stagebox" style="position:relative"><video id="sl-v" playsinline muted style="width:100%;display:block"></video><canvas id="sl-ov" class="ov" style="position:absolute;inset:0;width:100%;height:100%"></canvas></div>
+        <div class="chips" id="sl-modes"></div>
         <div class="note" id="sl-hint">3. Tap the center of the ball, then tap its edge.</div>
-        <div class="chips"><button class="btn" id="sl-go">Analyze spin</button><button class="chip" id="sl-reset">Re-mark ball</button></div>
+        <div class="chips"><button class="btn" id="sl-go">Analyze the release</button><button class="chip" id="sl-reset">Re-mark everything</button></div>
+        <div class="note" id="sl-prog"></div>
       </div>
       <div id="sl-result"></div>
     </div>`;
     const v = $("sl-v");
     const ov = $("sl-ov");
     const octx = ov.getContext("2d");
+    const modeChips = () => {
+      const list = [{ id: "ball", label: "Ball" }, ...noThumb ? [] : [{ id: "thumb", label: "Thumb hole" }], { id: "fingerA", label: "Finger hole 1" }, { id: "fingerB", label: "Finger hole 2" }];
+      $("sl-modes").innerHTML = list.map((m) => `<button class="chip ${mark === m.id ? "sel" : ""}" data-m="${m.id}">${m.label}${m.id === "ball" ? circle && circle.r ? " \u2713" : "" : (m.id === "thumb" ? thumb : m.id === "fingerA" ? fingerA : fingerB) ? " \u2713" : ""}</button>`).join("") + `<label class="note" style="display:inline-flex;gap:6px;align-items:center;margin-left:6px"><input type="checkbox" id="sl-nothumb" ${noThumb ? "checked" : ""}> no thumb hole</label>`;
+      el.querySelectorAll("[data-m]").forEach((b) => b.onclick = () => (mark = b.dataset.m, hint(), modeChips()));
+      $("sl-nothumb").onchange = (e) => (noThumb = e.target.checked, thumb = noThumb ? null : thumb, mark = "ball", modeChips(), drawMark());
+    };
+    const hint = () => {
+      $("sl-hint").textContent = mark === "ball" ? "Tap the center of the ball, then tap its edge." : `Tap the ${mark === "thumb" ? "thumb hole" : mark === "fingerA" ? "first finger hole" : "second finger hole"}. Marking the grip is optional, but it's what lets me find your PAP and the flare.`;
+    };
     const drawMark = () => {
       octx.clearRect(0, 0, ov.width, ov.height);
-      if (!circle) return;
-      octx.strokeStyle = "#46e6ff";
-      octx.lineWidth = Math.max(2, ov.width / 300);
-      octx.beginPath();
-      octx.arc(circle.cx, circle.cy, Math.max(circle.r, 3), 0, 7);
-      octx.stroke();
-      octx.fillStyle = "#ff4fd8";
-      octx.beginPath();
-      octx.arc(circle.cx, circle.cy, Math.max(3, ov.width / 250), 0, 7);
-      octx.fill();
+      const s = Math.max(1, ov.width / 900);
+      if (circle) {
+        octx.strokeStyle = "#46e6ff";
+        octx.lineWidth = 3 * s;
+        octx.beginPath();
+        octx.arc(circle.cx, circle.cy, Math.max(circle.r, 3), 0, 7);
+        octx.stroke();
+      }
+      const dot5 = (p, col) => {
+        if (!p) return;
+        octx.fillStyle = col;
+        octx.strokeStyle = "#000";
+        octx.lineWidth = 2 * s;
+        octx.beginPath();
+        octx.arc(p.x, p.y, 7 * s, 0, 7);
+        octx.fill();
+        octx.stroke();
+      };
+      dot5(thumb, "#ffffff");
+      dot5(fingerA, "#ff4fd8");
+      dot5(fingerB, "#ff4fd8");
     };
     const seek = (t) => new Promise((res) => {
-      const done2 = () => (v.removeEventListener("seeked", done2), res());
-      v.addEventListener("seeked", done2);
+      let settled = false;
+      const finish2 = (mt) => {
+        if (!settled) settled = true, res(mt);
+      };
+      const onSeeked = () => {
+        v.removeEventListener("seeked", onSeeked);
+        const rv = v;
+        if (rv.requestVideoFrameCallback) {
+          rv.requestVideoFrameCallback((_n, m) => finish2(m.mediaTime));
+          setTimeout(() => finish2(v.currentTime), 300);
+        } else finish2(v.currentTime);
+      };
+      v.addEventListener("seeked", onSeeked);
       v.currentTime = Math.max(0, Math.min(v.duration || 0, t));
     });
     $("sl-view").onchange = (e) => view3 = e.target.value;
     $("sl-fps").onchange = (e) => fps = Math.max(30, Number(e.target.value) || 240);
+    $("sl-len").onchange = (e) => frames = Number(e.target.value);
     $("sl-close").onclick = () => {
+      running = false;
       if (v.src) URL.revokeObjectURL(v.src);
       el.classList.remove("on");
       el.innerHTML = "";
@@ -8182,94 +8294,236 @@ ${url}`);
         $("sl-scrub").step = String(1 / fps);
         $("sl-work").classList.remove("hide");
         circle = null;
+        thumb = fingerA = fingerB = null;
         tapStage = 0;
+        mark = "ball";
+        modeChips();
+        hint();
         drawMark();
       };
     };
     $("sl-scrub").oninput = (e) => seek(Number(e.target.value)).then(drawMark);
-    $("sl-reset").onclick = () => (circle = null, tapStage = 0, drawMark(), $("sl-hint").textContent = "Tap the center of the ball, then tap its edge.");
+    $("sl-reset").onclick = () => (circle = null, thumb = fingerA = fingerB = null, tapStage = 0, mark = "ball", modeChips(), hint(), drawMark());
     ov.addEventListener("pointerdown", (e) => {
       const r = ov.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width * ov.width;
-      const y = (e.clientY - r.top) / r.height * ov.height;
-      if (tapStage === 0 || tapStage === 2) {
-        circle = { cx: x, cy: y, r: 0 };
-        tapStage = 1;
-        $("sl-hint").textContent = "Now tap the edge of the ball.";
-      } else {
-        circle.r = Math.hypot(x - circle.cx, y - circle.cy);
-        tapStage = 2;
-        $("sl-hint").textContent = `Ball marked (${Math.round(circle.r * 2)} px across). ${circle.r < 40 ? "That's small: results will be rough unless the ball is bigger in frame." : "Good size."} Tap Analyze spin.`;
-      }
+      const p = { x: (e.clientX - r.left) / r.width * ov.width, y: (e.clientY - r.top) / r.height * ov.height };
+      if (mark === "ball") {
+        if (tapStage === 0 || tapStage === 2) {
+          circle = { cx: p.x, cy: p.y, r: 0 };
+          tapStage = 1;
+          $("sl-hint").textContent = "Now tap the edge of the ball.";
+        } else {
+          circle.r = Math.hypot(p.x - circle.cx, p.y - circle.cy);
+          tapStage = 2;
+          $("sl-hint").textContent = `Ball marked (${Math.round(circle.r * 2)} px across). ${circle.r < 40 ? "That's small: results will be rough unless the ball is bigger in frame." : "Good size."} Now mark the grip holes (optional, for the PAP), or tap Analyze.`;
+          mark = noThumb ? "fingerA" : "thumb";
+        }
+      } else if (mark === "thumb") thumb = p, mark = "fingerA";
+      else if (mark === "fingerA") fingerA = p, mark = "fingerB";
+      else fingerB = p, mark = "ball";
+      modeChips();
+      if (tapStage === 2 && mark !== "ball") hint();
       drawMark();
     });
+    const crop = (cx, cy, S2, scale2, size, cnv, cctx) => {
+      cctx.clearRect(0, 0, size, size);
+      cctx.drawImage(v, cx - S2, cy - S2, 2 * S2, 2 * S2, 0, 0, size, size);
+      const px = cctx.getImageData(0, 0, size, size).data;
+      const g = new Float32Array(size * size);
+      for (let i = 0; i < g.length; i++) g[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+      void cnv;
+      void scale2;
+      return { data: g, w: size, h: size };
+    };
     $("sl-go").onclick = async () => {
       const out = $("sl-result");
+      if (running) return;
       if (!circle || circle.r < 15) return void (out.innerHTML = `<div class="card"><div class="u">Mark the ball first: tap its center, then its edge.</div></div>`);
-      out.innerHTML = `<div class="card"><div class="u">Reading frames\u2026</div></div>`;
-      await new Promise((r) => setTimeout(r, 40));
-      const scale2 = Math.min(1, 100 / circle.r);
-      const cw = Math.round(v.videoWidth * scale2);
-      const ch = Math.round(v.videoHeight * scale2);
-      const cv = document.createElement("canvas");
-      cv.width = cw;
-      cv.height = ch;
-      const cx = cv.getContext("2d", { willReadFrequently: true });
-      const t0 = v.currentTime;
-      const N2 = 6;
-      const frames = [];
-      for (let k2 = 0; k2 < N2; k2++) {
-        await seek(t0 + k2 / fps);
-        cx.drawImage(v, 0, 0, cw, ch);
-        const px = cx.getImageData(0, 0, cw, ch).data;
-        const g = new Float32Array(cw * ch);
-        for (let i = 0; i < g.length; i++) g[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
-        frames.push({ data: g, w: cw, h: ch });
-      }
-      let c = { cx: circle.cx * scale2, cy: circle.cy * scale2, r: circle.r * scale2 };
-      const circles = [c];
-      for (let k2 = 1; k2 < N2; k2++) {
-        c = trackCircle(frames[k2 - 1], frames[k2], c, Math.round(Math.min(24, c.r * 0.4)));
-        circles.push(c);
-      }
+      running = true;
+      out.innerHTML = "";
+      const rs = 80;
+      const scale2 = rs / circle.r;
+      const S2 = circle.r * 1.35;
+      const size = Math.round(2 * S2 * scale2);
+      const cnv = document.createElement("canvas");
+      cnv.width = cnv.height = size;
+      const cctx = cnv.getContext("2d", { willReadFrequently: true });
+      let cx = circle.cx, cy = circle.cy;
+      let mtA = await seek(v.currentTime);
+      const omegas = [];
       let still = 0;
-      for (let k2 = 1; k2 < N2; k2++) {
-        let d = 0;
-        let n = 0;
-        for (let y = -c.r * 0.5; y <= c.r * 0.5; y += 4)
-          for (let x = -c.r * 0.5; x <= c.r * 0.5; x += 4) {
-            const a = frames[k2 - 1].data[Math.round(circles[k2 - 1].cy + y) * cw + Math.round(circles[k2 - 1].cx + x)];
-            const b = frames[k2].data[Math.round(circles[k2].cy + y) * cw + Math.round(circles[k2].cx + x)];
-            d += Math.abs(a - b);
-            n++;
-          }
+      let irregular = 0;
+      const prog = $("sl-prog");
+      for (let k2 = 0; k2 < frames && running; k2++) {
+        prog.textContent = `Reading frame pair ${k2 + 1} of ${frames}\u2026`;
+        await new Promise((r) => setTimeout(r, 0));
+        const a = crop(cx, cy, S2, scale2, size, cnv, cctx);
+        let mtB = await seek(mtA + 1 / fps);
+        if ((mtB - mtA) * fps < 0.4) mtB = await seek(mtA + 2 / fps);
+        const steps = Math.max(0.5, (mtB - mtA) * fps);
+        if (Math.abs(steps - 1) > 0.3) irregular++;
+        const b = crop(cx, cy, S2, scale2, size, cnv, cctx);
+        const c0 = { cx: size / 2, cy: size / 2, r: rs };
+        const c1 = trackCircle(a, b, c0, Math.round(Math.min(24, rs * 0.4)));
+        const vc = { x: c1.cx - c0.cx, y: c1.cy - c0.cy };
+        let d = 0, n = 0;
+        for (let y = -rs * 0.5; y <= rs * 0.5; y += 4) for (let x = -rs * 0.5; x <= rs * 0.5; x += 4) d += Math.abs(a.data[Math.round(size / 2 + y) * size + Math.round(size / 2 + x)] - b.data[Math.round(size / 2 + y) * size + Math.round(size / 2 + x)]), n++;
         if (d / n < 0.4) still++;
+        const sol = pairOmega(a, b, c0, vc, 5);
+        omegas.push(sol ? { x: sol.omega.x / steps, y: sol.omega.y / steps, z: sol.omega.z / steps } : null);
+        mtA = mtB;
+        cx += vc.x / scale2;
+        cy += vc.y / scale2;
+        if (cx < 0 || cy < 0 || cx > v.videoWidth || cy > v.videoHeight) break;
       }
-      await new Promise((r) => setTimeout(r, 40));
-      result2 = estimateSpin(frames, circles, fps, view3, S.profile?.hand ?? "R", 5);
-      const warn = still >= N2 - 2 ? `<li>Consecutive frames look identical. The video may not be a true ${fps} fps recording, or the seek landed on the same frame, so the result isn't meaningful.</li>` : "";
-      if (!result2) {
-        out.innerHTML = `<div class="card"><div class="lr-head">Couldn't measure the spin</div><ul><li>The ball surface didn't have enough visible markings to track. A logo, finger holes or a two-tone ball work best, and a plain glossy ball often can't be measured this way.</li>${warn}</ul></div>`;
+      running = false;
+      prog.textContent = "";
+      const hand2 = S_hand();
+      let pose = null;
+      if (fingerA && fingerB && (noThumb || thumb)) pose = scanFrame({ circle: { x: circle.cx, y: circle.cy, r: circle.r }, thumb: noThumb ? null : thumb, fingerA, fingerB });
+      const an = analyzeClip(omegas, fps, view3, hand2, pose);
+      if (irregular > omegas.length * 0.3) an.notes.push(`The video's frames don't step evenly at ${fps} fps (${irregular} of ${omegas.length} pairs were off). Check the frames-per-second setting, or export the clip as a true high-frame-rate file.`);
+      result2 = { ...an, pairs: omegas.filter(Boolean).length, still };
+      show(pose);
+    };
+    const S_hand = () => S.profile?.hand ?? "R";
+    const chart = (cnv, lines, unit4) => {
+      const g = cnv.getContext("2d");
+      const w = cnv.width, h = cnv.height;
+      g.clearRect(0, 0, w, h);
+      const all = lines.flatMap((l) => l.pts);
+      if (!all.length) return;
+      const t1 = Math.max(...all.map((p) => p.t)) || 1;
+      let lo = Math.min(...all.map((p) => p.v)), hi = Math.max(...all.map((p) => p.v));
+      if (hi - lo < 1) lo -= 1, hi += 1;
+      const pad = 28;
+      const X = (t) => pad + t / t1 * (w - pad - 8);
+      const Y = (val2) => h - 18 - (val2 - lo) / (hi - lo) * (h - 30);
+      g.strokeStyle = "rgba(255,255,255,.15)";
+      g.lineWidth = 1;
+      g.fillStyle = "rgba(255,255,255,.55)";
+      g.font = "11px system-ui";
+      for (let i = 0; i <= 3; i++) {
+        const val2 = lo + (hi - lo) * i / 3;
+        g.beginPath();
+        g.moveTo(pad, Y(val2));
+        g.lineTo(w - 8, Y(val2));
+        g.stroke();
+        g.fillText(Math.round(val2) + unit4, 0, Y(val2) + 4);
+      }
+      g.fillText(t1.toFixed(2) + " s", w - 44, h - 3);
+      for (const l of lines) {
+        g.strokeStyle = l.color;
+        g.lineWidth = 2.5;
+        g.beginPath();
+        l.pts.forEach((p, i) => i ? g.lineTo(X(p.t), Y(p.v)) : g.moveTo(X(p.t), Y(p.v)));
+        g.stroke();
+      }
+    };
+    const show = (pose) => {
+      const out = $("sl-result");
+      const r = result2;
+      if (!r.series.length || !r.start) {
+        out.innerHTML = `<div class="card"><div class="lr-head">Couldn't measure the spin</div><ul><li>The ball surface didn't have enough visible markings to track. A logo, finger holes or a two-tone ball work best, and a plain glossy ball often can't be measured this way.</li>${r.still >= 4 ? `<li>Consecutive frames look identical: the video may not be a true ${fps} fps recording.</li>` : ""}${r.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>`;
         return;
       }
-      const q = result2.quality;
+      const q = r.start.quality;
       const label2 = q >= 0.7 ? "good" : q >= 0.4 ? "rough" : "unreliable";
-      out.innerHTML = `<div class="card"><div class="k">Result</div>
+      const e = r.end;
+      const flare2 = r.pap && r.flareMaxIn !== null;
+      out.innerHTML = `<div class="card"><div class="k">Through the release</div>
       <div class="grid" style="margin-top:8px">
-        <div class="card"><div class="k">Rev rate</div><div class="v">${Math.round(result2.rpm)}</div><div class="u">RPM</div></div>
-        <div class="card"><div class="k">Axis rotation</div><div class="v">${result2.axisRotation.toFixed(0)}\xB0</div><div class="u">0\xB0 = forward roll</div></div>
-        <div class="card"><div class="k">Axis tilt</div><div class="v">${result2.axisTilt.toFixed(0)}\xB0</div><div class="u">above horizontal</div></div>
+        <div class="card"><div class="k">Rev rate</div><div class="v">${Math.round(r.start.rpm)}</div><div class="u">RPM${e ? `, ${Math.round(e.rpm)} at the end` : ""}</div></div>
+        <div class="card"><div class="k">Axis rotation</div><div class="v">${r.start.rotation.toFixed(0)}\xB0</div><div class="u">${e ? `${e.rotation.toFixed(0)}\xB0 at the end` : "0\xB0 = forward roll"}</div></div>
+        <div class="card"><div class="k">Axis tilt</div><div class="v">${r.start.tilt.toFixed(0)}\xB0</div><div class="u">${e ? `${e.tilt.toFixed(0)}\xB0 at the end` : "above horizontal"}</div></div>
       </div>
       <span class="badge ${q >= 0.7 ? "good" : q >= 0.4 ? "moderate" : "tentative"}">${label2} \xB7 quality ${Math.round(q * 100)}%</span>
-      <ul>${[...result2.notes.map((n) => `<li>${esc(n)}</li>`), warn, `<li>Used ${result2.pairs} frame pairs and about ${result2.pointsPerPair} tracked points per pair.</li>`].join("")}</ul>
-      <div class="chips"><button class="btn" id="sl-save" ${q < 0.3 ? "disabled" : ""}>Use these numbers</button></div>
-      ${q < 0.3 ? `<div class="note">Not reliable enough to save. Try a closer, brighter, higher-frame-rate clip.</div>` : ""}</div>`;
+      <div class="note">The numbers are the spin right after release, with the change over the clip beside them.</div>
+      <div class="k" style="margin-top:10px">Rev rate over the clip</div><canvas id="sl-c1" width="640" height="170" style="width:100%;height:auto"></canvas>
+      <div class="k" style="margin-top:6px">Axis rotation <span style="color:#46e6ff">\u2501</span> and tilt <span style="color:#ffd25a">\u2501</span></div><canvas id="sl-c2" width="640" height="170" style="width:100%;height:auto"></canvas>
+      <ul>${[...r.notes, `Read ${r.pairs} frame pairs.`, r.still >= 4 ? `Many consecutive frames look identical: the video may not be a true ${fps} fps recording.` : ""].filter(Boolean).map((n) => `<li>${esc(n)}</li>`).join("")}</ul>
+      <div class="chips"><button class="btn" id="sl-save" ${q < 0.3 ? "disabled" : ""}>Use rev rate, rotation and tilt</button></div>
+      ${q < 0.3 ? `<div class="note">Not reliable enough to save. Try a closer, brighter, higher-frame-rate clip.</div>` : ""}</div>
+    ${flare2 ? `<div class="card"><div class="k">Your PAP and flare, from the video</div>
+      <div class="lr-head" style="font-size:22px">PAP \u2248 ${esc(fractionInches(Math.abs(r.pap.over)).replace(/"/g, ""))}${r.pap.over < 0 ? " (other side)" : ""} over, ${esc(fractionInches(Math.abs(r.pap.up)).replace(/"/g, ""))} ${r.pap.up < 0 ? "down" : "up"}</div>
+      <div class="u">The axis travelled <b>${r.flareTravelIn.toFixed(1)}"</b> across the ball during the clip, reaching <b>${r.flareMaxIn.toFixed(1)}"</b> from where it started. That's the flare: the oil rings are circles around this path.</div>
+      <canvas id="sl-c3" width="420" height="420" style="width:100%;max-width:360px;display:block;margin:6px auto"></canvas>
+      <div class="note">The ball as you hold it, grip toward you, fingers up. White: thumb. Pink: finger holes. The line is where the spin axis sits on the ball, from release (cyan) to the end (magenta).</div>
+      <div class="chips"><button class="btn" id="sl-savepap">Use this PAP</button></div><div class="note" id="sl-papmsg"></div></div>` : pose === null ? `<div class="card"><div class="u">Mark the grip holes in the first frame (finger holes, and thumb hole if there is one) and analyze again to get your PAP and the flare.</div></div>` : ""}`;
+      chart($("sl-c1"), [{ pts: r.series.map((p) => ({ t: p.t, v: p.rpm })), color: "#5affb0", label: "rpm" }], "");
+      chart($("sl-c2"), [{ pts: r.series.map((p) => ({ t: p.t, v: p.rotation })), color: "#46e6ff", label: "rotation" }, { pts: r.series.map((p) => ({ t: p.t, v: p.tilt })), color: "#ffd25a", label: "tilt" }], "\xB0");
+      if (flare2) drawBall2($("sl-c3"), r, pose);
       $("sl-save")?.addEventListener("click", () => {
-        const r = result2;
-        updateProfile({ spin: { ...S.profile?.spin ?? {}, rpm: Math.round(r.rpm), axisRotation: Math.round(r.axisRotation), axisTilt: Math.round(r.axisTilt), source: "video", at: (/* @__PURE__ */ new Date()).toISOString() } });
+        updateProfile({ spin: { ...S.profile?.spin ?? {}, rpm: Math.round(r.start.rpm), axisRotation: Math.round(r.start.rotation), axisTilt: Math.round(r.start.tilt), source: "video", at: (/* @__PURE__ */ new Date()).toISOString() } });
         onSaved();
         $("sl-close").click();
       });
+      $("sl-savepap")?.addEventListener("click", () => {
+        const f = (x) => fractionInches(Math.abs(x)).replace(/"/g, "");
+        const text = `${r.pap.over < 0 ? "-" : ""}${f(r.pap.over)} over, ${f(r.pap.up)} ${r.pap.up < 0 ? "down" : "up"}`;
+        updateProfile({ spin: { ...S.profile?.spin ?? { source: "video", at: (/* @__PURE__ */ new Date()).toISOString() }, pap: text, papFrom: "video" } });
+        $("sl-papmsg").textContent = `Saved: ${text}. The Layout Lab and Pro shop will use it.`;
+        onSaved();
+      });
+    };
+    const drawBall2 = (cnv, r, pose) => {
+      const g = cnv.getContext("2d");
+      const w = cnv.width, c = w / 2, R2 = w * 0.46;
+      g.clearRect(0, 0, w, w);
+      const grad = g.createRadialGradient(c - R2 * 0.3, c - R2 * 0.3, R2 * 0.1, c, c, R2);
+      grad.addColorStop(0, "#2c3e66");
+      grad.addColorStop(1, "#0c1424");
+      g.fillStyle = grad;
+      g.beginPath();
+      g.arc(c, c, R2, 0, 7);
+      g.fill();
+      g.strokeStyle = "rgba(255,255,255,.25)";
+      g.lineWidth = 1.5;
+      for (const f of [0.33, 0.66]) {
+        g.beginPath();
+        g.arc(c, c, R2 * f, 0, 7);
+        g.stroke();
+      }
+      const map = (p) => {
+        const s = toSphere(p, { x: circle.cx, y: circle.cy, r: circle.r });
+        return [s[0] * pose.ex[0] + s[1] * pose.ex[1] + s[2] * pose.ex[2], s[0] * pose.up[0] + s[1] * pose.up[1] + s[2] * pose.up[2]];
+      };
+      const hole = (p, col) => {
+        if (!p) return;
+        const [x, y] = map(p);
+        g.fillStyle = col;
+        g.beginPath();
+        g.arc(c + x * R2, c - y * R2, 9, 0, 7);
+        g.fill();
+      };
+      hole(thumb, "#ffffff");
+      hole(fingerA, "#ff4fd8");
+      hole(fingerB, "#ff4fd8");
+      const hs = S_hand() === "R" ? 1 : -1;
+      void hs;
+      const pt2 = (v2) => [c + v2[0] * R2, c - v2[1] * R2];
+      g.lineWidth = 3;
+      r.axisTrack.forEach((p, i) => {
+        if (!i) return;
+        const a = pt2(r.axisTrack[i - 1].vec), b = pt2(p.vec);
+        const t = i / Math.max(1, r.axisTrack.length - 1);
+        g.strokeStyle = `hsl(${190 + 130 * t}, 100%, 62%)`;
+        g.beginPath();
+        g.moveTo(a[0], a[1]);
+        g.lineTo(b[0], b[1]);
+        g.stroke();
+      });
+      const [px, py] = pt2(r.pap.vec);
+      g.fillStyle = "#5affb0";
+      g.strokeStyle = "#000";
+      g.lineWidth = 2;
+      g.beginPath();
+      g.arc(px, py, 8, 0, 7);
+      g.fill();
+      g.stroke();
+      g.fillStyle = "#fff";
+      g.font = "700 12px system-ui";
+      g.fillText("PAP", px + 11, py - 9);
     };
   }
 
@@ -8286,7 +8540,7 @@ ${url}`);
   var toX = (xBoards) => (xBoards / LANE_BOARDS - 0.5) * LANE_W;
   var toIn = (p) => [toX(p.x), p.y * FT, BALL_R];
   var sub2 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-  var dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  var dot4 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   var cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
   var norm4 = (a) => {
     const l = Math.hypot(...a) || 1;
@@ -8346,13 +8600,13 @@ ${url}`);
     const NEAR = 4;
     const proj = (cam, P) => {
       const v = sub2(P, cam.C);
-      const z = dot3(v, cam.F);
+      const z = dot4(v, cam.F);
       if (z < NEAR) return null;
-      return [cam.w / 2 + cam.f * dot3(v, cam.R) / z, cam.h / 2 - cam.f * dot3(v, cam.U) / z, z];
+      return [cam.w / 2 + cam.f * dot4(v, cam.R) / z, cam.h / 2 - cam.f * dot4(v, cam.U) / z, z];
     };
     function seg(cam, a, b) {
-      const za = dot3(sub2(a, cam.C), cam.F);
-      const zb = dot3(sub2(b, cam.C), cam.F);
+      const za = dot4(sub2(a, cam.C), cam.F);
+      const zb = dot4(sub2(b, cam.C), cam.F);
       if (za < NEAR && zb < NEAR) return null;
       let A = a;
       let B = b;
@@ -9070,7 +9324,7 @@ ${url}`);
       <div class="note">The live camera can't measure these. Enter numbers from a pro-shop tool, or measure them from a slow-motion release video.${p.spin ? ` Last set ${esc(when(p.spin.at))} (${p.spin.source === "video" ? "from video" : "entered"}).` : ""}</div>
       <div class="two"><div class="field"><label>Rev rate (RPM)</label><input id="sp-rpm" inputmode="numeric" value="${p.spin?.rpm ?? ""}"></div><div class="field"><label>Axis rotation (\xB0)</label><input id="sp-rot" inputmode="decimal" value="${p.spin?.axisRotation ?? ""}"></div></div>
       <div class="two"><div class="field"><label>Axis tilt (\xB0)</label><input id="sp-tilt" inputmode="decimal" value="${p.spin?.axisTilt ?? ""}"></div><div class="field"><label>PAP (e.g. 4 1/4 over, 1/2 up)</label><input id="sp-pap" value="${esc(p.spin?.pap ?? "")}"></div></div>
-      <div class="chips"><button class="btn ghost" id="sp-save">Save</button><button class="btn ghost" id="sp-lab">Measure from a release video</button><button class="btn ghost" id="sp-pap">Estimate PAP from photos of the flare rings</button></div>${p.spin?.papFrom === "photo" ? `<div class="note">Your PAP was estimated from photos of the flare rings.</div>` : ""}</div>` : ""}
+      <div class="chips"><button class="btn ghost" id="sp-save">Save</button><button class="btn ghost" id="sp-lab">Measure from a release video</button><button class="btn ghost" id="sp-pap">Estimate PAP from photos of the flare rings</button></div>${p.spin?.papFrom ? `<div class="note">Your PAP was ${p.spin.papFrom === "photo" ? "estimated from photos of the flare rings" : "measured from your release video"}.</div>` : ""}</div>` : ""}
     ${p ? `<div class="card"><div class="k">Profile</div>
       <div class="field"><label>Name</label><input id="me-name" value="${esc(p.name)}"></div>
       <div class="two"><div class="field"><label>Throws</label><select id="me-hand"><option value="R" ${p.hand === "R" ? "selected" : ""}>Right-handed</option><option value="L" ${p.hand === "L" ? "selected" : ""}>Left-handed</option></select></div>
