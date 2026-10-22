@@ -61,6 +61,7 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        "60 frames a second, harder: the camera is now asked for 60 at every picture size a phone offers (exactly 60 first), and if it still opens below 60 the open camera is asked again for 60. The FPS badge shows the rate actually arriving at the app, and the diagnostics line says what the phone offered and why it may be lower (phones slow their camera in dim light).",
         "Spin for every shot: each recorded shot's rev rate, axis rotation and axis tilt are now read automatically from its own clip and shown in the shot review and the Spin lab. A clip too coarse to read a spin from (30 fps with a small ball, for example) says so plainly and shows no numbers instead of guessing; slow-motion video gives the best reads.",
         "The lane lock runs the full length of the lane, foul line to the head pin. After any lock that was found or picked (not one you traced by hand), the far end is checked against where the pins stand over the next few seconds and moved onto them when the readings agree. A lock saved by an older version, which could stop short of the pins, is dropped so the lane is found afresh.",
         'A guided tour of the app: it starts by itself the first time you use LaneIQ, and "Take the tour" on the start screen replays it. It walks through the camera, the lane lock, fixing a lock, the shot measurements, pinfall, and each tab.',
@@ -11361,10 +11362,17 @@ ${url}`);
     else requestAnimationFrame((t) => onFrame(t, { mediaTime: video.currentTime }));
   }
   async function openCamera() {
+    const sz = (w, h) => ({ width: { ideal: w }, height: { ideal: h } });
     const tries = [
-      { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { exact: 60 } },
-      { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { exact: 60 } },
-      { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60, min: 30 } }
+      { ...sz(1920, 1080), frameRate: { exact: 60 } },
+      { ...sz(1280, 720), frameRate: { exact: 60 } },
+      { ...sz(1920, 1080), frameRate: { min: 50, ideal: 60 } },
+      { ...sz(1280, 720), frameRate: { min: 50, ideal: 60 } },
+      { frameRate: { min: 50, ideal: 60 } },
+      { ...sz(960, 540), frameRate: { exact: 60 } },
+      { ...sz(640, 480), frameRate: { exact: 60 } },
+      { ...sz(1920, 1080), frameRate: { ideal: 60, min: 30 } },
+      { frameRate: { ideal: 60 } }
     ];
     let best = null;
     let bestFps = 0;
@@ -11378,14 +11386,30 @@ ${url}`);
           best = s;
           bestFps = f;
         } else s.getTracks().forEach((x) => x.stop());
-        if (bestFps >= 50) break;
+        if (bestFps >= 55) break;
       } catch (e) {
         lastErr = e;
       }
     }
     if (!best) throw lastErr ?? new Error("no camera");
+    const track = best.getVideoTracks()[0];
+    if (bestFps < 55) {
+      const cap = track.getCapabilities?.()?.frameRate?.max ?? 0;
+      capFps = cap;
+      for (const c of [{ frameRate: { exact: 60 } }, { frameRate: { ideal: 60 } }, { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } }]) {
+        try {
+          await track.applyConstraints(c);
+          const f = track.getSettings().frameRate ?? bestFps;
+          if (f > bestFps) bestFps = f;
+          if (bestFps >= 55) break;
+        } catch {
+        }
+      }
+    } else capFps = track.getCapabilities?.()?.frameRate?.max ?? bestFps;
     return best;
   }
+  var capFps = 0;
+  var deliv = { n: 0, t0: 0, fps: 0 };
   async function startCamera() {
     stream = await openCamera();
     video.srcObject = stream;
@@ -12539,7 +12563,7 @@ ${url}`);
     const el = document.getElementById("diag");
     const ts = tracker?.stats;
     const lockPct = laneMask ? Math.round(laneMask.reduce((a, m) => a + m, 0) / laneMask.length * 100) : 0;
-    if (el) el.textContent = `Camera ${cameraFps || "?"} fps${cameraFps && cameraFps < 50 ? " (this phone's limit)" : ""} \xB7 analysing ${diag.perSec}/s \xB7 ball ${diag.ballSeen ? "seen" : "not seen"} \xB7 lane lock ${H ? armed ? `on, covers ${lockPct}% of the picture` : "paused" : "searching"}${ts && H && armed ? ` \xB7 moving pixels ${ts.fg}, blobs ${ts.blobs}, ball-like ${ts.cands} (dropped: wrong size ${ts.size}, wrong shape ${ts.shape}, off the lane ${ts.offLane})` : ""}`;
+    if (el) el.textContent = `Camera ${cameraFps || "?"} fps${cameraFps && cameraFps < 50 ? capFps >= 50 ? " (the phone can do " + Math.round(capFps) + " but gave this: try more light)" : " (all this phone gave the browser)" : ""}${deliv.fps ? ` \xB7 arriving ${deliv.fps}/s` : ""} \xB7 analysing ${diag.perSec}/s \xB7 ball ${diag.ballSeen ? "seen" : "not seen"} \xB7 lane lock ${H ? armed ? `on, covers ${lockPct}% of the picture` : "paused" : "searching"}${ts && H && armed ? ` \xB7 moving pixels ${ts.fg}, blobs ${ts.blobs}, ball-like ${ts.cands} (dropped: wrong size ${ts.size}, wrong shape ${ts.shape}, off the lane ${ts.offLane})` : ""}`;
   }
   var recActive = false;
   var recBeganAt = 0;
@@ -12604,6 +12628,17 @@ ${url}`);
   }
   function onFrame(_now, meta) {
     schedule();
+    deliv.n++;
+    {
+      const t = performance.now();
+      if (!deliv.t0) deliv.t0 = t;
+      else if (t - deliv.t0 >= 1500) {
+        deliv.fps = Math.round(deliv.n * 1e3 / (t - deliv.t0));
+        deliv.n = 0;
+        deliv.t0 = t;
+        setText("fps", `${deliv.fps} FPS`);
+      }
+    }
     if (tracing) return;
     const now = performance.now();
     diagTick(now, !!(H && laneMask && armed && !enrolling), !!lastBlob);
