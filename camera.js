@@ -61,6 +61,7 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        "Legal and credits: a Legal card in the Me tab links the privacy policy, the terms of use, and the credits and data sources, with a plain statement that LaneIQ is not affiliated with the USBC, the PBA or any ball maker. Ball photos from the makers' websites are no longer shown (a plain ball in the ball's colour is used instead).",
         'Reset Insights: a Reset insights button at the bottom of the Insights tab starts the averages, common errors, improvement plan, shot map and skills chart again from zero, for when somebody else has bowled on your app. Your shots and their videos stay in the Shots tab and your scorecards stay in Score; "Count my earlier shots again" puts them back into Insights.',
         'A Learn tab: the bowling words LaneIQ uses and what each means in the app, from the lane (boards, arrows, dots, pocket) to your shot (breakpoint, entry angle, axis rotation), the hit (high hit, light hit, Brooklyn), the ball (coverstock, RG, differential), layouts and oil. Lane sizes and markings follow the USBC Equipment Specifications. Search a word, or tap "what is this?" on a shot.',
         `Fixed: a ball that missed to the right could be called high. The app now judges the pocket only when the ball was seen all the way to the pins; before, it used a board worked out past where the camera lost the ball, and a few boards of guess flipped the call. A shot that was not seen reaching the pins says so instead of calling a hit. The call also says which side of the pocket it missed on, in boards ("Light hit, 2.0 boards right of the pocket"), and your saved shots are re-read with the new rule and your hand setting. A right-hander's miss to the right is light; a left-hander's miss to the right is high.`,
@@ -4553,11 +4554,12 @@
 
   // camera/ballimg.ts
   var COLORS = [[/black|onyx|coal|jet/, 230, 8], [/purple|violet|plum/, 275, 45], [/blue|navy|cobalt|sapphire|ocean/, 215, 55], [/teal|aqua|cyan|turquoise/, 180, 50], [/green|emerald|lime|jade/, 140, 45], [/red|crimson|ruby|cherry|maroon/, 355, 55], [/orange|copper|bronze/, 25, 60], [/gold|yellow|amber/, 45, 60], [/pink|magenta|orchid/, 320, 50], [/silver|grey|gray|steel|graphite|smoke|white|ivory/, 220, 8]];
+  var SHOW_MAKER_PHOTOS = false;
   function ballThumb(b, size = 72) {
     const c = (b.colorway?.value ?? "").toLowerCase();
     const [h, s] = COLORS.find(([re]) => re.test(c))?.slice(1) ?? [215, 30];
     const ball = `<div style="position:absolute;inset:14%;border-radius:50%;background:radial-gradient(circle at 35% 30%,hsl(${h},${s}%,55%),hsl(${h},${s}%,14%))"></div>`;
-    const img = b.imageUrl ? `<img src="${esc(b.imageUrl.value)}" alt="${esc(b.manufacturer + " " + b.name)}" loading="lazy" referrerpolicy="no-referrer" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff" onerror="this.remove()">` : "";
+    const img = SHOW_MAKER_PHOTOS && b.imageUrl ? `<img src="${esc(b.imageUrl.value)}" alt="${esc(b.manufacturer + " " + b.name)}" loading="lazy" referrerpolicy="no-referrer" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff" onerror="this.remove()">` : "";
     return `<div style="position:relative;flex:none;width:${size}px;height:${size}px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid var(--line)">${ball}${img}</div>`;
   }
 
@@ -9844,7 +9846,7 @@ ${url}`);
     box.innerHTML = `<h3>New balls coming out you might be interested in</h3>
     <div class="card">${picks.length ? picks.map((p) => `<div style="padding:8px 0;border-top:1px solid var(--line);display:flex;gap:12px">${ballThumb(p.ball)}<div style="flex:1;min-width:0"><div class="row"><b>${esc(p.ball.manufacturer)} ${esc(p.ball.name)}</b><span class="badge ${p.index !== null ? "good" : "tentative"}">${esc(p.ball.availableOn ? "out " + when2(p.ball.availableOn.value) : "date not announced")}</span></div>
         <div class="u">${p.index !== null ? esc(specLine2(p.ball)) : "Specs not published yet"}</div><div class="u">${esc(p.why)}</div>
-        <div class="note">Source: <a style="color:var(--cy)" href="${esc((p.ball.rg ?? p.ball.status).source.url)}" target="_blank" rel="noopener">${esc(srcWord((p.ball.rg ?? p.ball.status).source.kind))}</a>, ${esc((p.ball.rg ?? p.ball.status).source.retrievedOn)}${p.ball.imageUrl ? " \xB7 photo: manufacturer" : ""}</div></div></div>`).join("") : `<div class="u">Nothing announced that fits yet. This list fills in when manufacturers announce new balls and the catalog is refreshed.</div>`}
+        <div class="note">Source: <a style="color:var(--cy)" href="${esc((p.ball.rg ?? p.ball.status).source.url)}" target="_blank" rel="noopener">${esc(srcWord((p.ball.rg ?? p.ball.status).source.kind))}</a>, ${esc((p.ball.rg ?? p.ball.status).source.retrievedOn)}</div></div></div>`).join("") : `<div class="u">Nothing announced that fits yet. This list fills in when manufacturers announce new balls and the catalog is refreshed.</div>`}
       <div class="note">Release dates and specs come from the manufacturers' announcements and can change before a ball ships.</div></div>`;
     el.append(box);
   }
@@ -9993,6 +9995,8 @@ ${url}`);
       <div class="chips"><button class="btn ghost" id="me-diag">Copy diagnostics</button></div></div>
     <h3>Your data</h3>
     <div class="card"><div class="note">Everything is stored only on this phone. Nothing is uploaded, and there is no account to sign in to. If you delete the app's website data or switch phones, your history doesn't come along unless you export it.</div><div id="me-storage" class="u" style="margin-top:6px"></div><div class="chips"><button class="btn ghost" id="me-export">Export my data</button></div></div>
+    <h3>Legal</h3>
+    <div class="card"><div class="note">LaneIQ is not affiliated with, endorsed by or sponsored by the USBC, the PBA or any ball maker. Their names and marks belong to their owners. Ball and pattern information comes from public sources, listed in the credits, and may be out of date or wrong.</div><div class="chips"><a class="chip" href="privacy.html">Privacy policy</a><a class="chip" href="terms.html">Terms of use</a><a class="chip" href="credits.html">Credits and data sources</a></div></div>
     <h3>About</h3>
     <div class="card"><div class="note">Measurements come from one phone camera, so they carry uncertainty. The coaching only links your habits to strikes once there are at least ${MIN_OUTCOMES} shots with a pin count entered, and calls small samples "tentative". Ball and pattern numbers are published specs, not measurements of how a ball behaves for you. Minimum sample for a reliable percentage is ${MIN_SAMPLE}.</div></div>`;
     $("me-save")?.addEventListener("click", () => {
