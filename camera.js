@@ -2582,7 +2582,19 @@
     const f = linearFit(w.map((s) => s.y), w.map((s) => s.x));
     return { deg: Math.atan(f.slope * BOARD_IN / 12) * 180 / Math.PI, slopeBoardsPerFt: f.slope };
   }
-  function analyzeShot(path2) {
+  function forwardPath(path2) {
+    const sorted2 = [...path2].sort((a, b) => a.t - b.t);
+    const out = [];
+    let far = -Infinity;
+    for (const s of sorted2) {
+      if (s.y < far - 0.6) continue;
+      out.push(s);
+      far = Math.max(far, s.y);
+    }
+    return out;
+  }
+  function analyzeShot(rawPath) {
+    const path2 = forwardPath(rawPath);
     const p = path2.filter((s) => s.y >= 3 && s.y <= 58).sort((a, b) => a.t - b.t);
     if (p.length < 8 || p[p.length - 1].y - p[0].y < 20) return null;
     const fit = linearFit(p.map((s) => s.t), p.map((s) => s.y));
@@ -11175,7 +11187,7 @@ ${url}`);
     const fullRack = fullDeck;
     const points = path.length;
     const a = analyzeShot(path);
-    const saved = path;
+    const saved = forwardPath(path);
     const savedTrail = trail;
     const sig = sigAcc.some((x) => x > 0) ? normalize(sigAcc) : null;
     resetTrack();
