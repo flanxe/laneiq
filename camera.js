@@ -53,6 +53,16 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-22-pap-photos",
+      date: "2026-10-22",
+      title: "PAP from flare-ring photos",
+      items: [
+        "New 'Estimate PAP from photos': take 3 photos of your ball showing its flare (oil track) rings and the grip, tap points along a ring in each, and the app averages them into an over-and-up PAP. Find it on the Me tab and the Pro shop tab.",
+        "It shows each photo's result and how far they disagree, so you can see how far to trust it, and saves the average as your PAP for the Layout Lab and Pro shop.",
+        "It's an estimate from pictures; a pro shop's PAP measurement is more exact."
+      ]
+    },
+    {
       id: "2026-10-22-steady",
       date: "2026-10-22",
       title: "Handheld tolerance",
@@ -294,16 +304,16 @@
     const drying = /earlier/.test(read2.headline);
     const carrydown = /skidding farther/.test(read2.headline);
     if (!drying && !carrydown) return { status: "none", text: "The lane looks stable, so stay with your current ball.", basis: [] };
-    const cur = scored.find((x) => x.b.id === currentBallId);
-    if (!cur) return { status: "none", text: "Tell me which ball you're throwing so I can compare against it.", basis: [] };
-    const want = drying ? scored.filter((x) => x.m < cur.m) : scored.filter((x) => x.m > cur.m);
+    const cur2 = scored.find((x) => x.b.id === currentBallId);
+    if (!cur2) return { status: "none", text: "Tell me which ball you're throwing so I can compare against it.", basis: [] };
+    const want = drying ? scored.filter((x) => x.m < cur2.m) : scored.filter((x) => x.m > cur2.m);
     if (!want.length) {
-      return { status: "none", text: `Nothing in your arsenal is ${drying ? "cleaner" : "stronger"} than ${cur.b.name} by published specs. Consider a surface or line change instead.`, basis: [] };
+      return { status: "none", text: `Nothing in your arsenal is ${drying ? "cleaner" : "stronger"} than ${cur2.b.name} by published specs. Consider a surface or line change instead.`, basis: [] };
     }
     const pick = want.sort((x, y) => drying ? y.m - x.m : x.m - y.m)[0];
     const c = pick.b.catalog;
     const basis = [
-      `${cur.b.name}: motion index ${cur.m.toFixed(2)}; ${pick.b.name}: ${pick.m.toFixed(2)} (from RG ${c.rg?.value}, differential ${c.differential?.value}${c.coverstockType ? `, ${c.coverstockType.value} cover` : ""}).`,
+      `${cur2.b.name}: motion index ${cur2.m.toFixed(2)}; ${pick.b.name}: ${pick.m.toFixed(2)} (from RG ${c.rg?.value}, differential ${c.differential?.value}${c.coverstockType ? `, ${c.coverstockType.value} cover` : ""}).`,
       "Spec-based estimate, not a measurement of how this ball behaves for you. Confirm with two shots."
     ];
     return {
@@ -660,7 +670,7 @@
     return x.length ? x.reduce((a, b) => a + b, 0) / x.length : null;
   };
   function compareSessions(mine, theirs) {
-    const row = (label2, unit2, pick) => ({ label: label2, unit: unit2, mine: avg(mine.shots.map(pick)), theirs: avg(theirs.shots.map(pick)) });
+    const row = (label2, unit3, pick) => ({ label: label2, unit: unit3, mine: avg(mine.shots.map(pick)), theirs: avg(theirs.shots.map(pick)) });
     const rows = [
       row("Speed", "mph", (s) => s.sp),
       row("Arrows board", "", (s) => s.ar),
@@ -1197,8 +1207,8 @@
   function renderResult(s) {
     const el = $("result-card");
     if (!s) return void (el.innerHTML = `<div class="u">Waiting for your first shot</div>`);
-    const cur = s.result?.pinsDown;
-    el.innerHTML = `<div class="u">${s.result?.auto ? `Read from the camera: ${cur === 10 ? "a strike" : `${cur} down${s.result.leave?.length ? `, leaving the ${s.result.leave.join("-")}` : ""}`}. Tap a number if that is wrong.` : "How many pins did this shot knock down? This is how the app learns what costs you strikes."}</div><div class="chips">` + [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((n) => `<button class="chip ${cur === n ? "sel" : n === 10 ? "x" : ""}" data-n="${n}">${n === 10 ? "Strike" : n}</button>`).join("") + `</div>` + (resultExtra?.() ?? "");
+    const cur2 = s.result?.pinsDown;
+    el.innerHTML = `<div class="u">${s.result?.auto ? `Read from the camera: ${cur2 === 10 ? "a strike" : `${cur2} down${s.result.leave?.length ? `, leaving the ${s.result.leave.join("-")}` : ""}`}. Tap a number if that is wrong.` : "How many pins did this shot knock down? This is how the app learns what costs you strikes."}</div><div class="chips">` + [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((n) => `<button class="chip ${cur2 === n ? "sel" : n === 10 ? "x" : ""}" data-n="${n}">${n === 10 ? "Strike" : n}</button>`).join("") + `</div>` + (resultExtra?.() ?? "");
     el.querySelectorAll("button[data-n]").forEach((b) => {
       b.onclick = async () => {
         s.result = { pinsDown: Number(b.dataset.n) };
@@ -1330,10 +1340,10 @@
     const fresh2 = seen() !== LATEST_NOTE_ID;
     box.innerHTML = `<button class="chip" id="notes-open">${fresh2 ? "NEW \xB7 " : ""}What's new</button>`;
     document.getElementById("notes-open").onclick = () => {
-      const sheet5 = document.getElementById("notes");
-      sheet5.classList.add("on");
-      sheet5.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc(n.title)} <span class="note">${esc(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}`;
-      document.getElementById("notes-close").onclick = () => (sheet5.classList.remove("on"), sheet5.innerHTML = "");
+      const sheet6 = document.getElementById("notes");
+      sheet6.classList.add("on");
+      sheet6.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc(n.title)} <span class="note">${esc(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}`;
+      document.getElementById("notes-close").onclick = () => (sheet6.classList.remove("on"), sheet6.innerHTML = "");
       markSeen();
       document.getElementById("notes-open").textContent = "What's new";
     };
@@ -1635,8 +1645,8 @@
           else marks.push(n === 0 ? "-" : String(n));
           prev = marks[k2] === "/" ? 0 : n;
         });
-        const done = rest.length === 3 || rest.length === 2 && rest[0] !== 10 && rest[0] + rest[1] < 10;
-        frames.push({ pins: rest, marks, total: done ? running += rest.reduce((x, y) => x + y, 0) : null });
+        const done2 = rest.length === 3 || rest.length === 2 && rest[0] !== 10 && rest[0] + rest[1] < 10;
+        frames.push({ pins: rest, marks, total: done2 ? running += rest.reduce((x, y) => x + y, 0) : null });
         i = counts.length;
       }
     }
@@ -1755,14 +1765,14 @@
   function keyPinOf(leave) {
     return sorted(leave).sort((a, b) => PIN_XY[a].row - PIN_XY[b].row || Math.abs(PIN_XY[a].x) - Math.abs(PIN_XY[b].x))[0];
   }
-  function adviseSpare(leaveIn, hand = "R") {
+  function adviseSpare(leaveIn, hand2 = "R") {
     const leave = sorted(leaveIn);
     const split = isSplit(leave);
     const k2 = leave.join("-");
     const name = NAMES[k2] ?? (leave.length === 1 ? `the ${leave[0]} pin` : split ? `a split (${k2})` : `${k2}`);
     const keyPin = keyPinOf(leave);
     const notes = [];
-    const raw = (MOVE_RIGHT_HANDED[keyPin] ?? 0) * (hand === "L" ? -1 : 1);
+    const raw = (MOVE_RIGHT_HANDED[keyPin] ?? 0) * (hand2 === "L" ? -1 : 1);
     const boards = Math.abs(raw);
     const direction = raw === 0 ? "none" : raw > 0 ? "right" : "left";
     let text;
@@ -1821,18 +1831,18 @@
   var STREAKS = [[3, 15, "Turkey: three strikes in a row"], [4, 25, "Four-bagger: four strikes in a row"], [5, 40, "Five-bagger: five strikes in a row"], [6, 60, "Six-bagger: six strikes in a row"], [9, 150, "Nine in a row"], [12, 300, "Twelve in a row"]];
   function strikeRun(g) {
     const rp = replay(g.rolls);
-    let best = 0, cur = 0;
+    let best = 0, cur2 = 0;
     rp.states.forEach((s, k2) => {
-      if (s.fresh && g.rolls[k2].down.length === 10) best = Math.max(best, ++cur);
-      else if (s.fresh) cur = 0;
+      if (s.fresh && g.rolls[k2].down.length === 10) best = Math.max(best, ++cur2);
+      else if (s.fresh) cur2 = 0;
     });
     return best;
   }
   function achievements(games2, axes) {
     const out = [];
-    const done = games2.filter((g) => replay(g.rolls).complete).sort((a, b) => a.at.localeCompare(b.at));
-    const scores = done.map((g) => scoreGame(g.rolls).total);
-    if (done.length) out.push({ id: "first-game", title: "First game on the card", detail: "Finish a scored game", points: 10 });
+    const done2 = games2.filter((g) => replay(g.rolls).complete).sort((a, b) => a.at.localeCompare(b.at));
+    const scores = done2.map((g) => scoreGame(g.rolls).total);
+    if (done2.length) out.push({ id: "first-game", title: "First game on the card", detail: "Finish a scored game", points: 10 });
     for (const [min, pts, title] of GAME_MILESTONES) if (scores.some((s) => s >= min)) out.push({ id: `score-${min}`, title, detail: `Score ${min} or more in a game`, points: pts });
     let best = -1, pbs = 0;
     scores.forEach((s) => {
@@ -1844,13 +1854,13 @@
     for (let i = 1; i <= Math.min(pbs, 20); i++) out.push({ id: `pb-${i}`, title: `New high game (#${i})`, detail: "Beat your best game", points: 10 });
     const run = games2.reduce((m, g) => Math.max(m, strikeRun(g)), 0);
     for (const [n, pts, title] of STREAKS) if (run >= n) out.push({ id: `streak-${n}`, title, detail: `${n} strikes in a row in one game`, points: pts });
-    const clean = done.filter((g) => {
+    const clean = done2.filter((g) => {
       const f = bowlingStats([g]);
       return f.openFrames === 0;
     }).length;
     if (clean >= 1) out.push({ id: "clean-1", title: "Clean game", detail: "A game with no open frames", points: 50 });
     if (clean >= 5) out.push({ id: "clean-5", title: "Five clean games", detail: "Five games with no open frames", points: 150 });
-    if (done.length >= 10) {
+    if (done2.length >= 10) {
       const avg2 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
       const gain = avg2(scores.slice(-5)) - avg2(scores.slice(0, 5));
       for (const [need, pts] of [[5, 30], [10, 60], [20, 120]]) if (gain >= need) out.push({ id: `avg-${need}`, title: `Average up ${need} pins`, detail: "Your last five games against your first five", points: pts });
@@ -2227,9 +2237,9 @@
     const nx = nextUnlocks(p);
     const eq = skinsEnabled() ? equippedSkins() : { tracer: "", pins: "", lane: "" };
     const base = activeSkins();
-    const grid = (kind, title) => `<h3>${title}</h3><div class="skin-grid">${SKINS.filter((s) => s.kind === kind).map((s) => {
+    const grid = (kind2, title) => `<h3>${title}</h3><div class="skin-grid">${SKINS.filter((s) => s.kind === kind2).map((s) => {
       const open2 = isUnlocked(s, p);
-      return `<button class="skin ${open2 ? "" : "locked"} ${eq[kind] === s.id ? "on" : ""}" data-skin="${s.id}" data-kind="${kind}" ${open2 ? "" : "disabled"}><canvas width="150" height="170" data-c="${s.id}"></canvas><div class="n">${esc(s.name)}</div><div class="r ${"points" in s.unlock ? "rare" : ""}">${open2 ? eq[kind] === s.id ? "Equipped" : "Tap to equip" : "Locked: " + esc(unlockText(s))}</div></button>`;
+      return `<button class="skin ${open2 ? "" : "locked"} ${eq[kind2] === s.id ? "on" : ""}" data-skin="${s.id}" data-kind="${kind2}" ${open2 ? "" : "disabled"}><canvas width="150" height="170" data-c="${s.id}"></canvas><div class="n">${esc(s.name)}</div><div class="r ${"points" in s.unlock ? "rare" : ""}">${open2 ? eq[kind2] === s.id ? "Equipped" : "Tap to equip" : "Locked: " + esc(unlockText(s))}</div></button>`;
     }).join("")}</div>`;
     el.innerHTML = `
     <div class="row"><h2>Rewards</h2><button class="btn ghost" id="rw-close">Close</button></div>
@@ -2326,15 +2336,15 @@
     await ensureLoaded();
     if (!shot.result?.auto) return false;
     if (games.some((g) => g.rolls.some((r) => r.shotId === shot.id))) return false;
-    let cur = current2();
-    if (!cur) {
-      cur = { id: newId(), at: (/* @__PURE__ */ new Date()).toISOString(), rolls: [], lane: shot.lane };
-      games.push(cur);
+    let cur2 = current2();
+    if (!cur2) {
+      cur2 = { id: newId(), at: (/* @__PURE__ */ new Date()).toISOString(), rolls: [], lane: shot.lane };
+      games.push(cur2);
     }
-    const standing = replay(cur.rolls).standing;
+    const standing = replay(cur2.rolls).standing;
     const leave = shot.result.pinsDown === 10 && standing.length === 10 ? [] : shot.result.leave ?? [];
     if (!leave.every((p) => standing.includes(p))) return false;
-    cur.rolls.push({ down: standing.filter((p) => !leave.includes(p)), shotId: shot.id });
+    cur2.rolls.push({ down: standing.filter((p) => !leave.includes(p)), shotId: shot.id });
     leaveSel = /* @__PURE__ */ new Set();
     await persist();
     return true;
@@ -2367,10 +2377,10 @@
     ${leaves.length ? `<div class="k" style="margin-top:8px">Spare tries by leave</div><table>${leaves.map(([k2, t]) => `<tr><td>${esc(k2)}</td><td class="n">${t.made}/${t.attempts} (${pctStr(t.made / t.attempts * 100)})</td></tr>`).join("")}</table>` : ""}`;
   }
   function analysisHtml() {
-    const done = games.filter((g) => replay(g.rolls).complete);
+    const done2 = games.filter((g) => replay(g.rolls).complete);
     const out = [];
-    if (done.length) {
-      const w = done.map((g) => whatIf(g.rolls));
+    if (done2.length) {
+      const w = done2.map((g) => whatIf(g.rolls));
       const avg2 = (f) => w.reduce((a, b) => a + f(b), 0) / w.length;
       const gain = avg2((x) => x.ifSingles - x.actual);
       out.push(`<div class="u">Missed single-pin spares cost you <b>${gain.toFixed(1)} pins a game</b> (${avg2((x) => x.missedSingles).toFixed(1)} a game). Make them all and your average would be ${avg2((x) => x.ifSingles).toFixed(0)} instead of ${avg2((x) => x.actual).toFixed(0)}.</div>`);
@@ -2409,7 +2419,7 @@
     const standing = rp?.standing ?? ALL_PINS;
     const advice = g && standing.length < 10 ? adviseSpare(standing, bowlerProfile().hand) : null;
     const cam = g ? cameraSuggestion() : null;
-    const done = games.slice().reverse().slice(0, 12);
+    const done2 = games.slice().reverse().slice(0, 12);
     el.innerHTML = `
     <h2>Score</h2>
     <div class="note">With the camera running, every shot is scored for you: the pins it reads go straight on the card and the spare coach tells you where to move. Tap the pins below only to fix a mistake or to score without the camera. Free, and it stays on this phone.</div>
@@ -2425,7 +2435,7 @@
     <div class="card" id="sc-rewards"><div class="note">Loading rewards\u2026</div></div>
     <div class="card"><div class="k">Your statistics</div>${statsHtml()}</div>
     <div class="card"><div class="k">What costs you pins</div>${analysisHtml()}</div>
-    ${done.length ? `<div class="card"><div class="k">Games</div>${done.map((x) => {
+    ${done2.length ? `<div class="card"><div class="k">Games</div>${done2.map((x) => {
       const s = scoreGame(x.rolls);
       return `<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${s.total}</b> <span class="note">${replay(x.rolls).complete ? "" : "in progress \xB7 "}${esc(new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</span></div><button class="chip danger" data-del="${x.id}">Delete</button></div>`;
     }).join("")}</div>` : ""}`;
@@ -2443,9 +2453,9 @@
       renderScore();
     });
     const add2 = async (roll) => {
-      const cur = current2();
-      if (!cur) return;
-      cur.rolls.push(roll);
+      const cur2 = current2();
+      if (!cur2) return;
+      cur2.rolls.push(roll);
       leaveSel = /* @__PURE__ */ new Set();
       await persist();
       renderScore();
@@ -2462,9 +2472,9 @@
     $("sc-record")?.addEventListener("click", () => add2({ down: standing.filter((p) => !leaveSel.has(p)) }));
     $("sc-gutter")?.addEventListener("click", () => add2({ down: [] }));
     $("sc-undo")?.addEventListener("click", async () => {
-      const cur = current2() ?? games[games.length - 1];
-      if (!cur || !cur.rolls.length) return;
-      cur.rolls.pop();
+      const cur2 = current2() ?? games[games.length - 1];
+      if (!cur2 || !cur2.rolls.length) return;
+      cur2.rolls.pop();
       leaveSel = /* @__PURE__ */ new Set();
       await persist();
       renderScore();
@@ -2601,7 +2611,7 @@
     if (a <= 2.5) return miss > 0 ? "high" : "light";
     return miss > 0 ? "very-high" : "very-light";
   }
-  function deriveMetrics(a, path2, hand) {
+  function deriveMetrics(a, path2, hand2) {
     const early = path2.filter((s) => s.y >= 2 && s.y <= 8);
     const startBoard = early.length ? boardFromRight(early.reduce((t, s) => t + s.x, 0) / early.length) : null;
     const launchSpeed = speedBetween(path2, 3, 20);
@@ -2609,10 +2619,10 @@
     const speedLossPct = launchSpeed && entrySpeed ? (launchSpeed - entrySpeed) / launchSpeed * 100 : null;
     const hookBoards = a.breakpointBoard !== null && a.entryBoard !== null ? Math.abs(a.entryBoard - a.breakpointBoard) : null;
     const hookLengthFt = a.breakpointFt !== null ? Math.max(0, 59.5 - a.breakpointFt) : null;
-    const pocket = POCKET_BOARD[hand];
-    const pocketMiss = a.entryBoard === null ? null : hand === "R" ? a.entryBoard - pocket : pocket - a.entryBoard;
+    const pocket = POCKET_BOARD[hand2];
+    const pocketMiss = a.entryBoard === null ? null : hand2 === "R" ? a.entryBoard - pocket : pocket - a.entryBoard;
     return {
-      hand,
+      hand: hand2,
       startBoard,
       arrowsBoard: a.boardAtArrows,
       breakpointBoard: a.breakpointBoard,
@@ -2741,14 +2751,14 @@
     const refine = (xa, xb, sign, top, bot, tol = 2.5 * STEP) => {
       for (let it = 0; it < 3; it++) {
         let sw = 0, sy = 0, sx = 0, syy = 0, sxy = 0;
-        const cur = (xb - xa) / span;
+        const cur2 = (xb - xa) / span;
         for (const i of edges) {
-          if (gx[i] * sign <= 0 || !agrees(i, cur, sign)) continue;
+          if (gx[i] * sign <= 0 || !agrees(i, cur2, sign)) continue;
           const y = Math.floor(i / w);
           if (y < top || y > bot) continue;
           const px = i % w;
           const lx = xa + (xb - xa) * (y - yA) / span;
-          if (Math.abs(px - lx) > tol * Math.sqrt(1 + cur * cur)) continue;
+          if (Math.abs(px - lx) > tol * Math.sqrt(1 + cur2 * cur2)) continue;
           const wgt = mag[i];
           sw += wgt;
           sy += wgt * y;
@@ -3217,7 +3227,7 @@
       const RR = refine(R2.xa, R2.xb, -1, Math.ceil(pit) + 4, Math.floor(foul) - 3, 2 * STEP);
       L = { ...L, xa: LR.xa, xb: LR.xb };
       R2 = { ...R2, xa: RR.xa, xb: RR.xb };
-      const sideRow = (guess, side, kind) => {
+      const sideRow = (guess, side, kind2) => {
         let sw = 0;
         let sy = 0;
         for (let y = Math.round(guess) - 7; y <= Math.round(guess) + 7; y++) {
@@ -3233,7 +3243,7 @@
           for (let x = Math.max(2, Math.ceil(x0)); x <= Math.min(w - 3, Math.floor(x1)); x++) {
             const i = y * w + x;
             n++;
-            if (kind === "foul") {
+            if (kind2 === "foul") {
               if (Math.abs(gy[i]) > thr * 0.6 && Math.abs(gy[i]) > 1.3 * Math.abs(gx[i])) c2++;
             } else if (gy[i] > thr * 0.6 && gy[i] > 1.3 * Math.abs(gx[i])) c2++;
           }
@@ -3989,8 +3999,8 @@
   var DEFAULT_GRIP = { span: 4.25, thumbDia: 1.05, fingerDia: 0.9, bridge: 0.25 };
   var N = [0, 0, 1];
   var UP = [0, 1, 0];
-  function gripFrame(grip, hand) {
-    const hs = hand === "R" ? 1 : -1;
+  function gripFrame(grip, hand2) {
+    const hs = hand2 === "R" ? 1 : -1;
     const thumbR = grip.thumbDia / 2, fingerR = grip.fingerDia / 2;
     const c2c = grip.noThumb ? 0 : grip.span + thumbR + fingerR;
     const half = c2c / 2;
@@ -4011,9 +4021,9 @@
     return { pap: p, q, valUp: v };
   }
   var ang = (inch3) => inch3 / R;
-  function solveLayout(input, pap, hand, grip = DEFAULT_GRIP, flip = false) {
+  function solveLayout(input, pap, hand2, grip = DEFAULT_GRIP, flip = false) {
     const problems = [];
-    const { hs, fingers, thumb, middle, ring } = gripFrame(grip, hand);
+    const { hs, fingers, thumb, middle, ring } = gripFrame(grip, hand2);
     const { pap: P, q, valUp } = papPoint(pap, hs);
     const toMid = Math.abs(pap.over) < 1e-6 ? unit(sub([-hs, 0, 0], scale(P, dot([-hs, 0, 0], P)))) : tangentToward(P, q);
     let a = 0;
@@ -4101,8 +4111,8 @@
     else if (val2 - drilling > 20) out.push("A smaller drilling angle than VAL angle points to a sooner, heavier roll (more midlane).");
     return out;
   }
-  function measureLayout(pin, baseline, pap, hand, grip = DEFAULT_GRIP) {
-    const { hs } = gripFrame(grip, hand);
+  function measureLayout(pin, baseline, pap, hand2, grip = DEFAULT_GRIP) {
+    const { hs } = gripFrame(grip, hand2);
     const { pap: P, q, valUp } = papPoint(pap, hs);
     const toMid = Math.abs(pap.over) < 1e-6 ? unit(sub([-hs, 0, 0], scale(P, dot([-hs, 0, 0], P)))) : tangentToward(P, q);
     const a = surfDist(pin, P);
@@ -4127,8 +4137,8 @@
     }
     return { pinToPap: a, valAngle, pinBuffer, pinToGrip: surfDist(pin, N), papToGrip: surfDist(P, N), pinPlacement: { up: pinUp, over: pinOver, label: classifyPin(pinUp, pinOver, fingerY, grip) }, drilling, psaToPap, points: { pap: P, pin, psa, q, valUp } };
   }
-  function measureMark(pin, mark, pap, hand, grip = DEFAULT_GRIP) {
-    const { hs } = gripFrame(grip, hand);
+  function measureMark(pin, mark, pap, hand2, grip = DEFAULT_GRIP) {
+    const { hs } = gripFrame(grip, hand2);
     const { pap: P } = papPoint(pap, hs);
     const toPap = tangentToward(pin, P);
     const toMark = tangentToward(pin, mark);
@@ -4577,7 +4587,7 @@
       prev[startRi] = edge[0][startRi];
       const back = [];
       for (let a = 1; a <= NA; a++) {
-        const cur = new Float32Array(NR).fill(-1e9);
+        const cur2 = new Float32Array(NR).fill(-1e9);
         const bp = new Int16Array(NR);
         const row = edge[a % NA];
         for (let ri2 = 0; ri2 < NR; ri2++) {
@@ -4588,11 +4598,11 @@
             const v = prev[j] - lambda * Math.abs(d) * 2;
             if (v > bv) bv = v, bi = j;
           }
-          cur[ri2] = bv + row[ri2];
+          cur2[ri2] = bv + row[ri2];
           bp[ri2] = bi;
         }
         back.push(bp);
-        prev = cur;
+        prev = cur2;
       }
       let ri = startRi;
       const path2 = new Array(NA);
@@ -4863,10 +4873,10 @@
   function openPhoto() {
     const el = sheet();
     const bp = bowlerProfile();
-    const kind = kindPicked ?? "thumb";
+    const kind2 = kindPicked ?? "thumb";
     el.innerHTML = `
     <div class="row"><h2>Scan my ball</h2><button class="btn ghost" id="bs-close">Close</button></div>
-    <div class="note">${esc(KINDS.find((k2) => k2.id === kind).label)}. Take a photo and I'll scan it on my own: the ball, the grip holes and the pin. Then you can drag anything I got wrong.</div>
+    <div class="note">${esc(KINDS.find((k2) => k2.id === kind2).label)}. Take a photo and I'll scan it on my own: the ball, the grip holes and the pin. Then you can drag anything I got wrong.</div>
     <div class="card"><div class="k">For the best reading</div><ul>
       <li>Set the ball on a stand or a towel, grip facing the camera, <b>fingers up</b>. A plain background (no hand holding it) makes the outline much easier.</li>
       <li>Turn it so the <b>grip holes and the pin are both in view</b> and not right at the edge of the ball.</li>
@@ -4888,7 +4898,7 @@
       try {
         const img = await loadImage(f);
         await new Promise((r) => setTimeout(r, 30));
-        begin(img, bp.hand, kind);
+        begin(img, bp.hand, kind2);
       } catch {
         $("bs-msg").textContent = "That file didn't open as a picture.";
       }
@@ -4923,7 +4933,7 @@
     }
     return { g, rgb };
   }
-  function begin(img, hand, kind) {
+  function begin(img, hand2, kind2) {
     const pap = S.profile?.spin?.pap ? parsePap(S.profile.spin.pap) : null;
     st = {
       img,
@@ -4940,9 +4950,9 @@
       marks: [],
       guessed: { pin: false, cg: false, mb: false, holes: false },
       mode: "pin",
-      kind,
-      noThumb: kind !== "thumb",
-      hand,
+      kind: kind2,
+      noThumb: kind2 !== "thumb",
+      hand: hand2,
       holeR: 0,
       showHoles: true,
       papText: { over: pap ? fractionInches(pap.over).replace(/"/g, "") : "", up: pap ? fractionInches(pap.up).replace(/"/g, "") : "" },
@@ -5411,7 +5421,7 @@
       ctx2.stroke();
       ctx2.restore();
     };
-    const dot3 = (v, color, label2, size = 6, dy = -10) => {
+    const dot4 = (v, color, label2, size = 6, dy = -10) => {
       const p = proj(v);
       if (p.z <= 0.02) return;
       ctx2.save();
@@ -5472,19 +5482,19 @@
       hole(pts.middle, l.grip.fingerDia);
       hole(pts.ring, l.grip.fingerDia);
     }
-    dot3(pts.grip, "#ffffff", "grip center", 4, -4);
-    dot3(pts.pap, "#5affb0", "PAP", 7);
-    dot3(pts.pin, "#46e6ff", "PIN (low RG)", 7);
-    dot3(pts.psa, "#ff4fd8", l.ball.symmetric ? "PSA (CG line)" : "PSA (high RG)", 7);
-    dot3(pts.inter, "rgba(255,255,255,.7)", "intermediate", 4, -4);
+    dot4(pts.grip, "#ffffff", "grip center", 4, -4);
+    dot4(pts.pap, "#5affb0", "PAP", 7);
+    dot4(pts.pin, "#46e6ff", "PIN (low RG)", 7);
+    dot4(pts.psa, "#ff4fd8", l.ball.symmetric ? "PSA (CG line)" : "PSA (high RG)", 7);
+    dot4(pts.inter, "rgba(255,255,255,.7)", "intermediate", 4, -4);
     if (l.ball.pinToCg !== void 0 && l.ball.pinToCg > 0) {
       const cg = walk(pts.pin, unit(cross(cross(pts.pin, pts.psa), pts.pin)), Math.min(QUARTER, l.ball.pinToCg));
-      dot3(cg, "#ffd25a", "CG", 6);
+      dot4(cg, "#ffd25a", "CG", 6);
     }
     if (l.ball.mb && !l.ball.symmetric) {
       const base = unit(cross(cross(pts.pin, pts.psa), pts.pin));
       const d = rotate(base, pts.pin, l.ball.mb.angle * Math.PI / 180);
-      dot3(walk(pts.pin, d, Math.min(QUARTER, l.ball.mb.dist)), "#ff8a3d", "MB", 6);
+      dot4(walk(pts.pin, d, Math.min(QUARTER, l.ball.mb.dist)), "#ff8a3d", "MB", 6);
     }
     ctx2.fillStyle = "rgba(255,255,255,.35)";
     ctx2.font = `${Math.round(r * 0.06)}px system-ui`;
@@ -6473,6 +6483,325 @@
     else host2.prepend(card);
   }
 
+  // core/src/papscan.ts
+  var dot2 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  var cross2 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  var norm3 = (a) => Math.hypot(a[0], a[1], a[2]);
+  var unit2 = (a) => {
+    const n = norm3(a) || 1;
+    return [a[0] / n, a[1] / n, a[2] / n];
+  };
+  var clamp2 = (v) => Math.max(-1, Math.min(1, v));
+  function smallestAxis(c) {
+    const tr = c[0][0] + c[1][1] + c[2][2];
+    let v = unit2([0.577, 0.5, 0.64]);
+    for (let it = 0; it < 80; it++) {
+      const w = [0, 1, 2].map((i) => tr * v[i] - (c[i][0] * v[0] + c[i][1] * v[1] + c[i][2] * v[2]));
+      v = unit2(w);
+    }
+    return v;
+  }
+  function overUpOf(v, hand2) {
+    const hs = hand2 === "R" ? 1 : -1;
+    const a = Math.asin(clamp2(hs * v[0]));
+    const up = Math.asin(clamp2(v[1] / Math.max(1e-9, Math.cos(a))));
+    return { over: R * a, up: R * up };
+  }
+  function poleFromShot(shot, hand2) {
+    if (shot.ring.length < 4) return { error: "Tap at least 4 points along one flare ring." };
+    const pts = shot.ring.map((p) => toSphere(p, shot.circle));
+    const m = [0, 0, 0];
+    for (const p of pts) for (let i = 0; i < 3; i++) m[i] += p[i] / pts.length;
+    const cov = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (const p of pts) {
+      const d2 = [p[0] - m[0], p[1] - m[1], p[2] - m[2]];
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) cov[i][j] += d2[i] * d2[j];
+    }
+    let n = smallestAxis(cov);
+    const fr2 = scanFrame({ circle: shot.circle, thumb: shot.thumb, fingerA: shot.fingerA, fingerB: shot.fingerB });
+    const toGrip = (v) => [dot2(v, fr2.ex), dot2(v, fr2.up), dot2(v, fr2.g)];
+    let g = toGrip(n);
+    if (!g.every(Number.isFinite)) return { error: "I couldn't work out the ball's orientation from the grip holes. Check that the finger holes (and thumb hole, if there is one) are marked on the right spots, and the outline fits the ball." };
+    if (g[2] < 0) {
+      n = [-n[0], -n[1], -n[2]];
+      g = toGrip(n);
+    }
+    const d = dot2(m, n);
+    let ss = 0;
+    for (const p of pts) ss += (dot2(p, n) - d) ** 2;
+    const rms = Math.sqrt(ss / pts.length) * R;
+    const base = unit2(cross2(n, Math.abs(n[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0]));
+    const side = cross2(n, base);
+    const ang2 = pts.map((p) => Math.atan2(dot2(p, side), dot2(p, base))).sort((a, b) => a - b);
+    let gap = ang2[0] + 2 * Math.PI - ang2[ang2.length - 1];
+    for (let i = 1; i < ang2.length; i++) gap = Math.max(gap, ang2[i] - ang2[i - 1]);
+    const span = (2 * Math.PI - gap) * 180 / Math.PI;
+    const notes = [];
+    if (span < 80) notes.push(`The points only cover ${Math.round(span)}\xB0 of the ring. Spread them along as much of it as you can see: a short arc is easy to misread.`);
+    if (rms > 0.3) notes.push(`The points sit ${rms.toFixed(2)}" off a single ring. Some may be on different rings, or off the line.`);
+    const edge = (p) => Math.hypot(p.x - shot.circle.x, p.y - shot.circle.y) / shot.circle.r;
+    if (shot.ring.some((p) => edge(p) > 0.88)) notes.push("Some points are near the edge of the ball in the picture, where the surface is squeezed. Turn the ball so the ring is nearer the middle.");
+    const ou = overUpOf(g, hand2);
+    return { over: ou.over, up: ou.up, vec: unit2(g), span, rms, notes };
+  }
+  var textOf = (over, up) => {
+    const f = (v) => fractionInches(Math.abs(v)).replace(/"/g, "");
+    return `${over < 0 ? "-" : ""}${f(over)} over, ${f(up)} ${up < 0 ? "down" : "up"}`;
+  };
+  function papEstimate(shots, hand2) {
+    const picks = [];
+    for (const s of shots) {
+      const r = poleFromShot(s, hand2);
+      if ("error" in r) return r;
+      picks.push(r);
+    }
+    if (!picks.length) return { error: "No photos yet." };
+    const mean3 = unit2(picks.reduce((a, p) => [a[0] + p.vec[0], a[1] + p.vec[1], a[2] + p.vec[2]], [0, 0, 0]));
+    const ou = overUpOf(mean3, hand2);
+    const spread = picks.length > 1 ? Math.max(...picks.map((p) => surfDist(p.vec, mean3))) : null;
+    const notes = [];
+    if (spread !== null && spread > 0.75) notes.push(`The photos disagree by up to ${spread.toFixed(2)}". Rings can be misread: retake the photo that's furthest from the others, with the grip square to the camera.`);
+    if (spread !== null && spread <= 0.4) notes.push("The photos agree closely, which is a good sign.");
+    if (picks.length === 1) notes.push("One photo is a rough estimate. Add two more and I'll average them.");
+    for (const p of picks) for (const n of p.notes) if (!notes.includes(n)) notes.push(n);
+    notes.push("This is an estimate from photos. A pro shop's PAP measurement (a video of the release, or the layout tools they use) is more exact. Use this to start, and check it against how the ball actually flares.");
+    return { picks, over: ou.over, up: ou.up, spreadIn: spread, text: textOf(ou.over, ou.up), notes };
+  }
+
+  // camera/papscan.ts
+  var KINDS2 = [
+    { id: "thumb", label: "One hand, with a thumb hole" },
+    { id: "nothumb", label: "One hand, no thumb" },
+    { id: "two", label: "Two-handed" }
+  ];
+  var WANT = 3;
+  var MAX_W2 = 960;
+  var sheet3 = () => $("papscan");
+  var kind = "thumb";
+  var hand = "R";
+  var done = [];
+  var cur = null;
+  function openPapScan() {
+    const bp = bowlerProfile();
+    hand = bp.hand;
+    kind = bp.style === "two-handed" ? "two" : bp.style === "one-hand-no-thumb" ? "nothumb" : "thumb";
+    done = [];
+    cur = null;
+    intro();
+  }
+  var close3 = () => (sheet3().classList.remove("on"), sheet3().innerHTML = "", cur = null);
+  function intro() {
+    const el = sheet3();
+    el.classList.add("on");
+    el.innerHTML = `
+    <div class="row"><h2>PAP from flare rings</h2><button class="btn ghost" id="pp-close">Close</button></div>
+    <div class="note">Your PAP is the spot on the ball that doesn't rotate. The oil rings (flare rings) a ball leaves are circles around it, so photos of the rings can find it. Take 3 photos and I'll average them.</div>
+    <div class="card"><div class="k">First, get rings to photograph</div><ul>
+      <li>Throw a few shots on a lane with oil, <b>without wiping the ball</b>, so the track rings show. Or use a ball you've just bowled with.</li>
+      <li>Photograph the ball with the <b>grip holes and some of a ring in view</b>, grip facing the camera, fingers up, on a towel or stand (no hand holding it). Tilt the ball a little between photos so each shows a different stretch of the ring.</li>
+      <li>Good side light so the rings show, the whole ball in the picture, phone a few feet back and zoomed in a little.</li>
+      <li>You'll then tap 4 or more points along one ring in each photo.</li></ul></div>
+    <div class="card"><div class="k">What grip does this ball have?</div>${KINDS2.map((k2) => `<button class="opt ${k2.id === kind ? "sel" : ""}" data-kind="${k2.id}"><b>${esc(k2.label)}</b></button>`).join("")}
+      <div class="chips" style="margin-top:8px"><label class="btn" style="display:inline-block;cursor:pointer">Take or choose photo 1<input id="pp-file" type="file" accept="image/*" capture="environment" style="display:none"></label></div>
+      <div class="note" id="pp-msg">Nothing is uploaded: the pictures stay on this phone.</div></div>`;
+    $("pp-close").onclick = close3;
+    el.querySelectorAll("[data-kind]").forEach((b) => b.onclick = () => (kind = b.dataset.kind, intro()));
+    $("pp-file").onchange = onFile;
+  }
+  async function onFile(e) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const msg = document.getElementById("pp-msg");
+    if (msg) msg.textContent = "Looking at the picture\u2026";
+    try {
+      const img = await loadImage2(f);
+      await new Promise((r) => setTimeout(r, 30));
+      begin2(img);
+    } catch {
+      if (msg) msg.textContent = "That file didn't open as a picture.";
+    }
+  }
+  function loadImage2(f) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(f);
+      const im = new Image();
+      im.onload = () => {
+        const k2 = Math.min(1, MAX_W2 / im.naturalWidth);
+        const c = document.createElement("canvas");
+        c.width = Math.round(im.naturalWidth * k2);
+        c.height = Math.round(im.naturalHeight * k2);
+        c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        res(c);
+      };
+      im.onerror = () => rej(new Error("bad image"));
+      im.src = url;
+    });
+  }
+  function grayOf(c) {
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    const g = new Uint8ClampedArray(c.width * c.height);
+    const rgb = new Uint8ClampedArray(c.width * c.height * 3);
+    for (let i = 0; i < g.length; i++) {
+      rgb[i * 3] = d[i * 4];
+      rgb[i * 3 + 1] = d[i * 4 + 1];
+      rgb[i * 3 + 2] = d[i * 4 + 2];
+      g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+    }
+    return { g, rgb };
+  }
+  function begin2(img) {
+    const W = img.width, H2 = img.height;
+    const { g, rgb } = grayOf(img);
+    const noThumb = kind !== "thumb";
+    const rough = { x: W / 2, y: H2 / 2, r: Math.min(W, H2) * 0.48 };
+    const grip = pickGrip(detectHoles(g, W, H2, rough), rough, noThumb);
+    let thumb = null;
+    let fa = { x: W * 0.42, y: H2 * 0.36 }, fb = { x: W * 0.58, y: H2 * 0.36 };
+    let holeR = 0;
+    const notes = [];
+    if (grip) {
+      thumb = grip.thumb ? { x: grip.thumb.x, y: grip.thumb.y } : null;
+      fa = { x: grip.fingers[0].x, y: grip.fingers[0].y };
+      fb = { x: grip.fingers[1].x, y: grip.fingers[1].y };
+      if (fa.x > fb.x) [fa, fb] = [fb, fa];
+      holeR = (grip.fingers[0].r + grip.fingers[1].r) / 2;
+      notes.push("I found the grip holes.");
+    } else {
+      thumb = noThumb ? null : { x: W * 0.5, y: H2 * 0.62 };
+      notes.push("I couldn't pick out the grip holes: pick Thumb / Finger 1 / Finger 2 below and tap each hole.");
+    }
+    let outlines = [];
+    if (grip) {
+      const pts = [fa, fb, ...thumb ? [thumb] : []];
+      const mid = { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length };
+      outlines = findBalls(g, W, H2, mid, Math.max(Math.min(W, H2) * 0.2, Math.min(Math.min(W, H2) * 0.5, holeR * 9.2)), rgb, 3);
+    }
+    if (!outlines.length) {
+      const edge = detectBall(g, W, H2);
+      if (edge) outlines = [edge];
+    }
+    notes.push(outlines.length ? "I found the ball's outline." : "I couldn't find the ball's outline: use Ball outline below and tap the ball's center, then adjust the size.");
+    cur = { img, circle: outlines[0] ?? { x: W / 2, y: H2 / 2, r: Math.min(W, H2) * 0.4 }, outlines, outlineIx: 0, thumb, fingerA: fa, fingerB: fb, ring: [], mode: "ring", found: notes.join(" ") };
+    edit();
+  }
+  var MODES = [
+    { id: "ring", label: "Ring points" },
+    { id: "thumb", label: "Thumb hole" },
+    { id: "fingerA", label: "Finger 1" },
+    { id: "fingerB", label: "Finger 2" },
+    { id: "outline", label: "Ball outline" }
+  ];
+  function edit() {
+    if (!cur) return;
+    const c = cur;
+    const n = done.length + 1;
+    const live2 = c.ring.length >= 4 ? poleFromShot({ circle: c.circle, thumb: kind === "thumb" ? c.thumb : null, fingerA: c.fingerA, fingerB: c.fingerB, ring: c.ring }, hand) : null;
+    const modes = MODES.filter((m) => m.id !== "thumb" || kind === "thumb");
+    sheet3().innerHTML = `
+    <div class="row"><h2>Photo ${n} of ${WANT}</h2><button class="btn ghost" id="pp-close">Close</button></div>
+    <div class="note">${esc(c.found)} Tap points along <b>one flare ring</b> (a faint oily band that goes around the ball), as far apart as you can: at least 4, spread over as much of the ring as you can see.</div>
+    <div class="card"><canvas id="pp-cv" width="${c.img.width}" height="${c.img.height}" style="width:100%;height:auto;touch-action:manipulation;border-radius:10px"></canvas>
+      <div class="chips">${modes.map((m) => `<button class="chip ${c.mode === m.id ? "sel" : ""}" data-mode="${m.id}">${m.label}</button>`).join("")}</div>
+      <div class="chips"><button class="chip" id="pp-undo">Undo last point</button><button class="chip" id="pp-clear">Clear points</button>${c.outlines.length > 1 ? `<button class="chip" id="pp-next">Try another outline</button>` : ""}<button class="chip" id="pp-smaller">Ball smaller</button><button class="chip" id="pp-bigger">Ball bigger</button></div>
+      <div class="u">${c.ring.length} ring point${c.ring.length === 1 ? "" : "s"} placed.${live2 ? "error" in live2 ? "" : ` This photo puts the PAP at about <b>${live2.over.toFixed(2)}" over, ${live2.up.toFixed(2)}" up</b>.` : ""}</div>
+      ${live2 && !("error" in live2) ? live2.notes.map((x) => `<div class="note" style="color:var(--gold)">${esc(x)}</div>`).join("") : ""}
+      <div class="chips"><button class="btn" id="pp-use" ${live2 && !("error" in live2) ? "" : "disabled"}>Use this photo</button></div></div>`;
+    $("pp-close").onclick = close3;
+    const cv = $("pp-cv");
+    paint(cv, c);
+    cv.addEventListener("click", (e) => {
+      const r = cv.getBoundingClientRect();
+      const p = { x: (e.clientX - r.left) / r.width * cv.width, y: (e.clientY - r.top) / r.height * cv.height };
+      if (c.mode === "ring") c.ring.push(p);
+      else if (c.mode === "thumb") c.thumb = p;
+      else if (c.mode === "fingerA") c.fingerA = p;
+      else if (c.mode === "fingerB") c.fingerB = p;
+      else c.circle = { ...c.circle, x: p.x, y: p.y };
+      edit();
+    });
+    sheet3().querySelectorAll("[data-mode]").forEach((b) => b.onclick = () => (c.mode = b.dataset.mode, edit()));
+    $("pp-undo").onclick = () => (c.ring.pop(), edit());
+    $("pp-clear").onclick = () => (c.ring = [], edit());
+    document.getElementById("pp-next")?.addEventListener("click", () => (c.outlineIx = (c.outlineIx + 1) % c.outlines.length, c.circle = c.outlines[c.outlineIx], edit()));
+    $("pp-smaller").onclick = () => (c.circle = { ...c.circle, r: c.circle.r * 0.97 }, edit());
+    $("pp-bigger").onclick = () => (c.circle = { ...c.circle, r: c.circle.r * 1.03 }, edit());
+    $("pp-use").onclick = () => {
+      done.push({ circle: c.circle, thumb: kind === "thumb" ? c.thumb : null, fingerA: c.fingerA, fingerB: c.fingerB, ring: c.ring.slice() });
+      cur = null;
+      done.length >= WANT ? result() : between();
+    };
+  }
+  function paint(cv, c) {
+    const g = cv.getContext("2d");
+    g.drawImage(c.img, 0, 0);
+    const s = cv.width / 960;
+    g.lineWidth = 3 * s;
+    g.strokeStyle = "rgba(70,230,255,.9)";
+    g.beginPath();
+    g.arc(c.circle.x, c.circle.y, c.circle.r, 0, 7);
+    g.stroke();
+    const dot4 = (p, col, label2) => {
+      if (!p) return;
+      g.fillStyle = col;
+      g.strokeStyle = "#000";
+      g.lineWidth = 2 * s;
+      g.beginPath();
+      g.arc(p.x, p.y, 7 * s, 0, 7);
+      g.fill();
+      g.stroke();
+      if (label2) {
+        g.fillStyle = "#fff";
+        g.font = `700 ${14 * s}px system-ui`;
+        g.fillText(label2, p.x + 10 * s, p.y - 8 * s);
+      }
+    };
+    if (kind === "thumb") dot4(c.thumb, "#ffffff", "thumb");
+    dot4(c.fingerA, "#ff4fd8", "1");
+    dot4(c.fingerB, "#ff4fd8", "2");
+    g.strokeStyle = "rgba(255,210,90,.7)";
+    g.lineWidth = 2 * s;
+    g.beginPath();
+    c.ring.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y));
+    g.stroke();
+    c.ring.forEach((p) => dot4(p, "#ffd25a"));
+  }
+  function between() {
+    sheet3().innerHTML = `
+    <div class="row"><h2>Photo ${done.length} saved</h2><button class="btn ghost" id="pp-close">Close</button></div>
+    <div class="card"><div class="u">${done.length} of ${WANT} photos done. Turn the ball a little so a different stretch of the ring faces the camera, with the grip still in view, then take the next one.</div>
+      <div class="chips"><label class="btn" style="display:inline-block;cursor:pointer">Take or choose photo ${done.length + 1}<input id="pp-file" type="file" accept="image/*" capture="environment" style="display:none"></label><button class="btn ghost" id="pp-finish">Use ${done.length === 1 ? "this one photo" : `these ${done.length}`}</button></div>
+      <div class="note" id="pp-msg">Nothing is uploaded: the pictures stay on this phone.</div></div>`;
+    $("pp-close").onclick = close3;
+    $("pp-finish").onclick = result;
+    $("pp-file").onchange = onFile;
+  }
+  function result() {
+    const e = papEstimate(done, hand);
+    if ("error" in e) {
+      sheet3().innerHTML = `<div class="row"><h2>PAP from flare rings</h2><button class="btn ghost" id="pp-close">Close</button></div><div class="card"><div class="u">${esc(e.error)}</div><div class="chips"><button class="btn" id="pp-again">Start over</button></div></div>`;
+      $("pp-close").onclick = close3;
+      $("pp-again").onclick = openPapScan;
+      return;
+    }
+    sheet3().innerHTML = `
+    <div class="row"><h2>Your estimated PAP</h2><button class="btn ghost" id="pp-close">Close</button></div>
+    <div class="card"><div class="k">Average of ${e.picks.length} photo${e.picks.length === 1 ? "" : "s"}</div>
+      <div class="lr-head" style="font-size:24px">${esc(e.text)}</div>
+      <table>${e.picks.map((p, i) => `<tr><td>Photo ${i + 1}</td><td class="n">${p.over.toFixed(2)}" over, ${p.up.toFixed(2)}" up</td></tr>`).join("")}${e.spreadIn !== null ? `<tr><td>Biggest difference from the average</td><td class="n">${e.spreadIn.toFixed(2)}"</td></tr>` : ""}</table>
+      ${e.notes.map((n) => `<div class="note">${esc(n)}</div>`).join("")}
+      <div class="chips"><button class="btn" id="pp-save">Save as my PAP</button><button class="btn ghost" id="pp-lab">Open the Layout Lab</button><button class="btn ghost" id="pp-again">Start over</button></div><div class="note" id="pp-saved"></div></div>`;
+    $("pp-close").onclick = close3;
+    $("pp-again").onclick = openPapScan;
+    $("pp-save").onclick = () => {
+      if (!S.profile) return void ($("pp-saved").textContent = "Set up a profile first.");
+      const spin = S.profile.spin ?? { source: "entered", at: (/* @__PURE__ */ new Date()).toISOString() };
+      updateProfile({ spin: { ...spin, pap: e.text, papFrom: "photo" } });
+      $("pp-saved").textContent = `Saved: ${e.text}. The Layout Lab and the Pro shop will use it.`;
+    };
+    $("pp-lab").onclick = () => (close3(), openLayoutLab());
+  }
+
   // core/src/layout.ts
   function releaseStrength(b) {
     let v = 0;
@@ -6604,9 +6933,9 @@
     const T = await loadTesseract();
     const words = /* @__PURE__ */ new Map();
     const runs = [["lum", false], ["lum", true], ["r", false], ["r", true], ["b", false], ["b", true], ["g", false], ["g", true]];
-    let done = 0;
+    let done2 = 0;
     for (const [ch, inv] of runs) {
-      progress2(done++, runs.length);
+      progress2(done2++, runs.length);
       const { data } = await T.recognize(prepare(src, c, ch, inv), "eng");
       for (const w of data.words) {
         const clean = w.text.replace(/[^A-Za-z0-9]/g, "");
@@ -6747,8 +7076,8 @@
 
   // camera/sync.ts
   var ICE = [{ urls: "stun:stun.l.google.com:19302" }];
-  var sheet3 = () => $("friends");
-  var close3 = () => (sheet3().classList.remove("on"), sheet3().innerHTML = "");
+  var sheet4 = () => $("friends");
+  var close4 = () => (sheet4().classList.remove("on"), sheet4().innerHTML = "");
   var live = null;
   var myLane = "";
   var listening = false;
@@ -6756,8 +7085,8 @@
   async function gathered(pc) {
     if (pc.iceGatheringState !== "complete")
       await new Promise((res) => {
-        const done = () => pc.iceGatheringState === "complete" && (pc.removeEventListener("icegatheringstatechange", done), res());
-        pc.addEventListener("icegatheringstatechange", done);
+        const done2 = () => pc.iceGatheringState === "complete" && (pc.removeEventListener("icegatheringstatechange", done2), res());
+        pc.addEventListener("icegatheringstatechange", done2);
         setTimeout(res, 5e3);
       });
     return pc.localDescription.sdp;
@@ -6821,7 +7150,7 @@
   }
   function openLive() {
     if (live && live.state !== "ended") return render();
-    const el = sheet3();
+    const el = sheet4();
     el.classList.add("on");
     el.innerHTML = `
     <div class="row"><h2>Bowl together, live</h2><button class="btn ghost" id="lv-close">Close</button></div>
@@ -6829,7 +7158,7 @@
     <div class="card"><div class="k">You start it</div><div class="u">Make a link, send it to your friend, then paste the reply code they send back.</div><div class="chips"><button class="btn" id="lv-host">Start a live session</button></div></div>
     <div class="card"><div class="k">Your friend started it</div><div class="u">Open the link they sent (it opens this app), or paste it here.</div><div class="field"><input id="lv-link" placeholder="Paste their link or code"></div><div class="chips"><button class="btn ghost" id="lv-join">Join</button></div><div class="note" id="lv-msg"></div></div>
     <div class="note">How it connects: a public STUN server (Google's) is used only so each phone can learn its own network address. Some work or school networks block direct connections; if yours does, share a session link instead.</div>`;
-    $("lv-close").onclick = close3;
+    $("lv-close").onclick = close4;
     $("lv-host").onclick = host;
     $("lv-join").onclick = async () => {
       const raw = $("lv-link").value.trim();
@@ -6839,7 +7168,7 @@
     };
   }
   async function host() {
-    const el = sheet3();
+    const el = sheet4();
     el.innerHTML = `<div class="row"><h2>Starting\u2026</h2></div><div class="note">Getting your connection ready. Keep the app open.</div>`;
     const l = newLive();
     wire2(l, l.pc.createDataChannel("laneiq"));
@@ -6851,7 +7180,7 @@
     <div class="row"><h2>Send this to your friend</h2><button class="btn ghost" id="lv-close">Cancel</button></div>
     <div class="card"><div class="k">1. Send the link</div><div class="u" style="word-break:break-all;max-height:5.5em;overflow:hidden">${esc(link.slice(0, 160))}\u2026</div><div class="chips"><button class="btn" id="lv-send">Send link</button></div><div class="note" id="lv-sent"></div></div>
     <div class="card"><div class="k">2. Paste their reply</div><div class="u">When they open the link they get a short reply code. Paste it here. Keep this screen open until then.</div><div class="field"><input id="lv-reply" placeholder="Paste the reply code"></div><div class="chips"><button class="btn" id="lv-connect">Connect</button></div><div class="note" id="lv-msg"></div></div>`;
-    $("lv-close").onclick = () => (live?.pc.close(), live = null, close3());
+    $("lv-close").onclick = () => (live?.pc.close(), live = null, close4());
     $("lv-send").onclick = async () => ($("lv-sent").textContent = await shareLink("Bowl with me on LaneIQ", `${me().name} wants to sync shots live on LaneIQ. Open this to join.`, link), void 0);
     $("lv-connect").onclick = async () => {
       const code = $("lv-reply").value.trim().replace(/^LIVE-/, "");
@@ -6877,16 +7206,16 @@
       offer = json ? JSON.parse(json) : null;
     } catch {
     }
-    const el = sheet3();
+    const el = sheet4();
     el.classList.add("on");
     if (!offer?.sdp || !offer.who?.code) {
       el.innerHTML = `<div class="row"><h2>Live session</h2><button class="btn ghost" id="lv-close">Close</button></div><div class="card"><div class="u">That link is damaged or isn't a LaneIQ live session.</div></div>`;
-      $("lv-close").onclick = close3;
+      $("lv-close").onclick = close4;
       return;
     }
     const from = offer.who;
     el.innerHTML = `<div class="row"><h2>Join ${esc(from.name)}?</h2><button class="btn ghost" id="lv-close">Not now</button></div><div class="card"><div class="lr-head">${esc(from.name)}${from.username ? ` <span class="note">@${esc(from.username)}</span>` : ""}</div><div class="u">wants to sync shots live while you bowl. Your shots go straight to their phone while you're connected.</div><div class="chips"><button class="btn" id="lv-yes">Join</button></div></div>`;
-    $("lv-close").onclick = close3;
+    $("lv-close").onclick = close4;
     $("lv-yes").onclick = async () => {
       el.innerHTML = `<div class="row"><h2>Connecting\u2026</h2></div><div class="note">Getting your reply ready. Keep the app open.</div>`;
       const l = newLive();
@@ -6898,7 +7227,7 @@
       el.innerHTML = `
       <div class="row"><h2>Send this reply back</h2><button class="btn ghost" id="lv-close">Cancel</button></div>
       <div class="card"><div class="u">Send this code to ${esc(from.name)}. They paste it in their app and you're connected. Keep this screen open until then.</div><div class="u" style="word-break:break-all;user-select:all;max-height:6em;overflow:auto">${esc(reply)}</div><div class="chips"><button class="btn" id="lv-sendreply">Send reply</button></div><div class="note" id="lv-sent"></div></div>`;
-      $("lv-close").onclick = () => (live?.pc.close(), live = null, close3());
+      $("lv-close").onclick = () => (live?.pc.close(), live = null, close4());
       $("lv-sendreply").onclick = async () => {
         try {
           await navigator.clipboard.writeText(reply);
@@ -6917,10 +7246,10 @@
   function render() {
     if (!live) return;
     const l = live;
-    if (!sheet3().classList.contains("on") || !$("friends").dataset.live) {
+    if (!sheet4().classList.contains("on") || !$("friends").dataset.live) {
       if (l.state === "waiting") return;
     }
-    const el = sheet3();
+    const el = sheet4();
     el.classList.add("on");
     el.dataset.live = "1";
     const peerName = l.peer ? `${esc(l.peer.name)}${l.peer.username ? ` <span class="note">@${esc(l.peer.username)}</span>` : ""}` : "your friend";
@@ -6938,7 +7267,7 @@
     <div class="card"><table><tr><th>Latest shot</th><th class="n">You</th><th class="n">${l.peer ? esc(l.peer.name) : "Them"}</th></tr>
       ${row("Speed (mph)", last(l.mine)?.sp, last(l.theirs)?.sp)}${row("Board at arrows", last(l.mine)?.ar, last(l.theirs)?.ar)}${row("Breakpoint board", last(l.mine)?.bb, last(l.theirs)?.bb)}${row("Breakpoint (ft)", last(l.mine)?.bf, last(l.theirs)?.bf, 0)}${row("Entry board", last(l.mine)?.en, last(l.theirs)?.en)}${row("Entry angle (\xB0)", last(l.mine)?.an, last(l.theirs)?.an)}</table></div>
     <div class="chips"><button class="btn ghost" id="lv-save">Save their shots to compare later</button><button class="btn ghost" id="lv-end">End session</button></div><div class="note" id="lv-msg">${l.state === "ended" ? "The connection closed. Your shots are saved on this phone as usual." : ""}</div>`;
-    $("lv-close").onclick = () => (el.dataset.live = "", close3());
+    $("lv-close").onclick = () => (el.dataset.live = "", close4());
     $("lv-lane").onchange = (e) => {
       myLane = e.target.value.trim();
       send({ t: "lane", lane: myLane });
@@ -6950,7 +7279,7 @@
       l.pc.close();
       live = null;
       el.dataset.live = "";
-      close3();
+      close4();
     };
     $("lv-save").onclick = async () => {
       if (!l.peer || !l.theirs.length) return void ($("lv-msg").textContent = "No shots from them yet.");
@@ -7127,8 +7456,8 @@ ${url}`);
     const json = await unpackText(payload);
     return json === null ? null : decodeSession(b64urlEncode(json));
   }
-  var sheet4 = () => $("friends");
-  var close4 = () => (sheet4().classList.remove("on"), sheet4().innerHTML = "");
+  var sheet5 = () => $("friends");
+  var close5 = () => (sheet5().classList.remove("on"), sheet5().innerHTML = "");
   var myName = () => S.profile?.name ?? "A bowler";
   var myUser = () => S.profile?.username ?? "";
   var myCode = () => {
@@ -7136,12 +7465,12 @@ ${url}`);
     return S.profile?.friendCode ?? "";
   };
   function askForUsername(then) {
-    const el = sheet4();
+    const el = sheet5();
     el.classList.add("on");
     el.innerHTML = `<div class="row"><h2>Choose an account name</h2><button class="btn ghost" id="fr-close">Close</button></div>
     <div class="note">Friends add you by account name plus your friend code. Pick one (3 to 20 letters, numbers or underscores).</div>
     <div class="card"><div class="field"><label>Account name</label><input id="fr-user" placeholder="e.g. strikeking22" autocomplete="off" autocapitalize="none" spellcheck="false"></div><div class="chips"><button class="btn" id="fr-usersave">Save</button></div><div class="note" id="fr-usermsg"></div></div>`;
-    $("fr-close").onclick = close4;
+    $("fr-close").onclick = close5;
     $("fr-usersave").onclick = () => {
       const u = cleanUsername($("fr-user").value);
       if (!isUsername(u)) return void ($("fr-usermsg").textContent = "Use 3 to 20 letters, numbers or underscores, no spaces.");
@@ -7153,7 +7482,7 @@ ${url}`);
     if (!myUser()) return askForUsername(openInvite);
     const link = `${appLink()}/#invite=${encodeInvite(myName(), myCode(), myUser())}`;
     const warn = isPrivateHost(appLink());
-    const el = sheet4();
+    const el = sheet5();
     el.classList.add("on");
     el.innerHTML = `
     <div class="row"><h2>Invite a player</h2><button class="btn ghost" id="fr-close">Close</button></div>
@@ -7164,7 +7493,7 @@ ${url}`);
       <div class="chips"><button class="chip" id="fr-copytag2">Copy tag</button><button class="chip" id="fr-copylink">Copy link</button></div></div>
     <div class="card"><div class="k">Your invite link</div><div class="u" style="word-break:break-all;user-select:all">${esc(link)}</div>
       <div class="chips"><button class="btn" id="fr-send">Send invite / friend request</button></div><div class="note" id="fr-msg"></div></div>`;
-    $("fr-close").onclick = close4;
+    $("fr-close").onclick = close5;
     const tag = friendTag(myUser(), myCode());
     $("fr-send").onclick = async () => ($("fr-msg").textContent = await shareLink("Join me on LaneIQ", `${myName()} invited you to LaneIQ, a free bowling coach that uses your phone's camera, and wants to be friends. Open the link, then add it to your Home Screen. If I don't show up as a friend, add me with my tag: ${tag}`, link), void 0);
     const copy = (id, text, label2) => $(id).onclick = async () => {
@@ -7178,25 +7507,25 @@ ${url}`);
     copy("fr-copytag2", tag, "Your friend tag:");
     copy("fr-copylink", link, "Your invite link:");
   }
-  function openFriendRequest(from, kind) {
-    const el = sheet4();
+  function openFriendRequest(from, kind2) {
+    const el = sheet5();
     el.classList.add("on");
     const already = S.friends.some((f) => f.code === from.code);
     const self = from.code === myCode();
     el.innerHTML = `
-    <div class="row"><h2>${kind === "invite" ? "Friend request" : "Friend request accepted"}</h2><button class="btn ghost" id="fr-close">Close</button></div>
-    ${self ? `<div class="card"><div class="u">That's your own link.</div></div>` : `<div class="card"><div class="lr-head">${esc(from.name)}${from.username ? ` <span class="note">@${esc(from.username)}</span>` : ""}</div><div class="u">${kind === "invite" ? "wants to be friends so you can compare shots on the same lane." : "added you. Add them back to finish connecting."}</div><div class="u">Friend code ${esc(from.code)}</div>
-    <div class="chips">${already ? `<span class="tag">Already friends</span>` : `<button class="btn" id="fr-accept">${kind === "invite" ? `Add ${esc(from.name)} and let them know` : `Add ${esc(from.name)} as a friend`}</button>`}<button class="chip" id="fr-no">Not now</button></div><div class="note" id="fr-msg"></div></div>`}`;
-    $("fr-close").onclick = close4;
+    <div class="row"><h2>${kind2 === "invite" ? "Friend request" : "Friend request accepted"}</h2><button class="btn ghost" id="fr-close">Close</button></div>
+    ${self ? `<div class="card"><div class="u">That's your own link.</div></div>` : `<div class="card"><div class="lr-head">${esc(from.name)}${from.username ? ` <span class="note">@${esc(from.username)}</span>` : ""}</div><div class="u">${kind2 === "invite" ? "wants to be friends so you can compare shots on the same lane." : "added you. Add them back to finish connecting."}</div><div class="u">Friend code ${esc(from.code)}</div>
+    <div class="chips">${already ? `<span class="tag">Already friends</span>` : `<button class="btn" id="fr-accept">${kind2 === "invite" ? `Add ${esc(from.name)} and let them know` : `Add ${esc(from.name)} as a friend`}</button>`}<button class="chip" id="fr-no">Not now</button></div><div class="note" id="fr-msg"></div></div>`}`;
+    $("fr-close").onclick = close5;
     $("fr-no")?.addEventListener("click", () => {
       if (!self && !already) deferInvite(from);
-      close4();
+      close5();
     });
     $("fr-accept")?.addEventListener("click", async () => {
       S.friends.push({ code: from.code, name: from.name, username: from.username, addedAt: (/* @__PURE__ */ new Date()).toISOString() });
       dropDeferred(from.code);
       await saveSocial();
-      if (kind === "reply") return close4();
+      if (kind2 === "reply") return close5();
       $("fr-msg").innerHTML = `Added ${esc(from.name)}. Send the confirmation so they can add you back.`;
       const send2 = async () => $("fr-msg").textContent = await shareLink("Friend request accepted", `${myName()} accepted your friend request on LaneIQ. Tap to add them back.`, `${appLink()}/#reply=${encodeInvite(myName(), myCode(), myUser())}`);
       void send2();
@@ -7238,7 +7567,7 @@ ${url}`);
     });
   };
   function openShareSession() {
-    const el = sheet4();
+    const el = sheet5();
     el.classList.add("on");
     const list = sessionsOf().reverse();
     const warn = isPrivateHost(appLink());
@@ -7250,7 +7579,7 @@ ${url}`);
     <div class="field"><label>Where was it? (center and lane, e.g. AMF 14)</label><input id="fr-lane" placeholder="Center and lane"></div>
     ${list.map((s) => `<div class="card"><div class="row"><div><b>${esc(s.date)}</b> <span class="note">${s.n} shots</span></div><button class="chip" data-id="${s.id}">Share</button></div></div>`).join("")}
     <div class="note" id="fr-msg"></div>`;
-    $("fr-close").onclick = close4;
+    $("fr-close").onclick = close5;
     el.querySelectorAll("[data-id]").forEach(
       (b) => b.onclick = async () => {
         const lane = $("fr-lane").value.trim();
@@ -7264,7 +7593,7 @@ ${url}`);
     );
   }
   function openReceivedSession(sess) {
-    const el = sheet4();
+    const el = sheet5();
     el.classList.add("on");
     const known = S.friends.some((f) => f.code === sess.from.code);
     el.innerHTML = `
@@ -7272,22 +7601,22 @@ ${url}`);
     <div class="card"><div class="lr-head">${esc(sess.from.name)}</div><div class="u">${esc(sess.lane)} \xB7 ${esc(sess.date)} \xB7 ${sess.shots.length} shots${sess.pattern ? ` \xB7 ${esc(sess.pattern)}` : ""}</div>
       <div class="note">${known ? "A friend of yours." : "Not in your friends yet. Saving this does not add them."}</div>
       <div class="chips"><button class="btn" id="fr-save">Save to compare</button><button class="chip" id="fr-no">Not now</button></div></div>`;
-    $("fr-close").onclick = close4;
-    $("fr-no").onclick = close4;
+    $("fr-close").onclick = close5;
+    $("fr-no").onclick = close5;
     $("fr-save").onclick = async () => {
       S.shared = [...S.shared.filter((x) => !(x.from.code === sess.from.code && x.date === sess.date && x.lane === sess.lane)), sess];
       await saveSocial();
-      close4();
+      close5();
       openCompare(sess);
     };
   }
   function openCompare(theirs) {
-    const el = sheet4();
+    const el = sheet5();
     el.classList.add("on");
     const mine = sessionsOf().reverse();
     if (!S.shared.length || !mine.length) {
       el.innerHTML = `<div class="row"><h2>Compare</h2><button class="btn ghost" id="fr-close">Close</button></div><div class="card"><div class="u">${!S.shared.length ? "No friend sessions yet. When a friend shares a session with you and you save it, it shows up here." : "Bowl some shots first so there is something to compare."}</div></div>`;
-      $("fr-close").onclick = close4;
+      $("fr-close").onclick = close5;
       return;
     }
     let pickTheirs = theirs ?? S.shared[S.shared.length - 1];
@@ -7305,7 +7634,7 @@ ${url}`);
         <div class="note"><span style="color:#46e6ff">Cyan: you</span> \xB7 <span style="color:#ffd25a">Gold: ${esc(pickTheirs.from.name)}</span></div></div>
       <div class="card"><table><tr><th></th><th class="n">You</th><th class="n">${esc(pickTheirs.from.name)}</th></tr>${cmp.rows.map((r) => `<tr><td>${esc(r.label)}</td><td class="n">${fmt4(r.mine, r.unit)}</td><td class="n">${fmt4(r.theirs, r.unit)}</td></tr>`).join("")}</table></div>
       <div class="card"><ul>${cmp.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>`;
-      $("fr-close").onclick = close4;
+      $("fr-close").onclick = close5;
       $("cp-theirs").onchange = (e) => (pickTheirs = S.shared[Number(e.target.value)], draw3());
       $("cp-mine").onchange = (e) => (pickMine = e.target.value, draw3());
       $("cp-lane").onchange = async (e) => {
@@ -7334,16 +7663,16 @@ ${url}`);
     const h = readPendingHash();
     if (!h || !S.profile) return;
     clearPendingHash();
-    const [, kind, value] = /^#(invite|reply|session|live)=(.+)$/.exec(h) ?? [];
-    if (!kind) return;
-    if (kind === "live") return void joinFrom(value);
-    if (kind === "session") {
+    const [, kind2, value] = /^#(invite|reply|session|live)=(.+)$/.exec(h) ?? [];
+    if (!kind2) return;
+    if (kind2 === "live") return void joinFrom(value);
+    if (kind2 === "session") {
       const s = await unpackSession(value);
       return s ? openReceivedSession(s) : void alert("That session link is damaged or isn't a LaneIQ session.");
     }
     const inv = decodeInvite(value);
     if (!inv) return void alert("That friend link is damaged.");
-    openFriendRequest(inv, kind);
+    openFriendRequest(inv, kind2);
   }
   var DEFER_KEY = "laneiq.deferredInvites";
   var deferred = () => {
@@ -7388,7 +7717,7 @@ ${url}`);
     ${isPrivateHost(link) ? `<div class="note" style="color:var(--gold)">That address only works on your own network or Tailscale. Friends need a public address; set it here once the app is hosted for everyone.</div>` : ""}</div>`;
   }
   function wireFriendsCard(rerender) {
-    $("fr-setuser")?.addEventListener("click", () => askForUsername(() => (close4(), rerender())));
+    $("fr-setuser")?.addEventListener("click", () => askForUsername(() => (close5(), rerender())));
     $("fr-copytag")?.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(friendTag(myUser(), myCode()));
@@ -7484,7 +7813,7 @@ ${url}`);
     let step = 0;
     const STEPS = 8;
     el.classList.add("on");
-    const chips = (opts, cur, key2) => `<div class="chips">${opts.map((o) => `<button class="chip ${o.id === cur ? "sel" : ""}" data-k="${key2}" data-v="${esc(o.id)}">${esc(o.label)}</button>`).join("")}</div>`;
+    const chips = (opts, cur2, key2) => `<div class="chips">${opts.map((o) => `<button class="chip ${o.id === cur2 ? "sel" : ""}" data-k="${key2}" data-v="${esc(o.id)}">${esc(o.label)}</button>`).join("")}</div>`;
     const body = () => {
       switch (step) {
         case 0:
@@ -7706,7 +8035,7 @@ ${url}`);
     for (let i = 1; i < levels && out[i - 1].w >= 32; i++) out.push(downscale(out[i - 1]));
     return out;
   };
-  function spinFromOmega(om, fps, view3, hand) {
+  function spinFromOmega(om, fps, view3, hand2) {
     const mag = Math.hypot(om.x, om.y, om.z);
     if (mag < 1e-6) return null;
     let f, l, u;
@@ -7716,7 +8045,7 @@ ${url}`);
     const a = { f: f / mag, l: l / mag, u: u / mag };
     const notes = [];
     if (a.l < 0.2) notes.push("The measured spin doesn't look like a forward-rolling ball: check the camera position you chose.");
-    const side = hand === "R" ? -a.f : a.f;
+    const side = hand2 === "R" ? -a.f : a.f;
     return {
       rpm: mag * fps * 60 / (2 * Math.PI),
       axisRotation: Math.atan2(side, Math.abs(a.l)) * 180 / Math.PI,
@@ -7725,7 +8054,7 @@ ${url}`);
       notes
     };
   }
-  function estimateSpin(frames, circles, fps, view3, hand, step = 4) {
+  function estimateSpin(frames, circles, fps, view3, hand2, step = 4) {
     const omegas = [];
     let pts = 0;
     const pyr = frames.map((f) => pyramid(f));
@@ -7749,7 +8078,7 @@ ${url}`);
     if (omegas.length < 1) return null;
     const med = (v) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)];
     const om = { x: med(omegas.map((o) => o.x)), y: med(omegas.map((o) => o.y)), z: med(omegas.map((o) => o.z)) };
-    const res = spinFromOmega(om, fps, view3, hand);
+    const res = spinFromOmega(om, fps, view3, hand2);
     if (!res) return null;
     const mags = omegas.map((o) => Math.hypot(o.x, o.y, o.z));
     const spread = omegas.length > 1 ? Math.sqrt(mags.reduce((a, m) => a + (m - mags.reduce((s, x) => s + x, 0) / mags.length) ** 2, 0) / (mags.length - 1)) / (mags.reduce((s, x) => s + x, 0) / mags.length) : 0.5;
@@ -7794,7 +8123,7 @@ ${url}`);
     let fps = 240;
     let circle = null;
     let tapStage = 0;
-    let result = null;
+    let result2 = null;
     el.innerHTML = `
     <div class="row"><h2>Spin lab</h2><button class="btn ghost" id="sl-close">Close</button></div>
     <div class="note">Measures rev rate, axis rotation and axis tilt from a <b>slow-motion video of the release</b>. Film the ball as large as you can, in good light, with the camera behind the bowler or to one side, steady on a tripod. 240 fps works best. This method is validated on simulated footage only, so check a few results against a measurement you trust before relying on it.</div>
@@ -7831,8 +8160,8 @@ ${url}`);
       octx.fill();
     };
     const seek = (t) => new Promise((res) => {
-      const done = () => (v.removeEventListener("seeked", done), res());
-      v.addEventListener("seeked", done);
+      const done2 = () => (v.removeEventListener("seeked", done2), res());
+      v.addEventListener("seeked", done2);
       v.currentTime = Math.max(0, Math.min(v.duration || 0, t));
     });
     $("sl-view").onchange = (e) => view3 = e.target.value;
@@ -7917,26 +8246,26 @@ ${url}`);
         if (d / n < 0.4) still++;
       }
       await new Promise((r) => setTimeout(r, 40));
-      result = estimateSpin(frames, circles, fps, view3, S.profile?.hand ?? "R", 5);
+      result2 = estimateSpin(frames, circles, fps, view3, S.profile?.hand ?? "R", 5);
       const warn = still >= N2 - 2 ? `<li>Consecutive frames look identical. The video may not be a true ${fps} fps recording, or the seek landed on the same frame, so the result isn't meaningful.</li>` : "";
-      if (!result) {
+      if (!result2) {
         out.innerHTML = `<div class="card"><div class="lr-head">Couldn't measure the spin</div><ul><li>The ball surface didn't have enough visible markings to track. A logo, finger holes or a two-tone ball work best, and a plain glossy ball often can't be measured this way.</li>${warn}</ul></div>`;
         return;
       }
-      const q = result.quality;
+      const q = result2.quality;
       const label2 = q >= 0.7 ? "good" : q >= 0.4 ? "rough" : "unreliable";
       out.innerHTML = `<div class="card"><div class="k">Result</div>
       <div class="grid" style="margin-top:8px">
-        <div class="card"><div class="k">Rev rate</div><div class="v">${Math.round(result.rpm)}</div><div class="u">RPM</div></div>
-        <div class="card"><div class="k">Axis rotation</div><div class="v">${result.axisRotation.toFixed(0)}\xB0</div><div class="u">0\xB0 = forward roll</div></div>
-        <div class="card"><div class="k">Axis tilt</div><div class="v">${result.axisTilt.toFixed(0)}\xB0</div><div class="u">above horizontal</div></div>
+        <div class="card"><div class="k">Rev rate</div><div class="v">${Math.round(result2.rpm)}</div><div class="u">RPM</div></div>
+        <div class="card"><div class="k">Axis rotation</div><div class="v">${result2.axisRotation.toFixed(0)}\xB0</div><div class="u">0\xB0 = forward roll</div></div>
+        <div class="card"><div class="k">Axis tilt</div><div class="v">${result2.axisTilt.toFixed(0)}\xB0</div><div class="u">above horizontal</div></div>
       </div>
       <span class="badge ${q >= 0.7 ? "good" : q >= 0.4 ? "moderate" : "tentative"}">${label2} \xB7 quality ${Math.round(q * 100)}%</span>
-      <ul>${[...result.notes.map((n) => `<li>${esc(n)}</li>`), warn, `<li>Used ${result.pairs} frame pairs and about ${result.pointsPerPair} tracked points per pair.</li>`].join("")}</ul>
+      <ul>${[...result2.notes.map((n) => `<li>${esc(n)}</li>`), warn, `<li>Used ${result2.pairs} frame pairs and about ${result2.pointsPerPair} tracked points per pair.</li>`].join("")}</ul>
       <div class="chips"><button class="btn" id="sl-save" ${q < 0.3 ? "disabled" : ""}>Use these numbers</button></div>
       ${q < 0.3 ? `<div class="note">Not reliable enough to save. Try a closer, brighter, higher-frame-rate clip.</div>` : ""}</div>`;
       $("sl-save")?.addEventListener("click", () => {
-        const r = result;
+        const r = result2;
         updateProfile({ spin: { ...S.profile?.spin ?? {}, rpm: Math.round(r.rpm), axisRotation: Math.round(r.axisRotation), axisTilt: Math.round(r.axisTilt), source: "video", at: (/* @__PURE__ */ new Date()).toISOString() } });
         onSaved();
         $("sl-close").click();
@@ -7957,9 +8286,9 @@ ${url}`);
   var toX = (xBoards) => (xBoards / LANE_BOARDS - 0.5) * LANE_W;
   var toIn = (p) => [toX(p.x), p.y * FT, BALL_R];
   var sub2 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-  var dot2 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-  var cross2 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-  var norm3 = (a) => {
+  var dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  var cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  var norm4 = (a) => {
     const l = Math.hypot(...a) || 1;
     return [a[0] / l, a[1] / l, a[2] / l];
   };
@@ -8008,22 +8337,22 @@ ${url}`);
       const th = yaw * Math.PI / 180;
       const ph = Math.min(89.5, Math.max(4, pitch)) * Math.PI / 180;
       const C2 = [target[0] + dist * Math.sin(th) * Math.cos(ph), target[1] - dist * Math.cos(th) * Math.cos(ph), target[2] + dist * Math.sin(ph)];
-      const F = norm3(sub2(target, C2));
-      const R2 = norm3(cross2(F, [0, 0, 1]));
-      const U = cross2(R2, F);
+      const F = norm4(sub2(target, C2));
+      const R2 = norm4(cross3(F, [0, 0, 1]));
+      const U = cross3(R2, F);
       const f = h / 2 / Math.tan(50 * Math.PI / 360);
       return { C: C2, F, R: R2, U, f, w, h };
     }
     const NEAR = 4;
     const proj = (cam, P) => {
       const v = sub2(P, cam.C);
-      const z = dot2(v, cam.F);
+      const z = dot3(v, cam.F);
       if (z < NEAR) return null;
-      return [cam.w / 2 + cam.f * dot2(v, cam.R) / z, cam.h / 2 - cam.f * dot2(v, cam.U) / z, z];
+      return [cam.w / 2 + cam.f * dot3(v, cam.R) / z, cam.h / 2 - cam.f * dot3(v, cam.U) / z, z];
     };
     function seg(cam, a, b) {
-      const za = dot2(sub2(a, cam.C), cam.F);
-      const zb = dot2(sub2(b, cam.C), cam.F);
+      const za = dot3(sub2(a, cam.C), cam.F);
+      const zb = dot3(sub2(b, cam.C), cam.F);
       if (za < NEAR && zb < NEAR) return null;
       let A = a;
       let B = b;
@@ -8475,7 +8804,7 @@ ${url}`);
   } catch {
   }
   var showOlder = false;
-  var srcWord = (kind) => kind === "manufacturer" ? "manufacturer page" : kind === "retailer" ? "retailer's announcement" : kind === "reviewer" ? "review site" : kind;
+  var srcWord = (kind2) => kind2 === "manufacturer" ? "manufacturer page" : kind2 === "retailer" ? "retailer's announcement" : kind2 === "reviewer" ? "review site" : kind2;
   var selSeries = "";
   var patFind = "";
   function patOptions() {
@@ -8627,7 +8956,7 @@ ${url}`);
     <h2>Pro shop</h2>
     <div class="note">Tools for fitting, layout and drilling, for bowlers and for pro shop operators, plus what to look for at a pro shop.</div>
     <div class="card"><div class="k">Layout and drilling</div>
-      <div class="chips"><button class="btn" id="ps-lab">Layout Lab: see a layout on the ball</button><button class="btn" id="ps-scan">Scan a drilled ball</button><button class="btn ghost" id="ps-report">Fitting report (print or save PDF)</button></div>
+      <div class="chips"><button class="btn" id="ps-lab">Layout Lab: see a layout on the ball</button><button class="btn" id="ps-scan">Scan a drilled ball</button><button class="btn" id="ps-pap">Estimate my PAP from photos</button><button class="btn ghost" id="ps-report">Fitting report (print or save PDF)</button></div>
       <div class="note">The Layout Lab draws the ball with its holes, pin, PSA, PAP and VAL in Dual Angle, Pin Buffer and 2LS, previews the flare, and prints a drill sheet. Scan reads the layout off a photo of a drilled ball.</div></div>
     <div class="card"><div class="k">${p ? esc(p.name) + "'s" : "This"} fit</div>
       <table><tr><td>Hand</td><td class="n">${bp.hand === "R" ? "Right" : "Left"}${bp.style === "two-handed" ? ", two-handed" : bp.style === "one-hand-no-thumb" ? ", no thumb" : ""}</td></tr>
@@ -8645,6 +8974,7 @@ ${url}`);
     wireProshopTools(el);
     $("ps-lab").onclick = () => openLayoutLab();
     $("ps-scan").onclick = () => openBallScan();
+    $("ps-pap").onclick = () => openPapScan();
     $("ps-report").onclick = () => openReport(pat, bp, lineup, ownedKeys);
     $("ps-print").onclick = () => openPlaybook(realPat);
     el.querySelectorAll("[data-open]").forEach((b) => b.onclick = () => openLayoutLab({ sheetId: b.dataset.open }));
@@ -8740,7 +9070,7 @@ ${url}`);
       <div class="note">The live camera can't measure these. Enter numbers from a pro-shop tool, or measure them from a slow-motion release video.${p.spin ? ` Last set ${esc(when(p.spin.at))} (${p.spin.source === "video" ? "from video" : "entered"}).` : ""}</div>
       <div class="two"><div class="field"><label>Rev rate (RPM)</label><input id="sp-rpm" inputmode="numeric" value="${p.spin?.rpm ?? ""}"></div><div class="field"><label>Axis rotation (\xB0)</label><input id="sp-rot" inputmode="decimal" value="${p.spin?.axisRotation ?? ""}"></div></div>
       <div class="two"><div class="field"><label>Axis tilt (\xB0)</label><input id="sp-tilt" inputmode="decimal" value="${p.spin?.axisTilt ?? ""}"></div><div class="field"><label>PAP (e.g. 4 1/4 over, 1/2 up)</label><input id="sp-pap" value="${esc(p.spin?.pap ?? "")}"></div></div>
-      <div class="chips"><button class="btn ghost" id="sp-save">Save</button><button class="btn ghost" id="sp-lab">Measure from a release video</button></div></div>` : ""}
+      <div class="chips"><button class="btn ghost" id="sp-save">Save</button><button class="btn ghost" id="sp-lab">Measure from a release video</button><button class="btn ghost" id="sp-pap">Estimate PAP from photos of the flare rings</button></div>${p.spin?.papFrom === "photo" ? `<div class="note">Your PAP was estimated from photos of the flare rings.</div>` : ""}</div>` : ""}
     ${p ? `<div class="card"><div class="k">Profile</div>
       <div class="field"><label>Name</label><input id="me-name" value="${esc(p.name)}"></div>
       <div class="two"><div class="field"><label>Throws</label><select id="me-hand"><option value="R" ${p.hand === "R" ? "selected" : ""}>Right-handed</option><option value="L" ${p.hand === "L" ? "selected" : ""}>Left-handed</option></select></div>
@@ -8761,9 +9091,9 @@ ${url}`);
     $("me-save")?.addEventListener("click", () => {
       const rev = parseInt($("me-rev").value, 10);
       const name = $("me-name").value.trim() || p.name;
-      const hand = $("me-hand").value;
+      const hand2 = $("me-hand").value;
       const revRpm = Number.isFinite(rev) ? rev : void 0;
-      updateProfile({ name, hand, revRpm, quiz: p.quiz ? { ...p.quiz, name, hand, revRpm } : void 0 });
+      updateProfile({ name, hand: hand2, revRpm, quiz: p.quiz ? { ...p.quiz, name, hand: hand2, revRpm } : void 0 });
     });
     el.querySelectorAll("[data-sw]").forEach((b) => b.onclick = () => (setCurrentProfile(b.dataset.sw), location.reload()));
     el.querySelectorAll("[data-rm]").forEach(
@@ -8788,6 +9118,7 @@ ${url}`);
       updateProfile({ spin: { rpm: num3("sp-rpm"), axisRotation: num3("sp-rot"), axisTilt: num3("sp-tilt"), pap: $("sp-pap").value.trim() || void 0, source: "entered", at: (/* @__PURE__ */ new Date()).toISOString() } });
     });
     $("sp-lab")?.addEventListener("click", () => openSpinLab(() => renderMe()));
+    $("sp-pap")?.addEventListener("click", () => openPapScan());
     $("me-quiz")?.addEventListener("click", () => showQuiz("retake", () => renderMe()));
     $("me-diag").onclick = async () => {
       const txt = diagnosticsText();
@@ -9089,7 +9420,7 @@ ${url}`);
       }
     return g;
   }
-  function measureShift(ref, cur, w, h, box, range = 10) {
+  function measureShift(ref, cur2, w, h, box, range = 10) {
     const x0 = Math.max(range + 1, Math.floor(box.x0));
     const x1 = Math.min(w - range - 2, Math.ceil(box.x1));
     const y0 = Math.max(range + 1, Math.floor(box.y0));
@@ -9103,7 +9434,7 @@ ${url}`);
       let c = 0;
       for (let y = y0; y < y1; y += 2)
         for (let x = x0; x < x1; x += 2) {
-          s += Math.abs(ref[y * w + x] - cur[(y + dy) * w + x + dx]);
+          s += Math.abs(ref[y * w + x] - cur2[(y + dy) * w + x + dx]);
           c++;
         }
       return c ? s / c : Infinity;
@@ -9705,18 +10036,18 @@ ${url}`);
   function driftCheck(now) {
     if (!H || mode !== "auto" || path.length || now < cooldownUntil || now - lastDriftCheck < 2500) return;
     lastDriftCheck = now;
-    const cur = edgeMap(gridGray(), GW, GH);
+    const cur2 = edgeMap(gridGray(), GW, GH);
     if (!driftRef) {
-      if (/saved setup/.test(lastLockHow) && !lockFits(cur)) {
+      if (/saved setup/.test(lastLockHow) && !lockFits(cur2)) {
         relock(false);
         status.textContent = "Your saved lane doesn't match what the camera sees now (the phone has moved). Looking for the lane again\u2026";
         return;
       }
-      driftRef = cur;
+      driftRef = cur2;
       return;
     }
     if (stab?.ready) return;
-    const m = measureShift(driftRef, cur, GW, GH, laneBoxGrid(), 12);
+    const m = measureShift(driftRef, cur2, GW, GH, laneBoxGrid(), 12);
     const moved = (m.dx !== 0 || m.dy !== 0) && m.best < 0.85 * m.none && m.best < 0.7 * m.energy && !m.atLimit;
     if (moved) {
       const k2 = video.videoWidth / GW;
@@ -9725,7 +10056,7 @@ ${url}`);
       Hinv = solveHomography(LANE_CORNERS, corners);
       buildMask();
       tracker = null;
-      driftRef = cur;
+      driftRef = cur2;
       driftBad = 0;
       try {
         localStorage.setItem(calKey(), JSON.stringify({ z: zoomCaps ? zoomNow : 1, n: corners.map((p) => ({ x: p.x / video.videoWidth, y: p.y / video.videoHeight })) }));
@@ -10347,15 +10678,15 @@ ${url}`);
   function pinWatch(now) {
     if (path.length || lastBlob || now < cooldownUntil || now - lastPinLook < 1200) return;
     lastPinLook = now;
-    const cur = lookAtPins();
-    if (!cur) return;
-    if (deckCand && readPins(deckCand, cur).readable >= 6 && readPins(deckCand, cur).down === 0) {
-      idleDeck = cur;
-      if (pinsReadable(cur)) fullDeck = cur;
+    const cur2 = lookAtPins();
+    if (!cur2) return;
+    if (deckCand && readPins(deckCand, cur2).readable >= 6 && readPins(deckCand, cur2).down === 0) {
+      idleDeck = cur2;
+      if (pinsReadable(cur2)) fullDeck = cur2;
     }
-    const seen2 = cur.filter((p) => pinContrast(p) >= 8).length;
+    const seen2 = cur2.filter((p) => pinContrast(p) >= 8).length;
     $("pinstat").textContent = seen2 >= 8 ? `Pins: ready (${seen2} of 10 seen)` : seen2 > 0 ? `Pins: only ${seen2} of 10 stand out, so pinfall may be missed. Zoom in on them.` : "Pins: can't tell them from the deck. Zoom in on them or add light.";
-    deckCand = cur;
+    deckCand = cur2;
   }
   function pinfallNow(start, full, now) {
     if (start && readPins(start, now).readable >= 5 && !(full && pinsReadable(full) && readPins(full, start).down >= 5)) {
@@ -10416,8 +10747,8 @@ ${url}`);
     const stands = [];
     for (const wait of [900, 400, 400, 400, 400, 400]) {
       await sleep(wait);
-      const cur = lookAtPins();
-      const r = cur ? pinfallNow(start, full, cur) : null;
+      const cur2 = lookAtPins();
+      const r = cur2 ? pinfallNow(start, full, cur2) : null;
       counts.push(r ? r.down : null);
       stands.push(r ? r.standing : []);
       if (counts.length >= 2 && counts[counts.length - 1] !== null && counts[counts.length - 1] === counts[counts.length - 2]) break;
