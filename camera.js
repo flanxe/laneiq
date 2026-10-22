@@ -58,7 +58,8 @@
       title: "Glow off switch",
       items: [
         "New Glow setting (Me tab, and in Skins and rewards): turn it off for crisp lines and no halos on the ball tracer, lane and pins, so you can read each shot exactly.",
-        "Fixed the pins in the skin previews, which were drawn the wrong way round."
+        "Fixed the pins in the skin previews, which were drawn the wrong way round.",
+        "Skins are off for everyone until you turn them on: the app keeps its standard look. Equip a skin, or use the Skins switch, to see them. Switch back any time."
       ]
     },
     {
@@ -1368,9 +1369,24 @@
     Object.assign(sel, JSON.parse(localStorage.getItem(KEY2) ?? "{}"));
   } catch {
   }
-  var currentTracer = () => TRACERS[sel.tracer] ?? TRACERS[DEFAULTS.tracer];
-  var currentPins = () => PINS[sel.pins] ?? PINS[DEFAULTS.pins];
-  var currentLane = () => LANES[sel.lane] ?? LANES[DEFAULTS.lane];
+  var ON_KEY = "laneiq.skinsOn";
+  var skinsOn = false;
+  try {
+    skinsOn = localStorage.getItem(ON_KEY) === "on";
+  } catch {
+  }
+  var skinsEnabled = () => skinsOn;
+  function setSkinsOn(on) {
+    skinsOn = on;
+    try {
+      localStorage.setItem(ON_KEY, on ? "on" : "off");
+    } catch {
+    }
+  }
+  var currentTracer = () => TRACERS[skinsOn ? sel.tracer : DEFAULTS.tracer] ?? TRACERS[DEFAULTS.tracer];
+  var currentPins = () => PINS[skinsOn ? sel.pins : DEFAULTS.pins] ?? PINS[DEFAULTS.pins];
+  var currentLane = () => LANES[skinsOn ? sel.lane : DEFAULTS.lane] ?? LANES[DEFAULTS.lane];
+  var activeSkins = () => skinsOn ? { ...sel } : { ...DEFAULTS };
   var equippedSkins = () => ({ ...sel });
   var skinClock = () => performance.now() / 1e3;
   var GLOW_KEY = "laneiq.glow";
@@ -1389,6 +1405,7 @@
   }
   function equip(slot, id) {
     sel[slot] = id;
+    setSkinsOn(true);
     try {
       localStorage.setItem(KEY2, JSON.stringify(sel));
     } catch {
@@ -2067,7 +2084,8 @@
     const p = await current();
     const lv = p.level, lo = pointsForLevel(lv), hi = pointsForLevel(lv + 1);
     const nx = nextUnlocks(p);
-    const eq = equippedSkins();
+    const eq = skinsEnabled() ? equippedSkins() : { tracer: "", pins: "", lane: "" };
+    const base = activeSkins();
     const grid = (kind, title) => `<h3>${title}</h3><div class="skin-grid">${SKINS.filter((s) => s.kind === kind).map((s) => {
       const open2 = isUnlocked(s, p);
       return `<button class="skin ${open2 ? "" : "locked"} ${eq[kind] === s.id ? "on" : ""}" data-skin="${s.id}" data-kind="${kind}" ${open2 ? "" : "disabled"}><canvas width="150" height="170" data-c="${s.id}"></canvas><div class="n">${esc(s.name)}</div><div class="r ${"points" in s.unlock ? "rare" : ""}">${open2 ? eq[kind] === s.id ? "Equipped" : "Tap to equip" : "Locked: " + esc(unlockText(s))}</div></button>`;
@@ -2081,17 +2099,18 @@
       <div class="note">${hi - p.points} more points to level ${lv + 1}</div>
       <div class="u" style="margin-top:6px">${nx.play ? `<b>Play:</b> ${esc(nx.play.skin.name)} (${nx.play.skin.kind}): ${nx.play.need.toLocaleString()} more pins` : "Every play skin unlocked."}</div>
       <div class="u">${nx.improve ? `<b>Improve:</b> ${esc(nx.improve.skin.name)} (${nx.improve.skin.kind}): ${nx.improve.need} more points` : "Every improvement skin unlocked."}</div></div>
-    <div class="card"><div class="k">Your look</div><div class="chips"><button class="chip ${glowEnabled() ? "sel" : ""}" id="rw-glow">Glow: ${glowEnabled() ? "on" : "off"}</button></div><div class="note">Turn glow off for crisp lines and no halos, so you can read each shot exactly.</div><canvas id="rw-big" width="360" height="300" style="width:100%;max-width:420px;display:block;margin:0 auto"></canvas></div>
+    <div class="card"><div class="k">Your look</div><div class="chips"><button class="chip ${skinsEnabled() ? "sel" : ""}" id="rw-skins">Skins: ${skinsEnabled() ? "on" : "off"}</button><button class="chip ${glowEnabled() ? "sel" : ""}" id="rw-glow">Glow: ${glowEnabled() ? "on" : "off"}</button></div><div class="note">${skinsEnabled() ? "Your skins are showing in the app." : "Skins are off: the app keeps its standard look. Tap one below to try it."} Turn glow off for crisp lines and no halos, so you can read each shot exactly.</div><canvas id="rw-big" width="360" height="300" style="width:100%;max-width:420px;display:block;margin:0 auto"></canvas></div>
     ${grid("tracer", "Ball tracers")}${grid("pins", "Pins")}${grid("lane", "Lanes")}
     <div class="card"><div class="k">How you earned your points</div>
       ${p.earned.length ? `<ul>${p.earned.map((a) => `<li><b>+${a.points}</b> ${esc(a.title)} <span class="note">${esc(a.detail)}</span></li>`).join("")}</ul>` : `<div class="u">Nothing yet. Finish a game on the Score tab, or reach a target on the skills chart.</div>`}
       <div class="note">Points come from new high games, strike streaks, clean games, scoring milestones, a rising average, converted splits and skills reaching their targets.</div></div>`;
+    $("rw-skins").onclick = () => (setSkinsOn(!skinsEnabled()), void openRewards());
     $("rw-glow").onclick = () => (setGlow(!glowEnabled()), void openRewards());
     $("rw-close").onclick = () => (cancelAnimationFrame(raf), el.classList.remove("on"), el.innerHTML = "");
     el.querySelectorAll("canvas[data-c]").forEach((c) => {
       const id = c.dataset.c;
       const k2 = SKINS.find((s) => s.id === id).kind;
-      drawSkinScene(c, k2 === "tracer" ? id : eq.tracer, k2 === "pins" ? id : eq.pins, k2 === "lane" ? id : eq.lane);
+      drawSkinScene(c, k2 === "tracer" ? id : base.tracer, k2 === "pins" ? id : base.pins, k2 === "lane" ? id : base.lane);
     });
     el.querySelectorAll(".skin:not(.locked)").forEach((b) => b.onclick = () => {
       equip(b.dataset.kind, b.dataset.skin);
@@ -2102,7 +2121,7 @@
     const tick = (now) => {
       const big = document.getElementById("rw-big");
       if (!big) return;
-      const e = equippedSkins();
+      const e = activeSkins();
       drawSkinScene(big, e.tracer, e.pins, e.lane, skinClock(), Math.min(1, (now - t0) % 3200 / 2400));
       raf = requestAnimationFrame(tick);
     };
