@@ -61,6 +61,7 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        "The lane lock runs the full length of the lane, foul line to the head pin. After any lock that was found or picked (not one you traced by hand), the far end is checked against where the pins stand over the next few seconds and moved onto them when the readings agree. A lock saved by an older version, which could stop short of the pins, is dropped so the lane is found afresh.",
         'A guided tour of the app: it starts by itself the first time you use LaneIQ, and "Take the tour" on the start screen replays it. It walks through the camera, the lane lock, fixing a lock, the shot measurements, pinfall, and each tab.',
         "Each shot is now recorded from the bowler's approach until the rack is full again (or the next ball comes), instead of only the roll. Once it is over, the whole recording is searched at once for the ball's path, so nothing is predicted: the chain of blobs that is most ball-like and travels furthest down the lane is the shot.",
         'Nothing is guessed past what the camera saw. The Entry board tile became "At the pins": the board where the ball was last seen and how far down the lane that was (the board at 59.5 ft only when the ball was seen right up to the pins). Each shot also keeps its release point, last-seen point, exit heading, whether it reached the pin deck, and all the raw data (live path, whole-recording path, every ball-like blob frame by frame, the arrows read).',
@@ -10831,7 +10832,7 @@ ${url}`);
   function applyCalibration(c, how) {
     arrowsRead = [];
     arrowTries = 0;
-    if (how !== "automatic" || lastLockHow !== "automatic") pinRefs = [], pinTries = 0, pinRefDone = false;
+    if (!refiningLock && (how !== "automatic" || lastLockHow !== "automatic")) pinRefs = [], pinTries = 0, pinRefDone = false;
     if (how !== "automatic") rejected = [], redoStreak = 0;
     logLock({ how, secs: /saved setup/.test(how) || !detectStartedAt ? null : Math.round((performance.now() - detectStartedAt) / 100) / 10, confidence: lastLockConf, foulSeen: lastCandidates[0] ? lastCandidates[0].rows.foul !== null : null });
     corners = c;
@@ -10853,13 +10854,14 @@ ${url}`);
     status.textContent = `Lane locked (${how}). Ready: just bowl. If the lines are not on your lane, tap Fix my lane.`;
     renderScan();
     try {
-      localStorage.setItem(calKey(), JSON.stringify({ z: zoomCaps ? zoomNow : 1, n: corners.map((p) => ({ x: p.x / video.videoWidth, y: p.y / video.videoHeight })) }));
+      localStorage.setItem(calKey(), JSON.stringify({ v: 2, z: zoomCaps ? zoomNow : 1, n: corners.map((p) => ({ x: p.x / video.videoWidth, y: p.y / video.videoHeight })) }));
     } catch {
     }
   }
   function savedCalibration() {
     try {
       const raw = JSON.parse(localStorage.getItem(calKey()) ?? "null");
+      if (raw && raw.v !== 2) return null;
       if (raw?.n?.length === 4 && Math.abs((raw.z ?? 1) - (zoomCaps ? zoomNow : 1)) > 0.01) return null;
       if (raw?.n?.length === 4) return raw.n.map((p) => ({ x: p.x * video.videoWidth, y: p.y * video.videoHeight }));
     } catch {
@@ -11267,7 +11269,7 @@ ${url}`);
       driftRef = cur2;
       driftBad = 0;
       try {
-        localStorage.setItem(calKey(), JSON.stringify({ z: zoomCaps ? zoomNow : 1, n: corners.map((p) => ({ x: p.x / video.videoWidth, y: p.y / video.videoHeight })) }));
+        localStorage.setItem(calKey(), JSON.stringify({ v: 2, z: zoomCaps ? zoomNow : 1, n: corners.map((p) => ({ x: p.x / video.videoWidth, y: p.y / video.videoHeight })) }));
       } catch {
       }
       status.textContent = "The phone shifted a little: I moved the lane lock with it.";
@@ -11297,13 +11299,14 @@ ${url}`);
     if (a.length >= arrowsRead.length) arrowsRead = a.map((r) => ({ board: r.board, x: r.img.x * k2, y: r.img.y * k2 }));
   }
   var candHist = [];
+  var refiningLock = false;
   var pinRefs = [];
   var pinTries = 0;
   var pinRefDone = false;
   var lastPinRefAt = 0;
   function pinRefineTick(now) {
     if (pinRefDone || !H || !armed || path.length || now < cooldownUntil || now - lastPinRefAt < 1200) return;
-    if (lastLockHow !== "automatic") return void (pinRefDone = true);
+    if (!/^(automatic|you picked it|your saved setup)/.test(lastLockHow)) return void (pinRefDone = true);
     lastPinRefAt = now;
     const w = Math.min(MAX_DW, video.videoWidth);
     const h = Math.round(w * video.videoHeight / video.videoWidth);
@@ -11325,8 +11328,10 @@ ${url}`);
         if (mad <= 0.012 * len && Math.abs(yr - farNow) >= 0.012 * len && Math.abs(yr - farNow) <= 0.14 * len) {
           const slide = (near, far) => ({ x: near.x + (far.x - near.x) * (yr - near.y) / (far.y - near.y), y: yr });
           const nc = [corners[0], corners[1], slide(corners[1], corners[2]), slide(corners[0], corners[3])];
-          applyCalibration(nc, "automatic");
-          status.textContent = "Lane locked. The far end is set on the pins. Ready: just bowl. If the lines are not on your lane, tap Fix my lane.";
+          refiningLock = true;
+          applyCalibration(nc, lastLockHow);
+          refiningLock = false;
+          status.textContent = "Lane locked, foul line to pins. Ready: just bowl. If the lines are not on your lane, tap Fix my lane.";
         }
       }
     }
