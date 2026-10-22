@@ -61,6 +61,10 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        "The app now READS the arrows off your lane instead of drawing them from a guess. The USBC rule only says the arrows sit 12 to 16 ft past the foul line, so houses differ; the app looks for the small marks on the seven usual boards, keeps the ones that form the regular V, and looks again where the V says a hidden one should be. Yellow rings mark what it found, on the live view and in the lane editor. Tried on a real clip: all seven found, every frame, sitting on the real marks.",
+        "The lane locks by vote: every scan of the picture votes for the lane it shows, and the biggest lane that is seen steadily is taken. On a real clip with several lanes in view it now picks the right one by itself, with no tap. After an automatic lock the far end is checked against where the pins stand and corrected when the looks agree.",
+        "The path drawn for a shot now rides on the point where the ball touches the lane (the bottom of the ball), not the middle of the ball.",
+        "The Arrows step is gone from the lane editor; it is Lane, then Pins.",
         "Ball tracking no longer throws out a real ball: a big, blurry ball with people moving behind it used to fail the smoothness test and was dropped. A chain that clearly rolls a long way down the lane at a believable speed is now accepted. Tested on a new real clip (a handheld Short from beside the approach): the ball is confirmed about where it is released and followed to the pins.",
         "The tracked path is smoothed before it is measured and drawn, so the top-down view shows the roll instead of a zigzag.",
         "The 3D view can be closed again: the Lane view / Raw / 3D switch was hidden underneath it.",
@@ -1540,33 +1544,107 @@
     return out;
   }
 
-  // camera/lanetrace.ts
+  // core/src/arrows.ts
   var LANE = [{ x: 0, y: 0 }, { x: LANE_BOARDS, y: 0 }, { x: LANE_BOARDS, y: LANE_LENGTH_FT }, { x: 0, y: LANE_LENGTH_FT }];
+  var at = (g, w, h, x, y) => {
+    if (x < 1 || y < 1 || x >= w - 2 || y >= h - 2) return null;
+    const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
+    const i = y0 * w + x0;
+    return g[i] * (1 - fx) * (1 - fy) + g[i + 1] * fx * (1 - fy) + g[i + w] * (1 - fx) * fy + g[i + w + 1] * fx * fy;
+  };
+  function readArrows(gray, w, h, corners2) {
+    let H2;
+    try {
+      H2 = solveHomography(LANE, corners2);
+    } catch {
+      return [];
+    }
+    const P = (x, ft) => applyHomography(H2, { x, y: ft });
+    const found = [];
+    const search = (b, ftLo, ftHi, minC, sign2 = 0) => {
+      const cx0 = LANE_BOARDS + 0.5 - b;
+      let best = null;
+      for (let dx = -0.7; dx <= 0.7; dx += 0.35)
+        for (let ft = ftLo; ft <= ftHi; ft += 0.1) {
+          const x = cx0 + dx;
+          const ins = [];
+          const out = [];
+          let bad = false;
+          for (const t of [-0.2, 0, 0.2]) {
+            const a = P(x, ft + t), l = P(x - 1.7, ft + t), r = P(x + 1.7, ft + t);
+            const va = at(gray, w, h, a.x, a.y), vl = at(gray, w, h, l.x, l.y), vr = at(gray, w, h, r.x, r.y);
+            if (va === null || vl === null || vr === null) {
+              bad = true;
+              break;
+            }
+            ins.push(va);
+            out.push(vl, vr);
+          }
+          if (bad) continue;
+          const c = out.reduce((s, v) => s + v, 0) / out.length - ins.reduce((s, v) => s + v, 0) / ins.length;
+          if (sign2 && Math.sign(c) !== sign2) continue;
+          if (!best || Math.abs(c) > Math.abs(best.c)) best = { ft, x, c };
+        }
+      return best && Math.abs(best.c) >= minC ? { board: b, lane: { x: best.x, y: best.ft }, img: P(best.x, best.ft), contrast: best.c } : null;
+    };
+    for (let b = 5; b <= 35; b += 5) {
+      const a = search(b, 10, 18, 14);
+      if (a) found.push(a);
+    }
+    if (found.length < 4) return [];
+    const dark = found.filter((a) => a.contrast > 0).length;
+    const sign = dark >= found.length - dark ? 1 : -1;
+    let ok = found.filter((a) => Math.sign(a.contrast) === sign);
+    const fit = (pts) => {
+      const bs = pts.map((a) => Math.abs(a.board - 20));
+      const ys = pts.map((a) => a.lane.y);
+      const n = pts.length, mb = bs.reduce((s, v) => s + v, 0) / n, my = ys.reduce((s, v) => s + v, 0) / n;
+      const sxx = bs.reduce((s, v) => s + (v - mb) ** 2, 0) || 1;
+      const k2 = bs.reduce((s, v, i) => s + (v - mb) * (ys[i] - my), 0) / sxx;
+      return { k: k2, a: my - k2 * mb, res: ys.map((y, i) => Math.abs(y - (my + k2 * (bs[i] - mb)))) };
+    };
+    for (let round = 0; round < 3 && ok.length >= 4; round++) {
+      const f = fit(ok);
+      const worst = Math.max(...f.res);
+      if (worst <= 0.6) break;
+      ok = ok.filter((_, i) => f.res[i] < worst);
+    }
+    if (ok.length < 4) return [];
+    const f2 = fit(ok);
+    for (let b = 5; b <= 35; b += 5) {
+      if (ok.some((a2) => a2.board === b)) continue;
+      const predicted = f2.a + f2.k * Math.abs(b - 20);
+      const a = search(b, predicted - 0.7, predicted + 0.7, 7, sign);
+      if (a) ok.push(a);
+    }
+    return ok.sort((p, q) => p.board - q.board);
+  }
+
+  // camera/lanetrace.ts
+  var LANE2 = [{ x: 0, y: 0 }, { x: LANE_BOARDS, y: 0 }, { x: LANE_BOARDS, y: LANE_LENGTH_FT }, { x: 0, y: LANE_LENGTH_FT }];
   var NAMES = ["1  foul line, left", "2  foul line, right", "3  pins end, right", "4  pins end, left"];
   var IN_PER_BOARD = 41.5 / LANE_BOARDS;
   var PIN_SIDE = 18 / IN_PER_BOARD;
   var MID = LANE_BOARDS / 2;
   var makeAnchors = () => [
-    { id: "a1", group: "arrows", name: "left outer arrow tip", short: "L", lane: { x: 4.5, y: 12 }, img: null },
-    { id: "a2", group: "arrows", name: "centre arrow tip", short: "C", lane: { x: MID, y: 16 }, img: null },
-    { id: "a3", group: "arrows", name: "right outer arrow tip", short: "R", lane: { x: LANE_BOARDS - 4.5, y: 12 }, img: null },
     { id: "p7", group: "pins", name: "7 pin base", short: "7", lane: { x: MID - PIN_SIDE, y: LANE_LENGTH_FT + 31.2 / 12 }, img: null },
     { id: "p1", group: "pins", name: "head pin base", short: "1", lane: { x: MID, y: LANE_LENGTH_FT }, img: null },
     { id: "p10", group: "pins", name: "10 pin base", short: "10", lane: { x: MID + PIN_SIDE, y: LANE_LENGTH_FT + 31.2 / 12 }, img: null }
   ];
-  function fitHomography(src, dst, sw, sh) {
+  function fitHomography(src, dst, sw, sh, wt) {
     const n = src.length;
     const N2 = Array.from({ length: 8 }, () => new Array(9).fill(0));
     for (let i = 0; i < n; i++) {
       const x = src[i].x / LANE_BOARDS, y = src[i].y / LANE_LENGTH_FT;
       const u = dst[i].x / sw, v = dst[i].y / sh;
+      const q = wt?.[i] ?? 1;
       const rows = [
         [[x, y, 1, 0, 0, 0, -u * x, -u * y], u],
         [[0, 0, 0, x, y, 1, -v * x, -v * y], v]
       ];
       for (const [r, b] of rows) for (let a = 0; a < 8; a++) {
-        for (let c2 = 0; c2 < 8; c2++) N2[a][c2] += r[a] * r[c2];
-        N2[a][8] += r[a] * b;
+        for (let c2 = 0; c2 < 8; c2++) N2[a][c2] += q * r[a] * r[c2];
+        N2[a][8] += q * r[a] * b;
       }
     }
     for (let c2 = 0; c2 < 8; c2++) {
@@ -1595,9 +1673,9 @@
     root.style.cssText = "position:fixed;inset:0;z-index:120;background:#000;display:flex;flex-direction:column;touch-action:none;user-select:none;-webkit-user-select:none;padding-top:env(safe-area-inset-top)";
     root.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;color:#fff;font:700 16px system-ui"><span>Trace your lane</span><button id="tl-cancel" class="btn ghost" style="padding:8px 14px">Cancel</button></div>
-    <div style="padding:0 12px 6px;color:#9fb0cc;font:13px system-ui;line-height:1.35" id="tl-hint">Drag the four numbered dots so the green lane sits on your lane. <b style="color:#fff">1 and 2</b> go on the foul line at the lane's edges (inside the gutters), <b style="color:#fff">3 and 4</b> where the lane reaches the pins. Drag inside the lane to move all of it. The grid should line up with the arrows and the pins.</div>
+    <div style="padding:0 12px 6px;color:#9fb0cc;font:13px system-ui;line-height:1.35" id="tl-hint">Drag the four numbered dots so the green lane sits on your lane. <b style="color:#fff">1 and 2</b> go on the foul line at the lane's edges (inside the gutters), <b style="color:#fff">3 and 4</b> where the lane reaches the pins. Drag inside the lane to move all of it. The yellow rings are the arrows the app found on your lane by itself.</div>
     <div id="tl-wrap" style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative"><canvas id="tl-cv" style="touch-action:none;max-width:100%;max-height:100%"></canvas></div>
-    <div style="display:flex;gap:6px;padding:6px 12px 0"><button class="btn ghost tl-mode" data-mode="lane" style="flex:1;padding:9px 6px">1 Lane</button><button class="btn ghost tl-mode" data-mode="arrows" style="flex:1;padding:9px 6px">2 Arrows</button><button class="btn ghost tl-mode" data-mode="pins" style="flex:1;padding:9px 6px">3 Pins</button></div>
+    <div style="display:flex;gap:6px;padding:6px 12px 0"><button class="btn ghost tl-mode" data-mode="lane" style="flex:1;padding:9px 6px">1 Lane</button><button class="btn ghost tl-mode" data-mode="pins" style="flex:1;padding:9px 6px">2 Pins</button></div>
     <div style="display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));flex-wrap:wrap"><button id="tl-snap" class="btn ghost" style="flex:1">Snap to edges</button><button id="tl-reset" class="btn ghost" style="flex:1">Reset</button><button id="tl-ok" class="btn" style="flex:2">Confirm lane</button></div>`;
     document.body.append(root);
     const cv = root.querySelector("#tl-cv");
@@ -1623,7 +1701,6 @@
     let anchors = makeAnchors();
     const HINTS = {
       lane: "Drag the four numbered dots so the green lane sits on your lane. 1 and 2 go on the foul line at the lane's edges (inside the gutters), 3 and 4 where the lane reaches the pins. Drag inside the lane to move all of it.",
-      arrows: "Drag each yellow dot onto the tip of the real arrow it names: the centre arrow and the two outside ones. The grid refits to them, so the arrows line up exactly.",
       pins: "Drag each white dot onto the base of the real pin it names: the head pin, then the 7 and the 10. The grid refits to them, so the pin deck lines up exactly."
     };
     let drag2 = null;
@@ -1637,7 +1714,7 @@
     const anchorPos = (a) => {
       if (a.img) return a.img;
       try {
-        return applyHomography(solveHomography(LANE, c), a.lane);
+        return applyHomography(solveHomography(LANE2, c), a.lane);
       } catch {
         return null;
       }
@@ -1645,11 +1722,12 @@
     const refit = () => {
       const placed = anchors.filter((a) => a.img);
       if (!placed.length) return;
-      const src = [...LANE, ...placed.map((a) => a.lane)];
+      const src = [...LANE2, ...placed.map((a) => a.lane)];
       const dst = [...c, ...placed.map((a) => a.img)];
-      const h = fitHomography(src, dst, cv.width, cv.height);
+      const wt = [1, 1, 1, 1, ...placed.map((a) => a.group === "arrows" ? 0.35 : 1)];
+      const h = fitHomography(src, dst, cv.width, cv.height, wt);
       if (!h) return;
-      const nc = LANE.map((p) => applyHomography(h, p));
+      const nc = LANE2.map((p) => applyHomography(h, p));
       if (nc.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))) c = nc;
     };
     const setMode2 = (m) => {
@@ -1662,6 +1740,17 @@
       });
       redraw2();
     };
+    let readNow = [];
+    const grayCv = document.createElement("canvas");
+    grayCv.width = cv.width;
+    grayCv.height = cv.height;
+    grayCv.getContext("2d").drawImage(o.frame, 0, 0, cv.width, cv.height);
+    const grayPx = grayCv.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, cv.width, cv.height).data;
+    const grayBuf = new Uint8ClampedArray(cv.width * cv.height);
+    for (let i = 0; i < grayBuf.length; i++) grayBuf[i] = 0.299 * grayPx[i * 4] + 0.587 * grayPx[i * 4 + 1] + 0.114 * grayPx[i * 4 + 2];
+    const reread = () => {
+      readNow = readArrows(grayBuf, cv.width, cv.height, c).map((a) => a.img);
+    };
     let raf2 = 0;
     const draw3 = () => {
       raf2 = 0;
@@ -1670,7 +1759,7 @@
       g.drawImage(o.frame, 0, 0, cv.width, cv.height);
       let Hinv2 = null;
       try {
-        Hinv2 = solveHomography(LANE, c);
+        Hinv2 = solveHomography(LANE2, c);
       } catch {
       }
       const P = (b, ft) => applyHomography(Hinv2, { x: b, y: ft });
@@ -1700,16 +1789,6 @@
           g.stroke();
         }
         g.setLineDash([]);
-        g.fillStyle = "rgba(255,210,90,.95)";
-        for (let b = 5; b <= 35; b += 5) {
-          const tip = 12 + 4 * (1 - Math.abs(b - 20) / 15);
-          const cx = b - 0.5;
-          const tri = [P(cx - 0.6, tip - 1.6), P(cx + 0.6, tip - 1.6), P(cx, tip)];
-          g.beginPath();
-          tri.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y));
-          g.closePath();
-          g.fill();
-        }
         g.fillStyle = "rgba(255,255,255,.9)";
         const PINS2 = [[0, 0], [-6, 10.4], [6, 10.4], [-12, 20.8], [0, 20.8], [12, 20.8], [-18, 31.2], [-6, 31.2], [6, 31.2], [18, 31.2]];
         for (const [lat, beh] of PINS2) {
@@ -1776,6 +1855,13 @@
           g.fillText(a.short, p.x, p.y + 1 * px);
         }
       }
+      for (const a of readNow) {
+        g.strokeStyle = "rgba(255,210,90,.95)";
+        g.lineWidth = 2 * px;
+        g.beginPath();
+        g.arc(a.x, a.y, 7 * px, 0, 7);
+        g.stroke();
+      }
       const dragA = drag2 && drag2.kind === "anchor" ? anchors.find((a) => a.id === drag2.id) : void 0;
       if (drag2 && (drag2.kind === "handle" || dragA) && pointer) {
         const p = drag2.kind === "handle" ? c[drag2.i] : anchorPos(dragA);
@@ -1814,6 +1900,7 @@
     const redraw2 = () => {
       if (!raf2) raf2 = requestAnimationFrame(draw3);
     };
+    reread();
     setMode2("lane");
     cv.addEventListener("pointerdown", (e) => {
       const p = pt2(e);
@@ -1876,6 +1963,7 @@
     });
     const up = () => {
       if (drag2 && drag2.kind === "anchor") refit();
+      if (drag2) reread();
       drag2 = null;
       pointer = null;
       redraw2();
@@ -1895,17 +1983,134 @@
       if (!r) return void (hint.textContent = "I couldn't find clear lane edges there. Drag the corners onto the lane yourself, then Confirm.");
       c = r.map((p) => ({ x: p.x * k0, y: p.y * k0 }));
       anchors = makeAnchors();
+      reread();
       touched = true;
       hint.textContent = "Snapped to the lane edges. If the grid lines up with the arrows and pins, Confirm; otherwise drag a dot to fix it.";
       redraw2();
     };
     root.querySelector("#tl-ok").onclick = () => {
-      const area = Math.abs(c.reduce((a, p, i) => a + (p.x * c[(i + 1) % 4].y - c[(i + 1) % 4].x * p.y), 0)) / 2;
-      if (area < cv.width * cv.height * 0.01) return void (hint.textContent = "The lane outline is too small. Drag the dots out onto the lane.");
+      const area2 = Math.abs(c.reduce((a, p, i) => a + (p.x * c[(i + 1) % 4].y - c[(i + 1) % 4].x * p.y), 0)) / 2;
+      if (area2 < cv.width * cv.height * 0.01) return void (hint.textContent = "The lane outline is too small. Drag the dots out onto the lane.");
       const out = c.map((p) => ({ x: p.x / k0, y: p.y / k0 }));
       close6();
       o.onConfirm(out);
     };
+  }
+
+  // core/src/lanevote.ts
+  var area = (c) => Math.abs(c.reduce((a, p, i) => a + (p.x * c[(i + 1) % 4].y - c[(i + 1) % 4].x * p.y), 0)) / 2;
+  var median = (a) => {
+    const s = [...a].sort((x, y) => x - y);
+    const m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  };
+  var LaneVoter = class {
+    votes = [];
+    scans = [];
+    keepMs;
+    minVotes;
+    margin;
+    constructor(keepMs = 14e3, minVotes = 4, margin = 1.8) {
+      this.keepMs = keepMs;
+      this.minVotes = minVotes;
+      this.margin = margin;
+    }
+    reset() {
+      this.votes = [];
+      this.scans = [];
+    }
+    /** one scan of the picture: every solid candidate it found */
+    add(cands, now) {
+      this.scans.push(now);
+      for (const d of cands) this.votes.push({ corners: d.corners.map((p) => ({ ...p })), t: now });
+      const t0 = now - this.keepMs;
+      this.votes = this.votes.filter((v) => v.t >= t0);
+      this.scans = this.scans.filter((t) => t >= t0);
+    }
+    /** same lane: the foul line sits on about the same row, and the right edge on about the same line */
+    same(a, b, w, h) {
+      const dx = 0.05 * w, dy = 0.04 * h;
+      return Math.abs(a[1].x - b[1].x) <= dx && Math.abs(a[2].x - b[2].x) <= dx && Math.abs((a[0].y + a[1].y) / 2 - (b[0].y + b[1].y) / 2) <= dy && Math.abs((a[2].y + a[3].y) / 2 - (b[2].y + b[3].y) / 2) <= dy * 2;
+    }
+    groups(w, h) {
+      const gs = [];
+      for (const v of this.votes) {
+        const g = gs.find((g2) => this.same(g2[0].corners, v.corners, w, h));
+        if (g) g.push(v);
+        else gs.push([v]);
+      }
+      return gs.map((g) => {
+        const corners2 = [0, 1, 2, 3].map((i) => ({ x: median(g.map((v) => v.corners[i].x)), y: median(g.map((v) => v.corners[i].y)) }));
+        const ar = area(corners2);
+        const fy = g.map((v) => (v.corners[2].y + v.corners[3].y) / 2);
+        const fm = median(fy);
+        return { votes: g.length, corners: corners2, share: g.length / Math.max(1, this.scans.length), area: ar, score: g.length * ar, farSpread: median(fy.map((y) => Math.abs(y - fm))) };
+      }).sort((a, b) => b.score - a.score);
+    }
+    /** lock: the lane to take (or null yet); choices: more than one lane keeps turning up and the bowler should say which */
+    result(w, h) {
+      const gs = this.groups(w, h);
+      if (!gs.length) return { lock: null, choices: [], top: 0 };
+      const [a, b] = gs;
+      if (a.votes >= this.minVotes && this.scans.length >= 4 && this.scans[this.scans.length - 1] - this.scans[0] >= 3e3 && a.share >= 0.6 && a.farSpread <= 0.02 * h && (!b || a.score >= this.margin * b.score)) return { lock: a.corners, choices: [], top: a.votes };
+      if (a.votes >= this.minVotes && (!b || a.score >= this.margin * b.score)) return { lock: null, choices: [], top: a.votes };
+      const real = gs.filter((g) => g.votes >= this.minVotes);
+      return { lock: null, choices: real.length > 1 ? real.slice(0, 3).map((g) => g.corners) : [], top: a.votes };
+    }
+  };
+
+  // core/src/lanefit.ts
+  var white = (rgba, i) => {
+    const r = rgba[i], g = rgba[i + 1], b = rgba[i + 2];
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    return mn > 150 && mx - mn < 45;
+  };
+  function pinSnap(rgba, w, h, c) {
+    const out = c.map((p) => ({ ...p }));
+    const none = { corners: out, moved: 0, found: false };
+    const farY = (c[2].y + c[3].y) / 2, nearY = (c[0].y + c[1].y) / 2;
+    const len = Math.abs(nearY - farY);
+    const dir = Math.sign(nearY - farY) || 1;
+    if (len < 40) return none;
+    const xa = Math.min(c[2].x, c[3].x), xb = Math.max(c[2].x, c[3].x);
+    const pad = (xb - xa) * 0.12;
+    const x0 = Math.max(0, Math.round(xa + pad)), x1 = Math.min(w - 1, Math.round(xb - pad));
+    if (x1 - x0 < 8) return none;
+    const reach = 0.14 * len;
+    const y0 = Math.max(0, Math.round(farY - dir * reach - (dir > 0 ? 0 : 0)));
+    const rows = [];
+    for (let k2 = -Math.round(reach); k2 <= Math.round(reach); k2++) {
+      const y = Math.round(farY - dir * k2);
+      if (y < 0 || y >= h) continue;
+      let n = 0;
+      for (let x = x0; x <= x1; x++) if (white(rgba, (y * w + x) * 4)) n++;
+      rows.push({ y, f: n / (x1 - x0 + 1) });
+    }
+    void y0;
+    if (rows.length < 10) return none;
+    rows.sort((a, b) => dir > 0 ? a.y - b.y : b.y - a.y);
+    const f = rows.map((r, i2) => (rows[Math.max(0, i2 - 1)].f + r.f + rows[Math.min(rows.length - 1, i2 + 1)].f) / 3);
+    let i = 0;
+    while (i < f.length && f[i] < 0.55) i++;
+    if (i >= f.length) return none;
+    let peak = f[i], j = i;
+    while (j < f.length && f[j] >= 0.5 * peak) {
+      peak = Math.max(peak, f[j]);
+      j++;
+    }
+    if (j >= f.length) return none;
+    const baseY = rows[j - 1].y;
+    const moved = (baseY - farY) * dir * -1;
+    if (Math.abs(baseY - farY) > reach) return none;
+    const slide = (near, far) => {
+      const dy = far.y - near.y;
+      if (Math.abs(dy) < 1e-6) return far;
+      const t = (baseY - near.y) / dy;
+      return { x: near.x + (far.x - near.x) * t, y: baseY };
+    };
+    out[3] = slide(c[0], c[3]);
+    out[2] = slide(c[1], c[2]);
+    return { corners: out, moved, found: true };
   }
 
   // core/src/stabilize.ts
@@ -3582,10 +3787,10 @@
         const ref = pAvg(10, 18, Math.round(t), prow);
         const whiteAt = Number.isFinite(ref) ? Math.max(150, ref + 34) : 230;
         for (let y = Math.max(yStart + 2, Math.floor(t - pitBefore)); y < Math.min(h - 3, Math.floor(t + pitAfter)); y++) {
-          const white = (yy) => Number.isFinite(phigh[yy]) && phigh[yy] >= whiteAt;
-          if (!white(y) || white(y - 1)) continue;
+          const white2 = (yy) => Number.isFinite(phigh[yy]) && phigh[yy] >= whiteAt;
+          if (!white2(y) || white2(y - 1)) continue;
           let e = y;
-          while (e < h - 3 && white(e + 1)) e++;
+          while (e < h - 3 && white2(e + 1)) e++;
           const wid = xAt(R2, y) - xAt(L, y);
           const pinH = wid * (15 / 41.5) * 0.95;
           if (e - y + 1 >= 0.55 * pinH && e - y + 1 <= 2.8 * pinH + 1) {
@@ -3989,18 +4194,6 @@
       const c = P(boardToX(b), 7);
       ctx2.beginPath();
       ctx2.arc(c.x, c.y, 2.5 * s, 0, 7);
-      ctx2.fill();
-    }
-    for (let b = 5; b <= 35; b += 5) {
-      const cx = boardToX(b);
-      const tip = 12 + 4 * (1 - Math.abs(b - 20) / 15);
-      const tri = [P(cx - 1.2, tip - 1.6), P(cx + 1.2, tip - 1.6), P(cx, tip)];
-      ctx2.beginPath();
-      tri.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
-      ctx2.closePath();
-      ctx2.fillStyle = L.arrow;
-      ctx2.shadowColor = L.arrow;
-      ctx2.shadowBlur = glowEnabled() ? 8 * s : 0;
       ctx2.fill();
     }
     ctx2.shadowBlur = 0;
@@ -5013,7 +5206,7 @@
     }
     const sm = new Float32Array(sw * sh);
     for (let y = 1; y < sh - 1; y++) for (let x = 1; x < sw - 1; x++) sm[y * sw + x] = (4 * g[y * sw + x] + g[y * sw + x - 1] + g[y * sw + x + 1] + g[(y - 1) * sw + x] + g[(y + 1) * sw + x]) / 8;
-    const at = (x, y) => {
+    const at2 = (x, y) => {
       const xi = Math.max(1, Math.min(sw - 2, Math.round(x))), yi = Math.max(1, Math.min(sh - 2, Math.round(y)));
       return sm[yi * sw + xi];
     };
@@ -5032,7 +5225,7 @@
           row[ri] = 0;
           continue;
         }
-        const inner = (at(x - ux * 2, y - uy * 2) + at(x - ux * 3, y - uy * 3)) / 2, outer2 = (at(x + ux * 2, y + uy * 2) + at(x + ux * 3, y + uy * 3)) / 2;
+        const inner = (at2(x - ux * 2, y - uy * 2) + at2(x - ux * 3, y - uy * 3)) / 2, outer2 = (at2(x + ux * 2, y + uy * 2) + at2(x + ux * 3, y + uy * 3)) / 2;
         row[ri] = Math.abs(outer2 - inner);
         if (fgScore) {
           const fin = (fgAt(x - ux * 3, y - uy * 3) + fgAt(x - ux * 5, y - uy * 5)) / 2, fout = (fgAt(x + ux * 3, y + uy * 3) + fgAt(x + ux * 5, y + uy * 5)) / 2;
@@ -9157,8 +9350,8 @@ ${url}`);
           line2(pts[i - 1], pts[i], sp.color.startsWith("ramp") ? `hsl(${190 + 130 * t},100%,62%)` : sp.color, sp.width ?? 3);
         }
         ctx2.globalAlpha = 1;
-        const at = sp.ballAt;
-        const idx = at === void 0 || at === null ? -1 : Math.max(0, sp.path.findIndex((p) => p.t >= at));
+        const at2 = sp.ballAt;
+        const idx = at2 === void 0 || at2 === null ? -1 : Math.max(0, sp.path.findIndex((p) => p.t >= at2));
         const b = idx >= 0 ? pts[Math.min(idx, pts.length - 1)] : sp.ballAt === void 0 ? null : pts[pts.length - 1];
         if (b) {
           const c = proj(cam, b);
@@ -10101,7 +10294,7 @@ ${url}`);
         st2.cands++;
         const blue = (128 - b.c) / 0.6;
         const q = Math.abs(Math.log(ratio)) + Math.abs(Math.log(Math.max(0.3, Math.min(3, aspect)))) * 0.6 + Math.abs(fill - 0.78) * 1.5 - 0.5 * Math.max(0, Math.min(1, (blue - 15) / 60));
-        cands.push({ ...b, y: b.y, lx: l.x, ly: l.y, er, q });
+        cands.push({ ...b, y: b.y, lx: l.x, ly: l.y, er, q, by: cy });
       }
       const used = /* @__PURE__ */ new Set();
       for (const hy of this.hyps) {
@@ -10130,7 +10323,7 @@ ${url}`);
           used.add(bi);
           hy.vx = hy.pts.length ? 0.6 * (c.x - lastPt.x) + 0.4 * hy.vx : 0;
           hy.vy = hy.pts.length ? 0.6 * (c.y - lastPt.y) + 0.4 * hy.vy : 0;
-          hy.pts.push({ x: c.x, y: c.y, lx: c.lx, ly: c.ly, t, er: c.er });
+          hy.pts.push({ x: c.x, y: c.y, lx: c.lx, ly: c.ly, t, er: c.er, by: c.by });
           hy.qsum += c.q;
           hy.miss = 0;
         } else {
@@ -10141,7 +10334,7 @@ ${url}`);
       if (!this.confirmed) {
         cands.forEach((c, i) => {
           if (used.has(i) || c.ly >= 48 || this.hyps.length >= 16) return;
-          this.hyps.push({ id: this.nextId++, pts: [{ x: c.x, y: c.y, lx: c.lx, ly: c.ly, t, er: c.er }], vx: 0, vy: 0, miss: 0, qsum: c.q, confirmed: false });
+          this.hyps.push({ id: this.nextId++, pts: [{ x: c.x, y: c.y, lx: c.lx, ly: c.ly, t, er: c.er, by: c.by }], vx: 0, vy: 0, miss: 0, qsum: c.q, confirmed: false });
         });
       } else if (this.lead && this.lead.miss > 0) {
         cands.forEach((c, i) => {
@@ -10149,7 +10342,7 @@ ${url}`);
           const lp = this.lead.pts[this.lead.pts.length - 1];
           const dt = Math.max(5e-3, t - lp.t);
           if (c.ly >= lp.ly - 0.8 && c.ly <= lp.ly + 51 * dt + 2 && Math.abs(c.lx - lp.lx) <= 4 + 9 * dt) {
-            this.lead.pts.push({ x: c.x, y: c.y, lx: c.lx, ly: c.ly, t, er: c.er });
+            this.lead.pts.push({ x: c.x, y: c.y, lx: c.lx, ly: c.ly, t, er: c.er, by: c.by });
             this.lead.miss = 0;
             used.add(i);
           }
@@ -10201,7 +10394,7 @@ ${url}`);
         this.lastLane = { x: pt2.lx, y: pt2.ly, t: pt2.t };
         this.t0 = lead.pts[0].t;
         this.path = lead.pts.map((p) => ({ t: p.t - this.t0, x: p.lx, y: p.ly }));
-        this.trail = lead.pts.map((p) => ({ x: p.x * this.s.scale, y: p.y * this.s.scale }));
+        this.trail = lead.pts.map((p) => ({ x: p.x * this.s.scale, y: (p.by ?? p.y) * this.s.scale }));
         if (matched) {
           for (let i = 0; i < bg.length; i++) if (!fg[i]) bg[i] += (gray[i] - off - bg[i]) * 0.01;
           if (bgC && chroma) {
@@ -10478,6 +10671,9 @@ ${url}`);
   var calKey = () => laneNo ? `laneiq.calibration.${laneNo}` : "laneiq.calibration";
   var lastLockConf = null;
   function applyCalibration(c, how) {
+    arrowsRead = [];
+    arrowTries = 0;
+    if (how !== "automatic" || lastLockHow !== "automatic") pinRefs = [], pinTries = 0, pinRefDone = false;
     if (how !== "automatic") rejected = [], redoStreak = 0;
     logLock({ how, secs: /saved setup/.test(how) || !detectStartedAt ? null : Math.round((performance.now() - detectStartedAt) / 100) / 10, confidence: lastLockConf, foulSeen: lastCandidates[0] ? lastCandidates[0].rows.foul !== null : null });
     corners = c;
@@ -10551,6 +10747,8 @@ ${url}`);
     return [a, b];
   }
   var frameHint = "";
+  var voter = new LaneVoter();
+  var lastRgba = null;
   var prevGray = null;
   var diagView = null;
   var scaled = (d, k2) => ({ ...d, corners: d.corners.map((p) => ({ x: p.x * k2, y: p.y * k2 })) });
@@ -10563,7 +10761,9 @@ ${url}`);
     return inside2;
   };
   var centerOf = (c) => ({ x: c.reduce((s, p) => s + p.x, 0) / c.length, y: c.reduce((s, p) => s + p.y, 0) / c.length });
-  window.__lane = { get tracker() {
+  window.__lane = { get groups() {
+    return voter.groups(video.videoWidth, video.videoHeight);
+  }, get tracker() {
     return tracker;
   }, get path() {
     return path;
@@ -10596,6 +10796,7 @@ ${url}`);
       }
     }
     lastCandidates = found.map((d) => scaled(d, f.k));
+    lastRgba = { px: f.px, w: f.w, h: f.h, k: f.k };
     const k2 = f.k;
     const seg = (s) => ({ x0: s.x0 * k2, y0: s.y0 * k2, x1: s.x1 * k2, y1: s.y1 * k2 });
     diagView = { ...dg, guess: dg.guess ? { left: seg(dg.guess.left), right: seg(dg.guess.right) } : null, foulRow: dg.foulRow === null ? null : dg.foulRow * k2, pitRow: dg.pitRow === null ? null : dg.pitRow * k2 };
@@ -10782,16 +10983,31 @@ ${url}`);
     lastDetectAt = now;
     detectNow();
     if (rejected.length) lastCandidates = lastCandidates.filter((d2) => !rejected.some((r) => detectionsAgree(r, d2.corners, video.videoWidth * 0.05)));
+    voter.add(lastCandidates.filter(solid), now);
+    const vr = voter.result(video.videoWidth, video.videoHeight);
+    if (vr.lock) {
+      let c = vr.lock;
+      if (lastRgba) {
+        const k2 = lastRgba.k;
+        const ps = pinSnap(lastRgba.px, lastRgba.w, lastRgba.h, c.map((p) => ({ x: p.x / k2, y: p.y / k2 })));
+        if (ps.found) c = ps.corners.map((p) => ({ x: p.x * k2, y: p.y * k2 }));
+      }
+      voter.reset();
+      pending = null;
+      locks = [];
+      return applyCalibration(c, "automatic");
+    }
     const ch = chooseLane(lastCandidates, video.videoWidth);
     let picked = ch.pick;
+    let usedMemory = false;
     if (!picked && ch.choices.length > 1) {
       const mem = rememberedLane();
       const near = mem === null ? null : [...ch.choices].sort((a, b) => Math.abs(nearMid(a) - mem) - Math.abs(nearMid(b) - mem))[0];
-      if (near && mem !== null && Math.abs(nearMid(near) - mem) < 0.08) picked = near;
+      if (near && mem !== null && Math.abs(nearMid(near) - mem) < 0.08) picked = near, usedMemory = true;
     }
     chooseSeen = !picked && ch.choices.length > 1 ? chooseSeen + 1 : 0;
     lastLockConf = picked?.confidence ?? lastCandidates[0]?.confidence ?? null;
-    if (chooseSeen >= 2) return enterChoose(ch.choices.map((c) => c.corners));
+    if (chooseSeen >= 2 && (vr.choices.length > 1 || now - detectStartedAt > 14e3)) return enterChoose(ch.choices.map((c) => c.corners));
     const d = picked ?? lastCandidates[0] ?? null;
     pill("SCANNING\u2026", "scan");
     const tol = video.videoWidth * 0.03;
@@ -10804,7 +11020,7 @@ ${url}`);
       setStep(Math.min(3, locks.length));
       status.textContent = "Found the lane, confirming\u2026";
       renderScan("Hold still for a moment while I confirm it.");
-      if (locks.length === 3 && locks.every((l) => detectionsAgree(locks[0], l, tol))) {
+      if ((ch.choices.length <= 1 || usedMemory) && locks.length === 3 && locks.every((l) => detectionsAgree(locks[0], l, tol))) {
         applyCalibration(d.corners, "automatic");
         locks = [];
         return;
@@ -10826,7 +11042,7 @@ ${url}`);
       }
       renderScan(hint);
     }
-    if (now - detectStartedAt > (pending ? 25e3 : 12e3)) enterTap("Couldn't lock on automatically.");
+    if (now - detectStartedAt > (pending ? 25e3 : 18e3)) enterTap("Couldn't lock on automatically.");
   }
   var lastLockHow = "";
   var driftRef = null;
@@ -10902,6 +11118,59 @@ ${url}`);
     if (m.atLimit || m.best > 0.9 * m.energy) {
       if (++driftBad === 4) status.textContent = "The picture looks different from when the lane was locked. If the phone moved, tap Re-lock; otherwise ignore this.";
     } else driftBad = 0;
+  }
+  var arrowsRead = [];
+  var arrowTries = 0;
+  var lastArrowAt = 0;
+  function arrowTick(now) {
+    if (arrowTries >= 10 || !H || !armed || path.length || now < cooldownUntil || now - lastArrowAt < 1500) return;
+    lastArrowAt = now;
+    arrowTries++;
+    const w = Math.min(MAX_DW, video.videoWidth);
+    const h = Math.round(w * video.videoHeight / video.videoWidth);
+    const k2 = video.videoWidth / w;
+    dcanvas.width = w;
+    dcanvas.height = h;
+    dctx.drawImage(video, 0, 0, w, h);
+    const px = dctx.getImageData(0, 0, w, h).data;
+    const g = new Uint8ClampedArray(w * h);
+    for (let i = 0; i < g.length; i++) g[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+    const a = readArrows(g, w, h, corners.map((p) => ({ x: p.x / k2, y: p.y / k2 })));
+    if (a.length >= arrowsRead.length) arrowsRead = a.map((r) => ({ board: r.board, x: r.img.x * k2, y: r.img.y * k2 }));
+  }
+  var pinRefs = [];
+  var pinTries = 0;
+  var pinRefDone = false;
+  var lastPinRefAt = 0;
+  function pinRefineTick(now) {
+    if (pinRefDone || !H || !armed || path.length || now < cooldownUntil || now - lastPinRefAt < 1200) return;
+    if (lastLockHow !== "automatic") return void (pinRefDone = true);
+    lastPinRefAt = now;
+    const w = Math.min(MAX_DW, video.videoWidth);
+    const h = Math.round(w * video.videoHeight / video.videoWidth);
+    const k2 = video.videoWidth / w;
+    dcanvas.width = w;
+    dcanvas.height = h;
+    dctx.drawImage(video, 0, 0, w, h);
+    const ps = pinSnap(dctx.getImageData(0, 0, w, h).data, w, h, corners.map((p) => ({ x: p.x / k2, y: p.y / k2 })));
+    pinTries++;
+    if (ps.found) pinRefs.push(ps.corners[2].y * k2);
+    if (pinTries >= 16 || pinRefs.length >= 6) {
+      pinRefDone = true;
+      if (pinRefs.length >= 4) {
+        const s2 = [...pinRefs].sort((a, b) => a - b);
+        const yr = s2[s2.length >> 1];
+        const mad = [...s2].map((v) => Math.abs(v - yr)).sort((a, b) => a - b)[s2.length >> 1];
+        const len = Math.abs((corners[0].y + corners[1].y) / 2 - (corners[2].y + corners[3].y) / 2);
+        const farNow = (corners[2].y + corners[3].y) / 2;
+        if (mad <= 0.012 * len && Math.abs(yr - farNow) >= 0.012 * len && Math.abs(yr - farNow) <= 0.14 * len) {
+          const slide = (near, far) => ({ x: near.x + (far.x - near.x) * (yr - near.y) / (far.y - near.y), y: yr });
+          const nc = [corners[0], corners[1], slide(corners[1], corners[2]), slide(corners[0], corners[3])];
+          applyCalibration(nc, "automatic");
+          status.textContent = "Lane locked. The far end is set on the pins. Ready: just bowl. If the lines are not on your lane, tap Fix my lane.";
+        }
+      }
+    }
   }
   var overlayPt = (e) => {
     const r = overlay.getBoundingClientRect();
@@ -11125,6 +11394,12 @@ ${url}`);
     path = [];
     mode = "auto";
     detectStartedAt = 0;
+    arrowsRead = [];
+    arrowTries = 0;
+    pinRefs = [];
+    pinTries = 0;
+    pinRefDone = false;
+    voter.reset();
     locks = [];
     chooseList = [];
     chooseSeen = 0;
@@ -11344,8 +11619,8 @@ ${url}`);
     const sx = video.videoWidth / GW;
     const sy = video.videoHeight / GH;
     laneMask = new Uint8Array(GW * GH);
-    const area = Hinv ? [laneToPx(0, -2), laneToPx(LANE_BOARDS, -2), laneToPx(LANE_BOARDS, 64.5), laneToPx(0, 64.5)] : corners;
-    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) laneMask[y * GW + x] = inPolygon({ x: (x + 0.5) * sx, y: (y + 0.5) * sy }, area) ? 1 : 0;
+    const area2 = Hinv ? [laneToPx(0, -2), laneToPx(LANE_BOARDS, -2), laneToPx(LANE_BOARDS, 64.5), laneToPx(0, 64.5)] : corners;
+    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) laneMask[y * GW + x] = inPolygon({ x: (x + 0.5) * sx, y: (y + 0.5) * sy }, area2) ? 1 : 0;
   }
   var sigAcc = new Array(SIG_LEN).fill(0);
   var CROP = 24;
@@ -11455,6 +11730,16 @@ ${url}`);
     }
     if (!H || !Hinv) return;
     drawLaneGrid(v);
+    for (const a of arrowsRead) {
+      const s = overlay.width / 1280;
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,210,90,.95)";
+      ctx.lineWidth = 2 * s;
+      ctx.beginPath();
+      ctx.arc(a.x, a.y, 7 * s, 0, 7);
+      ctx.stroke();
+      ctx.restore();
+    }
     if (lastShot) {
       const age = (now - lastShot.at) / 1e3;
       strokeTrail(v, lastShot.trail, age < 10 ? 1 : Math.max(0.35, 1 - (age - 10) / 10), false);
@@ -11501,7 +11786,7 @@ ${url}`);
     drawOverlay(now);
     enrollTick(now);
     if (!H) autoDetectTick(now);
-    else if (armed) driftCheck(now), pinWatch(now);
+    else if (armed) driftCheck(now), pinWatch(now), pinRefineTick(now), arrowTick(now);
     if (!H || !laneMask || !armed || enrolling) return;
     wctx.drawImage(video, 0, 0, GW, GH);
     const px = wctx.getImageData(0, 0, GW, GH).data;
@@ -11651,8 +11936,8 @@ ${url}`);
     }
     const n = settledCount(counts);
     if (n === null || shot.result) return;
-    const at = counts.findIndex((c, i) => c === n && (counts[i + 1] === n || i === counts.length - 1));
-    const standing = stands[Math.max(0, at)] ?? [];
+    const at2 = counts.findIndex((c, i) => c === n && (counts[i + 1] === n || i === counts.length - 1));
+    const standing = stands[Math.max(0, at2)] ?? [];
     const leave = n === 10 ? [] : standing.map((s, i) => s ? i + 1 : 0).filter(Boolean);
     shot.result = { pinsDown: n, auto: true, ...leave.length ? { leave } : {} };
     lastPinRead = { standing, at: performance.now(), down: n };
