@@ -61,6 +61,7 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        `Start and Stop, for league: a Start / Stop button on the live screen. Stopped, the lane stays locked but no ball is followed, recorded or saved, so other bowlers' shots are not kept; tap Start on your turn. "One shot at a time" is league mode: it starts stopped and stops by itself after each of your shots (your shot and its clip are kept), so you only tap Start when it is your turn. The tour covers it.`,
         "Smoother paths before the arrows: the ball is biggest in the picture near the foul line and where its centre lands wobbles the most, so the first stretch is now smoothed over a longer window (easing to the normal one by about 22 ft), and sideways jumps no ball could make are dropped. The shot map and replays draw every path this way, including shots saved before, so old shots look cleaner too.",
         "No dead end for spin: a clip that cannot be read for spin (a ball turns 36 to 72 degrees a frame at 30 or 60 fps) now says it needs a slow-motion pass and has one tap to read it from a slow-motion clip, instead of a plain refusal. Where a browser offers more than 60 frames a second (some Android phones show 120 or 240), the app now asks for it and records every frame while feeding the tracker about 60 a second. No spin numbers are invented for a clip that cannot give them.",
         "A sharpen filter for the ball tracker: an unsharp mask on the picture the ball is looked for in, so the edge of a ball, a pin or a foot stands out more cleanly. It is applied to the tracker's copy only (the lane lock and the shake stabilizer keep the plain picture), and tried on a real clip it finds the same shot with the same path.",
@@ -9819,6 +9820,7 @@ ${url}`);
     { tab: "live", sel: "#guide-open", title: "Where to put the phone", text: "Behind the approach, or off to one side, steady, with both gutters, the foul line and the pins in view. This guide has pictures and tips for a clean lock." },
     { tab: "live", sel: "#status", title: "It finds the lane by itself", text: "The app scans the lane, and the biggest lane that stays steady in view is locked. This line always says what it is doing: scanning, locked, ball detected, shot captured." },
     { tab: "live", sel: "#tracebtn, #reset", title: "If the lock is off, fix it", text: "Fix my lane freezes the picture so you can drag four numbered dots onto the lane, use Snap to edges, then place the head pin, the 7 and the 10. The yellow rings are the arrows the app found on your lane. Re-lock throws a bad lock away and starts again." },
+    { tab: "live", sel: "#startstop", title: "Start and Stop: just your shots", text: `In league the camera sees everyone's ball. Tap Stop and nothing is followed, recorded or saved (the lane stays locked); tap Start on your turn. Turn on "One shot at a time" and it stops by itself after each of your shots, so you only tap Start when it is your turn.` },
     { tab: "live", sel: ".grid", title: "Every shot, measured", text: "After each ball you get speed, the board at the arrows (read from the real arrows on your lane), breakpoint, the board where the ball was last seen, launch angle and more. Only what the camera saw is shown: nothing is guessed past it." },
     { tab: "live", sel: "#result-card", title: "Pins are read from the camera", text: "The pins that fell are read from the deck. If it ever gets one wrong, tap the right number and the app learns from it." },
     { tab: "shots", sel: ".tb[data-tab='shots']", title: "Shots", text: "Every shot is saved with its video, from the bowler's approach until the rack is full again. Open one to replay it with the ball's path drawn on the lane, switch to the raw video, a top-down map, or 3D." },
@@ -11633,6 +11635,8 @@ ${url}`);
     setStep(4);
     setReady(true);
     status.textContent = `Lane locked (${how}). Ready: just bowl. If the lines are not on your lane, tap Fix my lane.`;
+    if (!shotsOn) status.textContent = "Lane locked. League mode: tap Start when it is your turn.";
+    paintStartStop();
     renderScan();
     try {
       localStorage.setItem(calKey(), JSON.stringify({ v: 2, z: zoomCaps ? zoomNow : 1, n: corners.map((p) => ({ x: p.x / video.videoWidth, y: p.y / video.videoHeight })) }));
@@ -12777,6 +12781,60 @@ ${url}`);
     const lockPct = laneMask ? Math.round(laneMask.reduce((a, m) => a + m, 0) / laneMask.length * 100) : 0;
     if (el) el.textContent = `Camera ${cameraFps || "?"} fps${cameraFps && cameraFps < 50 ? capFps >= 50 ? " (the phone can do " + Math.round(capFps) + " but gave this: try more light)" : " (all this phone gave the browser)" : ""}${deliv.fps ? ` \xB7 arriving ${deliv.fps}/s` : ""} \xB7 analysing ${diag.perSec}/s \xB7 ball ${diag.ballSeen ? "seen" : "not seen"} \xB7 lane lock ${H ? armed ? `on, covers ${lockPct}% of the picture` : "paused" : "searching"}${ts && H && armed ? ` \xB7 moving pixels ${ts.fg}, blobs ${ts.blobs}, ball-like ${ts.cands} (dropped: wrong size ${ts.size}, wrong shape ${ts.shape}, off the lane ${ts.offLane})` : ""}`;
   }
+  var shotsOn = true;
+  var oneShot = false;
+  try {
+    oneShot = localStorage.getItem("laneiq.oneShot") === "1";
+  } catch {
+  }
+  if (oneShot) shotsOn = false;
+  function paintStartStop() {
+    const b = $("startstop");
+    const o = $("oneshot");
+    b.textContent = shotsOn ? "Stop" : "Start";
+    b.style.background = shotsOn ? "linear-gradient(90deg,#ff6a7a,#ff4fd8)" : "linear-gradient(90deg,#46e6ff,#5affb0)";
+    o.textContent = `One shot at a time: ${oneShot ? "on" : "off"}`;
+    o.classList.toggle("sel", oneShot);
+    const el = $("ready");
+    if (H && armed && !shotsOn) {
+      el.textContent = "STOPPED";
+      el.classList.remove("go", "scan");
+      el.classList.add("ask");
+    } else if (el.textContent === "STOPPED") {
+      setReady(!!(H && armed));
+      el.classList.remove("ask");
+    }
+  }
+  function setShotsOn(on, msg, keepClip = false) {
+    if (on === shotsOn) return paintStartStop();
+    shotsOn = on;
+    logTrack(on ? "started" : "stopped", { oneShot });
+    resetTrack();
+    candHist.length = 0;
+    histActive = false;
+    if (!on) {
+      if (pendingClip && !keepClip) void attachClip();
+      else if (recActive && !pendingClip) discardRecording();
+      status.textContent = msg ?? (oneShot ? "Stopped. Tap Start when it is your turn." : "Stopped: no shots are being recorded. Tap Start to record again.");
+    } else {
+      lastShotMedia = lastFrameT;
+      cooldownUntil = performance.now() + 400;
+      tracker?.forgetBackground();
+      status.textContent = msg ?? "Recording. Bowl when ready.";
+    }
+    paintStartStop();
+  }
+  $("startstop").onclick = () => setShotsOn(!shotsOn);
+  $("oneshot").onclick = () => {
+    oneShot = !oneShot;
+    try {
+      localStorage.setItem("laneiq.oneShot", oneShot ? "1" : "0");
+    } catch {
+    }
+    if (oneShot && shotsOn) setShotsOn(false, "League mode: tap Start when it is your turn. It stops by itself after your shot.");
+    else paintStartStop();
+  };
+  paintStartStop();
   var recActive = false;
   var recBeganAt = 0;
   var pendingClip = null;
@@ -12892,6 +12950,7 @@ ${url}`);
     if (!H) autoDetectTick(now);
     else if (armed) driftCheck(now), pinWatch(now), pinRefineTick(now), arrowTick(now), resetWatch(now);
     if (!H || !laneMask || !armed || enrolling) return;
+    if (!shotsOn) return;
     if (cameraFps > 90 && ++skipCount % Math.round(cameraFps / 60) !== 0) return;
     wctx.drawImage(video, 0, 0, GW, GH);
     const px = wctx.getImageData(0, 0, GW, GH).data;
@@ -13130,6 +13189,7 @@ ${url}`);
     };
     await registerShot(shot);
     pendingClip = { shot, t0Abs, at: performance.now() };
+    if (oneShot) setShotsOn(false, "Shot recorded. Tap Start for your next turn.", true);
     void readPinfall(shot, startDeck, fullRack);
   }
   try {
