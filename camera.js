@@ -1944,7 +1944,7 @@
     let n = 1;
     rows.forEach(
       (row, ri) => row.forEach((u) => {
-        const p = P(u, 0.97 - ri * 0.045);
+        const p = P(u, 0.88 + ri * 0.045);
         const down = n === 2 || n === 4 || n === 9;
         const st2 = down ? pins.down : pins.standing;
         g.beginPath();
