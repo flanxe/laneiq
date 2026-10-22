@@ -53,6 +53,16 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-22-steady",
+      date: "2026-10-22",
+      title: "Handheld tolerance",
+      items: [
+        "The camera now follows the lane as the phone shakes or drifts, frame by frame, and slides the picture back before looking for the ball. The lane lock, the ball path and the pin read stay where they belong, so a phone you're holding or leaning on still measures properly.",
+        "In simulated shaky footage (up to 10 pixels of shake) speed and entry read correctly every time with it on; without it, the ball was lost.",
+        "It corrects sideways and up-down movement only. A twist or a zoom of the phone is not corrected, and if the picture moves too far or the lane leaves the frame the app asks you to hold steadier or tap Re-lock."
+      ]
+    },
+    {
       id: "2026-10-22-glow",
       date: "2026-10-22",
       title: "Glow off switch",
@@ -1328,6 +1338,137 @@
       document.getElementById("notes-open").textContent = "What's new";
     };
   }
+
+  // core/src/stabilize.ts
+  var POINTS = 3500;
+  var Stabilizer = class {
+    w;
+    h;
+    ready = false;
+    dx = 0;
+    dy = 0;
+    /** frames in a row without a trustworthy match */
+    bad = 0;
+    pts = new Int32Array(0);
+    vals = new Float32Array(0);
+    meanRef = 0;
+    region = { x0: 0, y0: 0, x1: 0, y1: 0 };
+    edge;
+    constructor(w, h) {
+      this.w = w;
+      this.h = h;
+      this.edge = new Float32Array(w * h);
+    }
+    reset() {
+      this.ready = false;
+      this.dx = this.dy = 0;
+      this.bad = 0;
+    }
+    /** Gradient strength over a region of the picture (only what the search will look at). */
+    edges(gray, r) {
+      const { w } = this;
+      const e = this.edge;
+      for (let y = Math.max(1, r.y0); y < Math.min(this.h - 1, r.y1); y++)
+        for (let x = Math.max(1, r.x0); x < Math.min(w - 1, r.x1); x++) {
+          const i = y * w + x;
+          e[i] = Math.abs(gray[i + 1] - gray[i - 1]) + Math.abs(gray[i + w] - gray[i - w]);
+        }
+    }
+    /** Take the reference from this frame, using the lane's bounding box. */
+    setReference(gray, box) {
+      const { w, h } = this;
+      const m = 3;
+      this.region = { x0: Math.max(m, Math.floor(box.x0)), y0: Math.max(m, Math.floor(box.y0)), x1: Math.min(w - m, Math.ceil(box.x1)), y1: Math.min(h - m, Math.ceil(box.y1)) };
+      const r = this.region;
+      this.edges(gray, r);
+      let sum = 0, n = 0;
+      for (let y = r.y0; y < r.y1; y += 2) for (let x = r.x0; x < r.x1; x += 2) sum += this.edge[y * w + x], n++;
+      const mean3 = n ? sum / n : 0;
+      const cand = [];
+      for (let y = r.y0; y < r.y1; y += 2) for (let x = r.x0; x < r.x1; x += 2) {
+        const v = this.edge[y * w + x];
+        if (v > 2.2 * mean3) cand.push({ i: y * w + x, v });
+      }
+      cand.sort((a, b) => b.v - a.v);
+      const take = cand.slice(0, POINTS);
+      this.pts = Int32Array.from(take.map((c) => c.i));
+      this.vals = Float32Array.from(take.map((c) => c.v));
+      this.meanRef = take.length ? take.reduce((a, c) => a + c.v, 0) / take.length : 0;
+      this.dx = this.dy = 0;
+      this.bad = 0;
+      this.ready = take.length >= 150;
+    }
+    cost(dx, dy, cap, stride = 1) {
+      const { w } = this;
+      const off = dy * w + dx;
+      const e = this.edge;
+      let s = 0, c = 0;
+      for (let k2 = 0; k2 < this.pts.length; k2 += stride) {
+        const d = Math.abs(this.vals[k2] - e[this.pts[k2] + off]);
+        s += d < cap ? d : cap;
+        c++;
+      }
+      return c ? s / c : Infinity;
+    }
+    /** Find how far the picture has slid. Call once per frame, in order. */
+    update(gray) {
+      if (!this.ready) return { dx: 0, dy: 0, ok: false };
+      const R2 = this.bad >= 3 ? 26 : 12;
+      const pad = R2 + 6;
+      const r = { x0: this.region.x0 - pad, y0: this.region.y0 - pad, x1: this.region.x1 + pad, y1: this.region.y1 + pad };
+      this.edges(gray, r);
+      const cap = Math.max(4, 2.5 * this.meanRef);
+      const cx = Math.round(this.dx), cy = Math.round(this.dy);
+      const reg = this.region;
+      const inside = (dx, dy) => reg.x0 + dx >= 1 && reg.x1 + dx <= this.w - 1 && reg.y0 + dy >= 1 && reg.y1 + dy <= this.h - 1;
+      let best = Infinity, bx = cx, by = cy;
+      for (let dy = cy - R2; dy <= cy + R2; dy += 2)
+        for (let dx = cx - R2; dx <= cx + R2; dx += 2) {
+          if (!inside(dx, dy)) continue;
+          const v = this.cost(dx, dy, cap, 3);
+          if (v < best) best = v, bx = dx, by = dy;
+        }
+      const cx2 = bx, cy2 = by;
+      best = Infinity;
+      for (let dy = cy2 - 2; dy <= cy2 + 2; dy++)
+        for (let dx = cx2 - 2; dx <= cx2 + 2; dx++) {
+          if (!inside(dx, dy)) continue;
+          const v = this.cost(dx, dy, cap);
+          if (v < best) best = v, bx = dx, by = dy;
+        }
+      const sub3 = (p, q, t) => {
+        const d = p - 2 * q + t;
+        return d > 1e-9 ? Math.max(-0.5, Math.min(0.5, (p - t) / (2 * d))) : 0;
+      };
+      let fx = bx, fy = by;
+      if (inside(bx - 1, by) && inside(bx + 1, by) && inside(bx, by - 1) && inside(bx, by + 1)) {
+        fx = bx + sub3(this.cost(bx - 1, by, cap), best, this.cost(bx + 1, by, cap));
+        fy = by + sub3(this.cost(bx, by - 1, cap), best, this.cost(bx, by + 1, cap));
+      }
+      const ok = best < 0.5 * this.meanRef;
+      if (ok) {
+        this.dx = fx;
+        this.dy = fy;
+        this.bad = 0;
+      } else this.bad++;
+      return { dx: this.dx, dy: this.dy, ok };
+    }
+    /** Slide a frame back by (dx, dy): out[y][x] = src[y + dy][x + dx], interpolated. */
+    warp(src, out, dx = this.dx, dy = this.dy) {
+      const { w, h } = this;
+      const ix = Math.floor(dx), iy = Math.floor(dy);
+      const fx = dx - ix, fy = dy - iy;
+      for (let y = 0; y < h; y++) {
+        const y0 = Math.min(h - 1, Math.max(0, y + iy)), y1 = Math.min(h - 1, y0 + 1);
+        for (let x = 0; x < w; x++) {
+          const x0 = Math.min(w - 1, Math.max(0, x + ix)), x1 = Math.min(w - 1, x0 + 1);
+          const a = src[y0 * w + x0], b = src[y0 * w + x1], c = src[y1 * w + x0], d = src[y1 * w + x1];
+          out[y * w + x] = (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
+        }
+      }
+      return out;
+    }
+  };
 
   // camera/theme.ts
   var lerp = (a, b, t) => a + (b - a) * t;
@@ -9096,6 +9237,12 @@ ${url}`);
   var tracker = null;
   var laneMask = null;
   var armed = false;
+  var stab = null;
+  var shakeVX = 0;
+  var shakeVY = 0;
+  var stabG = null;
+  var stabC = null;
+  var lastShakeWarn = 0;
   var path = [];
   var lastBlob = null;
   var lost = 0;
@@ -9180,6 +9327,9 @@ ${url}`);
     H = solveHomography(corners, LANE_CORNERS);
     Hinv = solveHomography(LANE_CORNERS, corners);
     buildMask();
+    stab = new Stabilizer(GW, GH);
+    stab.setReference(gridGray(), laneBoxGrid());
+    shakeVX = shakeVY = 0;
     tracker = null;
     armed = true;
     candidate = null;
@@ -9565,6 +9715,7 @@ ${url}`);
       driftRef = cur;
       return;
     }
+    if (stab?.ready) return;
     const m = measureShift(driftRef, cur, GW, GH, laneBoxGrid(), 12);
     const moved = (m.dx !== 0 || m.dy !== 0) && m.best < 0.85 * m.none && m.best < 0.7 * m.energy && !m.atLimit;
     if (moved) {
@@ -10057,7 +10208,9 @@ ${url}`);
     });
   }
   function drawOverlay(now) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, overlay.width, overlay.height);
+    if (H && armed && stab?.ready && viewMode === "lane") ctx.translate(shakeVX, shakeVY);
     if (viewMode === "3d") return sync3D();
     if (enrolling) return;
     if (!H) drawScanner(now);
@@ -10131,9 +10284,26 @@ ${url}`);
       gray[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
       chroma[i] = 128 + (px[i * 4] - px[i * 4 + 2]) * 0.6;
     }
+    let g2 = gray, c2 = chroma;
+    if (stab?.ready) {
+      stab.update(gray);
+      const k2 = video.videoWidth / GW;
+      shakeVX = stab.dx * k2;
+      shakeVY = stab.dy * k2;
+      if (stab.dx !== 0 || stab.dy !== 0) {
+        stabG ??= new Float32Array(GW * GH);
+        stabC ??= new Float32Array(GW * GH);
+        g2 = stab.warp(gray, stabG);
+        c2 = stab.warp(chroma, stabC);
+      }
+      if (stab.bad > 45 && now - lastShakeWarn > 8e3) {
+        lastShakeWarn = now;
+        status.textContent = "The picture is moving too much for me to follow. Hold the phone steadier, or tap Re-lock.";
+      }
+    }
     if (!tracker) tracker = new BallTracker({ w: GW, h: GH, mask: laneMask, H, Hinv, scale: video.videoWidth / GW });
     if (now < cooldownUntil) return;
-    const ev = tracker.step(gray, meta.mediaTime, chroma);
+    const ev = tracker.step(g2, meta.mediaTime, c2);
     path = tracker.path;
     trail = tracker.trail;
     lastBlob = tracker.last ? { gx: tracker.last.x, gy: tracker.last.y } : null;
@@ -10156,7 +10326,10 @@ ${url}`);
   var pinCtx = pinCanvas.getContext("2d", { willReadFrequently: true });
   function lookAtPins() {
     if (!Hinv || S.demo || !video.videoWidth) return null;
-    const boxes = pinBoxes(laneToPx);
+    const boxes = pinBoxes((x, y) => {
+      const p = laneToPx(x, y);
+      return { x: p.x + shakeVX, y: p.y + shakeVY };
+    });
     const r = deckRegion(boxes);
     const x0 = Math.max(0, Math.floor(r.x0));
     const y0 = Math.max(0, Math.floor(r.y0));
