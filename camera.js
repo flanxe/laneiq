@@ -61,6 +61,10 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        'A guided tour of the app: it starts by itself the first time you use LaneIQ, and "Take the tour" on the start screen replays it. It walks through the camera, the lane lock, fixing a lock, the shot measurements, pinfall, and each tab.',
+        "Each shot is now recorded from the bowler's approach until the rack is full again (or the next ball comes), instead of only the roll. Once it is over, the whole recording is searched at once for the ball's path, so nothing is predicted: the chain of blobs that is most ball-like and travels furthest down the lane is the shot.",
+        'Nothing is guessed past what the camera saw. The Entry board tile became "At the pins": the board where the ball was last seen and how far down the lane that was (the board at 59.5 ft only when the ball was seen right up to the pins). Each shot also keeps its release point, last-seen point, exit heading, whether it reached the pin deck, and all the raw data (live path, whole-recording path, every ball-like blob frame by frame, the arrows read).',
+        "The live trail is drawn only after a ball is confirmed, so it no longer jumps between a bowler's arms and legs; the sweep and the bowler walking back are no longer counted as another ball.",
         "The app now READS the arrows off your lane instead of drawing them from a guess. The USBC rule only says the arrows sit 12 to 16 ft past the foul line, so houses differ; the app looks for the small marks on the seven usual boards, keeps the ones that form the regular V, and looks again where the V says a hidden one should be. Yellow rings mark what it found, on the live view and in the lane editor. Tried on a real clip: all seven found, every frame, sitting on the real marks.",
         "The lane locks by vote: every scan of the picture votes for the lane it shows, and the biggest lane that is seen steadily is taken. On a real clip with several lanes in view it now picks the right one by itself, with no tap. After an automatic lock the far end is checked against where the pins stand and corrected when the looks agree.",
         "The path drawn for a shot now rides on the point where the ball touches the lane (the bottom of the ball), not the middle of the ball.",
@@ -1231,7 +1235,8 @@
     setText("c-arrows", f1(a.boardAtArrows));
     setText("c-bp", f1(a.breakpointBoard));
     setText("c-bp-u", a.breakpointFt === null ? "" : `at ${a.breakpointFt.toFixed(0)} ft`);
-    setText("c-entry", f1(a.entryBoard));
+    setText("c-entry", a.entryMeasured ? f1(a.entryBoard) : a.lastSeen ? f1(a.lastSeen.board) : "n/a");
+    setText("c-entry-u", a.entryMeasured ? "board at 59.5 ft (seen)" : a.lastSeen ? `board where it was last seen, ${a.lastSeen.ft.toFixed(0)} ft down` : "");
     setText("c-launch", a.launchAngleDeg === null ? "n/a" : `${a.launchAngleDeg.toFixed(1)}\xB0`);
     setText("c-impact", a.impactAngleDeg === null ? "n/a" : `${a.impactAngleDeg.toFixed(1)}\xB0`);
     setText("c-loss", m.speedLossPct === null ? "n/a" : `${m.speedLossPct.toFixed(0)}%`);
@@ -1501,6 +1506,9 @@
       const f = linearFit(tail.map((s) => s.y), tail.map((s) => s.x));
       entry = f.slope * ENTRY_FT + f.intercept;
     }
+    const first = path2[0];
+    const last = path2[path2.length - 1];
+    const exitH = headingDeg(path2, last.y - 10, last.y + 0.01);
     const launch = headingDeg(p, 3, 20);
     const impact = lastY >= ENTRY_FT - 10 ? headingDeg(p, tailFrom, 58) : null;
     const coverage = Math.min(1, (p[p.length - 1].y - p[0].y) / 45);
@@ -1515,7 +1523,12 @@
       launchAngleDeg: launch?.deg ?? null,
       impactAngleDeg: impact?.deg ?? null,
       samples: p.length,
-      confidence
+      confidence,
+      release: { board: boardFromRight(first.x), ft: first.y },
+      lastSeen: { board: boardFromRight(last.x), ft: last.y, t: last.t },
+      exitHeadingDeg: exitH?.deg ?? null,
+      entryMeasured: last.y >= ENTRY_FT - 2,
+      reachedDeck: last.y >= 60
     };
   }
   function smoothPath(p, half = 3) {
@@ -2059,2251 +2072,6 @@
     }
   };
 
-  // core/src/lanefit.ts
-  var white = (rgba, i) => {
-    const r = rgba[i], g = rgba[i + 1], b = rgba[i + 2];
-    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-    return mn > 150 && mx - mn < 45;
-  };
-  function pinSnap(rgba, w, h, c) {
-    const out = c.map((p) => ({ ...p }));
-    const none = { corners: out, moved: 0, found: false };
-    const farY = (c[2].y + c[3].y) / 2, nearY = (c[0].y + c[1].y) / 2;
-    const len = Math.abs(nearY - farY);
-    const dir = Math.sign(nearY - farY) || 1;
-    if (len < 40) return none;
-    const xa = Math.min(c[2].x, c[3].x), xb = Math.max(c[2].x, c[3].x);
-    const pad = (xb - xa) * 0.12;
-    const x0 = Math.max(0, Math.round(xa + pad)), x1 = Math.min(w - 1, Math.round(xb - pad));
-    if (x1 - x0 < 8) return none;
-    const reach = 0.14 * len;
-    const y0 = Math.max(0, Math.round(farY - dir * reach - (dir > 0 ? 0 : 0)));
-    const rows = [];
-    for (let k2 = -Math.round(reach); k2 <= Math.round(reach); k2++) {
-      const y = Math.round(farY - dir * k2);
-      if (y < 0 || y >= h) continue;
-      let n = 0;
-      for (let x = x0; x <= x1; x++) if (white(rgba, (y * w + x) * 4)) n++;
-      rows.push({ y, f: n / (x1 - x0 + 1) });
-    }
-    void y0;
-    if (rows.length < 10) return none;
-    rows.sort((a, b) => dir > 0 ? a.y - b.y : b.y - a.y);
-    const f = rows.map((r, i2) => (rows[Math.max(0, i2 - 1)].f + r.f + rows[Math.min(rows.length - 1, i2 + 1)].f) / 3);
-    let i = 0;
-    while (i < f.length && f[i] < 0.55) i++;
-    if (i >= f.length) return none;
-    let peak = f[i], j = i;
-    while (j < f.length && f[j] >= 0.5 * peak) {
-      peak = Math.max(peak, f[j]);
-      j++;
-    }
-    if (j >= f.length) return none;
-    const baseY = rows[j - 1].y;
-    const moved = (baseY - farY) * dir * -1;
-    if (Math.abs(baseY - farY) > reach) return none;
-    const slide = (near, far) => {
-      const dy = far.y - near.y;
-      if (Math.abs(dy) < 1e-6) return far;
-      const t = (baseY - near.y) / dy;
-      return { x: near.x + (far.x - near.x) * t, y: baseY };
-    };
-    out[3] = slide(c[0], c[3]);
-    out[2] = slide(c[1], c[2]);
-    return { corners: out, moved, found: true };
-  }
-
-  // core/src/stabilize.ts
-  var POINTS = 3500;
-  var Stabilizer = class {
-    w;
-    h;
-    ready = false;
-    dx = 0;
-    dy = 0;
-    /** frames in a row without a trustworthy match */
-    bad = 0;
-    pts = new Int32Array(0);
-    vals = new Float32Array(0);
-    meanRef = 0;
-    region = { x0: 0, y0: 0, x1: 0, y1: 0 };
-    edge;
-    constructor(w, h) {
-      this.w = w;
-      this.h = h;
-      this.edge = new Float32Array(w * h);
-    }
-    reset() {
-      this.ready = false;
-      this.dx = this.dy = 0;
-      this.bad = 0;
-    }
-    /** Gradient strength over a region of the picture (only what the search will look at). */
-    edges(gray, r) {
-      const { w } = this;
-      const e = this.edge;
-      for (let y = Math.max(1, r.y0); y < Math.min(this.h - 1, r.y1); y++)
-        for (let x = Math.max(1, r.x0); x < Math.min(w - 1, r.x1); x++) {
-          const i = y * w + x;
-          e[i] = Math.abs(gray[i + 1] - gray[i - 1]) + Math.abs(gray[i + w] - gray[i - w]);
-        }
-    }
-    /** Take the reference from this frame, using the lane's bounding box. */
-    setReference(gray, box) {
-      const { w, h } = this;
-      const m = 3;
-      this.region = { x0: Math.max(m, Math.floor(box.x0)), y0: Math.max(m, Math.floor(box.y0)), x1: Math.min(w - m, Math.ceil(box.x1)), y1: Math.min(h - m, Math.ceil(box.y1)) };
-      const r = this.region;
-      this.edges(gray, r);
-      let sum = 0, n = 0;
-      for (let y = r.y0; y < r.y1; y += 2) for (let x = r.x0; x < r.x1; x += 2) sum += this.edge[y * w + x], n++;
-      const mean3 = n ? sum / n : 0;
-      const cand = [];
-      for (let y = r.y0; y < r.y1; y += 2) for (let x = r.x0; x < r.x1; x += 2) {
-        const v = this.edge[y * w + x];
-        if (v > 2.2 * mean3) cand.push({ i: y * w + x, v });
-      }
-      cand.sort((a, b) => b.v - a.v);
-      const take = cand.slice(0, POINTS);
-      this.pts = Int32Array.from(take.map((c) => c.i));
-      this.vals = Float32Array.from(take.map((c) => c.v));
-      this.meanRef = take.length ? take.reduce((a, c) => a + c.v, 0) / take.length : 0;
-      this.dx = this.dy = 0;
-      this.bad = 0;
-      this.ready = take.length >= 150;
-    }
-    cost(dx, dy, cap, stride = 1) {
-      const { w } = this;
-      const off = dy * w + dx;
-      const e = this.edge;
-      let s = 0, c = 0;
-      for (let k2 = 0; k2 < this.pts.length; k2 += stride) {
-        const d = Math.abs(this.vals[k2] - e[this.pts[k2] + off]);
-        s += d < cap ? d : cap;
-        c++;
-      }
-      return c ? s / c : Infinity;
-    }
-    /** Find how far the picture has slid. Call once per frame, in order. */
-    update(gray) {
-      if (!this.ready) return { dx: 0, dy: 0, ok: false };
-      const R2 = this.bad >= 3 ? 26 : 12;
-      const pad = R2 + 6;
-      const r = { x0: this.region.x0 - pad, y0: this.region.y0 - pad, x1: this.region.x1 + pad, y1: this.region.y1 + pad };
-      this.edges(gray, r);
-      const cap = Math.max(4, 2.5 * this.meanRef);
-      const cx = Math.round(this.dx), cy = Math.round(this.dy);
-      const reg = this.region;
-      const inside2 = (dx, dy) => reg.x0 + dx >= 1 && reg.x1 + dx <= this.w - 1 && reg.y0 + dy >= 1 && reg.y1 + dy <= this.h - 1;
-      let best = Infinity, bx = cx, by = cy;
-      for (let dy = cy - R2; dy <= cy + R2; dy += 2)
-        for (let dx = cx - R2; dx <= cx + R2; dx += 2) {
-          if (!inside2(dx, dy)) continue;
-          const v = this.cost(dx, dy, cap, 3);
-          if (v < best) best = v, bx = dx, by = dy;
-        }
-      const cx2 = bx, cy2 = by;
-      best = Infinity;
-      for (let dy = cy2 - 2; dy <= cy2 + 2; dy++)
-        for (let dx = cx2 - 2; dx <= cx2 + 2; dx++) {
-          if (!inside2(dx, dy)) continue;
-          const v = this.cost(dx, dy, cap);
-          if (v < best) best = v, bx = dx, by = dy;
-        }
-      const sub3 = (p, q, t) => {
-        const d = p - 2 * q + t;
-        return d > 1e-9 ? Math.max(-0.5, Math.min(0.5, (p - t) / (2 * d))) : 0;
-      };
-      let fx = bx, fy = by;
-      if (inside2(bx - 1, by) && inside2(bx + 1, by) && inside2(bx, by - 1) && inside2(bx, by + 1)) {
-        fx = bx + sub3(this.cost(bx - 1, by, cap), best, this.cost(bx + 1, by, cap));
-        fy = by + sub3(this.cost(bx, by - 1, cap), best, this.cost(bx, by + 1, cap));
-      }
-      const ok = best < 0.5 * this.meanRef;
-      if (ok) {
-        this.dx = fx;
-        this.dy = fy;
-        this.bad = 0;
-      } else this.bad++;
-      return { dx: this.dx, dy: this.dy, ok };
-    }
-    /** Slide a frame back by (dx, dy): out[y][x] = src[y + dy][x + dx], interpolated. */
-    warp(src, out, dx = this.dx, dy = this.dy) {
-      const { w, h } = this;
-      const ix = Math.floor(dx), iy = Math.floor(dy);
-      const fx = dx - ix, fy = dy - iy;
-      for (let y = 0; y < h; y++) {
-        const y0 = Math.min(h - 1, Math.max(0, y + iy)), y1 = Math.min(h - 1, y0 + 1);
-        for (let x = 0; x < w; x++) {
-          const x0 = Math.min(w - 1, Math.max(0, x + ix)), x1 = Math.min(w - 1, x0 + 1);
-          const a = src[y0 * w + x0], b = src[y0 * w + x1], c = src[y1 * w + x0], d = src[y1 * w + x1];
-          out[y * w + x] = (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
-        }
-      }
-      return out;
-    }
-  };
-
-  // camera/theme.ts
-  var lerp = (a, b, t) => a + (b - a) * t;
-  var hsl = (h, s, l, a) => `hsla(${(h % 360 + 360) % 360}, ${s}%, ${l}%, ${a})`;
-  var ramp2 = (h0, h1, s = 100, l0 = 62, l1 = 58) => (t, a = 1) => hsl(lerp(h0, h1, t), s, lerp(l0, l1, t), a);
-  var TRACERS = {
-    "tracer-aurora": { color: ramp2(190, 320), core: "255,255,255", glow: 24, width: 1 },
-    "tracer-ember": { color: ramp2(8, 48), core: "255,244,214", glow: 26, width: 1.05 },
-    "tracer-lime": { color: ramp2(120, 85), core: "240,255,225", glow: 22, width: 1 },
-    "tracer-silver": { color: (t, a = 1) => hsl(215, 12, lerp(55, 88, t), a), core: "255,255,255", glow: 18, width: 0.95 },
-    "tracer-sunset": { color: ramp2(335, 40, 95, 60, 62), core: "255,240,225", glow: 28, width: 1.05 },
-    "tracer-plasma": { color: ramp2(275, 215, 100, 60, 66), core: "235,225,255", glow: 34, width: 1.15 },
-    "tracer-gold": { color: (t, a = 1) => hsl(lerp(38, 50, t), 100, lerp(48, 68, t), a), core: "255,250,220", glow: 36, width: 1.2 },
-    "tracer-inferno": { color: (t, a = 1) => hsl(lerp(2, 52, t * t), 100, lerp(45, 72, t), a), core: "255,255,235", glow: 42, width: 1.3 },
-    "tracer-prism": { color: (t, a = 1, clock = 0) => hsl(clock * 90 + t * 300, 100, 62, a), core: "255,255,255", glow: 40, width: 1.2 }
-  };
-  var PINS = {
-    "pins-classic": { standing: { fill: "rgba(90,255,176,.28)", stroke: "rgba(90,255,176,.95)", text: "#fff" }, down: { fill: "rgba(255,90,110,.32)", stroke: "rgba(255,90,110,.95)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(70,230,255,.10)", stroke: "rgba(70,230,255,.55)" } },
-    "pins-ice": { standing: { fill: "rgba(170,225,255,.35)", stroke: "rgba(210,240,255,.95)", text: "#fff" }, down: { fill: "rgba(70,110,170,.35)", stroke: "rgba(110,150,210,.8)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(170,225,255,.10)", stroke: "rgba(170,225,255,.5)" } },
-    "pins-sunny": { standing: { fill: "rgba(255,214,90,.35)", stroke: "rgba(255,226,120,.95)", text: "#fff" }, down: { fill: "rgba(255,120,60,.32)", stroke: "rgba(255,130,70,.9)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(255,214,90,.10)", stroke: "rgba(255,214,90,.5)" } },
-    "pins-mono": { standing: { fill: "rgba(255,255,255,.30)", stroke: "rgba(255,255,255,.95)", text: "#fff" }, down: { fill: "rgba(255,255,255,.04)", stroke: "rgba(255,255,255,.3)", text: "rgba(255,255,255,.3)" }, unknown: { fill: "rgba(255,255,255,.08)", stroke: "rgba(255,255,255,.45)" } },
-    "pins-neon": { standing: { fill: "rgba(255,60,220,.30)", stroke: "rgba(255,90,235,1)", text: "#fff" }, down: { fill: "rgba(60,255,240,.16)", stroke: "rgba(60,255,240,.8)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(255,60,220,.10)", stroke: "rgba(255,60,220,.5)" } },
-    "pins-gold": { standing: { fill: "rgba(255,200,60,.42)", stroke: "rgba(255,225,110,1)", text: "#fff" }, down: { fill: "rgba(120,80,20,.30)", stroke: "rgba(190,140,50,.8)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(255,200,60,.12)", stroke: "rgba(255,200,60,.55)" } },
-    "pins-holo": { standing: { fill: "rgba(160,120,255,.34)", stroke: "rgba(120,255,230,1)", text: "#fff" }, down: { fill: "rgba(255,120,200,.22)", stroke: "rgba(255,150,220,.85)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(160,120,255,.10)", stroke: "rgba(160,120,255,.5)" } }
-  };
-  var LANES = {
-    "lane-house": { fill: "rgba(255,214,150,.07)", edge: "rgba(120,200,255,.8)", major: "rgba(255,255,255,.3)", minor: "rgba(255,255,255,.12)", foul: "rgba(255,90,110,.95)", arrow: "rgba(255,210,90,.8)", backdrop: "#10151f" },
-    "lane-ice": { fill: "rgba(150,210,255,.12)", edge: "rgba(190,235,255,.95)", major: "rgba(210,240,255,.4)", minor: "rgba(210,240,255,.16)", foul: "rgba(255,255,255,.95)", arrow: "rgba(200,240,255,.9)", backdrop: "#0b1a2a" },
-    "lane-night": { fill: "rgba(120,100,255,.09)", edge: "rgba(160,140,255,.9)", major: "rgba(200,190,255,.28)", minor: "rgba(200,190,255,.1)", foul: "rgba(255,120,200,.95)", arrow: "rgba(190,170,255,.85)", backdrop: "#07070f" },
-    "lane-grass": { fill: "rgba(90,200,110,.14)", edge: "rgba(180,255,190,.9)", major: "rgba(230,255,230,.35)", minor: "rgba(230,255,230,.14)", foul: "rgba(255,255,255,.95)", arrow: "rgba(255,255,255,.8)", backdrop: "#0b1a10" },
-    "lane-neon": { fill: "rgba(0,255,220,.07)", edge: "rgba(0,255,230,1)", major: "rgba(255,60,220,.5)", minor: "rgba(0,255,230,.2)", foul: "rgba(255,60,220,1)", arrow: "rgba(255,240,60,.95)", backdrop: "#050510" },
-    "lane-gold": { fill: "rgba(255,200,70,.14)", edge: "rgba(255,225,120,1)", major: "rgba(255,230,150,.45)", minor: "rgba(255,230,150,.16)", foul: "rgba(255,255,255,1)", arrow: "rgba(255,245,200,.95)", backdrop: "#140e04" },
-    "lane-void": { fill: "rgba(255,255,255,.03)", edge: "rgba(255,255,255,.55)", major: "rgba(255,255,255,.18)", minor: "rgba(255,255,255,.06)", foul: "rgba(255,70,70,1)", arrow: "rgba(255,255,255,.55)", backdrop: "#000" }
-  };
-  var KEY2 = "laneiq.skins";
-  var DEFAULTS = { tracer: "tracer-aurora", pins: "pins-classic", lane: "lane-house" };
-  var sel = { ...DEFAULTS };
-  try {
-    Object.assign(sel, JSON.parse(localStorage.getItem(KEY2) ?? "{}"));
-  } catch {
-  }
-  var ON_KEY = "laneiq.skinsOn";
-  var skinsOn = false;
-  try {
-    skinsOn = localStorage.getItem(ON_KEY) === "on";
-  } catch {
-  }
-  var skinsEnabled = () => skinsOn;
-  function setSkinsOn(on) {
-    skinsOn = on;
-    try {
-      localStorage.setItem(ON_KEY, on ? "on" : "off");
-    } catch {
-    }
-  }
-  var currentTracer = () => TRACERS[skinsOn ? sel.tracer : DEFAULTS.tracer] ?? TRACERS[DEFAULTS.tracer];
-  var currentPins = () => PINS[skinsOn ? sel.pins : DEFAULTS.pins] ?? PINS[DEFAULTS.pins];
-  var currentLane = () => LANES[skinsOn ? sel.lane : DEFAULTS.lane] ?? LANES[DEFAULTS.lane];
-  var activeSkins = () => skinsOn ? { ...sel } : { ...DEFAULTS };
-  var equippedSkins = () => ({ ...sel });
-  var skinClock = () => performance.now() / 1e3;
-  var GLOW_KEY = "laneiq.glow";
-  var glow = true;
-  try {
-    glow = localStorage.getItem(GLOW_KEY) !== "off";
-  } catch {
-  }
-  var glowEnabled = () => glow;
-  function setGlow(on) {
-    glow = on;
-    try {
-      localStorage.setItem(GLOW_KEY, on ? "on" : "off");
-    } catch {
-    }
-  }
-  function equip(slot, id) {
-    sel[slot] = id;
-    setSkinsOn(true);
-    try {
-      localStorage.setItem(KEY2, JSON.stringify(sel));
-    } catch {
-    }
-  }
-
-  // core/src/scoring.ts
-  var ALL_PINS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  var minus = (a, b) => a.filter((p) => !b.includes(p));
-  function replay(rolls) {
-    const states = [];
-    let standing = ALL_PINS.slice();
-    let frame = 1, ball = 1;
-    let complete = false;
-    let tenthBalls = [];
-    for (const r of rolls) {
-      if (complete) break;
-      const before = standing.slice();
-      states.push({ frame, ball, standingBefore: before, fresh: before.length === 10 });
-      const down = r.down.filter((p) => before.includes(p));
-      const after = minus(before, down);
-      if (frame < 10) {
-        if (after.length === 0 && ball === 1) {
-          frame++;
-          ball = 1;
-          standing = ALL_PINS.slice();
-        } else if (ball === 1) {
-          ball = 2;
-          standing = after;
-        } else {
-          frame++;
-          ball = 1;
-          standing = ALL_PINS.slice();
-        }
-      } else {
-        tenthBalls.push(down.length);
-        const cleared = after.length === 0;
-        if (ball === 1) {
-          ball = 2;
-          standing = cleared ? ALL_PINS.slice() : after;
-        } else if (ball === 2) {
-          const first = tenthBalls[0];
-          if (first === 10 || cleared) {
-            ball = 3;
-            standing = cleared ? ALL_PINS.slice() : after;
-          } else complete = true;
-        } else complete = true;
-      }
-    }
-    if (frame > 10) complete = true;
-    return { states, standing, frame: complete ? 11 : frame, ball: complete ? 1 : ball, complete };
-  }
-  function scoreGame(rolls) {
-    const counts = rolls.map((r) => r.down.length);
-    const frames = [];
-    let i = 0, running = 0;
-    for (let f = 1; f <= 10; f++) {
-      if (i >= counts.length) break;
-      const a = counts[i];
-      if (f < 10) {
-        if (a === 10) {
-          const b = counts[i + 1], c = counts[i + 2];
-          const total = b !== void 0 && c !== void 0 ? running += 10 + b + c : null;
-          frames.push({ pins: [10], marks: ["X"], total });
-          i += 1;
-        } else {
-          const b = counts[i + 1];
-          if (b === void 0) {
-            frames.push({ pins: [a], marks: [a === 0 ? "-" : String(a)], total: null });
-            i += 1;
-            break;
-          }
-          const spare = a + b === 10;
-          const nxt = counts[i + 2];
-          const total = spare ? nxt !== void 0 ? running += 10 + nxt : null : running += a + b;
-          frames.push({ pins: [a, b], marks: [a === 0 ? "-" : String(a), spare ? "/" : b === 0 ? "-" : String(b)], total });
-          i += 2;
-        }
-      } else {
-        const rest = counts.slice(i, i + 3);
-        const marks = [];
-        let prev = 0;
-        rest.forEach((n, k2) => {
-          if (n === 10 && (k2 === 0 || prev === 10 || marks[k2 - 1] === "/")) marks.push("X");
-          else if (k2 > 0 && marks[k2 - 1] !== "X" && marks[k2 - 1] !== "/" && prev + n === 10) marks.push("/");
-          else marks.push(n === 0 ? "-" : String(n));
-          prev = marks[k2] === "/" ? 0 : n;
-        });
-        const done2 = rest.length === 3 || rest.length === 2 && rest[0] !== 10 && rest[0] + rest[1] < 10;
-        frames.push({ pins: rest, marks, total: done2 ? running += rest.reduce((x, y) => x + y, 0) : null });
-        i = counts.length;
-      }
-    }
-    const last = [...frames].reverse().find((f) => f.total !== null);
-    return { frames, total: last?.total ?? 0, complete: replay(rolls).complete };
-  }
-  var key = (pins) => pins.slice().sort((a, b) => a - b).join("-");
-  function bowlingStats(games2) {
-    const complete = games2.filter((g) => replay(g.rolls).complete);
-    const scores = complete.map((g) => scoreGame(g.rolls).total);
-    let fresh2 = 0, strikes = 0, freshPins = 0, spareTry = 0, spareMade = 0, open2 = 0;
-    const single = { attempts: 0, made: 0 }, multi = { attempts: 0, made: 0 };
-    const byLeave = {};
-    for (const g of games2) {
-      const rp = replay(g.rolls);
-      rp.states.forEach((s, k2) => {
-        const down = g.rolls[k2].down.filter((p) => s.standingBefore.includes(p));
-        if (s.fresh) {
-          fresh2++;
-          freshPins += down.length;
-          if (down.length === 10) strikes++;
-        } else {
-          spareTry++;
-          const made = down.length === s.standingBefore.length;
-          if (made) spareMade++;
-          const t = byLeave[key(s.standingBefore)] ??= { attempts: 0, made: 0 };
-          t.attempts++;
-          if (made) t.made++;
-          const bucket = s.standingBefore.length === 1 ? single : multi;
-          bucket.attempts++;
-          if (made) bucket.made++;
-        }
-      });
-      const frameRolls = /* @__PURE__ */ new Map();
-      rp.states.forEach((s, k2) => frameRolls.set(s.frame, [...frameRolls.get(s.frame) ?? [], g.rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length]));
-      for (const [f, c] of frameRolls) {
-        if (f < 10 && c.length === 2 && c[0] + c[1] < 10) open2++;
-        if (f === 10 && c.length >= 2 && c[0] < 10 && c[0] + c[1] < 10) open2++;
-      }
-    }
-    const avg2 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
-    return {
-      games: games2.length,
-      completeGames: complete.length,
-      average: avg2(scores),
-      high: scores.length ? Math.max(...scores) : null,
-      strikePct: fresh2 ? strikes / fresh2 * 100 : null,
-      firstBallAvg: fresh2 ? freshPins / fresh2 : null,
-      sparePct: spareTry ? spareMade / spareTry * 100 : null,
-      openFrames: open2,
-      singlePin: single,
-      multiPin: multi,
-      byLeave
-    };
-  }
-  function whatIf(rolls) {
-    const rp = replay(rolls);
-    const actual = scoreGame(rolls).total;
-    const rescored = (single) => {
-      const copy = rolls.map((r) => ({ ...r }));
-      let changed2 = 0;
-      rp.states.forEach((s, k2) => {
-        if (s.fresh || s.frame >= 10) return;
-        const downNow = rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length;
-        if (downNow === s.standingBefore.length) return;
-        if (single && s.standingBefore.length !== 1) return;
-        copy[k2] = { ...copy[k2], down: s.standingBefore.slice() };
-        changed2++;
-      });
-      return { total: scoreGame(copy).total, changed: changed2 };
-    };
-    const a = rescored(true), b = rescored(false);
-    return { actual, ifSingles: a.total, ifAllSpares: b.total, missedSingles: a.changed, missedSpares: b.changed };
-  }
-
-  // core/src/spares.ts
-  var PIN_XY = {
-    1: { x: 0, row: 0 },
-    2: { x: -6, row: 1 },
-    3: { x: 6, row: 1 },
-    4: { x: -12, row: 2 },
-    5: { x: 0, row: 2 },
-    6: { x: 12, row: 2 },
-    7: { x: -18, row: 3 },
-    8: { x: -6, row: 3 },
-    9: { x: 6, row: 3 },
-    10: { x: 18, row: 3 }
-  };
-  var TOUCH = [[1, 2], [1, 3], [2, 3], [2, 4], [2, 5], [3, 5], [3, 6], [4, 5], [5, 6], [4, 7], [4, 8], [5, 8], [5, 9], [6, 9], [6, 10], [7, 8], [8, 9], [9, 10]];
-  var touching = (a, b) => TOUCH.some(([x, y]) => x === a && y === b || x === b && y === a);
-  var sorted = (pins) => pins.slice().sort((a, b) => a - b);
-  function isSplit(leave) {
-    if (leave.length < 2 || leave.includes(1)) return false;
-    const seen2 = /* @__PURE__ */ new Set([leave[0]]);
-    const queue = [leave[0]];
-    while (queue.length) {
-      const p = queue.pop();
-      for (const q of leave) if (!seen2.has(q) && touching(p, q)) seen2.add(q), queue.push(q);
-    }
-    return seen2.size < leave.length;
-  }
-  var NAMES2 = {
-    "7-10": "the bedposts (7-10)",
-    "2-7": "a baby split (2-7)",
-    "3-10": "a baby split (3-10)",
-    "4-6-7-10": "the big four (4-6-7-10)",
-    "5-7-10": "the lily (5-7-10)",
-    "8-10": "the Cincinnati (8-10)",
-    "1-2-10": "a washout (1-2-10)",
-    "1-3-7": "a washout (1-3-7)",
-    "2-8": "a sleeper (the 8 hides behind the 2)",
-    "3-9": "a sleeper (the 9 hides behind the 3)",
-    "1-5": "a sleeper (the 5 hides behind the 1)"
-  };
-  var MOVE_RIGHT_HANDED = { 1: 0, 5: 0, 2: 3, 8: 3, 4: 6, 7: 9, 3: -3, 9: -3, 6: -6, 10: -9 };
-  function keyPinOf(leave) {
-    return sorted(leave).sort((a, b) => PIN_XY[a].row - PIN_XY[b].row || Math.abs(PIN_XY[a].x) - Math.abs(PIN_XY[b].x))[0];
-  }
-  function adviseSpare(leaveIn, hand2 = "R") {
-    const leave = sorted(leaveIn);
-    const split = isSplit(leave);
-    const k2 = leave.join("-");
-    const name = NAMES2[k2] ?? (leave.length === 1 ? `the ${leave[0]} pin` : split ? `a split (${k2})` : `${k2}`);
-    const keyPin = keyPinOf(leave);
-    const notes = [];
-    const raw = (MOVE_RIGHT_HANDED[keyPin] ?? 0) * (hand2 === "L" ? -1 : 1);
-    const boards = Math.abs(raw);
-    const direction = raw === 0 ? "none" : raw > 0 ? "right" : "left";
-    let text;
-    if (leave.length === 0) text = "Nothing standing: a strike.";
-    else if (boards === 0) text = `Key pin ${keyPin}: no move. Throw your regular strike shot at your strike target.`;
-    else text = `Key pin ${keyPin}: move your feet ${boards} boards ${direction} from where you stand for a strike, and aim at the same target you use for a strike.`;
-    if (split) notes.push("A split is a low-percentage spare whichever system you use. Pick the pin you can hit solidly and expect to leave the other half the time or more.");
-    if (leave.length > 1 && !split) notes.push(`With more than one pin, the system uses the key pin, the one closest to you (the ${keyPin}), and lets it carry the rest.`);
-    if (keyPin === 10 || keyPin === 7) notes.push(`The ${keyPin} pin is the biggest move, nine boards, because it is the far corner pin on the other side of the deck.`);
-    notes.push("The 3-6-9 system assumes your first ball hits the pocket consistently, and lane conditions can change how it works. Adjust if the ball doesn't go where you expect.");
-    return { leave, name, split, keyPin, boards: leave.length ? boards : null, direction, text, notes };
-  }
-
-  // core/src/rewards.ts
-  var SKINS = [
-    // ball tracers
-    { id: "tracer-aurora", kind: "tracer", name: "Aurora", unlock: { free: true } },
-    { id: "tracer-ember", kind: "tracer", name: "Ember", unlock: { pinfall: 500 } },
-    { id: "tracer-lime", kind: "tracer", name: "Lime", unlock: { pinfall: 2e3 } },
-    { id: "tracer-silver", kind: "tracer", name: "Silver", unlock: { pinfall: 5e3 } },
-    { id: "tracer-sunset", kind: "tracer", name: "Sunset", unlock: { pinfall: 1e4 } },
-    { id: "tracer-plasma", kind: "tracer", name: "Plasma", unlock: { points: 100 } },
-    { id: "tracer-gold", kind: "tracer", name: "Liquid gold", unlock: { points: 300 } },
-    { id: "tracer-inferno", kind: "tracer", name: "Inferno", unlock: { points: 600 } },
-    { id: "tracer-prism", kind: "tracer", name: "Prism (color-cycling)", unlock: { points: 1e3 } },
-    // pins
-    { id: "pins-classic", kind: "pins", name: "Classic", unlock: { free: true } },
-    { id: "pins-ice", kind: "pins", name: "Ice", unlock: { pinfall: 1e3 } },
-    { id: "pins-sunny", kind: "pins", name: "Sunny", unlock: { pinfall: 4e3 } },
-    { id: "pins-mono", kind: "pins", name: "Mono", unlock: { pinfall: 8e3 } },
-    { id: "pins-neon", kind: "pins", name: "Neon", unlock: { points: 150 } },
-    { id: "pins-gold", kind: "pins", name: "Gold", unlock: { points: 450 } },
-    { id: "pins-holo", kind: "pins", name: "Holo", unlock: { points: 800 } },
-    // lanes
-    { id: "lane-house", kind: "lane", name: "House wood", unlock: { free: true } },
-    { id: "lane-ice", kind: "lane", name: "Ice blue", unlock: { pinfall: 1500 } },
-    { id: "lane-night", kind: "lane", name: "Night", unlock: { pinfall: 6e3 } },
-    { id: "lane-grass", kind: "lane", name: "Fairway", unlock: { pinfall: 12e3 } },
-    { id: "lane-neon", kind: "lane", name: "Neon grid", unlock: { points: 200 } },
-    { id: "lane-gold", kind: "lane", name: "Gold rush", unlock: { points: 500 } },
-    { id: "lane-void", kind: "lane", name: "Void", unlock: { points: 900 } }
-  ];
-  function totalPinfall(games2, shots) {
-    const linked = new Set(games2.flatMap((g) => g.rolls.map((r) => r.shotId)).filter(Boolean));
-    const fromGames = games2.reduce((a, g) => a + g.rolls.reduce((b, r) => b + r.down.length, 0), 0);
-    const fromShots = shots.filter((s) => !linked.has(s.id) && s.result).reduce((a, s) => a + s.result.pinsDown, 0);
-    return fromGames + fromShots;
-  }
-  var pointsForLevel = (n) => n <= 1 ? 0 : Math.round(40 * (n - 1) ** 1.5 + 60 * (n - 1));
-  function levelOf(points) {
-    let n = 1;
-    while (points >= pointsForLevel(n + 1)) n++;
-    return n;
-  }
-  var GAME_MILESTONES = [[100, 20, "Broke 100"], [150, 30, "Broke 150"], [200, 60, "Broke 200"], [250, 100, "Broke 250"], [300, 300, "A perfect 300"]];
-  var STREAKS = [[3, 15, "Turkey: three strikes in a row"], [4, 25, "Four-bagger: four strikes in a row"], [5, 40, "Five-bagger: five strikes in a row"], [6, 60, "Six-bagger: six strikes in a row"], [9, 150, "Nine in a row"], [12, 300, "Twelve in a row"]];
-  function strikeRun(g) {
-    const rp = replay(g.rolls);
-    let best = 0, cur2 = 0;
-    rp.states.forEach((s, k2) => {
-      if (s.fresh && g.rolls[k2].down.length === 10) best = Math.max(best, ++cur2);
-      else if (s.fresh) cur2 = 0;
-    });
-    return best;
-  }
-  function achievements(games2, axes) {
-    const out = [];
-    const done2 = games2.filter((g) => replay(g.rolls).complete).sort((a, b) => a.at.localeCompare(b.at));
-    const scores = done2.map((g) => scoreGame(g.rolls).total);
-    if (done2.length) out.push({ id: "first-game", title: "First game on the card", detail: "Finish a scored game", points: 10 });
-    for (const [min, pts, title] of GAME_MILESTONES) if (scores.some((s) => s >= min)) out.push({ id: `score-${min}`, title, detail: `Score ${min} or more in a game`, points: pts });
-    let best = -1, pbs = 0;
-    scores.forEach((s) => {
-      if (s > best) {
-        if (best >= 0) pbs++;
-        best = s;
-      }
-    });
-    for (let i = 1; i <= Math.min(pbs, 20); i++) out.push({ id: `pb-${i}`, title: `New high game (#${i})`, detail: "Beat your best game", points: 10 });
-    const run = games2.reduce((m, g) => Math.max(m, strikeRun(g)), 0);
-    for (const [n, pts, title] of STREAKS) if (run >= n) out.push({ id: `streak-${n}`, title, detail: `${n} strikes in a row in one game`, points: pts });
-    const clean = done2.filter((g) => {
-      const f = bowlingStats([g]);
-      return f.openFrames === 0;
-    }).length;
-    if (clean >= 1) out.push({ id: "clean-1", title: "Clean game", detail: "A game with no open frames", points: 50 });
-    if (clean >= 5) out.push({ id: "clean-5", title: "Five clean games", detail: "Five games with no open frames", points: 150 });
-    if (done2.length >= 10) {
-      const avg2 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
-      const gain = avg2(scores.slice(-5)) - avg2(scores.slice(0, 5));
-      for (const [need, pts] of [[5, 30], [10, 60], [20, 120]]) if (gain >= need) out.push({ id: `avg-${need}`, title: `Average up ${need} pins`, detail: "Your last five games against your first five", points: pts });
-    }
-    let splits = 0;
-    for (const g of games2) {
-      const rp = replay(g.rolls);
-      rp.states.forEach((s, k2) => {
-        if (s.fresh) return;
-        if (isSplit(s.standingBefore) && g.rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length === s.standingBefore.length) splits++;
-      });
-    }
-    if (splits >= 1) out.push({ id: "split-1", title: "Converted a split", detail: "Pick up a split for the spare", points: 25 });
-    if (splits >= 5) out.push({ id: "split-5", title: "Split specialist", detail: "Convert five splits", points: 75 });
-    for (const a of axes) {
-      if (a.score !== null && a.score >= 85) out.push({ id: `skill-${a.id}-85`, title: `${a.label}: strong`, detail: `${a.label} at 85 or better on the skills chart`, points: 25 });
-      if (a.score !== null && a.score >= 100) out.push({ id: `skill-${a.id}-100`, title: `${a.label}: at target`, detail: `${a.label} reached its target`, points: 50 });
-      if (a.score !== null && a.earlierScore !== null && a.score - a.earlierScore >= 10) out.push({ id: `skill-${a.id}-up`, title: `${a.label}: improving`, detail: `${a.label} is up 10 points or more since you started`, points: 20 });
-    }
-    return out;
-  }
-  function progress(games2, shots, axes, extraPoints = 0) {
-    const earned = achievements(games2, axes);
-    const points = earned.reduce((a, b) => a + b.points, 0) + extraPoints;
-    const level = levelOf(points);
-    const lo = pointsForLevel(level), hi = pointsForLevel(level + 1);
-    return { pinfall: totalPinfall(games2, shots), points, level, levelProgress: { into: points - lo, span: hi - lo }, earned };
-  }
-  function isUnlocked(s, p) {
-    const u = s.unlock;
-    return "free" in u || "pinfall" in u && p.pinfall >= u.pinfall || "points" in u && p.points >= u.points;
-  }
-  var unlockText = (s) => "free" in s.unlock ? "Free" : "pinfall" in s.unlock ? `${s.unlock.pinfall.toLocaleString()} pins knocked down` : `${s.unlock.points} improvement points`;
-  function nextUnlocks(p) {
-    const play = SKINS.filter((s) => "pinfall" in s.unlock && p.pinfall < s.unlock.pinfall).sort((a, b) => a.unlock.pinfall - b.unlock.pinfall)[0];
-    const imp = SKINS.filter((s) => "points" in s.unlock && p.points < s.unlock.points).sort((a, b) => a.unlock.points - b.unlock.points)[0];
-    return {
-      play: play ? { skin: play, need: play.unlock.pinfall - p.pinfall } : null,
-      improve: imp ? { skin: imp, need: imp.unlock.points - p.points } : null
-    };
-  }
-
-  // core/src/skills.ts
-  var AXES = [
-    {
-      id: "strikes",
-      label: "Strikes",
-      group: "Scoring",
-      higherBetter: true,
-      target: 60.2,
-      unit: "%",
-      basis: "benchmark",
-      at200: 49.7,
-      minSample: 20,
-      source: "Strike rate of a 220-average bowler: 60.2% (200 average: 49.7%). Bowling This Month, Nov 2020.",
-      drill: "Strikes come from hitting the pocket with enough entry angle. Work on the pocket and entry-angle axes first, then match your ball and surface to the lane."
-    },
-    {
-      id: "singles",
-      label: "Single-pin spares",
-      group: "Scoring",
-      higherBetter: true,
-      target: 95.1,
-      unit: "%",
-      basis: "benchmark",
-      at200: 85.6,
-      minSample: 5,
-      source: "Single-pin conversion of a 220-average bowler: 95.1% (200 average: 85.6%). Bowling This Month, Nov 2020.",
-      drill: "Use a plastic spare ball (99% of elite bowlers do, Bowling This Month 2016) and the 3-6-9 system: same target as your strike shot, feet moved 3, 6 or 9 boards. Practice the 10 and 7 pins most."
-    },
-    {
-      id: "closed",
-      label: "Closed frames",
-      group: "Scoring",
-      higherBetter: true,
-      target: 91.9,
-      unit: "%",
-      basis: "benchmark",
-      at200: 85,
-      minSample: 20,
-      source: "Frames closed with a strike or spare, 220 average: 91.9% (200 average: 85.0%). Bowling This Month, Nov 2020.",
-      drill: "Every open frame is a spare you missed or a split you left. Convert the makeable ones: check the Score tab's list of leaves to practice."
-    },
-    {
-      id: "firstBall",
-      label: "First-ball pins",
-      group: "Scoring",
-      higherBetter: true,
-      target: 9.2,
-      unit: " pins",
-      basis: "benchmark",
-      minSample: 20,
-      source: 'A first-ball average over 9.2 means most shots reach the pocket (Bowling This Month, "Increasing Your Carry Percentage").',
-      drill: "Raise it by repeating your line: same feet, same target, same speed. Fix the arrows and start-board spread first."
-    },
-    {
-      id: "pocket",
-      label: "Pocket hits",
-      group: "Accuracy",
-      higherBetter: true,
-      target: 70,
-      unit: "%",
-      basis: "coaching",
-      minSample: 10,
-      source: "Share of tracked shots entering within 1 board of the pocket. LaneIQ working target: 70%.",
-      drill: "Pick one target arrow and bowl 10 shots at it. Move your feet, not your target, to bring the entry board back to the pocket."
-    },
-    {
-      id: "entry",
-      label: "Entry angle",
-      group: "Accuracy",
-      higherBetter: true,
-      target: 4,
-      unit: "\xB0",
-      basis: "coaching",
-      minSample: 8,
-      source: "Average entry angle at the pins. LaneIQ working target: at least 4 degrees (below about 3 the ball has little room to carry the pocket).",
-      drill: "Test one change: a little less speed or a touch more rotation, and keep your line. Check whether the entry angle passes 4 degrees."
-    },
-    {
-      id: "arrows",
-      label: "Target control",
-      group: "Repeatability",
-      higherBetter: false,
-      target: 1,
-      unit: " boards \xB1",
-      basis: "coaching",
-      minSample: 8,
-      source: "Spread (standard deviation) of the board you cross at the arrows. LaneIQ working target: under 1 board.",
-      drill: "Lay a towel or marker on your target arrow. Throw 10 shots looking only at it, same feet, and check the arrows board after each."
-    },
-    {
-      id: "start",
-      label: "Start position",
-      group: "Repeatability",
-      higherBetter: false,
-      target: 1,
-      unit: " boards \xB1",
-      basis: "coaching",
-      minSample: 8,
-      source: "Spread of the board the ball starts on. LaneIQ working target: under 1 board.",
-      drill: "Mark your feet on the approach with tape and check your slide ends in the same place each shot."
-    },
-    {
-      id: "speed",
-      label: "Speed control",
-      group: "Repeatability",
-      higherBetter: false,
-      target: 0.6,
-      unit: " mph \xB1",
-      basis: "coaching",
-      minSample: 8,
-      source: "Spread of launch speed. LaneIQ working target: under 0.6 mph.",
-      drill: "Throw 10 shots at the same effort and watch the live speed. Keep every shot within half a mile an hour of the first."
-    }
-  ];
-  var sdOf = (v) => {
-    const m = v.reduce((a, b) => a + b, 0) / v.length;
-    return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / Math.max(1, v.length - 1));
-  };
-  var nums = (xs) => xs.filter((x) => typeof x === "number" && Number.isFinite(x));
-  function frameOutcomes(games2) {
-    let closed = 0, open2 = 0;
-    for (const g of games2) {
-      const rp = replay(g.rolls);
-      const by = /* @__PURE__ */ new Map();
-      rp.states.forEach((s, k2) => by.set(s.frame, [...by.get(s.frame) ?? [], g.rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length]));
-      for (const [f, c] of by) {
-        if (f < 10) {
-          if (c[0] === 10) closed++;
-          else if (c.length === 2) c[0] + c[1] === 10 ? closed++ : open2++;
-        } else if (rp.complete) {
-          c[0] === 10 || c.length >= 2 && c[0] + c[1] >= 10 ? closed++ : open2++;
-        }
-      }
-    }
-    return { closed, open: open2 };
-  }
-  function measure(games2, shots) {
-    const st2 = bowlingStats(games2);
-    const fo = frameOutcomes(games2);
-    const fresh2 = games2.reduce((a, g) => a + replay(g.rolls).states.filter((s) => s.fresh).length, 0);
-    const pk = shots.filter((s) => s.m.pocketMiss !== null);
-    const sdv = (key2) => {
-      const v = nums(shots.map((s) => s.m[key2]));
-      return { value: v.length >= 2 ? sdOf(v) : null, n: v.length };
-    };
-    const ea = nums(shots.map((s) => s.m.entryAngle));
-    return {
-      strikes: { value: st2.strikePct, n: fresh2 },
-      singles: { value: st2.singlePin.attempts ? st2.singlePin.made / st2.singlePin.attempts * 100 : null, n: st2.singlePin.attempts },
-      closed: { value: fo.closed + fo.open ? fo.closed / (fo.closed + fo.open) * 100 : null, n: fo.closed + fo.open },
-      firstBall: { value: st2.firstBallAvg, n: fresh2 },
-      pocket: { value: pk.length ? pk.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / pk.length * 100 : null, n: pk.length },
-      entry: { value: ea.length ? ea.reduce((a, b) => a + b, 0) / ea.length : null, n: ea.length },
-      arrows: sdv("arrowsBoard"),
-      start: sdv("startBoard"),
-      speed: sdv("launchSpeed")
-    };
-  }
-  function scoreOf(def, value) {
-    if (value === null) return null;
-    const s = def.higherBetter ? value / def.target * 100 : value <= 0 ? 100 : def.target / value * 100;
-    return Math.max(0, Math.min(100, Math.round(s)));
-  }
-  function skillsProfile(games2, shots) {
-    const now = measure(games2, shots);
-    const gh = Math.floor(games2.length / 2), sh = Math.floor(shots.length / 2);
-    const early = measure(games2.slice(0, gh), shots.slice(0, sh));
-    return AXES.map((d) => {
-      const m = now[d.id];
-      const e = early[d.id];
-      const value = m.n >= d.minSample ? m.value : null;
-      return {
-        ...d,
-        value,
-        score: scoreOf(d, value),
-        score200: d.at200 === void 0 ? null : scoreOf(d, d.at200),
-        earlierScore: e.n >= d.minSample && value !== null && (games2.length >= 4 || shots.length >= 16) ? scoreOf(d, e.value) : null
-      };
-    });
-  }
-  function focusList(axes) {
-    return axes.filter((a) => a.score !== null && a.score < 100).map((a) => ({ axis: a, gap: 100 - a.score + (a.group === "Scoring" ? 3 : 0) })).sort((a, b) => b.gap - a.gap);
-  }
-  var strongest = (axes) => axes.filter((a) => a.score !== null).sort((a, b) => b.score - a.score).slice(0, 3);
-
-  // camera/skinscene.ts
-  function drawSkinScene(c, tracerId, pinsId, laneId, clock = 0, ballT = 1) {
-    const g = c.getContext("2d");
-    const w = c.width, h = c.height;
-    const lane = LANES[laneId] ?? LANES["lane-house"], pins = PINS[pinsId] ?? PINS["pins-classic"], tr = TRACERS[tracerId] ?? TRACERS["tracer-aurora"];
-    g.clearRect(0, 0, w, h);
-    g.fillStyle = lane.backdrop;
-    g.fillRect(0, 0, w, h);
-    const P = (u, v) => {
-      const half = (0.46 - v * 0.2) * w;
-      return { x: w / 2 + (u - 0.5) * 2 * half, y: h * (0.94 - v * 0.82) };
-    };
-    g.beginPath();
-    [P(0, 0), P(1, 0), P(1, 1), P(0, 1)].forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y));
-    g.closePath();
-    g.fillStyle = lane.fill;
-    g.fill();
-    for (let i = 0; i <= 39; i++) {
-      const edge = i === 0 || i === 39, major = (39 - i) % 5 === 0;
-      g.strokeStyle = edge ? lane.edge : major ? lane.major : lane.minor;
-      g.lineWidth = edge ? 2 : 1;
-      g.beginPath();
-      const a = P(i / 39, 0), b = P(i / 39, 1);
-      g.moveTo(a.x, a.y);
-      g.lineTo(b.x, b.y);
-      g.stroke();
-    }
-    g.strokeStyle = lane.foul;
-    g.lineWidth = 3;
-    g.beginPath();
-    g.moveTo(P(0, 0).x, P(0, 0).y);
-    g.lineTo(P(1, 0).x, P(1, 0).y);
-    g.stroke();
-    g.fillStyle = lane.arrow;
-    for (let b = 1; b <= 7; b++) {
-      const u = b / 8, v = 0.2 + 0.05 * (1 - Math.abs(b - 4) / 3), p = P(u, v);
-      g.beginPath();
-      g.moveTo(p.x, p.y - 4);
-      g.lineTo(p.x - 4, p.y + 5);
-      g.lineTo(p.x + 4, p.y + 5);
-      g.closePath();
-      g.fill();
-    }
-    const rows = [[0.5], [0.44, 0.56], [0.38, 0.5, 0.62], [0.32, 0.44, 0.56, 0.68]];
-    let n = 1;
-    rows.forEach(
-      (row, ri) => row.forEach((u) => {
-        const p = P(u, 0.88 + ri * 0.045);
-        const down = n === 2 || n === 4 || n === 9;
-        const st2 = down ? pins.down : pins.standing;
-        g.beginPath();
-        g.arc(p.x, p.y, 8, 0, 7);
-        g.fillStyle = st2.fill;
-        g.fill();
-        g.strokeStyle = st2.stroke;
-        g.lineWidth = 1.8;
-        g.stroke();
-        n++;
-      })
-    );
-    const pts = [];
-    const steps = 60;
-    for (let i = 0; i <= steps * ballT; i++) {
-      const t = i / steps;
-      const u = 0.82 - 0.2 * t - 0.26 * Math.max(0, t - 0.55) ** 2 * 3.2;
-      pts.push(P(u, 0.02 + t * 0.9));
-    }
-    const glow2 = glowEnabled();
-    g.save();
-    g.globalCompositeOperation = glow2 ? "lighter" : "source-over";
-    g.lineCap = "round";
-    for (let i = 1; i < pts.length; i++) {
-      const t = i / Math.max(1, pts.length - 1);
-      if (!glow2) {
-        g.shadowBlur = 0;
-        g.strokeStyle = tr.color(t, 0.5 + 0.5 * t, clock);
-        g.lineWidth = 1.5 + 2.5 * t;
-        g.beginPath();
-        g.moveTo(pts[i - 1].x, pts[i - 1].y);
-        g.lineTo(pts[i].x, pts[i].y);
-        g.stroke();
-        continue;
-      }
-      g.shadowBlur = tr.glow * 0.5;
-      g.shadowColor = tr.color(t, 1, clock);
-      g.strokeStyle = tr.color(t, 0.2 + 0.8 * t, clock);
-      g.lineWidth = (2 + 7 * t) * tr.width;
-      g.beginPath();
-      g.moveTo(pts[i - 1].x, pts[i - 1].y);
-      g.lineTo(pts[i].x, pts[i].y);
-      g.stroke();
-      g.shadowBlur = 0;
-      g.strokeStyle = `rgba(${tr.core},${t})`;
-      g.lineWidth = (0.8 + 2 * t) * tr.width;
-      g.stroke();
-    }
-    g.restore();
-  }
-
-  // camera/rewardsui.ts
-  var SEEN_KEY = "laneiq.unlockSeen";
-  var raf = 0;
-  async function current() {
-    const games2 = await loadGames();
-    const axes = skillsProfile(games2, S.shots);
-    return progress(games2, S.shots, axes);
-  }
-  var toastTimer = 0;
-  function toast(text) {
-    let el = document.getElementById("toast");
-    if (!el) {
-      el = document.createElement("div");
-      el.id = "toast";
-      el.style.cssText = "position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:90;max-width:90vw;background:linear-gradient(90deg,#46e6ff,#ff4fd8);color:#06101c;font:700 14px system-ui;padding:11px 16px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.5);text-align:center";
-      el.onclick = () => openRewards();
-      document.body.append(el);
-    }
-    el.textContent = text;
-    el.style.display = "block";
-    clearTimeout(toastTimer);
-    toastTimer = window.setTimeout(() => el.style.display = "none", 6e3);
-  }
-  async function checkUnlocks() {
-    try {
-      const p = await current();
-      const open2 = SKINS.filter((s) => isUnlocked(s, p)).map((s) => s.id);
-      const raw = localStorage.getItem(SEEN_KEY);
-      localStorage.setItem(SEEN_KEY, JSON.stringify(open2));
-      if (raw === null) return;
-      const seen2 = new Set(JSON.parse(raw));
-      const fresh2 = SKINS.filter((s) => open2.includes(s.id) && !seen2.has(s.id));
-      if (fresh2.length) toast(`Unlocked: ${fresh2.slice(0, 2).map((s) => s.name).join(", ")}${fresh2.length > 2 ? ` and ${fresh2.length - 2} more` : ""}. Tap to equip.`);
-    } catch {
-    }
-  }
-  async function summaryHtml() {
-    const p = await current();
-    const nx = nextUnlocks(p);
-    return `<div class="k">Rewards \xB7 level ${p.level}</div><div class="u">${p.points} improvement points \xB7 ${p.pinfall.toLocaleString()} pins knocked down</div>
-    <div class="u">${nx.play ? `Next play skin: <b>${esc(nx.play.skin.name)}</b>, ${nx.play.need.toLocaleString()} pins to go.` : ""} ${nx.improve ? `Next improvement skin: <b>${esc(nx.improve.skin.name)}</b>, ${nx.improve.need} points to go.` : ""}</div>`;
-  }
-  async function openRewards() {
-    const el = $("rewards");
-    el.classList.add("on");
-    const p = await current();
-    const lv = p.level, lo = pointsForLevel(lv), hi = pointsForLevel(lv + 1);
-    const nx = nextUnlocks(p);
-    const eq = skinsEnabled() ? equippedSkins() : { tracer: "", pins: "", lane: "" };
-    const base = activeSkins();
-    const grid = (kind2, title) => `<h3>${title}</h3><div class="skin-grid">${SKINS.filter((s) => s.kind === kind2).map((s) => {
-      const open2 = isUnlocked(s, p);
-      return `<button class="skin ${open2 ? "" : "locked"} ${eq[kind2] === s.id ? "on" : ""}" data-skin="${s.id}" data-kind="${kind2}" ${open2 ? "" : "disabled"}><canvas width="150" height="170" data-c="${s.id}"></canvas><div class="n">${esc(s.name)}</div><div class="r ${"points" in s.unlock ? "rare" : ""}">${open2 ? eq[kind2] === s.id ? "Equipped" : "Tap to equip" : "Locked: " + esc(unlockText(s))}</div></button>`;
-    }).join("")}</div>`;
-    el.innerHTML = `
-    <div class="row"><h2>Rewards</h2><button class="btn ghost" id="rw-close">Close</button></div>
-    <div class="note">Knock down pins to unlock everyday skins. Improve to earn the rare ones. Points come from getting better, not from throwing more shots.</div>
-    <div class="card"><div class="k">Level ${lv}</div>
-      <div class="u">${p.points} improvement points \xB7 ${p.pinfall.toLocaleString()} pins knocked down</div>
-      <div style="height:8px;border-radius:4px;background:rgba(255,255,255,.1);margin:8px 0"><div style="width:${Math.min(100, (p.points - lo) / Math.max(1, hi - lo) * 100)}%;height:8px;border-radius:4px;background:linear-gradient(90deg,#46e6ff,#ff4fd8)"></div></div>
-      <div class="note">${hi - p.points} more points to level ${lv + 1}</div>
-      <div class="u" style="margin-top:6px">${nx.play ? `<b>Play:</b> ${esc(nx.play.skin.name)} (${nx.play.skin.kind}): ${nx.play.need.toLocaleString()} more pins` : "Every play skin unlocked."}</div>
-      <div class="u">${nx.improve ? `<b>Improve:</b> ${esc(nx.improve.skin.name)} (${nx.improve.skin.kind}): ${nx.improve.need} more points` : "Every improvement skin unlocked."}</div></div>
-    <div class="card"><div class="k">Your look</div><div class="chips"><button class="chip ${skinsEnabled() ? "sel" : ""}" id="rw-skins">Skins: ${skinsEnabled() ? "on" : "off"}</button><button class="chip ${glowEnabled() ? "sel" : ""}" id="rw-glow">Glow: ${glowEnabled() ? "on" : "off"}</button></div><div class="note">${skinsEnabled() ? "Your skins are showing in the app." : "Skins are off: the app keeps its standard look. Tap one below to try it."} Turn glow off for crisp lines and no halos, so you can read each shot exactly.</div><canvas id="rw-big" width="360" height="300" style="width:100%;max-width:420px;display:block;margin:0 auto"></canvas></div>
-    ${grid("tracer", "Ball tracers")}${grid("pins", "Pins")}${grid("lane", "Lanes")}
-    <div class="card"><div class="k">How you earned your points</div>
-      ${p.earned.length ? `<ul>${p.earned.map((a) => `<li><b>+${a.points}</b> ${esc(a.title)} <span class="note">${esc(a.detail)}</span></li>`).join("")}</ul>` : `<div class="u">Nothing yet. Finish a game on the Score tab, or reach a target on the skills chart.</div>`}
-      <div class="note">Points come from new high games, strike streaks, clean games, scoring milestones, a rising average, converted splits and skills reaching their targets.</div></div>`;
-    $("rw-skins").onclick = () => (setSkinsOn(!skinsEnabled()), void openRewards());
-    $("rw-glow").onclick = () => (setGlow(!glowEnabled()), void openRewards());
-    $("rw-close").onclick = () => (cancelAnimationFrame(raf), el.classList.remove("on"), el.innerHTML = "");
-    el.querySelectorAll("canvas[data-c]").forEach((c) => {
-      const id = c.dataset.c;
-      const k2 = SKINS.find((s) => s.id === id).kind;
-      drawSkinScene(c, k2 === "tracer" ? id : base.tracer, k2 === "pins" ? id : base.pins, k2 === "lane" ? id : base.lane);
-    });
-    el.querySelectorAll(".skin:not(.locked)").forEach((b) => b.onclick = () => {
-      equip(b.dataset.kind, b.dataset.skin);
-      void openRewards();
-    });
-    cancelAnimationFrame(raf);
-    const t0 = performance.now();
-    const tick = (now) => {
-      const big = document.getElementById("rw-big");
-      if (!big) return;
-      const e = activeSkins();
-      drawSkinScene(big, e.tracer, e.pins, e.lane, skinClock(), Math.min(1, (now - t0) % 3200 / 2400));
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-  }
-
-  // camera/scorecard.ts
-  var games = [];
-  var loadedFor = "";
-  var leaveSel = /* @__PURE__ */ new Set();
-  async function ensureLoaded() {
-    const id = S.profile?.id ?? "";
-    if (loadedFor === id) return;
-    loadedFor = id;
-    games = (id && !S.demo ? await dbGet(id, "meta", "games").catch(() => void 0) : void 0) ?? [];
-    leaveSel = /* @__PURE__ */ new Set();
-  }
-  async function persist() {
-    if (!S.demo && S.profile) await dbPut(S.profile.id, "meta", games, "games").catch(() => {
-    });
-    void checkUnlocks();
-  }
-  var current2 = () => {
-    const g = games[games.length - 1];
-    return g && !replay(g.rolls).complete ? g : void 0;
-  };
-  function cameraSuggestion() {
-    const used = new Set(games.flatMap((g) => g.rolls.map((r) => r.shotId)).filter(Boolean));
-    const s = [...S.shots].reverse().find((x) => x.result?.auto && !used.has(x.id));
-    if (!s || !s.result) return null;
-    const when2 = Date.now() - new Date(s.at).getTime();
-    if (when2 > 15 * 6e4) return null;
-    return { shotId: s.id, leave: s.result.pinsDown === 10 ? [] : s.result.leave ?? [] };
-  }
-  function deckSvg(standing, sel2) {
-    const R2 = 19;
-    const pin = (p) => {
-      const { x, row } = PIN_XY[p];
-      const cx = 130 + x * 4.8, cy = 28 + (3 - row) * 52;
-      const gone = !standing.includes(p);
-      const left = sel2.has(p);
-      const ps = currentPins();
-      const fill = gone ? "transparent" : left ? "#ffd25a" : ps.standing.fill;
-      const stroke = gone ? "rgba(255,255,255,.12)" : left ? "#ffd25a" : ps.standing.stroke;
-      return `<g data-pin="${p}" style="cursor:${gone ? "default" : "pointer"}"><circle cx="${cx}" cy="${cy}" r="${R2}" fill="${fill}" stroke="${stroke}" stroke-width="2"/><text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="15" font-weight="700" fill="${gone ? "rgba(255,255,255,.2)" : left ? "#111" : "#fff"}">${p}</text></g>`;
-    };
-    return `<svg viewBox="0 0 260 200" style="width:100%;max-width:340px;display:block;margin:0 auto;touch-action:manipulation">${ALL_PINS.map(pin).join("")}</svg>`;
-  }
-  function cardHtml(g) {
-    const sc = scoreGame(g.rolls);
-    const cells = Array.from({ length: 10 }, (_, i) => {
-      const f = sc.frames[i];
-      const m = f?.marks ?? [];
-      const slots = i < 9 ? 2 : 3;
-      const boxes = Array.from({ length: slots }, (_2, k2) => `<span style="display:inline-block;min-width:18px;text-align:center;border:1px solid var(--line);border-radius:3px;margin:0 1px;font-size:13px;${m[k2] === "X" ? "color:#5affb0;font-weight:700" : m[k2] === "/" ? "color:#46e6ff;font-weight:700" : ""}">${m[k2] ?? "&nbsp;"}</span>`).join("");
-      return `<td style="text-align:center;padding:4px 2px;border:1px solid var(--line);vertical-align:top"><div style="font-size:10px;opacity:.6">${i + 1}</div><div>${boxes}</div><div style="font-weight:700;font-size:15px;min-height:20px">${f?.total ?? ""}</div></td>`;
-    });
-    return `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:620px"><tr>${cells.join("")}</tr></table></div>`;
-  }
-  async function autoScoreShot(shot) {
-    await ensureLoaded();
-    if (!shot.result?.auto) return false;
-    if (games.some((g) => g.rolls.some((r) => r.shotId === shot.id))) return false;
-    let cur2 = current2();
-    if (!cur2) {
-      cur2 = { id: newId(), at: (/* @__PURE__ */ new Date()).toISOString(), rolls: [], lane: shot.lane };
-      games.push(cur2);
-    }
-    const standing = replay(cur2.rolls).standing;
-    const leave = shot.result.pinsDown === 10 && standing.length === 10 ? [] : shot.result.leave ?? [];
-    if (!leave.every((p) => standing.includes(p))) return false;
-    cur2.rolls.push({ down: standing.filter((p) => !leave.includes(p)), shotId: shot.id });
-    leaveSel = /* @__PURE__ */ new Set();
-    await persist();
-    return true;
-  }
-  function liveScoreHtml() {
-    const g = games[games.length - 1];
-    if (!g || !g.rolls.length) return "";
-    const rp = replay(g.rolls);
-    const sc = scoreGame(g.rolls);
-    const head = `<div class="k" style="margin-top:8px">Scorecard \xB7 game ${games.length}</div><div class="u"><b>${sc.total}</b> ${rp.complete ? "final" : `after ${sc.frames.filter((f) => f.total !== null).length} scored frames \xB7 next: frame ${rp.frame}, ball ${rp.ball}`}</div>`;
-    if (rp.complete || rp.standing.length === 10) return head;
-    const adv = adviseSpare(rp.standing, bowlerProfile().hand);
-    return `${head}<div class="u"><b>Spare: ${esc(adv.name)}.</b> ${esc(adv.text)}</div>`;
-  }
-  setResultExtra(liveScoreHtml);
-  var pctStr = (v) => v === null ? "-" : `${Math.round(v)}%`;
-  function statsHtml() {
-    const st2 = bowlingStats(games);
-    if (!st2.games) return `<div class="u">Statistics appear after your first game.</div>`;
-    const leaves = Object.entries(st2.byLeave).sort((a, b) => b[1].attempts - a[1].attempts).slice(0, 8);
-    return `<table>
-    <tr><td>Average</td><td class="n">${st2.average === null ? "-" : st2.average.toFixed(1)} (${st2.completeGames} games)</td></tr>
-    <tr><td>High game</td><td class="n">${st2.high ?? "-"}</td></tr>
-    <tr><td>Strike %</td><td class="n">${pctStr(st2.strikePct)}</td></tr>
-    <tr><td>First-ball average</td><td class="n">${st2.firstBallAvg === null ? "-" : st2.firstBallAvg.toFixed(1)} pins</td></tr>
-    <tr><td>Spare conversion</td><td class="n">${pctStr(st2.sparePct)}</td></tr>
-    <tr><td>Single-pin spares</td><td class="n">${st2.singlePin.attempts ? `${st2.singlePin.made}/${st2.singlePin.attempts} (${pctStr(st2.singlePin.made / st2.singlePin.attempts * 100)})` : "-"}</td></tr>
-    <tr><td>Multi-pin spares</td><td class="n">${st2.multiPin.attempts ? `${st2.multiPin.made}/${st2.multiPin.attempts} (${pctStr(st2.multiPin.made / st2.multiPin.attempts * 100)})` : "-"}</td></tr>
-    <tr><td>Open frames</td><td class="n">${st2.openFrames}</td></tr></table>
-    ${leaves.length ? `<div class="k" style="margin-top:8px">Spare tries by leave</div><table>${leaves.map(([k2, t]) => `<tr><td>${esc(k2)}</td><td class="n">${t.made}/${t.attempts} (${pctStr(t.made / t.attempts * 100)})</td></tr>`).join("")}</table>` : ""}`;
-  }
-  function analysisHtml() {
-    const done2 = games.filter((g) => replay(g.rolls).complete);
-    const out = [];
-    if (done2.length) {
-      const w = done2.map((g) => whatIf(g.rolls));
-      const avg2 = (f) => w.reduce((a, b) => a + f(b), 0) / w.length;
-      const gain = avg2((x) => x.ifSingles - x.actual);
-      out.push(`<div class="u">Missed single-pin spares cost you <b>${gain.toFixed(1)} pins a game</b> (${avg2((x) => x.missedSingles).toFixed(1)} a game). Make them all and your average would be ${avg2((x) => x.ifSingles).toFixed(0)} instead of ${avg2((x) => x.actual).toFixed(0)}.</div>`);
-      out.push(`<div class="note">Missed spares of every kind: ${avg2((x) => x.missedSpares).toFixed(1)} a game; making all of them would score about ${avg2((x) => x.ifAllSpares).toFixed(0)}.</div>`);
-    }
-    const st2 = bowlingStats(games);
-    const weak = Object.entries(st2.byLeave).filter(([, t]) => t.attempts >= 3 && t.made / t.attempts < 0.6).sort((a, b) => b[1].attempts - a[1].attempts).slice(0, 4);
-    if (weak.length) out.push(`<div class="k" style="margin-top:8px">Practice these</div><ul>${weak.map(([k2, t]) => {
-      const a = adviseSpare(k2.split("-").map(Number), bowlerProfile().hand);
-      return `<li><b>${esc(a.name)}</b>: ${t.made}/${t.attempts} made. ${esc(a.text)}</li>`;
-    }).join("")}</ul>`);
-    const zones = {};
-    for (const g of games) {
-      const rp = replay(g.rolls);
-      g.rolls.forEach((r, k2) => {
-        const s = rp.states[k2];
-        const shot = r.shotId ? S.shots.find((x) => x.id === r.shotId) : void 0;
-        if (!s?.fresh || !shot?.m.zone) return;
-        const z = zones[shot.m.zone] ??= { n: 0, x: 0 };
-        z.n++;
-        if (r.down.length === 10) z.x++;
-      });
-    }
-    const zs = Object.entries(zones).filter(([, v]) => v.n >= 2);
-    if (zs.length) {
-      const label2 = { pocket: "In the pocket", high: "High (Brooklyn side)", light: "Light", "very-high": "Way high", "very-light": "Way light" };
-      out.push(`<div class="k" style="margin-top:8px">Strikes by where the ball hit (camera-tracked first balls)</div><table>${zs.map(([k2, v]) => `<tr><td>${label2[k2] ?? esc(k2)}</td><td class="n">${v.x}/${v.n} strikes (${Math.round(v.x / v.n * 100)}%)</td></tr>`).join("")}</table>`);
-    }
-    return out.length ? out.join("") : `<div class="u">Play a few games and this will show what is costing you pins.</div>`;
-  }
-  async function renderScore() {
-    await ensureLoaded();
-    const el = $("score-page");
-    const g = current2();
-    const rp = g ? replay(g.rolls) : null;
-    const standing = rp?.standing ?? ALL_PINS;
-    const advice = g && standing.length < 10 ? adviseSpare(standing, bowlerProfile().hand) : null;
-    const cam = g ? cameraSuggestion() : null;
-    const done2 = games.slice().reverse().slice(0, 12);
-    el.innerHTML = `
-    <h2>Score</h2>
-    <div class="note">With the camera running, every shot is scored for you: the pins it reads go straight on the card and the spare coach tells you where to move. Tap the pins below only to fix a mistake or to score without the camera. Free, and it stays on this phone.</div>
-    ${g ? `<div class="card"><div class="k">Game ${games.length} \xB7 ${rp.frame <= 10 ? `frame ${rp.frame}, ball ${rp.ball}` : ""}</div>${cardHtml(g)}</div>` : `<div class="card"><div class="u">${games.length ? "Game over. Start the next one." : "No game in progress."}</div><div class="chips"><button class="btn" id="sc-new">Start a game</button></div></div>`}
-    ${g ? `<div class="card"><div class="k">${standing.length === 10 ? "How many pins are standing after this roll? Tap them" : "Tap the pins still standing"}</div>
-      ${deckSvg(standing, leaveSel)}
-      <div class="chips" style="justify-content:center">
-        <button class="btn" id="sc-record">${leaveSel.size ? `Record: ${leaveSel.size} left (${standing.length - leaveSel.size} down)` : standing.length === 10 ? "Record a strike" : "Record a spare"}</button>
-        <button class="btn ghost" id="sc-gutter">All ${standing.length} left</button>
-        <button class="btn ghost" id="sc-undo">Undo last roll</button></div>
-      ${cam ? `<div class="chips" style="justify-content:center"><button class="chip" id="sc-cam">Use the camera's read: ${cam.leave.length ? `leaves the ${cam.leave.join("-")}` : "a strike"}</button></div>` : ""}</div>` : ""}
-    ${advice ? `<div class="card"><div class="k">Spare coach: ${esc(advice.name)}</div><div class="u"><b>${esc(advice.text)}</b></div>${advice.notes.map((n) => `<div class="note">${esc(n)}</div>`).join("")}<div class="note">3-6-9 spare system (USA Bowling and coaching sources): feet move 3, 6 or 9 boards away from the pin, aim stays on your strike target.</div></div>` : ""}
-    <div class="card" id="sc-rewards"><div class="note">Loading rewards\u2026</div></div>
-    <div class="card"><div class="k">Your statistics</div>${statsHtml()}</div>
-    <div class="card"><div class="k">What costs you pins</div>${analysisHtml()}</div>
-    ${done2.length ? `<div class="card"><div class="k">Games</div>${done2.map((x) => {
-      const s = scoreGame(x.rolls);
-      return `<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${s.total}</b> <span class="note">${replay(x.rolls).complete ? "" : "in progress \xB7 "}${esc(new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</span></div><button class="chip danger" data-del="${x.id}">Delete</button></div>`;
-    }).join("")}</div>` : ""}`;
-    void summaryHtml().then((h) => {
-      const box = document.getElementById("sc-rewards");
-      if (box) {
-        box.innerHTML = h + `<div class="chips"><button class="btn" id="sc-rw">Skins and rewards</button></div>`;
-        $("sc-rw").onclick = () => void openRewards();
-      }
-    });
-    $("sc-new")?.addEventListener("click", async () => {
-      games.push({ id: newId(), at: (/* @__PURE__ */ new Date()).toISOString(), rolls: [] });
-      leaveSel = /* @__PURE__ */ new Set();
-      await persist();
-      renderScore();
-    });
-    const add2 = async (roll) => {
-      const cur2 = current2();
-      if (!cur2) return;
-      cur2.rolls.push(roll);
-      leaveSel = /* @__PURE__ */ new Set();
-      await persist();
-      renderScore();
-    };
-    el.querySelectorAll("[data-pin]").forEach((n) => {
-      n.addEventListener("click", () => {
-        const p = Number(n.getAttribute("data-pin"));
-        if (!standing.includes(p)) return;
-        if (leaveSel.has(p)) leaveSel.delete(p);
-        else leaveSel.add(p);
-        renderScore();
-      });
-    });
-    $("sc-record")?.addEventListener("click", () => add2({ down: standing.filter((p) => !leaveSel.has(p)) }));
-    $("sc-gutter")?.addEventListener("click", () => add2({ down: [] }));
-    $("sc-undo")?.addEventListener("click", async () => {
-      const cur2 = current2() ?? games[games.length - 1];
-      if (!cur2 || !cur2.rolls.length) return;
-      cur2.rolls.pop();
-      leaveSel = /* @__PURE__ */ new Set();
-      await persist();
-      renderScore();
-    });
-    $("sc-cam")?.addEventListener("click", () => cam && add2({ down: standing.filter((p) => !cam.leave.includes(p)), shotId: cam.shotId }));
-    el.querySelectorAll("[data-del]").forEach((b) => b.onclick = async () => {
-      games = games.filter((x) => x.id !== b.dataset.del);
-      await persist();
-      renderScore();
-    });
-  }
-  async function loadGames() {
-    await ensureLoaded();
-    return games;
-  }
-
-  // core/src/metrics.ts
-  var POCKET_BOARD = { R: 17.5, L: 22.5 };
-  var MPH = 3600 / 5280;
-  function speedBetween(path2, y0, y1) {
-    const w = path2.filter((s) => s.y >= y0 && s.y <= y1);
-    if (w.length < 4) return null;
-    const dt = w[w.length - 1].t - w[0].t;
-    const dy = w[w.length - 1].y - w[0].y;
-    return dt > 0.05 && dy > 3 ? dy / dt * MPH : null;
-  }
-  function classifyZone(miss) {
-    const a = Math.abs(miss);
-    if (a <= 1) return "pocket";
-    if (a <= 2.5) return miss > 0 ? "high" : "light";
-    return miss > 0 ? "very-high" : "very-light";
-  }
-  function deriveMetrics(a, path2, hand2) {
-    const early = path2.filter((s) => s.y >= 2 && s.y <= 8);
-    const startBoard = early.length ? boardFromRight(early.reduce((t, s) => t + s.x, 0) / early.length) : null;
-    const launchSpeed = speedBetween(path2, 3, 20);
-    const entrySpeed = speedBetween(path2, 40, 58);
-    const speedLossPct = launchSpeed && entrySpeed ? (launchSpeed - entrySpeed) / launchSpeed * 100 : null;
-    const hookBoards = a.breakpointBoard !== null && a.entryBoard !== null ? Math.abs(a.entryBoard - a.breakpointBoard) : null;
-    const hookLengthFt = a.breakpointFt !== null ? Math.max(0, 59.5 - a.breakpointFt) : null;
-    const pocket = POCKET_BOARD[hand2];
-    const pocketMiss = a.entryBoard === null ? null : hand2 === "R" ? a.entryBoard - pocket : pocket - a.entryBoard;
-    return {
-      hand: hand2,
-      startBoard,
-      arrowsBoard: a.boardAtArrows,
-      breakpointBoard: a.breakpointBoard,
-      breakpointFt: a.breakpointFt,
-      entryBoard: a.entryBoard,
-      launchAngle: a.launchAngleDeg,
-      entryAngle: a.impactAngleDeg === null ? null : Math.abs(a.impactAngleDeg),
-      launchSpeed,
-      entrySpeed,
-      speedLossPct,
-      hookBoards,
-      hookLengthFt,
-      pocketMiss,
-      zone: pocketMiss === null ? null : classifyZone(pocketMiss)
-    };
-  }
-
-  // core/src/lanedetect.ts
-  var LANE_END_FT = 62.85;
-  var ASSUMED_HFOV_DEG = 63;
-  var LANE_LEN = 60;
-  var newDiag = () => ({ edgePixels: 0, leftLines: 0, rightLines: 0, pairs: 0, guess: null, foulRow: null, pitRow: null, hint: "" });
-  function detectLanes(gray, w, h, maxCandidates = 3, seed, diag2) {
-    const first = detectLanesOnce(gray, w, h, maxCandidates, seed, diag2);
-    if (first.length && first.some(isSolid)) return first;
-    const inv = new Uint8ClampedArray(w * h);
-    for (let i = 0; i < inv.length; i++) inv[i] = 255 - gray[i];
-    const dg2 = diag2 ? newDiag() : void 0;
-    const second = detectLanesOnce(inv, w, h, maxCandidates, seed, dg2);
-    const best = (l) => l.reduce((m, d) => Math.max(m, d.confidence), 0);
-    if (best(second) > best(first)) {
-      if (diag2 && dg2) Object.assign(diag2, dg2);
-      return second;
-    }
-    return first;
-  }
-  function detectLanesOnce(gray, w, h, maxCandidates = 3, seed, diag2) {
-    const dbg = (m) => globalThis.__laneDbg?.push(m);
-    const sm = new Float32Array(w * h);
-    for (let y = 1; y < h - 1; y++)
-      for (let x = 1; x < w - 1; x++) {
-        const i = y * w + x;
-        sm[i] = (4 * gray[i] + 2 * (gray[i - 1] + gray[i + 1] + gray[i - w] + gray[i + w]) + gray[i - w - 1] + gray[i - w + 1] + gray[i + w - 1] + gray[i + w + 1]) / 16;
-      }
-    const gx = new Float32Array(w * h);
-    const gy = new Float32Array(w * h);
-    const mag = new Float32Array(w * h);
-    for (let y = 2; y < h - 2; y++)
-      for (let x = 2; x < w - 2; x++) {
-        const i = y * w + x;
-        const dx = -sm[i - w - 1] + sm[i - w + 1] - 2 * sm[i - 1] + 2 * sm[i + 1] - sm[i + w - 1] + sm[i + w + 1];
-        const dy = -sm[i - w - 1] - 2 * sm[i - w] - sm[i - w + 1] + sm[i + w - 1] + 2 * sm[i + w] + sm[i + w + 1];
-        gx[i] = dx;
-        gy[i] = dy;
-        mag[i] = Math.hypot(dx, dy);
-      }
-    const sample2 = Float32Array.from({ length: 4e3 }, (_, k2) => mag[Math.floor(k2 / 4e3 * mag.length)]).sort();
-    let thr = Math.max(14, sample2[Math.floor(sample2.length * 0.9)], 7 * sample2[Math.floor(sample2.length * 0.5)]);
-    if (seed) {
-      const near = [];
-      for (let y = Math.max(2, Math.round(seed.y - h * 0.2)); y < Math.min(h - 2, Math.round(seed.y + h * 0.2)); y += 2)
-        for (let x = Math.max(2, Math.round(seed.x - w * 0.25)); x < Math.min(w - 2, Math.round(seed.x + w * 0.25)); x += 2) near.push(mag[y * w + x]);
-      near.sort((a, b) => a - b);
-      thr = Math.max(14, near[Math.floor(near.length * 0.85)] * 0.7, 6 * near[Math.floor(near.length * 0.5)]);
-    }
-    const yA = Math.round(h * 0.1);
-    const yB = Math.round(h * 0.9);
-    const span = yB - yA;
-    const yMin = seed ? 2 : Math.round(h * 0.1);
-    const STEP = Math.max(1, Math.round(w / 320));
-    const PHI_MAX = 68 * Math.PI / 180;
-    const DPHI = 0.4 * Math.PI / 180;
-    const WIN = 15 * Math.PI / 180;
-    const NPHI = Math.floor(2 * PHI_MAX / DPHI) + 1;
-    const tanTab = Float32Array.from({ length: NPHI }, (_, k2) => Math.tan(-PHI_MAX + k2 * DPHI));
-    const lo = -w * 1.5;
-    const NX = Math.ceil(w * 4 / STEP);
-    const accL = new Float32Array(seed ? 0 : NPHI * NX);
-    const accR = new Float32Array(seed ? 0 : NPHI * NX);
-    const agrees = (i, slope, sign) => (gx[i] - gy[i] * slope) / Math.sqrt(1 + slope * slope) / mag[i] * sign > 0.93;
-    const edges = [];
-    for (let y = yMin; y < h - 2; y++)
-      for (let x = 2; x < w - 2; x++) {
-        const i = y * w + x;
-        if (mag[i] < thr || Math.abs(gx[i]) < (seed ? 0.55 : 0.4) * Math.abs(gy[i])) continue;
-        edges.push(i);
-        if (seed) continue;
-        const acc = gx[i] > 0 ? accL : accR;
-        const sgn = gx[i] > 0 ? 1 : -1;
-        void sgn;
-        const phiE = Math.atan(-gy[i] / gx[i]);
-        const k0 = Math.max(0, Math.ceil((phiE - WIN + PHI_MAX) / DPHI));
-        const k1 = Math.min(NPHI - 1, Math.floor((phiE + WIN + PHI_MAX) / DPHI));
-        for (let k2 = k0; k2 <= k1; k2++) {
-          const xi = Math.round((x - tanTab[k2] * (y - yA) - lo) / STEP);
-          if (xi >= 0 && xi < NX) acc[k2 * NX + xi]++;
-        }
-      }
-    dbg(`thr ${thr.toFixed(1)} edges ${edges.length}`);
-    if (diag2) diag2.edgePixels = edges.length;
-    if (edges.length < 60) {
-      if (diag2) diag2.hint = "I can barely see any edges: the picture may be too dark, blurry or flat.";
-      return [];
-    }
-    const xAt = (l, y) => l.xa + (l.xb - l.xa) * (y - yA) / span;
-    const supportOf = (xa, xb, sign) => {
-      const rows = new Uint8Array(h);
-      const slope = (xb - xa) / span;
-      for (const i of edges) {
-        if (gx[i] * sign <= 0 || !agrees(i, slope, sign)) continue;
-        const y = Math.floor(i / w);
-        if (Math.abs(i % w - (xa + (xb - xa) * (y - yA) / span)) <= 2.5 * STEP * Math.sqrt(1 + slope * slope)) rows[y] = 1;
-      }
-      let top = -1;
-      let bot = -1;
-      for (let y = 0; y < h - 8; y++) {
-        let c = 0;
-        for (let k2 = 0; k2 < 8; k2++) c += rows[y + k2];
-        if (c >= 6) {
-          if (top < 0) top = y;
-          bot = y + 7;
-        }
-      }
-      return { top, bot, rows };
-    };
-    const refine = (xa, xb, sign, top, bot, tol = 2.5 * STEP) => {
-      for (let it = 0; it < 3; it++) {
-        let sw = 0, sy = 0, sx = 0, syy = 0, sxy = 0;
-        const cur2 = (xb - xa) / span;
-        for (const i of edges) {
-          if (gx[i] * sign <= 0 || !agrees(i, cur2, sign)) continue;
-          const y = Math.floor(i / w);
-          if (y < top || y > bot) continue;
-          const px = i % w;
-          const lx = xa + (xb - xa) * (y - yA) / span;
-          if (Math.abs(px - lx) > tol * Math.sqrt(1 + cur2 * cur2)) continue;
-          const wgt = mag[i];
-          sw += wgt;
-          sy += wgt * y;
-          sx += wgt * px;
-          syy += wgt * y * y;
-          sxy += wgt * y * px;
-        }
-        const den = sw * syy - sy * sy;
-        if (sw < 1 || Math.abs(den) < 1e-6) break;
-        const slope = (sw * sxy - sy * sx) / den;
-        const icpt = (sx - slope * sy) / sw;
-        xa = icpt + slope * yA;
-        xb = icpt + slope * yB;
-      }
-      return { xa, xb };
-    };
-    const linesOf = (acc, sign, k2) => {
-      let best = 0;
-      for (let i = 0; i < acc.length; i++) if (acc[i] > best) best = acc[i];
-      const floorV = Math.max(10, best * 0.15);
-      const cells = [];
-      for (let i = 0; i < acc.length; i++) if (acc[i] >= floorV) cells.push(i);
-      cells.sort((p, q) => acc[q] - acc[p]);
-      const out = [];
-      const taken = [];
-      for (const c of cells.slice(0, 8e3)) {
-        const xa = lo + c % NX * STEP;
-        const xb = xa + tanTab[Math.floor(c / NX)] * span;
-        if (taken.some((p) => Math.abs(p.a - xa) <= 6 * STEP && Math.abs(p.b - xb) <= 8 * STEP)) continue;
-        taken.push({ a: xa, b: xb });
-        let s = supportOf(xa, xb, sign);
-        if (s.top < 0 || s.bot - s.top < h * 0.06) continue;
-        const ref = refine(xa, xb, sign, s.top, s.bot);
-        s = supportOf(ref.xa, ref.xb, sign);
-        if (s.top < 0 || s.bot - s.top < h * 0.06) continue;
-        out.push({ xa: ref.xa, xb: ref.xb, votes: acc[c], top: s.top, bot: s.bot, rows: s.rows });
-        if (out.length >= k2) break;
-      }
-      return out;
-    };
-    const seededLines = (sign) => {
-      if (!seed) return [];
-      const sx = Math.round(seed.x);
-      const sy = Math.round(seed.y);
-      const g = (x, y) => x < 2 || x >= w - 2 || y < 2 || y >= h - 2 ? 0 : gx[y * w + x] * sign;
-      let x0 = -1;
-      for (let d = 4; d < w; d++) {
-        const x = sign > 0 ? sx - d : sx + d;
-        if (x < 3 || x > w - 4) break;
-        if (g(x, sy) > thr) {
-          let bx = x;
-          for (let k2 = -3; k2 <= 3; k2++) if (g(x + k2, sy) > g(bx, sy)) bx = x + k2;
-          x0 = bx;
-          break;
-        }
-      }
-      if (x0 < 0) return [];
-      const pts = [{ x: x0, y: sy }];
-      for (const dir of [1, -1]) {
-        let x = x0;
-        let slope = 0;
-        let miss = 0;
-        const recent = [{ x: x0, y: sy }];
-        for (let y = sy + dir; y > 2 && y < h - 3; y += dir) {
-          const tol = recent.length < 12 ? 6 : 3;
-          const pred = x + slope * dir;
-          let best = -1;
-          let bv = thr * 0.6;
-          for (let cx = Math.round(pred - tol); cx <= Math.round(pred + tol); cx++) {
-            const v = g(cx, y);
-            if (v > bv && Math.abs(gx[y * w + cx]) >= 0.4 * Math.abs(gy[y * w + cx])) {
-              bv = v;
-              best = cx;
-            }
-          }
-          if (best < 0) {
-            if (++miss > 8) break;
-            x = pred;
-            continue;
-          }
-          miss = 0;
-          x = best;
-          pts.push({ x, y });
-          recent.push({ x, y });
-          if (recent.length > 14) recent.shift();
-          if (recent.length >= 6) slope = (recent[recent.length - 1].x - recent[0].x) / (recent[recent.length - 1].y - recent[0].y);
-        }
-      }
-      if (pts.length < 40) return [];
-      let inl = pts;
-      let a = 0;
-      let b = 0;
-      for (let round = 0; round < 4; round++) {
-        let sw = 0, sy2 = 0, sx2 = 0, syy = 0, sxy = 0;
-        for (const p of inl) {
-          sw++;
-          sy2 += p.y;
-          sx2 += p.x;
-          syy += p.y * p.y;
-          sxy += p.y * p.x;
-        }
-        const den = sw * syy - sy2 * sy2;
-        if (Math.abs(den) < 1e-9) return [];
-        b = (sw * sxy - sy2 * sx2) / den;
-        a = (sx2 - b * sy2) / sw;
-        const res = pts.map((p) => Math.abs(p.x - (a + b * p.y)));
-        const med2 = [...res].sort((p, q) => p - q)[Math.floor(res.length / 2)];
-        const lim = Math.max(1.5, 2.5 * med2);
-        inl = pts.filter((_, k2) => res[k2] <= lim);
-        if (inl.length < 30) return [];
-      }
-      const ys = inl.map((p) => p.y);
-      const top = Math.min(...ys);
-      const bot = Math.max(...ys);
-      const rows = new Uint8Array(h);
-      for (const p of inl) for (let k2 = -2; k2 <= 2; k2++) if (p.y + k2 >= 0 && p.y + k2 < h) rows[p.y + k2] = 1;
-      return [{ xa: a + b * yA, xb: a + b * yB, votes: inl.length, top, bot, rows }];
-    };
-    const Ls = seed ? seededLines(1) : linesOf(accL, 1, 16);
-    const Rs = seed ? seededLines(-1) : linesOf(accR, -1, 16);
-    globalThis.__laneLines = { Ls, Rs, yA, span };
-    dbg(`lines L ${Ls.length} R ${Rs.length}`);
-    if (diag2) {
-      diag2.leftLines = Ls.length;
-      diag2.rightLines = Rs.length;
-    }
-    dbg("L lines @row200: " + Ls.map((l) => `${(l.xa + (l.xb - l.xa) * (200 - yA) / span).toFixed(0)}[v${l.votes},${l.top}-${l.bot}]`).join(" "));
-    dbg("R lines @row200: " + Rs.map((l) => `${(l.xa + (l.xb - l.xa) * (200 - yA) / span).toFixed(0)}[v${l.votes},${l.top}-${l.bot}]`).join(" "));
-    if (!Ls.length || !Rs.length) {
-      if (diag2) diag2.hint = Ls.length || Rs.length ? "I can see one edge of the lane but not the other. Make sure both gutters are in view." : "I can't pick out the lane edges. Aim so the whole lane, with both gutters, fills the middle of the picture.";
-      return [];
-    }
-    const rowMean = (y, xl, xr) => {
-      let s = 0;
-      let n = 0;
-      for (let x = Math.max(0, Math.ceil(xl)); x <= Math.min(w - 1, Math.floor(xr)); x++) {
-        s += sm[Math.round(y) * w + x];
-        n++;
-      }
-      return n ? s / n : NaN;
-    };
-    const cands = [];
-    const maxV = Math.max(Ls[0].votes, Rs[0].votes);
-    let why = { range: 0, shape: 0, contrast: 0 };
-    for (const L of Ls)
-      for (const R2 of Rs) {
-        const t = Math.max(L.top, R2.top);
-        const b = Math.min(L.bot, R2.bot);
-        if (b - t < h * 0.06) {
-          why.range++;
-          continue;
-        }
-        const wt = xAt(R2, t) - xAt(L, t);
-        const wb = xAt(R2, b) - xAt(L, b);
-        if (wt < 2 || wb < wt * 1.02 || wb > w * 1.05) {
-          why.shape++;
-          continue;
-        }
-        let good = 0;
-        let rowsN = 0;
-        let strengthSum = 0;
-        for (let y = t + 2; y <= b - 2; y += 3) {
-          const xl = xAt(L, y);
-          const xr = xAt(R2, y);
-          const wid = xr - xl;
-          if (wid < 3) continue;
-          const inside2 = rowMean(y, xl + wid * 0.2, xr - wid * 0.2);
-          const left = xl - wid * 0.2 < 1 ? NaN : rowMean(y, xl - wid * 0.3, xl - wid * 0.08);
-          const right = xr + wid * 0.2 > w - 2 ? NaN : rowMean(y, xr + wid * 0.08, xr + wid * 0.3);
-          if (!Number.isFinite(left) && !Number.isFinite(right)) continue;
-          rowsN++;
-          if ((!Number.isFinite(left) || inside2 - left > 6) && (!Number.isFinite(right) || inside2 - right > 6)) good++;
-          strengthSum += Math.max(0, Math.min(100, Math.min(Number.isFinite(left) ? inside2 - left : 100, Number.isFinite(right) ? inside2 - right : 100)));
-        }
-        if (rowsN < 5 || good / rowsN < 0.45) {
-          why.contrast++;
-          continue;
-        }
-        const contrast = good / rowsN;
-        const votes = (L.votes + R2.votes) / (2 * maxV);
-        const cb = (xAt(L, b) + xAt(R2, b)) / 2;
-        const centered = 1 - 0.12 * Math.min(1, Math.abs(cb - w / 2) / (w * 0.5));
-        const lenScore = Math.min(1, (b - t) / (h * 0.25));
-        cands.push({ L, R: R2, t, b, base: (votes + contrast + 0.5 * lenScore + 1.2 * (strengthSum / rowsN / 100)) * centered });
-      }
-    dbg(`pairs ${cands.length}; rejected ${JSON.stringify(why)}`);
-    if (diag2) {
-      diag2.pairs = cands.length;
-      if (!cands.length) diag2.hint = "I see edges, but nothing that looks like a bright lane between two dark gutters yet.";
-    }
-    cands.sort((p, q) => q.base - p.base);
-    const distinct = [];
-    for (const c of cands) {
-      const cb = (xAt(c.L, c.b) + xAt(c.R, c.b)) / 2;
-      const isSame = (d) => {
-        if (Math.abs((xAt(d.L, d.b) + xAt(d.R, d.b)) / 2 - cb) > 0.04 * w) return false;
-        const y = Math.min(c.b, d.b) - 2;
-        const wc = xAt(c.R, y) - xAt(c.L, y);
-        const wd = xAt(d.R, y) - xAt(d.L, y);
-        return wd > 0 && wc / wd > 0.85 && wc / wd < 1.18;
-      };
-      if (!distinct.some(isSame)) distinct.push(c);
-      if (distinct.length >= maxCandidates + 9) break;
-    }
-    if (diag2 && distinct[0]) {
-      const c = distinct[0];
-      diag2.guess = { left: { x0: xAt(c.L, c.t), y0: c.t, x1: xAt(c.L, c.b), y1: c.b }, right: { x0: xAt(c.R, c.t), y0: c.t, x1: xAt(c.R, c.b), y1: c.b } };
-    }
-    dbg(`candidates: ${distinct.map((c) => `[${xAt(c.L, c.b).toFixed(0)}-${xAt(c.R, c.b).toFixed(0)}@${c.b} t${c.t} base ${c.base.toFixed(2)}]`).join(" ")}`);
-    const results = [];
-    for (const c of distinct) {
-      const r = geometry(c);
-      if (r) results.push(r);
-    }
-    const sorted2 = results.sort((p, q) => q.confidence - p.confidence).slice(0, maxCandidates);
-    if (diag2 && sorted2.length) diag2.hint = "";
-    return sorted2;
-    function geometry(c) {
-      let { L, R: R2 } = c;
-      const { t, b } = c;
-      const notes = [];
-      const sL = (L.xb - L.xa) / span;
-      const sR = (R2.xb - R2.xa) / span;
-      if (Math.abs(sL - sR) < 1e-6) return dbg("reject: parallel lines"), null;
-      const yv = yA + (R2.xa - L.xa) / (sL - sR);
-      if (!Number.isFinite(yv) || yv > t - 3) return dbg(`reject: vanishing row ${yv.toFixed(1)} vs top ${t}`), null;
-      const prof = new Float32Array(h);
-      const up = new Float32Array(h);
-      const yStart = Math.max(3, Math.ceil(yv) + 3);
-      for (let y = yStart; y < h - 3; y++) {
-        const cl = xAt(L, y) + 2 * STEP;
-        const cr = xAt(R2, y) - 2 * STEP;
-        if (cr - cl < 4) continue;
-        let cnt = 0;
-        let s = 0;
-        let n = 0;
-        for (let x = Math.max(2, Math.ceil(cl)); x <= Math.min(w - 3, Math.floor(cr)); x++) {
-          const i = y * w + x;
-          n++;
-          if (Math.abs(gy[i]) > thr * 0.6 && Math.abs(gy[i]) > 1.3 * Math.abs(gx[i])) {
-            cnt++;
-            s += gy[i];
-          }
-        }
-        if (n) {
-          prof[y] = cnt / n;
-          up[y] = s / n / Math.max(1, thr);
-        }
-      }
-      const localMax = (arr, min, k2, from = yStart + 1, to = h - 4) => {
-        const out = [];
-        for (let y = Math.max(from, yStart + 1); y < to; y++) if (arr[y] >= min && arr[y] >= arr[y - 1] && arr[y] >= arr[y + 1]) out.push(y);
-        return out.sort((p, q) => arr[q] - arr[p]).slice(0, k2);
-      };
-      const topRows = (arr) => Array.from({ length: h }, (_, y) => y).filter((y) => y >= yStart && y < h - 4).sort((p, q) => arr[q] - arr[p]).slice(0, 6).map((y) => `${y}:${arr[y].toFixed(2)}`).join(" ");
-      const prow = new Float32Array(h).fill(NaN);
-      const plow = new Float32Array(h).fill(NaN);
-      const phigh = new Float32Array(h).fill(NaN);
-      for (let y = yStart; y < h - 3; y++) {
-        const wid = xAt(R2, y) - xAt(L, y);
-        if (wid < 6) continue;
-        const a = Math.max(2, Math.ceil(xAt(L, y) + 0.2 * wid));
-        const b2 = Math.min(w - 3, Math.floor(xAt(R2, y) - 0.2 * wid));
-        if (b2 - a < 3) continue;
-        const vals = [];
-        for (let x = a; x <= b2; x++) vals.push(sm[y * w + x]);
-        vals.sort((p, q) => p - q);
-        prow[y] = vals[vals.length >> 1];
-        plow[y] = vals[vals.length >> 2];
-        phigh[y] = vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.9))];
-      }
-      const pAvg = (ya, yb, y, src = prow) => {
-        let s = 0, n = 0;
-        for (let k2 = ya; k2 <= yb; k2++) {
-          const v = src[Math.round(y + k2)];
-          if (Number.isFinite(v)) {
-            s += v;
-            n++;
-          }
-        }
-        return n >= Math.max(1, (yb - ya + 1) / 2) ? s / n : NaN;
-      };
-      const foulCands = localMax(prof, 0.2, 8, Math.floor(t + h * 0.05), h - 4);
-      const pitBefore = Math.max(14, Math.round(0.045 * h));
-      const pitAfter = Math.max(18, Math.round(0.055 * h));
-      const pitCands = localMax(up, 0.3, 6, Math.floor(t - pitBefore), Math.floor(t + pitAfter));
-      {
-        const dip = new Float32Array(h);
-        const stp = new Float32Array(h);
-        for (let y = yStart + 11; y < h - 12; y++) {
-          const a = pAvg(-9, -4, y), b2 = pAvg(4, 9, y), m = pAvg(-1, 1, y);
-          if (Number.isFinite(a) && Number.isFinite(b2) && Number.isFinite(m)) dip[y] = Math.max(Math.min(a, b2) - m, m - Math.max(a, b2));
-          const la = pAvg(-9, -4, y, plow), lb = pAvg(4, 9, y, plow), lm = pAvg(-1, 1, y, plow);
-          if (Number.isFinite(la) && Number.isFinite(lb)) stp[y] = Math.abs(la - lb) - 0.5 * (Number.isFinite(lm) ? Math.max(0, Math.max(Math.min(la, lb) - lm, lm - Math.max(la, lb))) : 0);
-        }
-        const peaks = (arr, min, k2, from, to) => {
-          const out = [];
-          for (let y = Math.max(from, yStart + 12); y < Math.min(to, h - 13); y++) if (arr[y] >= min && arr[y] >= arr[y - 1] && arr[y] >= arr[y + 1]) out.push(y);
-          return out.sort((p, q) => arr[q] - arr[p]).slice(0, k2);
-        };
-        for (const y of peaks(dip, 2.5, 8, Math.floor(t + h * 0.05), h - 4)) if (!foulCands.some((c2) => Math.abs(c2 - y) <= 2)) foulCands.push(y);
-        for (const y of peaks(stp, 6, 6, Math.floor(t - pitBefore), Math.floor(t + pitAfter))) if (!pitCands.some((c2) => Math.abs(c2 - y) <= 2)) pitCands.push(y);
-        for (const y of peaks(stp, 4, 4, Math.floor(b - 0.05 * h), Math.floor(b + 0.05 * h))) if (!foulCands.some((c2) => Math.abs(c2 - y) <= 2)) foulCands.push(y);
-      }
-      const supported = (y) => (L.rows[y] || L.rows[y - 1] || L.rows[y + 1] || L.rows[y - 2] || L.rows[y + 2]) && (R2.rows[y] || R2.rows[y - 1] || R2.rows[y + 1] || R2.rows[y - 2] || R2.rows[y + 2]);
-      const bandMean = (ya, yb, y) => {
-        let s = 0, n = 0;
-        for (let k2 = ya; k2 <= yb; k2++) {
-          const yy = Math.round(y + k2);
-          if (yy < 2 || yy >= h - 2) return NaN;
-          const wid = xAt(R2, yy) - xAt(L, yy);
-          if (wid < 3) return NaN;
-          const m = rowMean(yy, xAt(L, yy) + 0.2 * wid, xAt(R2, yy) - 0.2 * wid);
-          if (Number.isFinite(m)) {
-            s += m;
-            n++;
-          }
-        }
-        return n ? s / n : NaN;
-      };
-      const isThinLine = (f) => {
-        const above = pAvg(-9, -4, f);
-        const below = pAvg(4, 9, f);
-        const mid = pAvg(-1, 1, f);
-        if (![above, below, mid].every(Number.isFinite)) return false;
-        const margin = Math.max(2.5, (above + below) / 2 * 0.03);
-        return mid < Math.min(above, below) - margin || mid > Math.max(above, below) + margin;
-      };
-      const isLaneToApproach = (f) => {
-        const a = pAvg(-9, -4, f);
-        const c2 = pAvg(4, 9, f);
-        return Number.isFinite(a) && Number.isFinite(c2) && Math.abs(a - c2) > Math.max(5, Math.max(a, c2) * 0.07);
-      };
-      const isPitStep = (p) => {
-        const above = pAvg(-10, -4, p, plow);
-        const below = pAvg(4, 10, p, plow);
-        return Number.isFinite(above) && Number.isFinite(below) && Math.abs(above - below) > Math.max(6, Math.max(above, below) * 0.12);
-      };
-      let walk2 = NaN;
-      {
-        const lane0 = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
-        const lowRun = Math.max(6, Math.round(0.022 * h));
-        if (Number.isFinite(lane0)) {
-          let low = 0;
-          for (let y = Math.floor(b) - 3; y > yStart + 2; y--) {
-            const v = plow[y];
-            if (!Number.isFinite(v)) continue;
-            if (v < lane0 * 0.78) {
-              if (++low >= lowRun) {
-                walk2 = y + low;
-                break;
-              }
-            } else low = 0;
-          }
-        }
-        if (Number.isFinite(walk2) && !pitCands.some((c2) => Math.abs(c2 - walk2) <= 2)) pitCands.push(Math.round(walk2));
-      }
-      const lane1 = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
-      const validPits = pitCands.filter((p) => {
-        const below = pAvg(4, 10, p, plow);
-        return Number.isFinite(lane1) && Number.isFinite(below) && Math.abs(below - lane1) <= Math.max(20, lane1 * 0.2) && isPitStep(p);
-      });
-      let lowestPit = validPits.length ? Math.max(...validPits) : NaN;
-      let pinPit = NaN;
-      {
-        const ref = pAvg(10, 18, Math.round(t), prow);
-        const whiteAt = Number.isFinite(ref) ? Math.max(150, ref + 34) : 230;
-        for (let y = Math.max(yStart + 2, Math.floor(t - pitBefore)); y < Math.min(h - 3, Math.floor(t + pitAfter)); y++) {
-          const white2 = (yy) => Number.isFinite(phigh[yy]) && phigh[yy] >= whiteAt;
-          if (!white2(y) || white2(y - 1)) continue;
-          let e = y;
-          while (e < h - 3 && white2(e + 1)) e++;
-          const wid = xAt(R2, y) - xAt(L, y);
-          const pinH = wid * (15 / 41.5) * 0.95;
-          if (e - y + 1 >= 0.55 * pinH && e - y + 1 <= 2.8 * pinH + 1) {
-            pinPit = y + 0.85 * pinH;
-            break;
-          }
-        }
-      }
-      const laneMed = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), prow);
-      if (!Number.isFinite(pinPit) && Number.isFinite(laneMed)) {
-        const bright = (y) => Number.isFinite(prow[y]) && prow[y] >= laneMed * 1.08 + 4;
-        for (let y = Math.max(yStart + 2, Math.floor(t - pitBefore)); y < Math.min(h - 3, Math.floor(t + pitAfter)); y++) {
-          if (!bright(y) || bright(y - 1)) continue;
-          let e = y;
-          while (e < h - 3 && bright(e + 1)) e++;
-          const wid = xAt(R2, y) - xAt(L, y);
-          const pinH = wid * (15 / 41.5) * 0.95;
-          if (e - y + 1 >= 0.45 * pinH && e - y + 1 <= 1.6 * pinH + 1) {
-            pinPit = y + pinH;
-            break;
-          }
-        }
-      }
-      if (Number.isFinite(pinPit) && !pitCands.some((c2) => Math.abs(c2 - pinPit) <= 1.5)) pitCands.push(Math.round(pinPit));
-      if (Number.isFinite(pinPit)) {
-        const pc = pitCands.find((c2) => Math.abs(c2 - pinPit) <= 2);
-        if (pc !== void 0 && (!Number.isFinite(lowestPit) || pc > lowestPit)) lowestPit = pc;
-      }
-      const laneLevel = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
-      let best = null;
-      const tried = [];
-      for (let pass = 0; pass < 2 && !best; pass++)
-        for (const f of foulCands) {
-          if (pass === 0 ? !isThinLine(f) && !(Math.abs(f - b) <= 0.05 * h && isLaneToApproach(f)) : Math.abs(f - b) > 0.04 * h) continue;
-          for (const p of pitCands) {
-            if (f - p < h * 0.06 || !(isPitStep(p) || Number.isFinite(pinPit) && Math.abs(p - pinPit) <= 2)) continue;
-            const rho = (p - yv) / (f - yv);
-            if (!(rho > 0.03 && rho < 0.75)) continue;
-            let cov = 0;
-            let n = 0;
-            for (let y = p + 3; y <= f - 3; y += 2) {
-              n++;
-              if (supported(y)) cov++;
-            }
-            tried.push(`f${f}/p${p}:cov${n ? (cov / n).toFixed(2) : "-"}`);
-            if (!n || cov / n < 0.5) continue;
-            const nearB = Math.max(0, 1 - Math.abs(f - b) / (0.06 * h));
-            const nearT = Math.max(0, 1 - Math.abs(p - t) / (0.05 * h));
-            const pitLow = Math.max(0, Math.min(1, (p - (t - pitBefore)) / (pitBefore + pitAfter)));
-            const belowP = pAvg(4, 10, p, plow);
-            const laneMatch = Number.isFinite(laneLevel) && Number.isFinite(belowP) ? 1 - Math.min(1, Math.abs(belowP - laneLevel) / Math.max(20, laneLevel * 0.35)) : 0;
-            const wF = Math.max(1, xAt(R2, f) - xAt(L, f));
-            const dRows = LANE_END_FT * rho / (1 - rho);
-            const fovDeg = 2 * Math.atan(Math.max(w, h) / 2 * (41.5 / 12) / (wF * dRows)) * 180 / Math.PI;
-            const fovFit = h > w ? Math.exp(-0.5 * ((fovDeg - 58) / 28) ** 2) : Math.exp(-0.5 * ((fovDeg - 66) / 22) ** 2);
-            const score = cov / n * 1 + prof[f] * 0.5 + Math.min(1, up[p]) * 0.5 + 1.2 * nearB + 0.6 * nearT + 0.8 * pitLow + 1.3 * laneMatch + 1.6 * fovFit + (Number.isFinite(walk2) && Math.abs(p - walk2) <= 2.5 ? 0.6 : 0) + (p === lowestPit ? 1.6 : 0) + (Number.isFinite(pinPit) && Math.abs(p - pinPit) <= 2 ? 2.2 : 0);
-            if (!best || score > best.score) best = { pit: p, foul: f, score };
-          }
-        }
-      if (!best && diag2 && !diag2.hint) diag2.hint = "I found both lane edges but not the foul line and the end of the lane together. Tilt the phone so the foul line, the arrows and the pins are all in view.";
-      if (!best) return fallback(L, R2, t, b, yv, up, notes) ?? (dbg(`reject: no foul/pit pair foul ${foulCands.join(",")} pit ${pitCands.join(",")} yv ${yv.toFixed(1)} t ${t} b ${b} | ${tried.slice(0, 8).join(" ")} | L(${L.xa.toFixed(0)},${L.xb.toFixed(0)}) R(${R2.xa.toFixed(0)},${R2.xb.toFixed(0)})`), null);
-      const centroid = (arr, y, r, base) => {
-        let sw = 0;
-        let sy = 0;
-        for (let k2 = Math.max(3, y - r); k2 <= Math.min(h - 4, y + r); k2++) {
-          const v = Math.max(0, arr[k2] - base);
-          sw += v;
-          sy += v * k2;
-        }
-        return sw > 0 ? sy / sw : y;
-      };
-      const foul = prof[best.foul] > 0.05 ? centroid(prof, best.foul, 4, prof[best.foul] * 0.4) : best.foul;
-      const halfway = (p) => {
-        const A = pAvg(-10, -4, p, plow);
-        const B = pAvg(4, 10, p, plow);
-        if (!Number.isFinite(A) || !Number.isFinite(B) || Math.abs(A - B) < 6) return NaN;
-        const mid = (A + B) / 2;
-        const rising = B > A;
-        for (let y = p - 5; y <= p + 5; y++) {
-          const a = plow[y], c2 = plow[y + 1];
-          if (!Number.isFinite(a) || !Number.isFinite(c2)) continue;
-          if (rising ? a < mid && c2 >= mid : a > mid && c2 <= mid) return y + (mid - a) / (c2 - a || 1) + 0.5;
-        }
-        return NaN;
-      };
-      const hw = halfway(best.pit);
-      const pit = Number.isFinite(pinPit) && Math.abs(best.pit - pinPit) <= 2 ? pinPit : Number.isFinite(hw) && Math.abs(hw - best.pit) <= (Number.isFinite(pinPit) ? 1.5 : 4) ? hw : up[best.pit] > 0.1 ? centroid(up, best.pit, 3, up[best.pit] * 0.3) : best.pit;
-      if (diag2 && !diag2.foulRow) {
-        diag2.foulRow = foul;
-        diag2.pitRow = pit;
-      }
-      const foulOk = true;
-      const pitOk = true;
-      const LR = refine(L.xa, L.xb, 1, Math.ceil(pit) + 4, Math.floor(foul) - 3, 2 * STEP);
-      const RR = refine(R2.xa, R2.xb, -1, Math.ceil(pit) + 4, Math.floor(foul) - 3, 2 * STEP);
-      L = { ...L, xa: LR.xa, xb: LR.xb };
-      R2 = { ...R2, xa: RR.xa, xb: RR.xb };
-      const sideRow = (guess, side, kind2) => {
-        let sw = 0;
-        let sy = 0;
-        for (let y = Math.round(guess) - 7; y <= Math.round(guess) + 7; y++) {
-          if (y < 3 || y >= h - 3) continue;
-          const xl = xAt(L, y);
-          const xr = xAt(R2, y);
-          const wid = xr - xl;
-          if (wid < 6) continue;
-          const x0 = side === "L" ? xl + 0.08 * wid : xl + 0.55 * wid;
-          const x1 = side === "L" ? xl + 0.45 * wid : xr - 0.08 * wid;
-          let c2 = 0;
-          let n = 0;
-          for (let x = Math.max(2, Math.ceil(x0)); x <= Math.min(w - 3, Math.floor(x1)); x++) {
-            const i = y * w + x;
-            n++;
-            if (kind2 === "foul") {
-              if (Math.abs(gy[i]) > thr * 0.6 && Math.abs(gy[i]) > 1.3 * Math.abs(gx[i])) c2++;
-            } else if (gy[i] > thr * 0.6 && gy[i] > 1.3 * Math.abs(gx[i])) c2++;
-          }
-          const v = n ? c2 / n : 0;
-          sw += v * v;
-          sy += v * v * y;
-        }
-        return sw > 0 ? sy / sw : guess;
-      };
-      let fyL = sideRow(foul, "L", "foul");
-      let fyR = sideRow(foul, "R", "foul");
-      let pL = sideRow(pit, "L", "pit");
-      let pR = sideRow(pit, "R", "pit");
-      const dF = fyR - fyL;
-      const dP = pR - pL;
-      if (Math.abs(dF) < 1.5 || Math.abs(dP) < 1.5 || Math.sign(dF) !== Math.sign(dP) || Math.abs(dP / dF) > 1.6 || Math.abs(dP / dF) < 0.15) {
-        fyL = fyR = foul;
-        pL = pR = pit;
-      }
-      const rowFor = (fyS, pS) => {
-        const rho = (pS - yv) / (fyS - yv);
-        if (!(rho > 0.03 && rho < 0.75)) return null;
-        const K = LANE_END_FT * rho / (1 - rho);
-        return yv + (fyS - yv) * K / (K + LANE_LEN);
-      };
-      const r60L = rowFor(fyL, pL);
-      const r60R = rowFor(fyR, pR);
-      if (r60L === null || r60R === null) return dbg(`reject: rho out of range yv ${yv.toFixed(1)} foul ${fyL.toFixed(1)}/${fyR.toFixed(1)} pit ${pL.toFixed(1)}/${pR.toFixed(1)}`), null;
-      if (!(r60L < fyL - 4 && r60R < fyR - 4)) return dbg(`reject: row60 ${r60L} ${r60R}`), null;
-      const fy = (fyL + fyR) / 2;
-      const row60 = (r60L + r60R) / 2;
-      const corners2 = [
-        { x: xAt(L, fyL), y: fyL },
-        { x: xAt(R2, fyR), y: fyR },
-        { x: xAt(R2, r60R), y: r60R },
-        { x: xAt(L, r60L), y: r60L }
-      ];
-      const wFoul = corners2[1].x - corners2[0].x;
-      const fPx = Math.max(w, h) / 2 / Math.tan(ASSUMED_HFOV_DEG * Math.PI / 360);
-      const distFromWidth = fPx * (41.5 / 12) / Math.max(1, wFoul);
-      const rhoMid = (pit - yv) / (fy - yv);
-      const distFromRows = LANE_END_FT * rhoMid / (1 - rhoMid);
-      const impliedHfov = 2 * Math.atan(Math.max(w, h) / 2 * (41.5 / 12) / (Math.max(1, wFoul) * distFromRows)) * 180 / Math.PI;
-      if (!(impliedHfov > (h > w ? 10 : 30) && impliedHfov < 118)) return dbg(`reject: the rows and the lane width imply a ${impliedHfov.toFixed(0)} degree field of view`), null;
-      const agree = distFromWidth / distFromRows;
-      const wBot = corners2[1].x - corners2[0].x;
-      const wTop = corners2[2].x - corners2[3].x;
-      if (!(wBot > 6 && wTop > 0.3 && wTop < wBot)) return dbg(`reject: widths ${wBot.toFixed(1)} ${wTop.toFixed(1)}`), null;
-      const confidence = Math.max(0, Math.min(1, 0.35 * Math.min(1, c.base / 1.6) + 0.25 * (foulOk ? 1 : 0.2) + 0.3 * (pitOk ? 1 : 0) + 0.1 * Math.min(1, (fy - row60) / (h * 0.15))));
-      return { corners: corners2, confidence, notes, rows: { foul: foulOk ? foul : null, pit: pitOk ? pit : null, vanishing: yv } };
-    }
-    function fallback(L, R2, t, b, yv, up, notes) {
-      let pit = t;
-      let pv = 0;
-      for (let y = Math.max(3, Math.floor(t - 12)); y <= Math.min(h - 4, Math.floor(t + 16)); y++) if (up[y] > pv) pv = up[y], pit = y;
-      const stepFound = pv > 0.2;
-      if (!stepFound) pit = t;
-      const wPit = xAt(R2, pit) - xAt(L, pit);
-      if (wPit < 4) return null;
-      const fPx = w / 2 / Math.tan(ASSUMED_HFOV_DEG * Math.PI / 360);
-      const zPit = fPx * (41.5 / 12) / wPit;
-      const zFoul = zPit - LANE_END_FT;
-      if (zFoul < 3 || pit - yv < 2) return null;
-      const c = (pit - yv) * zPit;
-      const rowAt = (ft) => yv + c / (zFoul + ft);
-      const fy = rowAt(0);
-      const r60 = rowAt(LANE_LEN);
-      const corners2 = [
-        { x: xAt(L, fy), y: fy },
-        { x: xAt(R2, fy), y: fy },
-        { x: xAt(R2, r60), y: r60 },
-        { x: xAt(L, r60), y: r60 }
-      ];
-      notes.push("foul line not visible: distances come from the lane's width and a typical phone field of view, so they are approximate");
-      if (!stepFound) notes.push("end of lane not clearly visible");
-      return { corners: corners2, confidence: stepFound ? 0.6 : 0.45, notes, rows: { foul: null, pit: stepFound ? pit : null, vanishing: yv } };
-    }
-  }
-  var isSolid = (d) => d.confidence >= 0.85 && d.rows.foul !== null && d.rows.pit !== null;
-  function oneOfEach(list, w) {
-    const mid = (d) => (d.corners[0].x + d.corners[1].x) / 2;
-    const wid = (d) => Math.abs(d.corners[1].x - d.corners[0].x);
-    const out = [];
-    for (const d of [...list].sort((a, b) => b.confidence - a.confidence)) {
-      const sharesEdge = (o) => {
-        const r = wid(o) / Math.max(1, wid(d));
-        return (r > 1.15 && r < 2.4 || r < 1 / 1.15 && r > 1 / 2.4) && (Math.abs(o.corners[0].x - d.corners[0].x) < 0.03 * w || Math.abs(o.corners[1].x - d.corners[1].x) < 0.03 * w);
-      };
-      const i = out.findIndex((o) => Math.abs(mid(o) - mid(d)) < 0.05 * w && wid(o) / Math.max(1, wid(d)) > 0.6 && wid(o) / Math.max(1, wid(d)) < 1.7 || sharesEdge(o));
-      if (i < 0) out.push(d);
-      else if (wid(d) < 0.85 * wid(out[i])) out[i] = d;
-    }
-    return out;
-  }
-  function chooseLane(cands, w) {
-    const solid2 = oneOfEach(cands.filter(isSolid), w);
-    if (solid2.length <= 1) return { pick: solid2[0] ?? null, choices: solid2 };
-    const off = (d) => Math.abs((d.corners[0].x + d.corners[1].x) / 2 - w / 2) / w;
-    const ranked = [...solid2].sort((a, b) => off(a) - off(b));
-    if (off(ranked[0]) < 0.12 && off(ranked[1]) - off(ranked[0]) > 0.1) return { pick: ranked[0], choices: solid2 };
-    return { pick: null, choices: ranked };
-  }
-  function detectLaneAt(gray, w, h, x, y) {
-    return detectLanes(gray, w, h, 1, { x, y })[0] ?? null;
-  }
-  function detectionsAgree(a, b, tol) {
-    return a.every((p, i) => Math.hypot(p.x - b[i].x, p.y - b[i].y) <= tol);
-  }
-
-  // camera/render.ts
-  var k = (v) => v.width / 1280;
-  var lerp2 = (a, b, t) => a + (b - a) * t;
-  var ramp = (t, alpha = 1) => currentTracer().color(t, alpha, skinClock());
-  var DECK_END_FT = 63;
-  var ROW_FT = 10.39 / 12;
-  var PIN_SPACING_BOARDS = 12 / (41.5 / LANE_BOARDS);
-  function strokeTrail(v, points, baseAlpha, headBoost) {
-    const n = points.length;
-    if (n < 2) return;
-    const { ctx: ctx2 } = v;
-    const s = k(v);
-    const tr = currentTracer();
-    const glow2 = glowEnabled();
-    ctx2.save();
-    ctx2.globalCompositeOperation = glow2 ? "lighter" : "source-over";
-    ctx2.lineCap = "round";
-    ctx2.lineJoin = "round";
-    for (let i = 1; i < n; i++) {
-      const t = i / (n - 1);
-      const a = points[i - 1];
-      const b = points[i];
-      if (!glow2) {
-        ctx2.shadowBlur = 0;
-        ctx2.strokeStyle = ramp(t, Math.min(1, baseAlpha * (headBoost ? 0.35 + 0.65 * t : 0.95)));
-        ctx2.lineWidth = (headBoost ? lerp2(2, 4.5, t) : 3.5) * s;
-        ctx2.beginPath();
-        ctx2.moveTo(a.x, a.y);
-        ctx2.lineTo(b.x, b.y);
-        ctx2.stroke();
-        continue;
-      }
-      ctx2.shadowBlur = tr.glow * s;
-      ctx2.shadowColor = ramp(t);
-      ctx2.strokeStyle = ramp(t, baseAlpha * (headBoost ? 0.15 + 0.85 * t : 0.9));
-      ctx2.lineWidth = (headBoost ? lerp2(3, 14, t) : 10) * s * tr.width;
-      ctx2.beginPath();
-      ctx2.moveTo(a.x, a.y);
-      ctx2.lineTo(b.x, b.y);
-      ctx2.stroke();
-      ctx2.shadowBlur = 0;
-      ctx2.strokeStyle = `rgba(${tr.core},${baseAlpha * (headBoost ? t : 0.8)})`;
-      ctx2.lineWidth = (headBoost ? lerp2(1, 4, t) : 3.5) * s * tr.width;
-      ctx2.beginPath();
-      ctx2.moveTo(a.x, a.y);
-      ctx2.lineTo(b.x, b.y);
-      ctx2.stroke();
-    }
-    ctx2.restore();
-  }
-  function drawBallHead(v, h) {
-    const s = k(v);
-    if (!glowEnabled()) {
-      v.ctx.save();
-      v.ctx.fillStyle = ramp(1, 1);
-      v.ctx.strokeStyle = "rgba(0,0,0,.6)";
-      v.ctx.lineWidth = 1.5 * s;
-      v.ctx.beginPath();
-      v.ctx.arc(h.x, h.y, 5 * s, 0, 7);
-      v.ctx.fill();
-      v.ctx.stroke();
-      v.ctx.restore();
-      return;
-    }
-    const g = v.ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, 26 * s);
-    g.addColorStop(0, "rgba(255,255,255,.95)");
-    g.addColorStop(0.25, ramp(1, 0.6));
-    g.addColorStop(1, ramp(1, 0));
-    v.ctx.save();
-    v.ctx.globalCompositeOperation = "lighter";
-    v.ctx.fillStyle = g;
-    v.ctx.beginPath();
-    v.ctx.arc(h.x, h.y, 26 * s, 0, 7);
-    v.ctx.fill();
-    v.ctx.restore();
-  }
-  function label(v, text, p, color) {
-    const { ctx: ctx2 } = v;
-    const s = k(v);
-    ctx2.save();
-    ctx2.font = `600 ${15 * s}px -apple-system, system-ui, sans-serif`;
-    const w = ctx2.measureText(text).width + 16 * s;
-    const h = 24 * s;
-    ctx2.fillStyle = "rgba(10,14,22,.75)";
-    ctx2.strokeStyle = color;
-    ctx2.lineWidth = 1.5 * s;
-    ctx2.beginPath();
-    ctx2.roundRect(p.x - w / 2, p.y - h - 10 * s, w, h, 12 * s);
-    ctx2.fill();
-    ctx2.stroke();
-    ctx2.fillStyle = "#fff";
-    ctx2.textAlign = "center";
-    ctx2.textBaseline = "middle";
-    ctx2.fillText(text, p.x, p.y - h / 2 - 10 * s);
-    ctx2.beginPath();
-    ctx2.fillStyle = color;
-    ctx2.arc(p.x, p.y, 5 * s, 0, 7);
-    ctx2.fill();
-    ctx2.restore();
-  }
-  function drawShotMarkers(v, a) {
-    if (a.boardAtArrows !== null) label(v, `Arrows ${a.boardAtArrows.toFixed(1)}`, v.P(boardToX(a.boardAtArrows), 15), "#ffd25a");
-    if (a.breakpointBoard !== null && a.breakpointFt !== null) label(v, `Breakpoint ${a.breakpointBoard.toFixed(1)}`, v.P(boardToX(a.breakpointBoard), a.breakpointFt), "#ff5ad6");
-    if (a.entryBoard !== null) label(v, `Entry ${a.entryBoard.toFixed(1)}`, v.P(boardToX(a.entryBoard), 59.5), "#5affb0");
-  }
-  function drawCorners(v, corners2) {
-    const { ctx: ctx2 } = v;
-    const s = k(v);
-    ctx2.save();
-    corners2.forEach((c, i) => {
-      ctx2.fillStyle = "#4da3ff";
-      ctx2.shadowColor = "#4da3ff";
-      ctx2.shadowBlur = 16 * s;
-      ctx2.beginPath();
-      ctx2.arc(c.x, c.y, 9 * s, 0, 7);
-      ctx2.fill();
-      ctx2.shadowBlur = 0;
-      ctx2.fillStyle = "#06101c";
-      ctx2.font = `700 ${12 * s}px system-ui`;
-      ctx2.textAlign = "center";
-      ctx2.textBaseline = "middle";
-      ctx2.fillText(String(i + 1), c.x, c.y + 0.5 * s);
-      if (i > 0) {
-        ctx2.strokeStyle = "rgba(77,163,255,.8)";
-        ctx2.lineWidth = 2 * s;
-        ctx2.beginPath();
-        ctx2.moveTo(corners2[i - 1].x, corners2[i - 1].y);
-        ctx2.lineTo(c.x, c.y);
-        ctx2.stroke();
-      }
-    });
-    ctx2.restore();
-  }
-  function line(v, a, b) {
-    v.ctx.beginPath();
-    v.ctx.moveTo(a.x, a.y);
-    v.ctx.lineTo(b.x, b.y);
-    v.ctx.stroke();
-  }
-  function drawLaneGrid(v) {
-    const { ctx: ctx2, P } = v;
-    const s = k(v);
-    const L = currentLane();
-    ctx2.save();
-    const quad = [P(0, 0), P(LANE_BOARDS, 0), P(LANE_BOARDS, DECK_END_FT), P(0, DECK_END_FT)];
-    ctx2.beginPath();
-    quad.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
-    ctx2.closePath();
-    ctx2.fillStyle = L.fill;
-    ctx2.fill();
-    for (let i = 0; i <= LANE_BOARDS; i++) {
-      const fromRight = LANE_BOARDS - i;
-      const major = fromRight % 5 === 0;
-      const edge = i === 0 || i === LANE_BOARDS;
-      ctx2.strokeStyle = edge ? L.edge : major ? L.major : L.minor;
-      ctx2.lineWidth = (edge ? 2.4 : major ? 1.3 : 0.8) * s;
-      line(v, P(i, 0), P(i, LANE_LENGTH_FT));
-    }
-    ctx2.strokeStyle = L.foul;
-    ctx2.lineWidth = 3 * s;
-    ctx2.shadowColor = L.foul;
-    ctx2.shadowBlur = glowEnabled() ? 10 * s : 0;
-    line(v, P(0, 0), P(LANE_BOARDS, 0));
-    ctx2.shadowBlur = 0;
-    ctx2.setLineDash([6 * s, 8 * s]);
-    ctx2.lineWidth = 1 * s;
-    for (const ft of [30, 45]) {
-      ctx2.strokeStyle = "rgba(255,255,255,.2)";
-      line(v, P(0, ft), P(LANE_BOARDS, ft));
-    }
-    ctx2.setLineDash([]);
-    ctx2.strokeStyle = "rgba(255,255,255,.35)";
-    ctx2.lineWidth = 1.5 * s;
-    line(v, P(0, LANE_LENGTH_FT), P(LANE_BOARDS, LANE_LENGTH_FT));
-    line(v, P(0, DECK_END_FT), P(LANE_BOARDS, DECK_END_FT));
-    ctx2.fillStyle = "rgba(255,255,255,.55)";
-    for (let b = 5; b <= 35; b += 5) {
-      const c = P(boardToX(b), 7);
-      ctx2.beginPath();
-      ctx2.arc(c.x, c.y, 2.5 * s, 0, 7);
-      ctx2.fill();
-    }
-    ctx2.shadowBlur = 0;
-    ctx2.font = `600 ${12 * s}px -apple-system, system-ui, sans-serif`;
-    ctx2.textAlign = "center";
-    ctx2.textBaseline = "middle";
-    ctx2.fillStyle = "rgba(255,255,255,.75)";
-    for (let b = 5; b <= 35; b += 5) {
-      const c = P(boardToX(b), 3.2);
-      ctx2.fillText(String(b), c.x, c.y);
-    }
-    ctx2.fillStyle = "rgba(255,255,255,.88)";
-    ctx2.shadowColor = "rgba(255,255,255,.6)";
-    ctx2.shadowBlur = glowEnabled() ? 6 * s : 0;
-    for (let r = 0; r < 4; r++) {
-      for (let i = 0; i <= r; i++) {
-        const x = LANE_BOARDS / 2 + (i - r / 2) * PIN_SPACING_BOARDS;
-        const y = LANE_LENGTH_FT + r * ROW_FT;
-        const c = P(x, y);
-        const edge = P(x + 1.2, y);
-        ctx2.beginPath();
-        ctx2.arc(c.x, c.y, Math.max(2, Math.hypot(edge.x - c.x, edge.y - c.y)), 0, 7);
-        ctx2.fill();
-      }
-    }
-    ctx2.restore();
-  }
-  function drawTopDown(ctx2, w, h, paths, pocket) {
-    const padX = 18;
-    const top = 24;
-    const bottom = 18;
-    const laneW = w - padX * 2;
-    const laneH = h - top - bottom;
-    const px = (x) => padX + x / LANE_BOARDS * laneW;
-    const py = (ft) => h - bottom - ft / DECK_END_FT * laneH;
-    ctx2.clearRect(0, 0, w, h);
-    const L = currentLane();
-    ctx2.save();
-    ctx2.fillStyle = L.fill;
-    ctx2.fillRect(px(0), py(DECK_END_FT), laneW, laneH);
-    ctx2.lineWidth = 1;
-    for (let i = 0; i <= LANE_BOARDS; i++) {
-      const major = (LANE_BOARDS - i) % 5 === 0;
-      ctx2.strokeStyle = i === 0 || i === LANE_BOARDS ? L.edge : major ? L.major : L.minor;
-      ctx2.beginPath();
-      ctx2.moveTo(px(i), py(0));
-      ctx2.lineTo(px(i), py(LANE_LENGTH_FT));
-      ctx2.stroke();
-    }
-    ctx2.strokeStyle = L.foul;
-    ctx2.lineWidth = 2.5;
-    ctx2.beginPath();
-    ctx2.moveTo(px(0), py(0));
-    ctx2.lineTo(px(LANE_BOARDS), py(0));
-    ctx2.stroke();
-    ctx2.setLineDash([4, 6]);
-    ctx2.strokeStyle = "rgba(255,255,255,.18)";
-    ctx2.lineWidth = 1;
-    for (const ft of [15, 30, 45, 60]) {
-      ctx2.beginPath();
-      ctx2.moveTo(px(0), py(ft));
-      ctx2.lineTo(px(LANE_BOARDS), py(ft));
-      ctx2.stroke();
-    }
-    ctx2.setLineDash([]);
-    ctx2.fillStyle = L.arrow;
-    for (let b = 5; b <= 35; b += 5) {
-      const tip = 12 + 4 * (1 - Math.abs(b - 20) / 15);
-      const cx = px(boardToX(b));
-      ctx2.beginPath();
-      ctx2.moveTo(cx - 4, py(tip - 1.6));
-      ctx2.lineTo(cx + 4, py(tip - 1.6));
-      ctx2.lineTo(cx, py(tip));
-      ctx2.closePath();
-      ctx2.fill();
-    }
-    ctx2.fillStyle = "rgba(255,255,255,.55)";
-    ctx2.font = "600 10px system-ui, sans-serif";
-    ctx2.textAlign = "center";
-    for (let b = 5; b <= 35; b += 5) ctx2.fillText(String(b), px(boardToX(b)), py(0) + 12);
-    ctx2.fillStyle = "rgba(255,255,255,.88)";
-    for (let r = 0; r < 4; r++)
-      for (let i = 0; i <= r; i++) {
-        ctx2.beginPath();
-        ctx2.arc(px(LANE_BOARDS / 2 + (i - r / 2) * PIN_SPACING_BOARDS), py(LANE_LENGTH_FT + r * ROW_FT), 3.2, 0, 7);
-        ctx2.fill();
-      }
-    if (pocket) {
-      ctx2.strokeStyle = "rgba(90,255,176,.7)";
-      ctx2.lineWidth = 1.5;
-      ctx2.setLineDash([3, 3]);
-      ctx2.beginPath();
-      ctx2.moveTo(px(boardToX(pocket.board)), py(45));
-      ctx2.lineTo(px(boardToX(pocket.board)), py(LANE_LENGTH_FT));
-      ctx2.stroke();
-      ctx2.setLineDash([]);
-    }
-    for (const m of paths) {
-      if (m.path.length < 2) continue;
-      ctx2.strokeStyle = m.color;
-      ctx2.globalAlpha = m.alpha ?? 1;
-      ctx2.lineWidth = m.width ?? 2;
-      ctx2.lineJoin = "round";
-      ctx2.beginPath();
-      m.path.forEach((s, i) => i ? ctx2.lineTo(px(s.x), py(s.y)) : ctx2.moveTo(px(s.x), py(s.y)));
-      ctx2.stroke();
-    }
-    ctx2.restore();
-  }
-
   // core/src/patterns.ts
   function lengthClass(lengthFt) {
     return lengthFt <= 37 ? "short" : lengthFt <= 41 ? "medium" : "long";
@@ -4452,11 +2220,11 @@
   }
 
   // camera/health.ts
-  var KEY3 = "laneiq.locklog";
+  var KEY2 = "laneiq.locklog";
   var MAX = 120;
   function read() {
     try {
-      const v = JSON.parse(localStorage.getItem(KEY3) ?? "[]");
+      const v = JSON.parse(localStorage.getItem(KEY2) ?? "[]");
       return Array.isArray(v) ? v : [];
     } catch {
       return [];
@@ -4464,7 +2232,7 @@
   }
   function write(v) {
     try {
-      localStorage.setItem(KEY3, JSON.stringify(v.slice(-MAX)));
+      localStorage.setItem(KEY2, JSON.stringify(v.slice(-MAX)));
     } catch {
     }
   }
@@ -7057,6 +4825,1017 @@
     showFit();
   }
 
+  // core/src/scoring.ts
+  var ALL_PINS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  var minus = (a, b) => a.filter((p) => !b.includes(p));
+  function replay(rolls) {
+    const states = [];
+    let standing = ALL_PINS.slice();
+    let frame = 1, ball = 1;
+    let complete = false;
+    let tenthBalls = [];
+    for (const r of rolls) {
+      if (complete) break;
+      const before = standing.slice();
+      states.push({ frame, ball, standingBefore: before, fresh: before.length === 10 });
+      const down = r.down.filter((p) => before.includes(p));
+      const after = minus(before, down);
+      if (frame < 10) {
+        if (after.length === 0 && ball === 1) {
+          frame++;
+          ball = 1;
+          standing = ALL_PINS.slice();
+        } else if (ball === 1) {
+          ball = 2;
+          standing = after;
+        } else {
+          frame++;
+          ball = 1;
+          standing = ALL_PINS.slice();
+        }
+      } else {
+        tenthBalls.push(down.length);
+        const cleared = after.length === 0;
+        if (ball === 1) {
+          ball = 2;
+          standing = cleared ? ALL_PINS.slice() : after;
+        } else if (ball === 2) {
+          const first = tenthBalls[0];
+          if (first === 10 || cleared) {
+            ball = 3;
+            standing = cleared ? ALL_PINS.slice() : after;
+          } else complete = true;
+        } else complete = true;
+      }
+    }
+    if (frame > 10) complete = true;
+    return { states, standing, frame: complete ? 11 : frame, ball: complete ? 1 : ball, complete };
+  }
+  function scoreGame(rolls) {
+    const counts = rolls.map((r) => r.down.length);
+    const frames = [];
+    let i = 0, running = 0;
+    for (let f = 1; f <= 10; f++) {
+      if (i >= counts.length) break;
+      const a = counts[i];
+      if (f < 10) {
+        if (a === 10) {
+          const b = counts[i + 1], c = counts[i + 2];
+          const total = b !== void 0 && c !== void 0 ? running += 10 + b + c : null;
+          frames.push({ pins: [10], marks: ["X"], total });
+          i += 1;
+        } else {
+          const b = counts[i + 1];
+          if (b === void 0) {
+            frames.push({ pins: [a], marks: [a === 0 ? "-" : String(a)], total: null });
+            i += 1;
+            break;
+          }
+          const spare = a + b === 10;
+          const nxt = counts[i + 2];
+          const total = spare ? nxt !== void 0 ? running += 10 + nxt : null : running += a + b;
+          frames.push({ pins: [a, b], marks: [a === 0 ? "-" : String(a), spare ? "/" : b === 0 ? "-" : String(b)], total });
+          i += 2;
+        }
+      } else {
+        const rest = counts.slice(i, i + 3);
+        const marks = [];
+        let prev = 0;
+        rest.forEach((n, k2) => {
+          if (n === 10 && (k2 === 0 || prev === 10 || marks[k2 - 1] === "/")) marks.push("X");
+          else if (k2 > 0 && marks[k2 - 1] !== "X" && marks[k2 - 1] !== "/" && prev + n === 10) marks.push("/");
+          else marks.push(n === 0 ? "-" : String(n));
+          prev = marks[k2] === "/" ? 0 : n;
+        });
+        const done2 = rest.length === 3 || rest.length === 2 && rest[0] !== 10 && rest[0] + rest[1] < 10;
+        frames.push({ pins: rest, marks, total: done2 ? running += rest.reduce((x, y) => x + y, 0) : null });
+        i = counts.length;
+      }
+    }
+    const last = [...frames].reverse().find((f) => f.total !== null);
+    return { frames, total: last?.total ?? 0, complete: replay(rolls).complete };
+  }
+  var key = (pins) => pins.slice().sort((a, b) => a - b).join("-");
+  function bowlingStats(games2) {
+    const complete = games2.filter((g) => replay(g.rolls).complete);
+    const scores = complete.map((g) => scoreGame(g.rolls).total);
+    let fresh2 = 0, strikes = 0, freshPins = 0, spareTry = 0, spareMade = 0, open2 = 0;
+    const single = { attempts: 0, made: 0 }, multi = { attempts: 0, made: 0 };
+    const byLeave = {};
+    for (const g of games2) {
+      const rp = replay(g.rolls);
+      rp.states.forEach((s, k2) => {
+        const down = g.rolls[k2].down.filter((p) => s.standingBefore.includes(p));
+        if (s.fresh) {
+          fresh2++;
+          freshPins += down.length;
+          if (down.length === 10) strikes++;
+        } else {
+          spareTry++;
+          const made = down.length === s.standingBefore.length;
+          if (made) spareMade++;
+          const t = byLeave[key(s.standingBefore)] ??= { attempts: 0, made: 0 };
+          t.attempts++;
+          if (made) t.made++;
+          const bucket = s.standingBefore.length === 1 ? single : multi;
+          bucket.attempts++;
+          if (made) bucket.made++;
+        }
+      });
+      const frameRolls = /* @__PURE__ */ new Map();
+      rp.states.forEach((s, k2) => frameRolls.set(s.frame, [...frameRolls.get(s.frame) ?? [], g.rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length]));
+      for (const [f, c] of frameRolls) {
+        if (f < 10 && c.length === 2 && c[0] + c[1] < 10) open2++;
+        if (f === 10 && c.length >= 2 && c[0] < 10 && c[0] + c[1] < 10) open2++;
+      }
+    }
+    const avg2 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+    return {
+      games: games2.length,
+      completeGames: complete.length,
+      average: avg2(scores),
+      high: scores.length ? Math.max(...scores) : null,
+      strikePct: fresh2 ? strikes / fresh2 * 100 : null,
+      firstBallAvg: fresh2 ? freshPins / fresh2 : null,
+      sparePct: spareTry ? spareMade / spareTry * 100 : null,
+      openFrames: open2,
+      singlePin: single,
+      multiPin: multi,
+      byLeave
+    };
+  }
+  function whatIf(rolls) {
+    const rp = replay(rolls);
+    const actual = scoreGame(rolls).total;
+    const rescored = (single) => {
+      const copy = rolls.map((r) => ({ ...r }));
+      let changed2 = 0;
+      rp.states.forEach((s, k2) => {
+        if (s.fresh || s.frame >= 10) return;
+        const downNow = rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length;
+        if (downNow === s.standingBefore.length) return;
+        if (single && s.standingBefore.length !== 1) return;
+        copy[k2] = { ...copy[k2], down: s.standingBefore.slice() };
+        changed2++;
+      });
+      return { total: scoreGame(copy).total, changed: changed2 };
+    };
+    const a = rescored(true), b = rescored(false);
+    return { actual, ifSingles: a.total, ifAllSpares: b.total, missedSingles: a.changed, missedSpares: b.changed };
+  }
+
+  // core/src/spares.ts
+  var PIN_XY = {
+    1: { x: 0, row: 0 },
+    2: { x: -6, row: 1 },
+    3: { x: 6, row: 1 },
+    4: { x: -12, row: 2 },
+    5: { x: 0, row: 2 },
+    6: { x: 12, row: 2 },
+    7: { x: -18, row: 3 },
+    8: { x: -6, row: 3 },
+    9: { x: 6, row: 3 },
+    10: { x: 18, row: 3 }
+  };
+  var TOUCH = [[1, 2], [1, 3], [2, 3], [2, 4], [2, 5], [3, 5], [3, 6], [4, 5], [5, 6], [4, 7], [4, 8], [5, 8], [5, 9], [6, 9], [6, 10], [7, 8], [8, 9], [9, 10]];
+  var touching = (a, b) => TOUCH.some(([x, y]) => x === a && y === b || x === b && y === a);
+  var sorted = (pins) => pins.slice().sort((a, b) => a - b);
+  function isSplit(leave) {
+    if (leave.length < 2 || leave.includes(1)) return false;
+    const seen2 = /* @__PURE__ */ new Set([leave[0]]);
+    const queue = [leave[0]];
+    while (queue.length) {
+      const p = queue.pop();
+      for (const q of leave) if (!seen2.has(q) && touching(p, q)) seen2.add(q), queue.push(q);
+    }
+    return seen2.size < leave.length;
+  }
+  var NAMES2 = {
+    "7-10": "the bedposts (7-10)",
+    "2-7": "a baby split (2-7)",
+    "3-10": "a baby split (3-10)",
+    "4-6-7-10": "the big four (4-6-7-10)",
+    "5-7-10": "the lily (5-7-10)",
+    "8-10": "the Cincinnati (8-10)",
+    "1-2-10": "a washout (1-2-10)",
+    "1-3-7": "a washout (1-3-7)",
+    "2-8": "a sleeper (the 8 hides behind the 2)",
+    "3-9": "a sleeper (the 9 hides behind the 3)",
+    "1-5": "a sleeper (the 5 hides behind the 1)"
+  };
+  var MOVE_RIGHT_HANDED = { 1: 0, 5: 0, 2: 3, 8: 3, 4: 6, 7: 9, 3: -3, 9: -3, 6: -6, 10: -9 };
+  function keyPinOf(leave) {
+    return sorted(leave).sort((a, b) => PIN_XY[a].row - PIN_XY[b].row || Math.abs(PIN_XY[a].x) - Math.abs(PIN_XY[b].x))[0];
+  }
+  function adviseSpare(leaveIn, hand2 = "R") {
+    const leave = sorted(leaveIn);
+    const split = isSplit(leave);
+    const k2 = leave.join("-");
+    const name = NAMES2[k2] ?? (leave.length === 1 ? `the ${leave[0]} pin` : split ? `a split (${k2})` : `${k2}`);
+    const keyPin = keyPinOf(leave);
+    const notes = [];
+    const raw = (MOVE_RIGHT_HANDED[keyPin] ?? 0) * (hand2 === "L" ? -1 : 1);
+    const boards = Math.abs(raw);
+    const direction = raw === 0 ? "none" : raw > 0 ? "right" : "left";
+    let text;
+    if (leave.length === 0) text = "Nothing standing: a strike.";
+    else if (boards === 0) text = `Key pin ${keyPin}: no move. Throw your regular strike shot at your strike target.`;
+    else text = `Key pin ${keyPin}: move your feet ${boards} boards ${direction} from where you stand for a strike, and aim at the same target you use for a strike.`;
+    if (split) notes.push("A split is a low-percentage spare whichever system you use. Pick the pin you can hit solidly and expect to leave the other half the time or more.");
+    if (leave.length > 1 && !split) notes.push(`With more than one pin, the system uses the key pin, the one closest to you (the ${keyPin}), and lets it carry the rest.`);
+    if (keyPin === 10 || keyPin === 7) notes.push(`The ${keyPin} pin is the biggest move, nine boards, because it is the far corner pin on the other side of the deck.`);
+    notes.push("The 3-6-9 system assumes your first ball hits the pocket consistently, and lane conditions can change how it works. Adjust if the ball doesn't go where you expect.");
+    return { leave, name, split, keyPin, boards: leave.length ? boards : null, direction, text, notes };
+  }
+
+  // camera/theme.ts
+  var lerp = (a, b, t) => a + (b - a) * t;
+  var hsl = (h, s, l, a) => `hsla(${(h % 360 + 360) % 360}, ${s}%, ${l}%, ${a})`;
+  var ramp2 = (h0, h1, s = 100, l0 = 62, l1 = 58) => (t, a = 1) => hsl(lerp(h0, h1, t), s, lerp(l0, l1, t), a);
+  var TRACERS = {
+    "tracer-aurora": { color: ramp2(190, 320), core: "255,255,255", glow: 24, width: 1 },
+    "tracer-ember": { color: ramp2(8, 48), core: "255,244,214", glow: 26, width: 1.05 },
+    "tracer-lime": { color: ramp2(120, 85), core: "240,255,225", glow: 22, width: 1 },
+    "tracer-silver": { color: (t, a = 1) => hsl(215, 12, lerp(55, 88, t), a), core: "255,255,255", glow: 18, width: 0.95 },
+    "tracer-sunset": { color: ramp2(335, 40, 95, 60, 62), core: "255,240,225", glow: 28, width: 1.05 },
+    "tracer-plasma": { color: ramp2(275, 215, 100, 60, 66), core: "235,225,255", glow: 34, width: 1.15 },
+    "tracer-gold": { color: (t, a = 1) => hsl(lerp(38, 50, t), 100, lerp(48, 68, t), a), core: "255,250,220", glow: 36, width: 1.2 },
+    "tracer-inferno": { color: (t, a = 1) => hsl(lerp(2, 52, t * t), 100, lerp(45, 72, t), a), core: "255,255,235", glow: 42, width: 1.3 },
+    "tracer-prism": { color: (t, a = 1, clock = 0) => hsl(clock * 90 + t * 300, 100, 62, a), core: "255,255,255", glow: 40, width: 1.2 }
+  };
+  var PINS = {
+    "pins-classic": { standing: { fill: "rgba(90,255,176,.28)", stroke: "rgba(90,255,176,.95)", text: "#fff" }, down: { fill: "rgba(255,90,110,.32)", stroke: "rgba(255,90,110,.95)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(70,230,255,.10)", stroke: "rgba(70,230,255,.55)" } },
+    "pins-ice": { standing: { fill: "rgba(170,225,255,.35)", stroke: "rgba(210,240,255,.95)", text: "#fff" }, down: { fill: "rgba(70,110,170,.35)", stroke: "rgba(110,150,210,.8)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(170,225,255,.10)", stroke: "rgba(170,225,255,.5)" } },
+    "pins-sunny": { standing: { fill: "rgba(255,214,90,.35)", stroke: "rgba(255,226,120,.95)", text: "#fff" }, down: { fill: "rgba(255,120,60,.32)", stroke: "rgba(255,130,70,.9)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(255,214,90,.10)", stroke: "rgba(255,214,90,.5)" } },
+    "pins-mono": { standing: { fill: "rgba(255,255,255,.30)", stroke: "rgba(255,255,255,.95)", text: "#fff" }, down: { fill: "rgba(255,255,255,.04)", stroke: "rgba(255,255,255,.3)", text: "rgba(255,255,255,.3)" }, unknown: { fill: "rgba(255,255,255,.08)", stroke: "rgba(255,255,255,.45)" } },
+    "pins-neon": { standing: { fill: "rgba(255,60,220,.30)", stroke: "rgba(255,90,235,1)", text: "#fff" }, down: { fill: "rgba(60,255,240,.16)", stroke: "rgba(60,255,240,.8)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(255,60,220,.10)", stroke: "rgba(255,60,220,.5)" } },
+    "pins-gold": { standing: { fill: "rgba(255,200,60,.42)", stroke: "rgba(255,225,110,1)", text: "#fff" }, down: { fill: "rgba(120,80,20,.30)", stroke: "rgba(190,140,50,.8)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(255,200,60,.12)", stroke: "rgba(255,200,60,.55)" } },
+    "pins-holo": { standing: { fill: "rgba(160,120,255,.34)", stroke: "rgba(120,255,230,1)", text: "#fff" }, down: { fill: "rgba(255,120,200,.22)", stroke: "rgba(255,150,220,.85)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(160,120,255,.10)", stroke: "rgba(160,120,255,.5)" } }
+  };
+  var LANES = {
+    "lane-house": { fill: "rgba(255,214,150,.07)", edge: "rgba(120,200,255,.8)", major: "rgba(255,255,255,.3)", minor: "rgba(255,255,255,.12)", foul: "rgba(255,90,110,.95)", arrow: "rgba(255,210,90,.8)", backdrop: "#10151f" },
+    "lane-ice": { fill: "rgba(150,210,255,.12)", edge: "rgba(190,235,255,.95)", major: "rgba(210,240,255,.4)", minor: "rgba(210,240,255,.16)", foul: "rgba(255,255,255,.95)", arrow: "rgba(200,240,255,.9)", backdrop: "#0b1a2a" },
+    "lane-night": { fill: "rgba(120,100,255,.09)", edge: "rgba(160,140,255,.9)", major: "rgba(200,190,255,.28)", minor: "rgba(200,190,255,.1)", foul: "rgba(255,120,200,.95)", arrow: "rgba(190,170,255,.85)", backdrop: "#07070f" },
+    "lane-grass": { fill: "rgba(90,200,110,.14)", edge: "rgba(180,255,190,.9)", major: "rgba(230,255,230,.35)", minor: "rgba(230,255,230,.14)", foul: "rgba(255,255,255,.95)", arrow: "rgba(255,255,255,.8)", backdrop: "#0b1a10" },
+    "lane-neon": { fill: "rgba(0,255,220,.07)", edge: "rgba(0,255,230,1)", major: "rgba(255,60,220,.5)", minor: "rgba(0,255,230,.2)", foul: "rgba(255,60,220,1)", arrow: "rgba(255,240,60,.95)", backdrop: "#050510" },
+    "lane-gold": { fill: "rgba(255,200,70,.14)", edge: "rgba(255,225,120,1)", major: "rgba(255,230,150,.45)", minor: "rgba(255,230,150,.16)", foul: "rgba(255,255,255,1)", arrow: "rgba(255,245,200,.95)", backdrop: "#140e04" },
+    "lane-void": { fill: "rgba(255,255,255,.03)", edge: "rgba(255,255,255,.55)", major: "rgba(255,255,255,.18)", minor: "rgba(255,255,255,.06)", foul: "rgba(255,70,70,1)", arrow: "rgba(255,255,255,.55)", backdrop: "#000" }
+  };
+  var KEY3 = "laneiq.skins";
+  var DEFAULTS = { tracer: "tracer-aurora", pins: "pins-classic", lane: "lane-house" };
+  var sel = { ...DEFAULTS };
+  try {
+    Object.assign(sel, JSON.parse(localStorage.getItem(KEY3) ?? "{}"));
+  } catch {
+  }
+  var ON_KEY = "laneiq.skinsOn";
+  var skinsOn = false;
+  try {
+    skinsOn = localStorage.getItem(ON_KEY) === "on";
+  } catch {
+  }
+  var skinsEnabled = () => skinsOn;
+  function setSkinsOn(on) {
+    skinsOn = on;
+    try {
+      localStorage.setItem(ON_KEY, on ? "on" : "off");
+    } catch {
+    }
+  }
+  var currentTracer = () => TRACERS[skinsOn ? sel.tracer : DEFAULTS.tracer] ?? TRACERS[DEFAULTS.tracer];
+  var currentPins = () => PINS[skinsOn ? sel.pins : DEFAULTS.pins] ?? PINS[DEFAULTS.pins];
+  var currentLane = () => LANES[skinsOn ? sel.lane : DEFAULTS.lane] ?? LANES[DEFAULTS.lane];
+  var activeSkins = () => skinsOn ? { ...sel } : { ...DEFAULTS };
+  var equippedSkins = () => ({ ...sel });
+  var skinClock = () => performance.now() / 1e3;
+  var GLOW_KEY = "laneiq.glow";
+  var glow = true;
+  try {
+    glow = localStorage.getItem(GLOW_KEY) !== "off";
+  } catch {
+  }
+  var glowEnabled = () => glow;
+  function setGlow(on) {
+    glow = on;
+    try {
+      localStorage.setItem(GLOW_KEY, on ? "on" : "off");
+    } catch {
+    }
+  }
+  function equip(slot, id) {
+    sel[slot] = id;
+    setSkinsOn(true);
+    try {
+      localStorage.setItem(KEY3, JSON.stringify(sel));
+    } catch {
+    }
+  }
+
+  // core/src/rewards.ts
+  var SKINS = [
+    // ball tracers
+    { id: "tracer-aurora", kind: "tracer", name: "Aurora", unlock: { free: true } },
+    { id: "tracer-ember", kind: "tracer", name: "Ember", unlock: { pinfall: 500 } },
+    { id: "tracer-lime", kind: "tracer", name: "Lime", unlock: { pinfall: 2e3 } },
+    { id: "tracer-silver", kind: "tracer", name: "Silver", unlock: { pinfall: 5e3 } },
+    { id: "tracer-sunset", kind: "tracer", name: "Sunset", unlock: { pinfall: 1e4 } },
+    { id: "tracer-plasma", kind: "tracer", name: "Plasma", unlock: { points: 100 } },
+    { id: "tracer-gold", kind: "tracer", name: "Liquid gold", unlock: { points: 300 } },
+    { id: "tracer-inferno", kind: "tracer", name: "Inferno", unlock: { points: 600 } },
+    { id: "tracer-prism", kind: "tracer", name: "Prism (color-cycling)", unlock: { points: 1e3 } },
+    // pins
+    { id: "pins-classic", kind: "pins", name: "Classic", unlock: { free: true } },
+    { id: "pins-ice", kind: "pins", name: "Ice", unlock: { pinfall: 1e3 } },
+    { id: "pins-sunny", kind: "pins", name: "Sunny", unlock: { pinfall: 4e3 } },
+    { id: "pins-mono", kind: "pins", name: "Mono", unlock: { pinfall: 8e3 } },
+    { id: "pins-neon", kind: "pins", name: "Neon", unlock: { points: 150 } },
+    { id: "pins-gold", kind: "pins", name: "Gold", unlock: { points: 450 } },
+    { id: "pins-holo", kind: "pins", name: "Holo", unlock: { points: 800 } },
+    // lanes
+    { id: "lane-house", kind: "lane", name: "House wood", unlock: { free: true } },
+    { id: "lane-ice", kind: "lane", name: "Ice blue", unlock: { pinfall: 1500 } },
+    { id: "lane-night", kind: "lane", name: "Night", unlock: { pinfall: 6e3 } },
+    { id: "lane-grass", kind: "lane", name: "Fairway", unlock: { pinfall: 12e3 } },
+    { id: "lane-neon", kind: "lane", name: "Neon grid", unlock: { points: 200 } },
+    { id: "lane-gold", kind: "lane", name: "Gold rush", unlock: { points: 500 } },
+    { id: "lane-void", kind: "lane", name: "Void", unlock: { points: 900 } }
+  ];
+  function totalPinfall(games2, shots) {
+    const linked = new Set(games2.flatMap((g) => g.rolls.map((r) => r.shotId)).filter(Boolean));
+    const fromGames = games2.reduce((a, g) => a + g.rolls.reduce((b, r) => b + r.down.length, 0), 0);
+    const fromShots = shots.filter((s) => !linked.has(s.id) && s.result).reduce((a, s) => a + s.result.pinsDown, 0);
+    return fromGames + fromShots;
+  }
+  var pointsForLevel = (n) => n <= 1 ? 0 : Math.round(40 * (n - 1) ** 1.5 + 60 * (n - 1));
+  function levelOf(points) {
+    let n = 1;
+    while (points >= pointsForLevel(n + 1)) n++;
+    return n;
+  }
+  var GAME_MILESTONES = [[100, 20, "Broke 100"], [150, 30, "Broke 150"], [200, 60, "Broke 200"], [250, 100, "Broke 250"], [300, 300, "A perfect 300"]];
+  var STREAKS = [[3, 15, "Turkey: three strikes in a row"], [4, 25, "Four-bagger: four strikes in a row"], [5, 40, "Five-bagger: five strikes in a row"], [6, 60, "Six-bagger: six strikes in a row"], [9, 150, "Nine in a row"], [12, 300, "Twelve in a row"]];
+  function strikeRun(g) {
+    const rp = replay(g.rolls);
+    let best = 0, cur2 = 0;
+    rp.states.forEach((s, k2) => {
+      if (s.fresh && g.rolls[k2].down.length === 10) best = Math.max(best, ++cur2);
+      else if (s.fresh) cur2 = 0;
+    });
+    return best;
+  }
+  function achievements(games2, axes) {
+    const out = [];
+    const done2 = games2.filter((g) => replay(g.rolls).complete).sort((a, b) => a.at.localeCompare(b.at));
+    const scores = done2.map((g) => scoreGame(g.rolls).total);
+    if (done2.length) out.push({ id: "first-game", title: "First game on the card", detail: "Finish a scored game", points: 10 });
+    for (const [min, pts, title] of GAME_MILESTONES) if (scores.some((s) => s >= min)) out.push({ id: `score-${min}`, title, detail: `Score ${min} or more in a game`, points: pts });
+    let best = -1, pbs = 0;
+    scores.forEach((s) => {
+      if (s > best) {
+        if (best >= 0) pbs++;
+        best = s;
+      }
+    });
+    for (let i = 1; i <= Math.min(pbs, 20); i++) out.push({ id: `pb-${i}`, title: `New high game (#${i})`, detail: "Beat your best game", points: 10 });
+    const run = games2.reduce((m, g) => Math.max(m, strikeRun(g)), 0);
+    for (const [n, pts, title] of STREAKS) if (run >= n) out.push({ id: `streak-${n}`, title, detail: `${n} strikes in a row in one game`, points: pts });
+    const clean = done2.filter((g) => {
+      const f = bowlingStats([g]);
+      return f.openFrames === 0;
+    }).length;
+    if (clean >= 1) out.push({ id: "clean-1", title: "Clean game", detail: "A game with no open frames", points: 50 });
+    if (clean >= 5) out.push({ id: "clean-5", title: "Five clean games", detail: "Five games with no open frames", points: 150 });
+    if (done2.length >= 10) {
+      const avg2 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+      const gain = avg2(scores.slice(-5)) - avg2(scores.slice(0, 5));
+      for (const [need, pts] of [[5, 30], [10, 60], [20, 120]]) if (gain >= need) out.push({ id: `avg-${need}`, title: `Average up ${need} pins`, detail: "Your last five games against your first five", points: pts });
+    }
+    let splits = 0;
+    for (const g of games2) {
+      const rp = replay(g.rolls);
+      rp.states.forEach((s, k2) => {
+        if (s.fresh) return;
+        if (isSplit(s.standingBefore) && g.rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length === s.standingBefore.length) splits++;
+      });
+    }
+    if (splits >= 1) out.push({ id: "split-1", title: "Converted a split", detail: "Pick up a split for the spare", points: 25 });
+    if (splits >= 5) out.push({ id: "split-5", title: "Split specialist", detail: "Convert five splits", points: 75 });
+    for (const a of axes) {
+      if (a.score !== null && a.score >= 85) out.push({ id: `skill-${a.id}-85`, title: `${a.label}: strong`, detail: `${a.label} at 85 or better on the skills chart`, points: 25 });
+      if (a.score !== null && a.score >= 100) out.push({ id: `skill-${a.id}-100`, title: `${a.label}: at target`, detail: `${a.label} reached its target`, points: 50 });
+      if (a.score !== null && a.earlierScore !== null && a.score - a.earlierScore >= 10) out.push({ id: `skill-${a.id}-up`, title: `${a.label}: improving`, detail: `${a.label} is up 10 points or more since you started`, points: 20 });
+    }
+    return out;
+  }
+  function progress(games2, shots, axes, extraPoints = 0) {
+    const earned = achievements(games2, axes);
+    const points = earned.reduce((a, b) => a + b.points, 0) + extraPoints;
+    const level = levelOf(points);
+    const lo = pointsForLevel(level), hi = pointsForLevel(level + 1);
+    return { pinfall: totalPinfall(games2, shots), points, level, levelProgress: { into: points - lo, span: hi - lo }, earned };
+  }
+  function isUnlocked(s, p) {
+    const u = s.unlock;
+    return "free" in u || "pinfall" in u && p.pinfall >= u.pinfall || "points" in u && p.points >= u.points;
+  }
+  var unlockText = (s) => "free" in s.unlock ? "Free" : "pinfall" in s.unlock ? `${s.unlock.pinfall.toLocaleString()} pins knocked down` : `${s.unlock.points} improvement points`;
+  function nextUnlocks(p) {
+    const play = SKINS.filter((s) => "pinfall" in s.unlock && p.pinfall < s.unlock.pinfall).sort((a, b) => a.unlock.pinfall - b.unlock.pinfall)[0];
+    const imp = SKINS.filter((s) => "points" in s.unlock && p.points < s.unlock.points).sort((a, b) => a.unlock.points - b.unlock.points)[0];
+    return {
+      play: play ? { skin: play, need: play.unlock.pinfall - p.pinfall } : null,
+      improve: imp ? { skin: imp, need: imp.unlock.points - p.points } : null
+    };
+  }
+
+  // core/src/skills.ts
+  var AXES = [
+    {
+      id: "strikes",
+      label: "Strikes",
+      group: "Scoring",
+      higherBetter: true,
+      target: 60.2,
+      unit: "%",
+      basis: "benchmark",
+      at200: 49.7,
+      minSample: 20,
+      source: "Strike rate of a 220-average bowler: 60.2% (200 average: 49.7%). Bowling This Month, Nov 2020.",
+      drill: "Strikes come from hitting the pocket with enough entry angle. Work on the pocket and entry-angle axes first, then match your ball and surface to the lane."
+    },
+    {
+      id: "singles",
+      label: "Single-pin spares",
+      group: "Scoring",
+      higherBetter: true,
+      target: 95.1,
+      unit: "%",
+      basis: "benchmark",
+      at200: 85.6,
+      minSample: 5,
+      source: "Single-pin conversion of a 220-average bowler: 95.1% (200 average: 85.6%). Bowling This Month, Nov 2020.",
+      drill: "Use a plastic spare ball (99% of elite bowlers do, Bowling This Month 2016) and the 3-6-9 system: same target as your strike shot, feet moved 3, 6 or 9 boards. Practice the 10 and 7 pins most."
+    },
+    {
+      id: "closed",
+      label: "Closed frames",
+      group: "Scoring",
+      higherBetter: true,
+      target: 91.9,
+      unit: "%",
+      basis: "benchmark",
+      at200: 85,
+      minSample: 20,
+      source: "Frames closed with a strike or spare, 220 average: 91.9% (200 average: 85.0%). Bowling This Month, Nov 2020.",
+      drill: "Every open frame is a spare you missed or a split you left. Convert the makeable ones: check the Score tab's list of leaves to practice."
+    },
+    {
+      id: "firstBall",
+      label: "First-ball pins",
+      group: "Scoring",
+      higherBetter: true,
+      target: 9.2,
+      unit: " pins",
+      basis: "benchmark",
+      minSample: 20,
+      source: 'A first-ball average over 9.2 means most shots reach the pocket (Bowling This Month, "Increasing Your Carry Percentage").',
+      drill: "Raise it by repeating your line: same feet, same target, same speed. Fix the arrows and start-board spread first."
+    },
+    {
+      id: "pocket",
+      label: "Pocket hits",
+      group: "Accuracy",
+      higherBetter: true,
+      target: 70,
+      unit: "%",
+      basis: "coaching",
+      minSample: 10,
+      source: "Share of tracked shots entering within 1 board of the pocket. LaneIQ working target: 70%.",
+      drill: "Pick one target arrow and bowl 10 shots at it. Move your feet, not your target, to bring the entry board back to the pocket."
+    },
+    {
+      id: "entry",
+      label: "Entry angle",
+      group: "Accuracy",
+      higherBetter: true,
+      target: 4,
+      unit: "\xB0",
+      basis: "coaching",
+      minSample: 8,
+      source: "Average entry angle at the pins. LaneIQ working target: at least 4 degrees (below about 3 the ball has little room to carry the pocket).",
+      drill: "Test one change: a little less speed or a touch more rotation, and keep your line. Check whether the entry angle passes 4 degrees."
+    },
+    {
+      id: "arrows",
+      label: "Target control",
+      group: "Repeatability",
+      higherBetter: false,
+      target: 1,
+      unit: " boards \xB1",
+      basis: "coaching",
+      minSample: 8,
+      source: "Spread (standard deviation) of the board you cross at the arrows. LaneIQ working target: under 1 board.",
+      drill: "Lay a towel or marker on your target arrow. Throw 10 shots looking only at it, same feet, and check the arrows board after each."
+    },
+    {
+      id: "start",
+      label: "Start position",
+      group: "Repeatability",
+      higherBetter: false,
+      target: 1,
+      unit: " boards \xB1",
+      basis: "coaching",
+      minSample: 8,
+      source: "Spread of the board the ball starts on. LaneIQ working target: under 1 board.",
+      drill: "Mark your feet on the approach with tape and check your slide ends in the same place each shot."
+    },
+    {
+      id: "speed",
+      label: "Speed control",
+      group: "Repeatability",
+      higherBetter: false,
+      target: 0.6,
+      unit: " mph \xB1",
+      basis: "coaching",
+      minSample: 8,
+      source: "Spread of launch speed. LaneIQ working target: under 0.6 mph.",
+      drill: "Throw 10 shots at the same effort and watch the live speed. Keep every shot within half a mile an hour of the first."
+    }
+  ];
+  var sdOf = (v) => {
+    const m = v.reduce((a, b) => a + b, 0) / v.length;
+    return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / Math.max(1, v.length - 1));
+  };
+  var nums = (xs) => xs.filter((x) => typeof x === "number" && Number.isFinite(x));
+  function frameOutcomes(games2) {
+    let closed = 0, open2 = 0;
+    for (const g of games2) {
+      const rp = replay(g.rolls);
+      const by = /* @__PURE__ */ new Map();
+      rp.states.forEach((s, k2) => by.set(s.frame, [...by.get(s.frame) ?? [], g.rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length]));
+      for (const [f, c] of by) {
+        if (f < 10) {
+          if (c[0] === 10) closed++;
+          else if (c.length === 2) c[0] + c[1] === 10 ? closed++ : open2++;
+        } else if (rp.complete) {
+          c[0] === 10 || c.length >= 2 && c[0] + c[1] >= 10 ? closed++ : open2++;
+        }
+      }
+    }
+    return { closed, open: open2 };
+  }
+  function measure(games2, shots) {
+    const st2 = bowlingStats(games2);
+    const fo = frameOutcomes(games2);
+    const fresh2 = games2.reduce((a, g) => a + replay(g.rolls).states.filter((s) => s.fresh).length, 0);
+    const pk = shots.filter((s) => s.m.pocketMiss !== null);
+    const sdv = (key2) => {
+      const v = nums(shots.map((s) => s.m[key2]));
+      return { value: v.length >= 2 ? sdOf(v) : null, n: v.length };
+    };
+    const ea = nums(shots.map((s) => s.m.entryAngle));
+    return {
+      strikes: { value: st2.strikePct, n: fresh2 },
+      singles: { value: st2.singlePin.attempts ? st2.singlePin.made / st2.singlePin.attempts * 100 : null, n: st2.singlePin.attempts },
+      closed: { value: fo.closed + fo.open ? fo.closed / (fo.closed + fo.open) * 100 : null, n: fo.closed + fo.open },
+      firstBall: { value: st2.firstBallAvg, n: fresh2 },
+      pocket: { value: pk.length ? pk.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / pk.length * 100 : null, n: pk.length },
+      entry: { value: ea.length ? ea.reduce((a, b) => a + b, 0) / ea.length : null, n: ea.length },
+      arrows: sdv("arrowsBoard"),
+      start: sdv("startBoard"),
+      speed: sdv("launchSpeed")
+    };
+  }
+  function scoreOf(def, value) {
+    if (value === null) return null;
+    const s = def.higherBetter ? value / def.target * 100 : value <= 0 ? 100 : def.target / value * 100;
+    return Math.max(0, Math.min(100, Math.round(s)));
+  }
+  function skillsProfile(games2, shots) {
+    const now = measure(games2, shots);
+    const gh = Math.floor(games2.length / 2), sh = Math.floor(shots.length / 2);
+    const early = measure(games2.slice(0, gh), shots.slice(0, sh));
+    return AXES.map((d) => {
+      const m = now[d.id];
+      const e = early[d.id];
+      const value = m.n >= d.minSample ? m.value : null;
+      return {
+        ...d,
+        value,
+        score: scoreOf(d, value),
+        score200: d.at200 === void 0 ? null : scoreOf(d, d.at200),
+        earlierScore: e.n >= d.minSample && value !== null && (games2.length >= 4 || shots.length >= 16) ? scoreOf(d, e.value) : null
+      };
+    });
+  }
+  function focusList(axes) {
+    return axes.filter((a) => a.score !== null && a.score < 100).map((a) => ({ axis: a, gap: 100 - a.score + (a.group === "Scoring" ? 3 : 0) })).sort((a, b) => b.gap - a.gap);
+  }
+  var strongest = (axes) => axes.filter((a) => a.score !== null).sort((a, b) => b.score - a.score).slice(0, 3);
+
+  // camera/skinscene.ts
+  function drawSkinScene(c, tracerId, pinsId, laneId, clock = 0, ballT = 1) {
+    const g = c.getContext("2d");
+    const w = c.width, h = c.height;
+    const lane = LANES[laneId] ?? LANES["lane-house"], pins = PINS[pinsId] ?? PINS["pins-classic"], tr = TRACERS[tracerId] ?? TRACERS["tracer-aurora"];
+    g.clearRect(0, 0, w, h);
+    g.fillStyle = lane.backdrop;
+    g.fillRect(0, 0, w, h);
+    const P = (u, v) => {
+      const half = (0.46 - v * 0.2) * w;
+      return { x: w / 2 + (u - 0.5) * 2 * half, y: h * (0.94 - v * 0.82) };
+    };
+    g.beginPath();
+    [P(0, 0), P(1, 0), P(1, 1), P(0, 1)].forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y));
+    g.closePath();
+    g.fillStyle = lane.fill;
+    g.fill();
+    for (let i = 0; i <= 39; i++) {
+      const edge = i === 0 || i === 39, major = (39 - i) % 5 === 0;
+      g.strokeStyle = edge ? lane.edge : major ? lane.major : lane.minor;
+      g.lineWidth = edge ? 2 : 1;
+      g.beginPath();
+      const a = P(i / 39, 0), b = P(i / 39, 1);
+      g.moveTo(a.x, a.y);
+      g.lineTo(b.x, b.y);
+      g.stroke();
+    }
+    g.strokeStyle = lane.foul;
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(P(0, 0).x, P(0, 0).y);
+    g.lineTo(P(1, 0).x, P(1, 0).y);
+    g.stroke();
+    g.fillStyle = lane.arrow;
+    for (let b = 1; b <= 7; b++) {
+      const u = b / 8, v = 0.2 + 0.05 * (1 - Math.abs(b - 4) / 3), p = P(u, v);
+      g.beginPath();
+      g.moveTo(p.x, p.y - 4);
+      g.lineTo(p.x - 4, p.y + 5);
+      g.lineTo(p.x + 4, p.y + 5);
+      g.closePath();
+      g.fill();
+    }
+    const rows = [[0.5], [0.44, 0.56], [0.38, 0.5, 0.62], [0.32, 0.44, 0.56, 0.68]];
+    let n = 1;
+    rows.forEach(
+      (row, ri) => row.forEach((u) => {
+        const p = P(u, 0.88 + ri * 0.045);
+        const down = n === 2 || n === 4 || n === 9;
+        const st2 = down ? pins.down : pins.standing;
+        g.beginPath();
+        g.arc(p.x, p.y, 8, 0, 7);
+        g.fillStyle = st2.fill;
+        g.fill();
+        g.strokeStyle = st2.stroke;
+        g.lineWidth = 1.8;
+        g.stroke();
+        n++;
+      })
+    );
+    const pts = [];
+    const steps = 60;
+    for (let i = 0; i <= steps * ballT; i++) {
+      const t = i / steps;
+      const u = 0.82 - 0.2 * t - 0.26 * Math.max(0, t - 0.55) ** 2 * 3.2;
+      pts.push(P(u, 0.02 + t * 0.9));
+    }
+    const glow2 = glowEnabled();
+    g.save();
+    g.globalCompositeOperation = glow2 ? "lighter" : "source-over";
+    g.lineCap = "round";
+    for (let i = 1; i < pts.length; i++) {
+      const t = i / Math.max(1, pts.length - 1);
+      if (!glow2) {
+        g.shadowBlur = 0;
+        g.strokeStyle = tr.color(t, 0.5 + 0.5 * t, clock);
+        g.lineWidth = 1.5 + 2.5 * t;
+        g.beginPath();
+        g.moveTo(pts[i - 1].x, pts[i - 1].y);
+        g.lineTo(pts[i].x, pts[i].y);
+        g.stroke();
+        continue;
+      }
+      g.shadowBlur = tr.glow * 0.5;
+      g.shadowColor = tr.color(t, 1, clock);
+      g.strokeStyle = tr.color(t, 0.2 + 0.8 * t, clock);
+      g.lineWidth = (2 + 7 * t) * tr.width;
+      g.beginPath();
+      g.moveTo(pts[i - 1].x, pts[i - 1].y);
+      g.lineTo(pts[i].x, pts[i].y);
+      g.stroke();
+      g.shadowBlur = 0;
+      g.strokeStyle = `rgba(${tr.core},${t})`;
+      g.lineWidth = (0.8 + 2 * t) * tr.width;
+      g.stroke();
+    }
+    g.restore();
+  }
+
+  // camera/rewardsui.ts
+  var SEEN_KEY = "laneiq.unlockSeen";
+  var raf = 0;
+  async function current() {
+    const games2 = await loadGames();
+    const axes = skillsProfile(games2, S.shots);
+    return progress(games2, S.shots, axes);
+  }
+  var toastTimer = 0;
+  function toast(text) {
+    let el = document.getElementById("toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "toast";
+      el.style.cssText = "position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:90;max-width:90vw;background:linear-gradient(90deg,#46e6ff,#ff4fd8);color:#06101c;font:700 14px system-ui;padding:11px 16px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.5);text-align:center";
+      el.onclick = () => openRewards();
+      document.body.append(el);
+    }
+    el.textContent = text;
+    el.style.display = "block";
+    clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => el.style.display = "none", 6e3);
+  }
+  async function checkUnlocks() {
+    try {
+      const p = await current();
+      const open2 = SKINS.filter((s) => isUnlocked(s, p)).map((s) => s.id);
+      const raw = localStorage.getItem(SEEN_KEY);
+      localStorage.setItem(SEEN_KEY, JSON.stringify(open2));
+      if (raw === null) return;
+      const seen2 = new Set(JSON.parse(raw));
+      const fresh2 = SKINS.filter((s) => open2.includes(s.id) && !seen2.has(s.id));
+      if (fresh2.length) toast(`Unlocked: ${fresh2.slice(0, 2).map((s) => s.name).join(", ")}${fresh2.length > 2 ? ` and ${fresh2.length - 2} more` : ""}. Tap to equip.`);
+    } catch {
+    }
+  }
+  async function summaryHtml() {
+    const p = await current();
+    const nx = nextUnlocks(p);
+    return `<div class="k">Rewards \xB7 level ${p.level}</div><div class="u">${p.points} improvement points \xB7 ${p.pinfall.toLocaleString()} pins knocked down</div>
+    <div class="u">${nx.play ? `Next play skin: <b>${esc(nx.play.skin.name)}</b>, ${nx.play.need.toLocaleString()} pins to go.` : ""} ${nx.improve ? `Next improvement skin: <b>${esc(nx.improve.skin.name)}</b>, ${nx.improve.need} points to go.` : ""}</div>`;
+  }
+  async function openRewards() {
+    const el = $("rewards");
+    el.classList.add("on");
+    const p = await current();
+    const lv = p.level, lo = pointsForLevel(lv), hi = pointsForLevel(lv + 1);
+    const nx = nextUnlocks(p);
+    const eq = skinsEnabled() ? equippedSkins() : { tracer: "", pins: "", lane: "" };
+    const base = activeSkins();
+    const grid = (kind2, title) => `<h3>${title}</h3><div class="skin-grid">${SKINS.filter((s) => s.kind === kind2).map((s) => {
+      const open2 = isUnlocked(s, p);
+      return `<button class="skin ${open2 ? "" : "locked"} ${eq[kind2] === s.id ? "on" : ""}" data-skin="${s.id}" data-kind="${kind2}" ${open2 ? "" : "disabled"}><canvas width="150" height="170" data-c="${s.id}"></canvas><div class="n">${esc(s.name)}</div><div class="r ${"points" in s.unlock ? "rare" : ""}">${open2 ? eq[kind2] === s.id ? "Equipped" : "Tap to equip" : "Locked: " + esc(unlockText(s))}</div></button>`;
+    }).join("")}</div>`;
+    el.innerHTML = `
+    <div class="row"><h2>Rewards</h2><button class="btn ghost" id="rw-close">Close</button></div>
+    <div class="note">Knock down pins to unlock everyday skins. Improve to earn the rare ones. Points come from getting better, not from throwing more shots.</div>
+    <div class="card"><div class="k">Level ${lv}</div>
+      <div class="u">${p.points} improvement points \xB7 ${p.pinfall.toLocaleString()} pins knocked down</div>
+      <div style="height:8px;border-radius:4px;background:rgba(255,255,255,.1);margin:8px 0"><div style="width:${Math.min(100, (p.points - lo) / Math.max(1, hi - lo) * 100)}%;height:8px;border-radius:4px;background:linear-gradient(90deg,#46e6ff,#ff4fd8)"></div></div>
+      <div class="note">${hi - p.points} more points to level ${lv + 1}</div>
+      <div class="u" style="margin-top:6px">${nx.play ? `<b>Play:</b> ${esc(nx.play.skin.name)} (${nx.play.skin.kind}): ${nx.play.need.toLocaleString()} more pins` : "Every play skin unlocked."}</div>
+      <div class="u">${nx.improve ? `<b>Improve:</b> ${esc(nx.improve.skin.name)} (${nx.improve.skin.kind}): ${nx.improve.need} more points` : "Every improvement skin unlocked."}</div></div>
+    <div class="card"><div class="k">Your look</div><div class="chips"><button class="chip ${skinsEnabled() ? "sel" : ""}" id="rw-skins">Skins: ${skinsEnabled() ? "on" : "off"}</button><button class="chip ${glowEnabled() ? "sel" : ""}" id="rw-glow">Glow: ${glowEnabled() ? "on" : "off"}</button></div><div class="note">${skinsEnabled() ? "Your skins are showing in the app." : "Skins are off: the app keeps its standard look. Tap one below to try it."} Turn glow off for crisp lines and no halos, so you can read each shot exactly.</div><canvas id="rw-big" width="360" height="300" style="width:100%;max-width:420px;display:block;margin:0 auto"></canvas></div>
+    ${grid("tracer", "Ball tracers")}${grid("pins", "Pins")}${grid("lane", "Lanes")}
+    <div class="card"><div class="k">How you earned your points</div>
+      ${p.earned.length ? `<ul>${p.earned.map((a) => `<li><b>+${a.points}</b> ${esc(a.title)} <span class="note">${esc(a.detail)}</span></li>`).join("")}</ul>` : `<div class="u">Nothing yet. Finish a game on the Score tab, or reach a target on the skills chart.</div>`}
+      <div class="note">Points come from new high games, strike streaks, clean games, scoring milestones, a rising average, converted splits and skills reaching their targets.</div></div>`;
+    $("rw-skins").onclick = () => (setSkinsOn(!skinsEnabled()), void openRewards());
+    $("rw-glow").onclick = () => (setGlow(!glowEnabled()), void openRewards());
+    $("rw-close").onclick = () => (cancelAnimationFrame(raf), el.classList.remove("on"), el.innerHTML = "");
+    el.querySelectorAll("canvas[data-c]").forEach((c) => {
+      const id = c.dataset.c;
+      const k2 = SKINS.find((s) => s.id === id).kind;
+      drawSkinScene(c, k2 === "tracer" ? id : base.tracer, k2 === "pins" ? id : base.pins, k2 === "lane" ? id : base.lane);
+    });
+    el.querySelectorAll(".skin:not(.locked)").forEach((b) => b.onclick = () => {
+      equip(b.dataset.kind, b.dataset.skin);
+      void openRewards();
+    });
+    cancelAnimationFrame(raf);
+    const t0 = performance.now();
+    const tick = (now) => {
+      const big = document.getElementById("rw-big");
+      if (!big) return;
+      const e = activeSkins();
+      drawSkinScene(big, e.tracer, e.pins, e.lane, skinClock(), Math.min(1, (now - t0) % 3200 / 2400));
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  }
+
+  // camera/scorecard.ts
+  var games = [];
+  var loadedFor = "";
+  var leaveSel = /* @__PURE__ */ new Set();
+  async function ensureLoaded() {
+    const id = S.profile?.id ?? "";
+    if (loadedFor === id) return;
+    loadedFor = id;
+    games = (id && !S.demo ? await dbGet(id, "meta", "games").catch(() => void 0) : void 0) ?? [];
+    leaveSel = /* @__PURE__ */ new Set();
+  }
+  async function persist() {
+    if (!S.demo && S.profile) await dbPut(S.profile.id, "meta", games, "games").catch(() => {
+    });
+    void checkUnlocks();
+  }
+  var current2 = () => {
+    const g = games[games.length - 1];
+    return g && !replay(g.rolls).complete ? g : void 0;
+  };
+  function cameraSuggestion() {
+    const used = new Set(games.flatMap((g) => g.rolls.map((r) => r.shotId)).filter(Boolean));
+    const s = [...S.shots].reverse().find((x) => x.result?.auto && !used.has(x.id));
+    if (!s || !s.result) return null;
+    const when2 = Date.now() - new Date(s.at).getTime();
+    if (when2 > 15 * 6e4) return null;
+    return { shotId: s.id, leave: s.result.pinsDown === 10 ? [] : s.result.leave ?? [] };
+  }
+  function deckSvg(standing, sel2) {
+    const R2 = 19;
+    const pin = (p) => {
+      const { x, row } = PIN_XY[p];
+      const cx = 130 + x * 4.8, cy = 28 + (3 - row) * 52;
+      const gone = !standing.includes(p);
+      const left = sel2.has(p);
+      const ps = currentPins();
+      const fill = gone ? "transparent" : left ? "#ffd25a" : ps.standing.fill;
+      const stroke = gone ? "rgba(255,255,255,.12)" : left ? "#ffd25a" : ps.standing.stroke;
+      return `<g data-pin="${p}" style="cursor:${gone ? "default" : "pointer"}"><circle cx="${cx}" cy="${cy}" r="${R2}" fill="${fill}" stroke="${stroke}" stroke-width="2"/><text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="15" font-weight="700" fill="${gone ? "rgba(255,255,255,.2)" : left ? "#111" : "#fff"}">${p}</text></g>`;
+    };
+    return `<svg viewBox="0 0 260 200" style="width:100%;max-width:340px;display:block;margin:0 auto;touch-action:manipulation">${ALL_PINS.map(pin).join("")}</svg>`;
+  }
+  function cardHtml(g) {
+    const sc = scoreGame(g.rolls);
+    const cells = Array.from({ length: 10 }, (_, i) => {
+      const f = sc.frames[i];
+      const m = f?.marks ?? [];
+      const slots = i < 9 ? 2 : 3;
+      const boxes = Array.from({ length: slots }, (_2, k2) => `<span style="display:inline-block;min-width:18px;text-align:center;border:1px solid var(--line);border-radius:3px;margin:0 1px;font-size:13px;${m[k2] === "X" ? "color:#5affb0;font-weight:700" : m[k2] === "/" ? "color:#46e6ff;font-weight:700" : ""}">${m[k2] ?? "&nbsp;"}</span>`).join("");
+      return `<td style="text-align:center;padding:4px 2px;border:1px solid var(--line);vertical-align:top"><div style="font-size:10px;opacity:.6">${i + 1}</div><div>${boxes}</div><div style="font-weight:700;font-size:15px;min-height:20px">${f?.total ?? ""}</div></td>`;
+    });
+    return `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:620px"><tr>${cells.join("")}</tr></table></div>`;
+  }
+  async function autoScoreShot(shot) {
+    await ensureLoaded();
+    if (!shot.result?.auto) return false;
+    if (games.some((g) => g.rolls.some((r) => r.shotId === shot.id))) return false;
+    let cur2 = current2();
+    if (!cur2) {
+      cur2 = { id: newId(), at: (/* @__PURE__ */ new Date()).toISOString(), rolls: [], lane: shot.lane };
+      games.push(cur2);
+    }
+    const standing = replay(cur2.rolls).standing;
+    const leave = shot.result.pinsDown === 10 && standing.length === 10 ? [] : shot.result.leave ?? [];
+    if (!leave.every((p) => standing.includes(p))) return false;
+    cur2.rolls.push({ down: standing.filter((p) => !leave.includes(p)), shotId: shot.id });
+    leaveSel = /* @__PURE__ */ new Set();
+    await persist();
+    return true;
+  }
+  function liveScoreHtml() {
+    const g = games[games.length - 1];
+    if (!g || !g.rolls.length) return "";
+    const rp = replay(g.rolls);
+    const sc = scoreGame(g.rolls);
+    const head = `<div class="k" style="margin-top:8px">Scorecard \xB7 game ${games.length}</div><div class="u"><b>${sc.total}</b> ${rp.complete ? "final" : `after ${sc.frames.filter((f) => f.total !== null).length} scored frames \xB7 next: frame ${rp.frame}, ball ${rp.ball}`}</div>`;
+    if (rp.complete || rp.standing.length === 10) return head;
+    const adv = adviseSpare(rp.standing, bowlerProfile().hand);
+    return `${head}<div class="u"><b>Spare: ${esc(adv.name)}.</b> ${esc(adv.text)}</div>`;
+  }
+  setResultExtra(liveScoreHtml);
+  var pctStr = (v) => v === null ? "-" : `${Math.round(v)}%`;
+  function statsHtml() {
+    const st2 = bowlingStats(games);
+    if (!st2.games) return `<div class="u">Statistics appear after your first game.</div>`;
+    const leaves = Object.entries(st2.byLeave).sort((a, b) => b[1].attempts - a[1].attempts).slice(0, 8);
+    return `<table>
+    <tr><td>Average</td><td class="n">${st2.average === null ? "-" : st2.average.toFixed(1)} (${st2.completeGames} games)</td></tr>
+    <tr><td>High game</td><td class="n">${st2.high ?? "-"}</td></tr>
+    <tr><td>Strike %</td><td class="n">${pctStr(st2.strikePct)}</td></tr>
+    <tr><td>First-ball average</td><td class="n">${st2.firstBallAvg === null ? "-" : st2.firstBallAvg.toFixed(1)} pins</td></tr>
+    <tr><td>Spare conversion</td><td class="n">${pctStr(st2.sparePct)}</td></tr>
+    <tr><td>Single-pin spares</td><td class="n">${st2.singlePin.attempts ? `${st2.singlePin.made}/${st2.singlePin.attempts} (${pctStr(st2.singlePin.made / st2.singlePin.attempts * 100)})` : "-"}</td></tr>
+    <tr><td>Multi-pin spares</td><td class="n">${st2.multiPin.attempts ? `${st2.multiPin.made}/${st2.multiPin.attempts} (${pctStr(st2.multiPin.made / st2.multiPin.attempts * 100)})` : "-"}</td></tr>
+    <tr><td>Open frames</td><td class="n">${st2.openFrames}</td></tr></table>
+    ${leaves.length ? `<div class="k" style="margin-top:8px">Spare tries by leave</div><table>${leaves.map(([k2, t]) => `<tr><td>${esc(k2)}</td><td class="n">${t.made}/${t.attempts} (${pctStr(t.made / t.attempts * 100)})</td></tr>`).join("")}</table>` : ""}`;
+  }
+  function analysisHtml() {
+    const done2 = games.filter((g) => replay(g.rolls).complete);
+    const out = [];
+    if (done2.length) {
+      const w = done2.map((g) => whatIf(g.rolls));
+      const avg2 = (f) => w.reduce((a, b) => a + f(b), 0) / w.length;
+      const gain = avg2((x) => x.ifSingles - x.actual);
+      out.push(`<div class="u">Missed single-pin spares cost you <b>${gain.toFixed(1)} pins a game</b> (${avg2((x) => x.missedSingles).toFixed(1)} a game). Make them all and your average would be ${avg2((x) => x.ifSingles).toFixed(0)} instead of ${avg2((x) => x.actual).toFixed(0)}.</div>`);
+      out.push(`<div class="note">Missed spares of every kind: ${avg2((x) => x.missedSpares).toFixed(1)} a game; making all of them would score about ${avg2((x) => x.ifAllSpares).toFixed(0)}.</div>`);
+    }
+    const st2 = bowlingStats(games);
+    const weak = Object.entries(st2.byLeave).filter(([, t]) => t.attempts >= 3 && t.made / t.attempts < 0.6).sort((a, b) => b[1].attempts - a[1].attempts).slice(0, 4);
+    if (weak.length) out.push(`<div class="k" style="margin-top:8px">Practice these</div><ul>${weak.map(([k2, t]) => {
+      const a = adviseSpare(k2.split("-").map(Number), bowlerProfile().hand);
+      return `<li><b>${esc(a.name)}</b>: ${t.made}/${t.attempts} made. ${esc(a.text)}</li>`;
+    }).join("")}</ul>`);
+    const zones = {};
+    for (const g of games) {
+      const rp = replay(g.rolls);
+      g.rolls.forEach((r, k2) => {
+        const s = rp.states[k2];
+        const shot = r.shotId ? S.shots.find((x) => x.id === r.shotId) : void 0;
+        if (!s?.fresh || !shot?.m.zone) return;
+        const z = zones[shot.m.zone] ??= { n: 0, x: 0 };
+        z.n++;
+        if (r.down.length === 10) z.x++;
+      });
+    }
+    const zs = Object.entries(zones).filter(([, v]) => v.n >= 2);
+    if (zs.length) {
+      const label2 = { pocket: "In the pocket", high: "High (Brooklyn side)", light: "Light", "very-high": "Way high", "very-light": "Way light" };
+      out.push(`<div class="k" style="margin-top:8px">Strikes by where the ball hit (camera-tracked first balls)</div><table>${zs.map(([k2, v]) => `<tr><td>${label2[k2] ?? esc(k2)}</td><td class="n">${v.x}/${v.n} strikes (${Math.round(v.x / v.n * 100)}%)</td></tr>`).join("")}</table>`);
+    }
+    return out.length ? out.join("") : `<div class="u">Play a few games and this will show what is costing you pins.</div>`;
+  }
+  async function renderScore() {
+    await ensureLoaded();
+    const el = $("score-page");
+    const g = current2();
+    const rp = g ? replay(g.rolls) : null;
+    const standing = rp?.standing ?? ALL_PINS;
+    const advice = g && standing.length < 10 ? adviseSpare(standing, bowlerProfile().hand) : null;
+    const cam = g ? cameraSuggestion() : null;
+    const done2 = games.slice().reverse().slice(0, 12);
+    el.innerHTML = `
+    <h2>Score</h2>
+    <div class="note">With the camera running, every shot is scored for you: the pins it reads go straight on the card and the spare coach tells you where to move. Tap the pins below only to fix a mistake or to score without the camera. Free, and it stays on this phone.</div>
+    ${g ? `<div class="card"><div class="k">Game ${games.length} \xB7 ${rp.frame <= 10 ? `frame ${rp.frame}, ball ${rp.ball}` : ""}</div>${cardHtml(g)}</div>` : `<div class="card"><div class="u">${games.length ? "Game over. Start the next one." : "No game in progress."}</div><div class="chips"><button class="btn" id="sc-new">Start a game</button></div></div>`}
+    ${g ? `<div class="card"><div class="k">${standing.length === 10 ? "How many pins are standing after this roll? Tap them" : "Tap the pins still standing"}</div>
+      ${deckSvg(standing, leaveSel)}
+      <div class="chips" style="justify-content:center">
+        <button class="btn" id="sc-record">${leaveSel.size ? `Record: ${leaveSel.size} left (${standing.length - leaveSel.size} down)` : standing.length === 10 ? "Record a strike" : "Record a spare"}</button>
+        <button class="btn ghost" id="sc-gutter">All ${standing.length} left</button>
+        <button class="btn ghost" id="sc-undo">Undo last roll</button></div>
+      ${cam ? `<div class="chips" style="justify-content:center"><button class="chip" id="sc-cam">Use the camera's read: ${cam.leave.length ? `leaves the ${cam.leave.join("-")}` : "a strike"}</button></div>` : ""}</div>` : ""}
+    ${advice ? `<div class="card"><div class="k">Spare coach: ${esc(advice.name)}</div><div class="u"><b>${esc(advice.text)}</b></div>${advice.notes.map((n) => `<div class="note">${esc(n)}</div>`).join("")}<div class="note">3-6-9 spare system (USA Bowling and coaching sources): feet move 3, 6 or 9 boards away from the pin, aim stays on your strike target.</div></div>` : ""}
+    <div class="card" id="sc-rewards"><div class="note">Loading rewards\u2026</div></div>
+    <div class="card"><div class="k">Your statistics</div>${statsHtml()}</div>
+    <div class="card"><div class="k">What costs you pins</div>${analysisHtml()}</div>
+    ${done2.length ? `<div class="card"><div class="k">Games</div>${done2.map((x) => {
+      const s = scoreGame(x.rolls);
+      return `<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${s.total}</b> <span class="note">${replay(x.rolls).complete ? "" : "in progress \xB7 "}${esc(new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</span></div><button class="chip danger" data-del="${x.id}">Delete</button></div>`;
+    }).join("")}</div>` : ""}`;
+    void summaryHtml().then((h) => {
+      const box = document.getElementById("sc-rewards");
+      if (box) {
+        box.innerHTML = h + `<div class="chips"><button class="btn" id="sc-rw">Skins and rewards</button></div>`;
+        $("sc-rw").onclick = () => void openRewards();
+      }
+    });
+    $("sc-new")?.addEventListener("click", async () => {
+      games.push({ id: newId(), at: (/* @__PURE__ */ new Date()).toISOString(), rolls: [] });
+      leaveSel = /* @__PURE__ */ new Set();
+      await persist();
+      renderScore();
+    });
+    const add2 = async (roll) => {
+      const cur2 = current2();
+      if (!cur2) return;
+      cur2.rolls.push(roll);
+      leaveSel = /* @__PURE__ */ new Set();
+      await persist();
+      renderScore();
+    };
+    el.querySelectorAll("[data-pin]").forEach((n) => {
+      n.addEventListener("click", () => {
+        const p = Number(n.getAttribute("data-pin"));
+        if (!standing.includes(p)) return;
+        if (leaveSel.has(p)) leaveSel.delete(p);
+        else leaveSel.add(p);
+        renderScore();
+      });
+    });
+    $("sc-record")?.addEventListener("click", () => add2({ down: standing.filter((p) => !leaveSel.has(p)) }));
+    $("sc-gutter")?.addEventListener("click", () => add2({ down: [] }));
+    $("sc-undo")?.addEventListener("click", async () => {
+      const cur2 = current2() ?? games[games.length - 1];
+      if (!cur2 || !cur2.rolls.length) return;
+      cur2.rolls.pop();
+      leaveSel = /* @__PURE__ */ new Set();
+      await persist();
+      renderScore();
+    });
+    $("sc-cam")?.addEventListener("click", () => cam && add2({ down: standing.filter((p) => !cam.leave.includes(p)), shotId: cam.shotId }));
+    el.querySelectorAll("[data-del]").forEach((b) => b.onclick = async () => {
+      games = games.filter((x) => x.id !== b.dataset.del);
+      await persist();
+      renderScore();
+    });
+  }
+  async function loadGames() {
+    await ensureLoaded();
+    return games;
+  }
+
   // camera/skills.ts
   var SIZE = 320;
   var C = SIZE / 2;
@@ -7725,6 +6504,296 @@
       <div class="u">${esc(specLine(b))}</div><div class="note">${esc(f.evidence.join(" \xB7 "))}</div>
       <div class="chips"><button class="chip" data-add="${i}">${inArsenal ? "Teach it this look" : "This is my ball: add it"}</button></div></div>`;
     }
+  }
+
+  // camera/render.ts
+  var k = (v) => v.width / 1280;
+  var lerp2 = (a, b, t) => a + (b - a) * t;
+  var ramp = (t, alpha = 1) => currentTracer().color(t, alpha, skinClock());
+  var DECK_END_FT = 63;
+  var ROW_FT = 10.39 / 12;
+  var PIN_SPACING_BOARDS = 12 / (41.5 / LANE_BOARDS);
+  function strokeTrail(v, points, baseAlpha, headBoost) {
+    const n = points.length;
+    if (n < 2) return;
+    const { ctx: ctx2 } = v;
+    const s = k(v);
+    const tr = currentTracer();
+    const glow2 = glowEnabled();
+    ctx2.save();
+    ctx2.globalCompositeOperation = glow2 ? "lighter" : "source-over";
+    ctx2.lineCap = "round";
+    ctx2.lineJoin = "round";
+    for (let i = 1; i < n; i++) {
+      const t = i / (n - 1);
+      const a = points[i - 1];
+      const b = points[i];
+      if (!glow2) {
+        ctx2.shadowBlur = 0;
+        ctx2.strokeStyle = ramp(t, Math.min(1, baseAlpha * (headBoost ? 0.35 + 0.65 * t : 0.95)));
+        ctx2.lineWidth = (headBoost ? lerp2(2, 4.5, t) : 3.5) * s;
+        ctx2.beginPath();
+        ctx2.moveTo(a.x, a.y);
+        ctx2.lineTo(b.x, b.y);
+        ctx2.stroke();
+        continue;
+      }
+      ctx2.shadowBlur = tr.glow * s;
+      ctx2.shadowColor = ramp(t);
+      ctx2.strokeStyle = ramp(t, baseAlpha * (headBoost ? 0.15 + 0.85 * t : 0.9));
+      ctx2.lineWidth = (headBoost ? lerp2(3, 14, t) : 10) * s * tr.width;
+      ctx2.beginPath();
+      ctx2.moveTo(a.x, a.y);
+      ctx2.lineTo(b.x, b.y);
+      ctx2.stroke();
+      ctx2.shadowBlur = 0;
+      ctx2.strokeStyle = `rgba(${tr.core},${baseAlpha * (headBoost ? t : 0.8)})`;
+      ctx2.lineWidth = (headBoost ? lerp2(1, 4, t) : 3.5) * s * tr.width;
+      ctx2.beginPath();
+      ctx2.moveTo(a.x, a.y);
+      ctx2.lineTo(b.x, b.y);
+      ctx2.stroke();
+    }
+    ctx2.restore();
+  }
+  function drawBallHead(v, h) {
+    const s = k(v);
+    if (!glowEnabled()) {
+      v.ctx.save();
+      v.ctx.fillStyle = ramp(1, 1);
+      v.ctx.strokeStyle = "rgba(0,0,0,.6)";
+      v.ctx.lineWidth = 1.5 * s;
+      v.ctx.beginPath();
+      v.ctx.arc(h.x, h.y, 5 * s, 0, 7);
+      v.ctx.fill();
+      v.ctx.stroke();
+      v.ctx.restore();
+      return;
+    }
+    const g = v.ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, 26 * s);
+    g.addColorStop(0, "rgba(255,255,255,.95)");
+    g.addColorStop(0.25, ramp(1, 0.6));
+    g.addColorStop(1, ramp(1, 0));
+    v.ctx.save();
+    v.ctx.globalCompositeOperation = "lighter";
+    v.ctx.fillStyle = g;
+    v.ctx.beginPath();
+    v.ctx.arc(h.x, h.y, 26 * s, 0, 7);
+    v.ctx.fill();
+    v.ctx.restore();
+  }
+  function label(v, text, p, color) {
+    const { ctx: ctx2 } = v;
+    const s = k(v);
+    ctx2.save();
+    ctx2.font = `600 ${15 * s}px -apple-system, system-ui, sans-serif`;
+    const w = ctx2.measureText(text).width + 16 * s;
+    const h = 24 * s;
+    ctx2.fillStyle = "rgba(10,14,22,.75)";
+    ctx2.strokeStyle = color;
+    ctx2.lineWidth = 1.5 * s;
+    ctx2.beginPath();
+    ctx2.roundRect(p.x - w / 2, p.y - h - 10 * s, w, h, 12 * s);
+    ctx2.fill();
+    ctx2.stroke();
+    ctx2.fillStyle = "#fff";
+    ctx2.textAlign = "center";
+    ctx2.textBaseline = "middle";
+    ctx2.fillText(text, p.x, p.y - h / 2 - 10 * s);
+    ctx2.beginPath();
+    ctx2.fillStyle = color;
+    ctx2.arc(p.x, p.y, 5 * s, 0, 7);
+    ctx2.fill();
+    ctx2.restore();
+  }
+  function drawShotMarkers(v, a) {
+    if (a.boardAtArrows !== null) label(v, `Arrows ${a.boardAtArrows.toFixed(1)}`, v.P(boardToX(a.boardAtArrows), 15), "#ffd25a");
+    if (a.breakpointBoard !== null && a.breakpointFt !== null) label(v, `Breakpoint ${a.breakpointBoard.toFixed(1)}`, v.P(boardToX(a.breakpointBoard), a.breakpointFt), "#ff5ad6");
+    if (a.entryBoard !== null) label(v, `Entry ${a.entryBoard.toFixed(1)}`, v.P(boardToX(a.entryBoard), 59.5), "#5affb0");
+  }
+  function drawCorners(v, corners2) {
+    const { ctx: ctx2 } = v;
+    const s = k(v);
+    ctx2.save();
+    corners2.forEach((c, i) => {
+      ctx2.fillStyle = "#4da3ff";
+      ctx2.shadowColor = "#4da3ff";
+      ctx2.shadowBlur = 16 * s;
+      ctx2.beginPath();
+      ctx2.arc(c.x, c.y, 9 * s, 0, 7);
+      ctx2.fill();
+      ctx2.shadowBlur = 0;
+      ctx2.fillStyle = "#06101c";
+      ctx2.font = `700 ${12 * s}px system-ui`;
+      ctx2.textAlign = "center";
+      ctx2.textBaseline = "middle";
+      ctx2.fillText(String(i + 1), c.x, c.y + 0.5 * s);
+      if (i > 0) {
+        ctx2.strokeStyle = "rgba(77,163,255,.8)";
+        ctx2.lineWidth = 2 * s;
+        ctx2.beginPath();
+        ctx2.moveTo(corners2[i - 1].x, corners2[i - 1].y);
+        ctx2.lineTo(c.x, c.y);
+        ctx2.stroke();
+      }
+    });
+    ctx2.restore();
+  }
+  function line(v, a, b) {
+    v.ctx.beginPath();
+    v.ctx.moveTo(a.x, a.y);
+    v.ctx.lineTo(b.x, b.y);
+    v.ctx.stroke();
+  }
+  function drawLaneGrid(v) {
+    const { ctx: ctx2, P } = v;
+    const s = k(v);
+    const L = currentLane();
+    ctx2.save();
+    const quad = [P(0, 0), P(LANE_BOARDS, 0), P(LANE_BOARDS, DECK_END_FT), P(0, DECK_END_FT)];
+    ctx2.beginPath();
+    quad.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
+    ctx2.closePath();
+    ctx2.fillStyle = L.fill;
+    ctx2.fill();
+    for (let i = 0; i <= LANE_BOARDS; i++) {
+      const fromRight = LANE_BOARDS - i;
+      const major = fromRight % 5 === 0;
+      const edge = i === 0 || i === LANE_BOARDS;
+      ctx2.strokeStyle = edge ? L.edge : major ? L.major : L.minor;
+      ctx2.lineWidth = (edge ? 2.4 : major ? 1.3 : 0.8) * s;
+      line(v, P(i, 0), P(i, LANE_LENGTH_FT));
+    }
+    ctx2.strokeStyle = L.foul;
+    ctx2.lineWidth = 3 * s;
+    ctx2.shadowColor = L.foul;
+    ctx2.shadowBlur = glowEnabled() ? 10 * s : 0;
+    line(v, P(0, 0), P(LANE_BOARDS, 0));
+    ctx2.shadowBlur = 0;
+    ctx2.setLineDash([6 * s, 8 * s]);
+    ctx2.lineWidth = 1 * s;
+    for (const ft of [30, 45]) {
+      ctx2.strokeStyle = "rgba(255,255,255,.2)";
+      line(v, P(0, ft), P(LANE_BOARDS, ft));
+    }
+    ctx2.setLineDash([]);
+    ctx2.strokeStyle = "rgba(255,255,255,.35)";
+    ctx2.lineWidth = 1.5 * s;
+    line(v, P(0, LANE_LENGTH_FT), P(LANE_BOARDS, LANE_LENGTH_FT));
+    line(v, P(0, DECK_END_FT), P(LANE_BOARDS, DECK_END_FT));
+    ctx2.fillStyle = "rgba(255,255,255,.55)";
+    for (let b = 5; b <= 35; b += 5) {
+      const c = P(boardToX(b), 7);
+      ctx2.beginPath();
+      ctx2.arc(c.x, c.y, 2.5 * s, 0, 7);
+      ctx2.fill();
+    }
+    ctx2.shadowBlur = 0;
+    ctx2.font = `600 ${12 * s}px -apple-system, system-ui, sans-serif`;
+    ctx2.textAlign = "center";
+    ctx2.textBaseline = "middle";
+    ctx2.fillStyle = "rgba(255,255,255,.75)";
+    for (let b = 5; b <= 35; b += 5) {
+      const c = P(boardToX(b), 3.2);
+      ctx2.fillText(String(b), c.x, c.y);
+    }
+    ctx2.fillStyle = "rgba(255,255,255,.88)";
+    ctx2.shadowColor = "rgba(255,255,255,.6)";
+    ctx2.shadowBlur = glowEnabled() ? 6 * s : 0;
+    for (let r = 0; r < 4; r++) {
+      for (let i = 0; i <= r; i++) {
+        const x = LANE_BOARDS / 2 + (i - r / 2) * PIN_SPACING_BOARDS;
+        const y = LANE_LENGTH_FT + r * ROW_FT;
+        const c = P(x, y);
+        const edge = P(x + 1.2, y);
+        ctx2.beginPath();
+        ctx2.arc(c.x, c.y, Math.max(2, Math.hypot(edge.x - c.x, edge.y - c.y)), 0, 7);
+        ctx2.fill();
+      }
+    }
+    ctx2.restore();
+  }
+  function drawTopDown(ctx2, w, h, paths, pocket) {
+    const padX = 18;
+    const top = 24;
+    const bottom = 18;
+    const laneW = w - padX * 2;
+    const laneH = h - top - bottom;
+    const px = (x) => padX + x / LANE_BOARDS * laneW;
+    const py = (ft) => h - bottom - ft / DECK_END_FT * laneH;
+    ctx2.clearRect(0, 0, w, h);
+    const L = currentLane();
+    ctx2.save();
+    ctx2.fillStyle = L.fill;
+    ctx2.fillRect(px(0), py(DECK_END_FT), laneW, laneH);
+    ctx2.lineWidth = 1;
+    for (let i = 0; i <= LANE_BOARDS; i++) {
+      const major = (LANE_BOARDS - i) % 5 === 0;
+      ctx2.strokeStyle = i === 0 || i === LANE_BOARDS ? L.edge : major ? L.major : L.minor;
+      ctx2.beginPath();
+      ctx2.moveTo(px(i), py(0));
+      ctx2.lineTo(px(i), py(LANE_LENGTH_FT));
+      ctx2.stroke();
+    }
+    ctx2.strokeStyle = L.foul;
+    ctx2.lineWidth = 2.5;
+    ctx2.beginPath();
+    ctx2.moveTo(px(0), py(0));
+    ctx2.lineTo(px(LANE_BOARDS), py(0));
+    ctx2.stroke();
+    ctx2.setLineDash([4, 6]);
+    ctx2.strokeStyle = "rgba(255,255,255,.18)";
+    ctx2.lineWidth = 1;
+    for (const ft of [15, 30, 45, 60]) {
+      ctx2.beginPath();
+      ctx2.moveTo(px(0), py(ft));
+      ctx2.lineTo(px(LANE_BOARDS), py(ft));
+      ctx2.stroke();
+    }
+    ctx2.setLineDash([]);
+    ctx2.fillStyle = L.arrow;
+    for (let b = 5; b <= 35; b += 5) {
+      const tip = 12 + 4 * (1 - Math.abs(b - 20) / 15);
+      const cx = px(boardToX(b));
+      ctx2.beginPath();
+      ctx2.moveTo(cx - 4, py(tip - 1.6));
+      ctx2.lineTo(cx + 4, py(tip - 1.6));
+      ctx2.lineTo(cx, py(tip));
+      ctx2.closePath();
+      ctx2.fill();
+    }
+    ctx2.fillStyle = "rgba(255,255,255,.55)";
+    ctx2.font = "600 10px system-ui, sans-serif";
+    ctx2.textAlign = "center";
+    for (let b = 5; b <= 35; b += 5) ctx2.fillText(String(b), px(boardToX(b)), py(0) + 12);
+    ctx2.fillStyle = "rgba(255,255,255,.88)";
+    for (let r = 0; r < 4; r++)
+      for (let i = 0; i <= r; i++) {
+        ctx2.beginPath();
+        ctx2.arc(px(LANE_BOARDS / 2 + (i - r / 2) * PIN_SPACING_BOARDS), py(LANE_LENGTH_FT + r * ROW_FT), 3.2, 0, 7);
+        ctx2.fill();
+      }
+    if (pocket) {
+      ctx2.strokeStyle = "rgba(90,255,176,.7)";
+      ctx2.lineWidth = 1.5;
+      ctx2.setLineDash([3, 3]);
+      ctx2.beginPath();
+      ctx2.moveTo(px(boardToX(pocket.board)), py(45));
+      ctx2.lineTo(px(boardToX(pocket.board)), py(LANE_LENGTH_FT));
+      ctx2.stroke();
+      ctx2.setLineDash([]);
+    }
+    for (const m of paths) {
+      if (m.path.length < 2) continue;
+      ctx2.strokeStyle = m.color;
+      ctx2.globalAlpha = m.alpha ?? 1;
+      ctx2.lineWidth = m.width ?? 2;
+      ctx2.lineJoin = "round";
+      ctx2.beginPath();
+      m.path.forEach((s, i) => i ? ctx2.lineTo(px(s.x), py(s.y)) : ctx2.moveTo(px(s.x), py(s.y)));
+      ctx2.stroke();
+    }
+    ctx2.restore();
   }
 
   // camera/sync.ts
@@ -8464,7 +7533,7 @@ ${url}`);
     const base = mode2 === "retake" && S.profile?.quiz ? { ...S.profile.quiz } : defaultAnswers(mode2 === "retake" ? S.profile?.name : "");
     const a = base;
     let step = 0;
-    const STEPS = 8;
+    const STEPS2 = 8;
     el.classList.add("on");
     const chips = (opts, cur2, key2) => `<div class="chips">${opts.map((o) => `<button class="chip ${o.id === cur2 ? "sel" : ""}" data-k="${key2}" data-v="${esc(o.id)}">${esc(o.label)}</button>`).join("")}</div>`;
     const body = () => {
@@ -8498,8 +7567,8 @@ ${url}`);
       }
     };
     const draw3 = () => {
-      el.innerHTML = `<div style="margin-top:14px" class="prog"><i style="width:${(step + 1) / STEPS * 100}%"></i></div><div class="note">Step ${step + 1} of ${STEPS}</div>${body()}
-      <div class="chips" style="margin-top:18px">${step > 0 ? `<button class="btn ghost" id="q-back">Back</button>` : mode2 !== "first" ? `<button class="btn ghost" id="q-cancel">Cancel</button>` : ""}<button class="btn" id="q-next">${step === STEPS - 1 ? "Start" : "Continue"}</button></div>`;
+      el.innerHTML = `<div style="margin-top:14px" class="prog"><i style="width:${(step + 1) / STEPS2 * 100}%"></i></div><div class="note">Step ${step + 1} of ${STEPS2}</div>${body()}
+      <div class="chips" style="margin-top:18px">${step > 0 ? `<button class="btn ghost" id="q-back">Back</button>` : mode2 !== "first" ? `<button class="btn ghost" id="q-cancel">Cancel</button>` : ""}<button class="btn" id="q-next">${step === STEPS2 - 1 ? "Start" : "Continue"}</button></div>`;
       el.querySelectorAll("[data-k]").forEach((b) => {
         b.onclick = () => {
           a[b.dataset.k] = b.dataset.v;
@@ -8523,7 +7592,7 @@ ${url}`);
           $("q-usernote").setAttribute("style", "color:var(--gold)");
           return $("q-user").focus();
         }
-        if (step < STEPS - 1) return step++, draw3();
+        if (step < STEPS2 - 1) return step++, draw3();
         a.takenAt = (/* @__PURE__ */ new Date()).toISOString();
         if (mode2 === "retake") {
           updateProfile({ name: a.name.trim() || S.profile.name, username: isUsername(a.username ?? "") ? a.username : S.profile.username, hand: a.hand, revRpm: a.revRpm, quiz: a });
@@ -10040,6 +9109,1092 @@ ${url}`);
     });
   }
 
+  // camera/tour.ts
+  var STEPS = [
+    { tab: "live", sel: "#hero", title: "Point. Lock. Bowl.", text: "LaneIQ turns your phone's camera into a bowling coach. There is nothing to put in your ball and nothing to buy. Put the phone where the whole lane is in view, from the foul line to the pins." },
+    { tab: "live", sel: "#start", title: "Start the camera", text: "Tap Start camera and allow the camera. The app asks for 60 frames a second so it can follow a fast ball. Everything stays on your phone." },
+    { tab: "live", sel: "#guide-open", title: "Where to put the phone", text: "Behind the approach, or off to one side, steady, with both gutters, the foul line and the pins in view. This guide has pictures and tips for a clean lock." },
+    { tab: "live", sel: "#status", title: "It finds the lane by itself", text: "The app scans the lane, and the biggest lane that stays steady in view is locked. This line always says what it is doing: scanning, locked, ball detected, shot captured." },
+    { tab: "live", sel: "#tracebtn, #reset", title: "If the lock is off, fix it", text: "Fix my lane freezes the picture so you can drag four numbered dots onto the lane, use Snap to edges, then place the head pin, the 7 and the 10. The yellow rings are the arrows the app found on your lane. Re-lock throws a bad lock away and starts again." },
+    { tab: "live", sel: ".grid", title: "Every shot, measured", text: "After each ball you get speed, the board at the arrows (read from the real arrows on your lane), breakpoint, the board where the ball was last seen, launch angle and more. Only what the camera saw is shown: nothing is guessed past it." },
+    { tab: "live", sel: "#result-card", title: "Pins are read from the camera", text: "The pins that fell are read from the deck. If it ever gets one wrong, tap the right number and the app learns from it." },
+    { tab: "shots", sel: ".tb[data-tab='shots']", title: "Shots", text: "Every shot is saved with its video, from the bowler's approach until the rack is full again. Open one to replay it with the ball's path drawn on the lane, switch to the raw video, a top-down map, or 3D." },
+    { tab: "score", sel: ".tb[data-tab='score']", title: "Score", text: "A scorecard that scores itself from the camera, with a spare coach that suggests where to throw your second ball." },
+    { tab: "insights", sel: ".tb[data-tab='insights']", title: "Insights", text: "Trends over your sessions and a skills chart that shows your strengths and weaknesses, so you know what to work on." },
+    { tab: "arsenal", sel: ".tb[data-tab='arsenal']", title: "Arsenal", text: "Your bowling balls. Photograph a ball to add it, estimate its PAP from three photos of the flare rings, and use the Spin lab on slow-motion video for rev rate, axis rotation and tilt." },
+    { tab: "proshop", sel: ".tb[data-tab='proshop']", title: "Pro shop", text: "Layouts, drilling and surface advice built around how you throw and the balls you own." },
+    { tab: "me", sel: ".tb[data-tab='me']", title: "Me", text: "Your profile, friends, rewards and skins, and settings such as turning the glow off for a plain view. You can take this tour again any time from the start screen." }
+  ];
+  function startTour(onDone) {
+    document.getElementById("tour")?.remove();
+    let i = 0;
+    const root = document.createElement("div");
+    root.id = "tour";
+    root.style.cssText = "position:fixed;inset:0;z-index:400;font-family:system-ui,sans-serif";
+    root.innerHTML = `
+    <div id="tour-spot" style="position:fixed;border-radius:16px;border:2px solid #46e6ff;box-shadow:0 0 0 9999px rgba(3,7,16,.78);transition:all .25s ease;pointer-events:none"></div>
+    <div id="tour-card" style="position:fixed;left:12px;right:12px;max-width:380px;margin:0 auto;background:#0d1626;border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:14px 14px 12px;color:#fff;box-shadow:0 12px 40px rgba(0,0,0,.5)">
+      <div id="tour-n" style="font-size:11px;color:#9fb0cc;letter-spacing:.06em;text-transform:uppercase"></div>
+      <div id="tour-t" style="font-weight:800;font-size:18px;margin:4px 0 6px"></div>
+      <div id="tour-x" style="font-size:14px;line-height:1.45;color:#d6e2f5"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+        <button id="tour-skip" class="btn ghost" style="padding:9px 12px">Skip</button>
+        <span style="flex:1"></span>
+        <button id="tour-back" class="btn ghost" style="padding:9px 14px">Back</button>
+        <button id="tour-next" class="btn" style="padding:9px 18px">Next</button>
+      </div>
+    </div>`;
+    document.body.append(root);
+    const spot = root.querySelector("#tour-spot");
+    const card = root.querySelector("#tour-card");
+    const q = (id) => root.querySelector(id);
+    const place = () => {
+      const s = STEPS[i];
+      const el = Array.from(document.querySelectorAll(s.sel)).find((e) => e.offsetParent !== null || getComputedStyle(e).position === "fixed");
+      const vh = window.innerHeight;
+      if (el) {
+        el.scrollIntoView({ block: "center", behavior: "instant" });
+        const r = el.getBoundingClientRect();
+        const pad = 6;
+        const top = Math.max(4, r.top - pad), left = Math.max(4, r.left - pad);
+        const w = Math.min(window.innerWidth - 8, r.width + pad * 2) - (left - (r.left - pad) > 0 ? left - (r.left - pad) : 0);
+        const h = Math.min(vh - 8, r.height + pad * 2);
+        Object.assign(spot.style, { display: "block", top: `${top}px`, left: `${left}px`, width: `${Math.max(24, w)}px`, height: `${Math.max(24, h)}px` });
+        const cardH = card.offsetHeight || 190;
+        const below = vh - (top + h);
+        card.style.top = below >= cardH + 16 ? `${top + h + 12}px` : `${Math.max(8, top - cardH - 12)}px`;
+        if (below < cardH + 16 && top < cardH + 20) card.style.top = `${Math.max(8, vh - cardH - 12)}px`;
+      } else {
+        spot.style.display = "none";
+        card.style.top = `${Math.max(8, (vh - (card.offsetHeight || 190)) / 2)}px`;
+      }
+    };
+    const show = () => {
+      const s = STEPS[i];
+      showTab(s.tab);
+      q("#tour-n").textContent = `${i + 1} of ${STEPS.length}`;
+      q("#tour-t").textContent = s.title;
+      q("#tour-x").textContent = s.text;
+      q("#tour-back").style.visibility = i === 0 ? "hidden" : "visible";
+      q("#tour-next").textContent = i === STEPS.length - 1 ? "Done" : "Next";
+      requestAnimationFrame(() => requestAnimationFrame(place));
+    };
+    const finish2 = () => {
+      window.removeEventListener("resize", place);
+      root.remove();
+      try {
+        localStorage.setItem("laneiq.tour", "1");
+      } catch {
+      }
+      showTab("live");
+      onDone?.();
+    };
+    window.addEventListener("resize", place);
+    q("#tour-next").onclick = () => i === STEPS.length - 1 ? finish2() : (i++, show());
+    q("#tour-back").onclick = () => i > 0 ? (i--, show()) : void 0;
+    q("#tour-skip").onclick = finish2;
+    show();
+  }
+  var tourSeen = () => {
+    try {
+      return localStorage.getItem("laneiq.tour") === "1";
+    } catch {
+      return true;
+    }
+  };
+
+  // core/src/lanefit.ts
+  var white = (rgba, i) => {
+    const r = rgba[i], g = rgba[i + 1], b = rgba[i + 2];
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    return mn > 150 && mx - mn < 45;
+  };
+  function pinSnap(rgba, w, h, c) {
+    const out = c.map((p) => ({ ...p }));
+    const none = { corners: out, moved: 0, found: false };
+    const farY = (c[2].y + c[3].y) / 2, nearY = (c[0].y + c[1].y) / 2;
+    const len = Math.abs(nearY - farY);
+    const dir = Math.sign(nearY - farY) || 1;
+    if (len < 40) return none;
+    const xa = Math.min(c[2].x, c[3].x), xb = Math.max(c[2].x, c[3].x);
+    const pad = (xb - xa) * 0.12;
+    const x0 = Math.max(0, Math.round(xa + pad)), x1 = Math.min(w - 1, Math.round(xb - pad));
+    if (x1 - x0 < 8) return none;
+    const reach = 0.14 * len;
+    const y0 = Math.max(0, Math.round(farY - dir * reach - (dir > 0 ? 0 : 0)));
+    const rows = [];
+    for (let k2 = -Math.round(reach); k2 <= Math.round(reach); k2++) {
+      const y = Math.round(farY - dir * k2);
+      if (y < 0 || y >= h) continue;
+      let n = 0;
+      for (let x = x0; x <= x1; x++) if (white(rgba, (y * w + x) * 4)) n++;
+      rows.push({ y, f: n / (x1 - x0 + 1) });
+    }
+    void y0;
+    if (rows.length < 10) return none;
+    rows.sort((a, b) => dir > 0 ? a.y - b.y : b.y - a.y);
+    const f = rows.map((r, i2) => (rows[Math.max(0, i2 - 1)].f + r.f + rows[Math.min(rows.length - 1, i2 + 1)].f) / 3);
+    let i = 0;
+    while (i < f.length && f[i] < 0.55) i++;
+    if (i >= f.length) return none;
+    let peak = f[i], j = i;
+    while (j < f.length && f[j] >= 0.5 * peak) {
+      peak = Math.max(peak, f[j]);
+      j++;
+    }
+    if (j >= f.length) return none;
+    const baseY = rows[j - 1].y;
+    const moved = (baseY - farY) * dir * -1;
+    if (Math.abs(baseY - farY) > reach) return none;
+    const slide = (near, far) => {
+      const dy = far.y - near.y;
+      if (Math.abs(dy) < 1e-6) return far;
+      const t = (baseY - near.y) / dy;
+      return { x: near.x + (far.x - near.x) * t, y: baseY };
+    };
+    out[3] = slide(c[0], c[3]);
+    out[2] = slide(c[1], c[2]);
+    return { corners: out, moved, found: true };
+  }
+
+  // core/src/retrace.ts
+  var MAX_SKIP = 6;
+  function tracePath(frames) {
+    const nodes = frames.map((fr2) => fr2.cands.map(() => ({ f: 0, c: 0, score: 0, prev: null })));
+    let best = null;
+    for (let f = 0; f < frames.length; f++) {
+      for (let c = 0; c < frames[f].cands.length; c++) {
+        const cj = frames[f].cands[c];
+        const reward = Math.max(0.1, 1.2 - 0.5 * Math.max(cj.q, -0.5));
+        let bestScore = reward;
+        let bestPrev = null;
+        for (let g = 1; g <= MAX_SKIP && f - g >= 0; g++) {
+          const fi = f - g;
+          const dt = frames[f].t - frames[fi].t;
+          if (dt <= 0) continue;
+          for (let i = 0; i < frames[fi].cands.length; i++) {
+            const ci = frames[fi].cands[i];
+            const dly = cj.ly - ci.ly;
+            const dlx = Math.abs(cj.lx - ci.lx);
+            if (dly < -0.8 || dly / dt > 62 || dlx > 3 + 8 * dt) continue;
+            const progress2 = Math.min(dly, 4);
+            const link = progress2 >= 0.06 ? 0.35 * progress2 : -0.9;
+            const sideways = 0.12 * Math.max(0, dlx / dt - 3);
+            const skip = 0.25 * (g - 1);
+            const s = nodes[fi][i].score + reward + link - sideways - skip;
+            if (s > bestScore) bestScore = s, bestPrev = [fi, i];
+          }
+        }
+        nodes[f][c] = { f, c, score: bestScore, prev: bestPrev };
+        if (!best || bestScore > best.score) best = { f, c, score: bestScore };
+      }
+    }
+    if (!best) return null;
+    const chain = [];
+    let cur2 = [best.f, best.c];
+    while (cur2) {
+      const [f, c] = cur2;
+      chain.push({ t: frames[f].t, lx: frames[f].cands[c].lx, ly: frames[f].cands[c].ly });
+      cur2 = nodes[f][c].prev;
+    }
+    chain.reverse();
+    if (chain.length < 8) return null;
+    const span = chain[chain.length - 1].ly - chain[0].ly;
+    const mph = span / Math.max(1e-6, chain[chain.length - 1].t - chain[0].t) * (3600 / 5280);
+    if (span < 12 || mph < 6 || mph > 40) return null;
+    return chain.map((p) => ({ t: p.t, x: p.lx, y: p.ly }));
+  }
+
+  // core/src/stabilize.ts
+  var POINTS = 3500;
+  var Stabilizer = class {
+    w;
+    h;
+    ready = false;
+    dx = 0;
+    dy = 0;
+    /** frames in a row without a trustworthy match */
+    bad = 0;
+    pts = new Int32Array(0);
+    vals = new Float32Array(0);
+    meanRef = 0;
+    region = { x0: 0, y0: 0, x1: 0, y1: 0 };
+    edge;
+    constructor(w, h) {
+      this.w = w;
+      this.h = h;
+      this.edge = new Float32Array(w * h);
+    }
+    reset() {
+      this.ready = false;
+      this.dx = this.dy = 0;
+      this.bad = 0;
+    }
+    /** Gradient strength over a region of the picture (only what the search will look at). */
+    edges(gray, r) {
+      const { w } = this;
+      const e = this.edge;
+      for (let y = Math.max(1, r.y0); y < Math.min(this.h - 1, r.y1); y++)
+        for (let x = Math.max(1, r.x0); x < Math.min(w - 1, r.x1); x++) {
+          const i = y * w + x;
+          e[i] = Math.abs(gray[i + 1] - gray[i - 1]) + Math.abs(gray[i + w] - gray[i - w]);
+        }
+    }
+    /** Take the reference from this frame, using the lane's bounding box. */
+    setReference(gray, box) {
+      const { w, h } = this;
+      const m = 3;
+      this.region = { x0: Math.max(m, Math.floor(box.x0)), y0: Math.max(m, Math.floor(box.y0)), x1: Math.min(w - m, Math.ceil(box.x1)), y1: Math.min(h - m, Math.ceil(box.y1)) };
+      const r = this.region;
+      this.edges(gray, r);
+      let sum = 0, n = 0;
+      for (let y = r.y0; y < r.y1; y += 2) for (let x = r.x0; x < r.x1; x += 2) sum += this.edge[y * w + x], n++;
+      const mean3 = n ? sum / n : 0;
+      const cand = [];
+      for (let y = r.y0; y < r.y1; y += 2) for (let x = r.x0; x < r.x1; x += 2) {
+        const v = this.edge[y * w + x];
+        if (v > 2.2 * mean3) cand.push({ i: y * w + x, v });
+      }
+      cand.sort((a, b) => b.v - a.v);
+      const take = cand.slice(0, POINTS);
+      this.pts = Int32Array.from(take.map((c) => c.i));
+      this.vals = Float32Array.from(take.map((c) => c.v));
+      this.meanRef = take.length ? take.reduce((a, c) => a + c.v, 0) / take.length : 0;
+      this.dx = this.dy = 0;
+      this.bad = 0;
+      this.ready = take.length >= 150;
+    }
+    cost(dx, dy, cap, stride = 1) {
+      const { w } = this;
+      const off = dy * w + dx;
+      const e = this.edge;
+      let s = 0, c = 0;
+      for (let k2 = 0; k2 < this.pts.length; k2 += stride) {
+        const d = Math.abs(this.vals[k2] - e[this.pts[k2] + off]);
+        s += d < cap ? d : cap;
+        c++;
+      }
+      return c ? s / c : Infinity;
+    }
+    /** Find how far the picture has slid. Call once per frame, in order. */
+    update(gray) {
+      if (!this.ready) return { dx: 0, dy: 0, ok: false };
+      const R2 = this.bad >= 3 ? 26 : 12;
+      const pad = R2 + 6;
+      const r = { x0: this.region.x0 - pad, y0: this.region.y0 - pad, x1: this.region.x1 + pad, y1: this.region.y1 + pad };
+      this.edges(gray, r);
+      const cap = Math.max(4, 2.5 * this.meanRef);
+      const cx = Math.round(this.dx), cy = Math.round(this.dy);
+      const reg = this.region;
+      const inside2 = (dx, dy) => reg.x0 + dx >= 1 && reg.x1 + dx <= this.w - 1 && reg.y0 + dy >= 1 && reg.y1 + dy <= this.h - 1;
+      let best = Infinity, bx = cx, by = cy;
+      for (let dy = cy - R2; dy <= cy + R2; dy += 2)
+        for (let dx = cx - R2; dx <= cx + R2; dx += 2) {
+          if (!inside2(dx, dy)) continue;
+          const v = this.cost(dx, dy, cap, 3);
+          if (v < best) best = v, bx = dx, by = dy;
+        }
+      const cx2 = bx, cy2 = by;
+      best = Infinity;
+      for (let dy = cy2 - 2; dy <= cy2 + 2; dy++)
+        for (let dx = cx2 - 2; dx <= cx2 + 2; dx++) {
+          if (!inside2(dx, dy)) continue;
+          const v = this.cost(dx, dy, cap);
+          if (v < best) best = v, bx = dx, by = dy;
+        }
+      const sub3 = (p, q, t) => {
+        const d = p - 2 * q + t;
+        return d > 1e-9 ? Math.max(-0.5, Math.min(0.5, (p - t) / (2 * d))) : 0;
+      };
+      let fx = bx, fy = by;
+      if (inside2(bx - 1, by) && inside2(bx + 1, by) && inside2(bx, by - 1) && inside2(bx, by + 1)) {
+        fx = bx + sub3(this.cost(bx - 1, by, cap), best, this.cost(bx + 1, by, cap));
+        fy = by + sub3(this.cost(bx, by - 1, cap), best, this.cost(bx, by + 1, cap));
+      }
+      const ok = best < 0.5 * this.meanRef;
+      if (ok) {
+        this.dx = fx;
+        this.dy = fy;
+        this.bad = 0;
+      } else this.bad++;
+      return { dx: this.dx, dy: this.dy, ok };
+    }
+    /** Slide a frame back by (dx, dy): out[y][x] = src[y + dy][x + dx], interpolated. */
+    warp(src, out, dx = this.dx, dy = this.dy) {
+      const { w, h } = this;
+      const ix = Math.floor(dx), iy = Math.floor(dy);
+      const fx = dx - ix, fy = dy - iy;
+      for (let y = 0; y < h; y++) {
+        const y0 = Math.min(h - 1, Math.max(0, y + iy)), y1 = Math.min(h - 1, y0 + 1);
+        for (let x = 0; x < w; x++) {
+          const x0 = Math.min(w - 1, Math.max(0, x + ix)), x1 = Math.min(w - 1, x0 + 1);
+          const a = src[y0 * w + x0], b = src[y0 * w + x1], c = src[y1 * w + x0], d = src[y1 * w + x1];
+          out[y * w + x] = (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
+        }
+      }
+      return out;
+    }
+  };
+
+  // core/src/metrics.ts
+  var POCKET_BOARD = { R: 17.5, L: 22.5 };
+  var MPH = 3600 / 5280;
+  function speedBetween(path2, y0, y1) {
+    const w = path2.filter((s) => s.y >= y0 && s.y <= y1);
+    if (w.length < 4) return null;
+    const dt = w[w.length - 1].t - w[0].t;
+    const dy = w[w.length - 1].y - w[0].y;
+    return dt > 0.05 && dy > 3 ? dy / dt * MPH : null;
+  }
+  function classifyZone(miss) {
+    const a = Math.abs(miss);
+    if (a <= 1) return "pocket";
+    if (a <= 2.5) return miss > 0 ? "high" : "light";
+    return miss > 0 ? "very-high" : "very-light";
+  }
+  function deriveMetrics(a, path2, hand2) {
+    const early = path2.filter((s) => s.y >= 2 && s.y <= 8);
+    const startBoard = early.length ? boardFromRight(early.reduce((t, s) => t + s.x, 0) / early.length) : null;
+    const launchSpeed = speedBetween(path2, 3, 20);
+    const entrySpeed = speedBetween(path2, 40, 58);
+    const speedLossPct = launchSpeed && entrySpeed ? (launchSpeed - entrySpeed) / launchSpeed * 100 : null;
+    const hookBoards = a.breakpointBoard !== null && a.entryBoard !== null ? Math.abs(a.entryBoard - a.breakpointBoard) : null;
+    const hookLengthFt = a.breakpointFt !== null ? Math.max(0, 59.5 - a.breakpointFt) : null;
+    const pocket = POCKET_BOARD[hand2];
+    const pocketMiss = a.entryBoard === null ? null : hand2 === "R" ? a.entryBoard - pocket : pocket - a.entryBoard;
+    return {
+      hand: hand2,
+      startBoard,
+      arrowsBoard: a.boardAtArrows,
+      breakpointBoard: a.breakpointBoard,
+      breakpointFt: a.breakpointFt,
+      entryBoard: a.entryBoard,
+      launchAngle: a.launchAngleDeg,
+      entryAngle: a.impactAngleDeg === null ? null : Math.abs(a.impactAngleDeg),
+      launchSpeed,
+      entrySpeed,
+      speedLossPct,
+      hookBoards,
+      hookLengthFt,
+      pocketMiss,
+      zone: pocketMiss === null ? null : classifyZone(pocketMiss)
+    };
+  }
+
+  // core/src/lanedetect.ts
+  var LANE_END_FT = 62.85;
+  var ASSUMED_HFOV_DEG = 63;
+  var LANE_LEN = 60;
+  var newDiag = () => ({ edgePixels: 0, leftLines: 0, rightLines: 0, pairs: 0, guess: null, foulRow: null, pitRow: null, hint: "" });
+  function detectLanes(gray, w, h, maxCandidates = 3, seed, diag2) {
+    const first = detectLanesOnce(gray, w, h, maxCandidates, seed, diag2);
+    if (first.length && first.some(isSolid)) return first;
+    const inv = new Uint8ClampedArray(w * h);
+    for (let i = 0; i < inv.length; i++) inv[i] = 255 - gray[i];
+    const dg2 = diag2 ? newDiag() : void 0;
+    const second = detectLanesOnce(inv, w, h, maxCandidates, seed, dg2);
+    const best = (l) => l.reduce((m, d) => Math.max(m, d.confidence), 0);
+    if (best(second) > best(first)) {
+      if (diag2 && dg2) Object.assign(diag2, dg2);
+      return second;
+    }
+    return first;
+  }
+  function detectLanesOnce(gray, w, h, maxCandidates = 3, seed, diag2) {
+    const dbg = (m) => globalThis.__laneDbg?.push(m);
+    const sm = new Float32Array(w * h);
+    for (let y = 1; y < h - 1; y++)
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        sm[i] = (4 * gray[i] + 2 * (gray[i - 1] + gray[i + 1] + gray[i - w] + gray[i + w]) + gray[i - w - 1] + gray[i - w + 1] + gray[i + w - 1] + gray[i + w + 1]) / 16;
+      }
+    const gx = new Float32Array(w * h);
+    const gy = new Float32Array(w * h);
+    const mag = new Float32Array(w * h);
+    for (let y = 2; y < h - 2; y++)
+      for (let x = 2; x < w - 2; x++) {
+        const i = y * w + x;
+        const dx = -sm[i - w - 1] + sm[i - w + 1] - 2 * sm[i - 1] + 2 * sm[i + 1] - sm[i + w - 1] + sm[i + w + 1];
+        const dy = -sm[i - w - 1] - 2 * sm[i - w] - sm[i - w + 1] + sm[i + w - 1] + 2 * sm[i + w] + sm[i + w + 1];
+        gx[i] = dx;
+        gy[i] = dy;
+        mag[i] = Math.hypot(dx, dy);
+      }
+    const sample2 = Float32Array.from({ length: 4e3 }, (_, k2) => mag[Math.floor(k2 / 4e3 * mag.length)]).sort();
+    let thr = Math.max(14, sample2[Math.floor(sample2.length * 0.9)], 7 * sample2[Math.floor(sample2.length * 0.5)]);
+    if (seed) {
+      const near = [];
+      for (let y = Math.max(2, Math.round(seed.y - h * 0.2)); y < Math.min(h - 2, Math.round(seed.y + h * 0.2)); y += 2)
+        for (let x = Math.max(2, Math.round(seed.x - w * 0.25)); x < Math.min(w - 2, Math.round(seed.x + w * 0.25)); x += 2) near.push(mag[y * w + x]);
+      near.sort((a, b) => a - b);
+      thr = Math.max(14, near[Math.floor(near.length * 0.85)] * 0.7, 6 * near[Math.floor(near.length * 0.5)]);
+    }
+    const yA = Math.round(h * 0.1);
+    const yB = Math.round(h * 0.9);
+    const span = yB - yA;
+    const yMin = seed ? 2 : Math.round(h * 0.1);
+    const STEP = Math.max(1, Math.round(w / 320));
+    const PHI_MAX = 68 * Math.PI / 180;
+    const DPHI = 0.4 * Math.PI / 180;
+    const WIN = 15 * Math.PI / 180;
+    const NPHI = Math.floor(2 * PHI_MAX / DPHI) + 1;
+    const tanTab = Float32Array.from({ length: NPHI }, (_, k2) => Math.tan(-PHI_MAX + k2 * DPHI));
+    const lo = -w * 1.5;
+    const NX = Math.ceil(w * 4 / STEP);
+    const accL = new Float32Array(seed ? 0 : NPHI * NX);
+    const accR = new Float32Array(seed ? 0 : NPHI * NX);
+    const agrees = (i, slope, sign) => (gx[i] - gy[i] * slope) / Math.sqrt(1 + slope * slope) / mag[i] * sign > 0.93;
+    const edges = [];
+    for (let y = yMin; y < h - 2; y++)
+      for (let x = 2; x < w - 2; x++) {
+        const i = y * w + x;
+        if (mag[i] < thr || Math.abs(gx[i]) < (seed ? 0.55 : 0.4) * Math.abs(gy[i])) continue;
+        edges.push(i);
+        if (seed) continue;
+        const acc = gx[i] > 0 ? accL : accR;
+        const sgn = gx[i] > 0 ? 1 : -1;
+        void sgn;
+        const phiE = Math.atan(-gy[i] / gx[i]);
+        const k0 = Math.max(0, Math.ceil((phiE - WIN + PHI_MAX) / DPHI));
+        const k1 = Math.min(NPHI - 1, Math.floor((phiE + WIN + PHI_MAX) / DPHI));
+        for (let k2 = k0; k2 <= k1; k2++) {
+          const xi = Math.round((x - tanTab[k2] * (y - yA) - lo) / STEP);
+          if (xi >= 0 && xi < NX) acc[k2 * NX + xi]++;
+        }
+      }
+    dbg(`thr ${thr.toFixed(1)} edges ${edges.length}`);
+    if (diag2) diag2.edgePixels = edges.length;
+    if (edges.length < 60) {
+      if (diag2) diag2.hint = "I can barely see any edges: the picture may be too dark, blurry or flat.";
+      return [];
+    }
+    const xAt = (l, y) => l.xa + (l.xb - l.xa) * (y - yA) / span;
+    const supportOf = (xa, xb, sign) => {
+      const rows = new Uint8Array(h);
+      const slope = (xb - xa) / span;
+      for (const i of edges) {
+        if (gx[i] * sign <= 0 || !agrees(i, slope, sign)) continue;
+        const y = Math.floor(i / w);
+        if (Math.abs(i % w - (xa + (xb - xa) * (y - yA) / span)) <= 2.5 * STEP * Math.sqrt(1 + slope * slope)) rows[y] = 1;
+      }
+      let top = -1;
+      let bot = -1;
+      for (let y = 0; y < h - 8; y++) {
+        let c = 0;
+        for (let k2 = 0; k2 < 8; k2++) c += rows[y + k2];
+        if (c >= 6) {
+          if (top < 0) top = y;
+          bot = y + 7;
+        }
+      }
+      return { top, bot, rows };
+    };
+    const refine = (xa, xb, sign, top, bot, tol = 2.5 * STEP) => {
+      for (let it = 0; it < 3; it++) {
+        let sw = 0, sy = 0, sx = 0, syy = 0, sxy = 0;
+        const cur2 = (xb - xa) / span;
+        for (const i of edges) {
+          if (gx[i] * sign <= 0 || !agrees(i, cur2, sign)) continue;
+          const y = Math.floor(i / w);
+          if (y < top || y > bot) continue;
+          const px = i % w;
+          const lx = xa + (xb - xa) * (y - yA) / span;
+          if (Math.abs(px - lx) > tol * Math.sqrt(1 + cur2 * cur2)) continue;
+          const wgt = mag[i];
+          sw += wgt;
+          sy += wgt * y;
+          sx += wgt * px;
+          syy += wgt * y * y;
+          sxy += wgt * y * px;
+        }
+        const den = sw * syy - sy * sy;
+        if (sw < 1 || Math.abs(den) < 1e-6) break;
+        const slope = (sw * sxy - sy * sx) / den;
+        const icpt = (sx - slope * sy) / sw;
+        xa = icpt + slope * yA;
+        xb = icpt + slope * yB;
+      }
+      return { xa, xb };
+    };
+    const linesOf = (acc, sign, k2) => {
+      let best = 0;
+      for (let i = 0; i < acc.length; i++) if (acc[i] > best) best = acc[i];
+      const floorV = Math.max(10, best * 0.15);
+      const cells = [];
+      for (let i = 0; i < acc.length; i++) if (acc[i] >= floorV) cells.push(i);
+      cells.sort((p, q) => acc[q] - acc[p]);
+      const out = [];
+      const taken = [];
+      for (const c of cells.slice(0, 8e3)) {
+        const xa = lo + c % NX * STEP;
+        const xb = xa + tanTab[Math.floor(c / NX)] * span;
+        if (taken.some((p) => Math.abs(p.a - xa) <= 6 * STEP && Math.abs(p.b - xb) <= 8 * STEP)) continue;
+        taken.push({ a: xa, b: xb });
+        let s = supportOf(xa, xb, sign);
+        if (s.top < 0 || s.bot - s.top < h * 0.06) continue;
+        const ref = refine(xa, xb, sign, s.top, s.bot);
+        s = supportOf(ref.xa, ref.xb, sign);
+        if (s.top < 0 || s.bot - s.top < h * 0.06) continue;
+        out.push({ xa: ref.xa, xb: ref.xb, votes: acc[c], top: s.top, bot: s.bot, rows: s.rows });
+        if (out.length >= k2) break;
+      }
+      return out;
+    };
+    const seededLines = (sign) => {
+      if (!seed) return [];
+      const sx = Math.round(seed.x);
+      const sy = Math.round(seed.y);
+      const g = (x, y) => x < 2 || x >= w - 2 || y < 2 || y >= h - 2 ? 0 : gx[y * w + x] * sign;
+      let x0 = -1;
+      for (let d = 4; d < w; d++) {
+        const x = sign > 0 ? sx - d : sx + d;
+        if (x < 3 || x > w - 4) break;
+        if (g(x, sy) > thr) {
+          let bx = x;
+          for (let k2 = -3; k2 <= 3; k2++) if (g(x + k2, sy) > g(bx, sy)) bx = x + k2;
+          x0 = bx;
+          break;
+        }
+      }
+      if (x0 < 0) return [];
+      const pts = [{ x: x0, y: sy }];
+      for (const dir of [1, -1]) {
+        let x = x0;
+        let slope = 0;
+        let miss = 0;
+        const recent = [{ x: x0, y: sy }];
+        for (let y = sy + dir; y > 2 && y < h - 3; y += dir) {
+          const tol = recent.length < 12 ? 6 : 3;
+          const pred = x + slope * dir;
+          let best = -1;
+          let bv = thr * 0.6;
+          for (let cx = Math.round(pred - tol); cx <= Math.round(pred + tol); cx++) {
+            const v = g(cx, y);
+            if (v > bv && Math.abs(gx[y * w + cx]) >= 0.4 * Math.abs(gy[y * w + cx])) {
+              bv = v;
+              best = cx;
+            }
+          }
+          if (best < 0) {
+            if (++miss > 8) break;
+            x = pred;
+            continue;
+          }
+          miss = 0;
+          x = best;
+          pts.push({ x, y });
+          recent.push({ x, y });
+          if (recent.length > 14) recent.shift();
+          if (recent.length >= 6) slope = (recent[recent.length - 1].x - recent[0].x) / (recent[recent.length - 1].y - recent[0].y);
+        }
+      }
+      if (pts.length < 40) return [];
+      let inl = pts;
+      let a = 0;
+      let b = 0;
+      for (let round = 0; round < 4; round++) {
+        let sw = 0, sy2 = 0, sx2 = 0, syy = 0, sxy = 0;
+        for (const p of inl) {
+          sw++;
+          sy2 += p.y;
+          sx2 += p.x;
+          syy += p.y * p.y;
+          sxy += p.y * p.x;
+        }
+        const den = sw * syy - sy2 * sy2;
+        if (Math.abs(den) < 1e-9) return [];
+        b = (sw * sxy - sy2 * sx2) / den;
+        a = (sx2 - b * sy2) / sw;
+        const res = pts.map((p) => Math.abs(p.x - (a + b * p.y)));
+        const med2 = [...res].sort((p, q) => p - q)[Math.floor(res.length / 2)];
+        const lim = Math.max(1.5, 2.5 * med2);
+        inl = pts.filter((_, k2) => res[k2] <= lim);
+        if (inl.length < 30) return [];
+      }
+      const ys = inl.map((p) => p.y);
+      const top = Math.min(...ys);
+      const bot = Math.max(...ys);
+      const rows = new Uint8Array(h);
+      for (const p of inl) for (let k2 = -2; k2 <= 2; k2++) if (p.y + k2 >= 0 && p.y + k2 < h) rows[p.y + k2] = 1;
+      return [{ xa: a + b * yA, xb: a + b * yB, votes: inl.length, top, bot, rows }];
+    };
+    const Ls = seed ? seededLines(1) : linesOf(accL, 1, 16);
+    const Rs = seed ? seededLines(-1) : linesOf(accR, -1, 16);
+    globalThis.__laneLines = { Ls, Rs, yA, span };
+    dbg(`lines L ${Ls.length} R ${Rs.length}`);
+    if (diag2) {
+      diag2.leftLines = Ls.length;
+      diag2.rightLines = Rs.length;
+    }
+    dbg("L lines @row200: " + Ls.map((l) => `${(l.xa + (l.xb - l.xa) * (200 - yA) / span).toFixed(0)}[v${l.votes},${l.top}-${l.bot}]`).join(" "));
+    dbg("R lines @row200: " + Rs.map((l) => `${(l.xa + (l.xb - l.xa) * (200 - yA) / span).toFixed(0)}[v${l.votes},${l.top}-${l.bot}]`).join(" "));
+    if (!Ls.length || !Rs.length) {
+      if (diag2) diag2.hint = Ls.length || Rs.length ? "I can see one edge of the lane but not the other. Make sure both gutters are in view." : "I can't pick out the lane edges. Aim so the whole lane, with both gutters, fills the middle of the picture.";
+      return [];
+    }
+    const rowMean = (y, xl, xr) => {
+      let s = 0;
+      let n = 0;
+      for (let x = Math.max(0, Math.ceil(xl)); x <= Math.min(w - 1, Math.floor(xr)); x++) {
+        s += sm[Math.round(y) * w + x];
+        n++;
+      }
+      return n ? s / n : NaN;
+    };
+    const cands = [];
+    const maxV = Math.max(Ls[0].votes, Rs[0].votes);
+    let why = { range: 0, shape: 0, contrast: 0 };
+    for (const L of Ls)
+      for (const R2 of Rs) {
+        const t = Math.max(L.top, R2.top);
+        const b = Math.min(L.bot, R2.bot);
+        if (b - t < h * 0.06) {
+          why.range++;
+          continue;
+        }
+        const wt = xAt(R2, t) - xAt(L, t);
+        const wb = xAt(R2, b) - xAt(L, b);
+        if (wt < 2 || wb < wt * 1.02 || wb > w * 1.05) {
+          why.shape++;
+          continue;
+        }
+        let good = 0;
+        let rowsN = 0;
+        let strengthSum = 0;
+        for (let y = t + 2; y <= b - 2; y += 3) {
+          const xl = xAt(L, y);
+          const xr = xAt(R2, y);
+          const wid = xr - xl;
+          if (wid < 3) continue;
+          const inside2 = rowMean(y, xl + wid * 0.2, xr - wid * 0.2);
+          const left = xl - wid * 0.2 < 1 ? NaN : rowMean(y, xl - wid * 0.3, xl - wid * 0.08);
+          const right = xr + wid * 0.2 > w - 2 ? NaN : rowMean(y, xr + wid * 0.08, xr + wid * 0.3);
+          if (!Number.isFinite(left) && !Number.isFinite(right)) continue;
+          rowsN++;
+          if ((!Number.isFinite(left) || inside2 - left > 6) && (!Number.isFinite(right) || inside2 - right > 6)) good++;
+          strengthSum += Math.max(0, Math.min(100, Math.min(Number.isFinite(left) ? inside2 - left : 100, Number.isFinite(right) ? inside2 - right : 100)));
+        }
+        if (rowsN < 5 || good / rowsN < 0.45) {
+          why.contrast++;
+          continue;
+        }
+        const contrast = good / rowsN;
+        const votes = (L.votes + R2.votes) / (2 * maxV);
+        const cb = (xAt(L, b) + xAt(R2, b)) / 2;
+        const centered = 1 - 0.12 * Math.min(1, Math.abs(cb - w / 2) / (w * 0.5));
+        const lenScore = Math.min(1, (b - t) / (h * 0.25));
+        cands.push({ L, R: R2, t, b, base: (votes + contrast + 0.5 * lenScore + 1.2 * (strengthSum / rowsN / 100)) * centered });
+      }
+    dbg(`pairs ${cands.length}; rejected ${JSON.stringify(why)}`);
+    if (diag2) {
+      diag2.pairs = cands.length;
+      if (!cands.length) diag2.hint = "I see edges, but nothing that looks like a bright lane between two dark gutters yet.";
+    }
+    cands.sort((p, q) => q.base - p.base);
+    const distinct = [];
+    for (const c of cands) {
+      const cb = (xAt(c.L, c.b) + xAt(c.R, c.b)) / 2;
+      const isSame = (d) => {
+        if (Math.abs((xAt(d.L, d.b) + xAt(d.R, d.b)) / 2 - cb) > 0.04 * w) return false;
+        const y = Math.min(c.b, d.b) - 2;
+        const wc = xAt(c.R, y) - xAt(c.L, y);
+        const wd = xAt(d.R, y) - xAt(d.L, y);
+        return wd > 0 && wc / wd > 0.85 && wc / wd < 1.18;
+      };
+      if (!distinct.some(isSame)) distinct.push(c);
+      if (distinct.length >= maxCandidates + 9) break;
+    }
+    if (diag2 && distinct[0]) {
+      const c = distinct[0];
+      diag2.guess = { left: { x0: xAt(c.L, c.t), y0: c.t, x1: xAt(c.L, c.b), y1: c.b }, right: { x0: xAt(c.R, c.t), y0: c.t, x1: xAt(c.R, c.b), y1: c.b } };
+    }
+    dbg(`candidates: ${distinct.map((c) => `[${xAt(c.L, c.b).toFixed(0)}-${xAt(c.R, c.b).toFixed(0)}@${c.b} t${c.t} base ${c.base.toFixed(2)}]`).join(" ")}`);
+    const results = [];
+    for (const c of distinct) {
+      const r = geometry(c);
+      if (r) results.push(r);
+    }
+    const sorted2 = results.sort((p, q) => q.confidence - p.confidence).slice(0, maxCandidates);
+    if (diag2 && sorted2.length) diag2.hint = "";
+    return sorted2;
+    function geometry(c) {
+      let { L, R: R2 } = c;
+      const { t, b } = c;
+      const notes = [];
+      const sL = (L.xb - L.xa) / span;
+      const sR = (R2.xb - R2.xa) / span;
+      if (Math.abs(sL - sR) < 1e-6) return dbg("reject: parallel lines"), null;
+      const yv = yA + (R2.xa - L.xa) / (sL - sR);
+      if (!Number.isFinite(yv) || yv > t - 3) return dbg(`reject: vanishing row ${yv.toFixed(1)} vs top ${t}`), null;
+      const prof = new Float32Array(h);
+      const up = new Float32Array(h);
+      const yStart = Math.max(3, Math.ceil(yv) + 3);
+      for (let y = yStart; y < h - 3; y++) {
+        const cl = xAt(L, y) + 2 * STEP;
+        const cr = xAt(R2, y) - 2 * STEP;
+        if (cr - cl < 4) continue;
+        let cnt = 0;
+        let s = 0;
+        let n = 0;
+        for (let x = Math.max(2, Math.ceil(cl)); x <= Math.min(w - 3, Math.floor(cr)); x++) {
+          const i = y * w + x;
+          n++;
+          if (Math.abs(gy[i]) > thr * 0.6 && Math.abs(gy[i]) > 1.3 * Math.abs(gx[i])) {
+            cnt++;
+            s += gy[i];
+          }
+        }
+        if (n) {
+          prof[y] = cnt / n;
+          up[y] = s / n / Math.max(1, thr);
+        }
+      }
+      const localMax = (arr, min, k2, from = yStart + 1, to = h - 4) => {
+        const out = [];
+        for (let y = Math.max(from, yStart + 1); y < to; y++) if (arr[y] >= min && arr[y] >= arr[y - 1] && arr[y] >= arr[y + 1]) out.push(y);
+        return out.sort((p, q) => arr[q] - arr[p]).slice(0, k2);
+      };
+      const topRows = (arr) => Array.from({ length: h }, (_, y) => y).filter((y) => y >= yStart && y < h - 4).sort((p, q) => arr[q] - arr[p]).slice(0, 6).map((y) => `${y}:${arr[y].toFixed(2)}`).join(" ");
+      const prow = new Float32Array(h).fill(NaN);
+      const plow = new Float32Array(h).fill(NaN);
+      const phigh = new Float32Array(h).fill(NaN);
+      for (let y = yStart; y < h - 3; y++) {
+        const wid = xAt(R2, y) - xAt(L, y);
+        if (wid < 6) continue;
+        const a = Math.max(2, Math.ceil(xAt(L, y) + 0.2 * wid));
+        const b2 = Math.min(w - 3, Math.floor(xAt(R2, y) - 0.2 * wid));
+        if (b2 - a < 3) continue;
+        const vals = [];
+        for (let x = a; x <= b2; x++) vals.push(sm[y * w + x]);
+        vals.sort((p, q) => p - q);
+        prow[y] = vals[vals.length >> 1];
+        plow[y] = vals[vals.length >> 2];
+        phigh[y] = vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.9))];
+      }
+      const pAvg = (ya, yb, y, src = prow) => {
+        let s = 0, n = 0;
+        for (let k2 = ya; k2 <= yb; k2++) {
+          const v = src[Math.round(y + k2)];
+          if (Number.isFinite(v)) {
+            s += v;
+            n++;
+          }
+        }
+        return n >= Math.max(1, (yb - ya + 1) / 2) ? s / n : NaN;
+      };
+      const foulCands = localMax(prof, 0.2, 8, Math.floor(t + h * 0.05), h - 4);
+      const pitBefore = Math.max(14, Math.round(0.045 * h));
+      const pitAfter = Math.max(18, Math.round(0.055 * h));
+      const pitCands = localMax(up, 0.3, 6, Math.floor(t - pitBefore), Math.floor(t + pitAfter));
+      {
+        const dip = new Float32Array(h);
+        const stp = new Float32Array(h);
+        for (let y = yStart + 11; y < h - 12; y++) {
+          const a = pAvg(-9, -4, y), b2 = pAvg(4, 9, y), m = pAvg(-1, 1, y);
+          if (Number.isFinite(a) && Number.isFinite(b2) && Number.isFinite(m)) dip[y] = Math.max(Math.min(a, b2) - m, m - Math.max(a, b2));
+          const la = pAvg(-9, -4, y, plow), lb = pAvg(4, 9, y, plow), lm = pAvg(-1, 1, y, plow);
+          if (Number.isFinite(la) && Number.isFinite(lb)) stp[y] = Math.abs(la - lb) - 0.5 * (Number.isFinite(lm) ? Math.max(0, Math.max(Math.min(la, lb) - lm, lm - Math.max(la, lb))) : 0);
+        }
+        const peaks = (arr, min, k2, from, to) => {
+          const out = [];
+          for (let y = Math.max(from, yStart + 12); y < Math.min(to, h - 13); y++) if (arr[y] >= min && arr[y] >= arr[y - 1] && arr[y] >= arr[y + 1]) out.push(y);
+          return out.sort((p, q) => arr[q] - arr[p]).slice(0, k2);
+        };
+        for (const y of peaks(dip, 2.5, 8, Math.floor(t + h * 0.05), h - 4)) if (!foulCands.some((c2) => Math.abs(c2 - y) <= 2)) foulCands.push(y);
+        for (const y of peaks(stp, 6, 6, Math.floor(t - pitBefore), Math.floor(t + pitAfter))) if (!pitCands.some((c2) => Math.abs(c2 - y) <= 2)) pitCands.push(y);
+        for (const y of peaks(stp, 4, 4, Math.floor(b - 0.05 * h), Math.floor(b + 0.05 * h))) if (!foulCands.some((c2) => Math.abs(c2 - y) <= 2)) foulCands.push(y);
+      }
+      const supported = (y) => (L.rows[y] || L.rows[y - 1] || L.rows[y + 1] || L.rows[y - 2] || L.rows[y + 2]) && (R2.rows[y] || R2.rows[y - 1] || R2.rows[y + 1] || R2.rows[y - 2] || R2.rows[y + 2]);
+      const bandMean = (ya, yb, y) => {
+        let s = 0, n = 0;
+        for (let k2 = ya; k2 <= yb; k2++) {
+          const yy = Math.round(y + k2);
+          if (yy < 2 || yy >= h - 2) return NaN;
+          const wid = xAt(R2, yy) - xAt(L, yy);
+          if (wid < 3) return NaN;
+          const m = rowMean(yy, xAt(L, yy) + 0.2 * wid, xAt(R2, yy) - 0.2 * wid);
+          if (Number.isFinite(m)) {
+            s += m;
+            n++;
+          }
+        }
+        return n ? s / n : NaN;
+      };
+      const isThinLine = (f) => {
+        const above = pAvg(-9, -4, f);
+        const below = pAvg(4, 9, f);
+        const mid = pAvg(-1, 1, f);
+        if (![above, below, mid].every(Number.isFinite)) return false;
+        const margin = Math.max(2.5, (above + below) / 2 * 0.03);
+        return mid < Math.min(above, below) - margin || mid > Math.max(above, below) + margin;
+      };
+      const isLaneToApproach = (f) => {
+        const a = pAvg(-9, -4, f);
+        const c2 = pAvg(4, 9, f);
+        return Number.isFinite(a) && Number.isFinite(c2) && Math.abs(a - c2) > Math.max(5, Math.max(a, c2) * 0.07);
+      };
+      const isPitStep = (p) => {
+        const above = pAvg(-10, -4, p, plow);
+        const below = pAvg(4, 10, p, plow);
+        return Number.isFinite(above) && Number.isFinite(below) && Math.abs(above - below) > Math.max(6, Math.max(above, below) * 0.12);
+      };
+      let walk2 = NaN;
+      {
+        const lane0 = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
+        const lowRun = Math.max(6, Math.round(0.022 * h));
+        if (Number.isFinite(lane0)) {
+          let low = 0;
+          for (let y = Math.floor(b) - 3; y > yStart + 2; y--) {
+            const v = plow[y];
+            if (!Number.isFinite(v)) continue;
+            if (v < lane0 * 0.78) {
+              if (++low >= lowRun) {
+                walk2 = y + low;
+                break;
+              }
+            } else low = 0;
+          }
+        }
+        if (Number.isFinite(walk2) && !pitCands.some((c2) => Math.abs(c2 - walk2) <= 2)) pitCands.push(Math.round(walk2));
+      }
+      const lane1 = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
+      const validPits = pitCands.filter((p) => {
+        const below = pAvg(4, 10, p, plow);
+        return Number.isFinite(lane1) && Number.isFinite(below) && Math.abs(below - lane1) <= Math.max(20, lane1 * 0.2) && isPitStep(p);
+      });
+      let lowestPit = validPits.length ? Math.max(...validPits) : NaN;
+      let pinPit = NaN;
+      {
+        const ref = pAvg(10, 18, Math.round(t), prow);
+        const whiteAt = Number.isFinite(ref) ? Math.max(150, ref + 34) : 230;
+        for (let y = Math.max(yStart + 2, Math.floor(t - pitBefore)); y < Math.min(h - 3, Math.floor(t + pitAfter)); y++) {
+          const white2 = (yy) => Number.isFinite(phigh[yy]) && phigh[yy] >= whiteAt;
+          if (!white2(y) || white2(y - 1)) continue;
+          let e = y;
+          while (e < h - 3 && white2(e + 1)) e++;
+          const wid = xAt(R2, y) - xAt(L, y);
+          const pinH = wid * (15 / 41.5) * 0.95;
+          if (e - y + 1 >= 0.55 * pinH && e - y + 1 <= 2.8 * pinH + 1) {
+            pinPit = y + 0.85 * pinH;
+            break;
+          }
+        }
+      }
+      const laneMed = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), prow);
+      if (!Number.isFinite(pinPit) && Number.isFinite(laneMed)) {
+        const bright = (y) => Number.isFinite(prow[y]) && prow[y] >= laneMed * 1.08 + 4;
+        for (let y = Math.max(yStart + 2, Math.floor(t - pitBefore)); y < Math.min(h - 3, Math.floor(t + pitAfter)); y++) {
+          if (!bright(y) || bright(y - 1)) continue;
+          let e = y;
+          while (e < h - 3 && bright(e + 1)) e++;
+          const wid = xAt(R2, y) - xAt(L, y);
+          const pinH = wid * (15 / 41.5) * 0.95;
+          if (e - y + 1 >= 0.45 * pinH && e - y + 1 <= 1.6 * pinH + 1) {
+            pinPit = y + pinH;
+            break;
+          }
+        }
+      }
+      if (Number.isFinite(pinPit) && !pitCands.some((c2) => Math.abs(c2 - pinPit) <= 1.5)) pitCands.push(Math.round(pinPit));
+      if (Number.isFinite(pinPit)) {
+        const pc = pitCands.find((c2) => Math.abs(c2 - pinPit) <= 2);
+        if (pc !== void 0 && (!Number.isFinite(lowestPit) || pc > lowestPit)) lowestPit = pc;
+      }
+      const laneLevel = pAvg(-6, 6, Math.round(t + 0.45 * (b - t)), plow);
+      let best = null;
+      const tried = [];
+      for (let pass = 0; pass < 2 && !best; pass++)
+        for (const f of foulCands) {
+          if (pass === 0 ? !isThinLine(f) && !(Math.abs(f - b) <= 0.05 * h && isLaneToApproach(f)) : Math.abs(f - b) > 0.04 * h) continue;
+          for (const p of pitCands) {
+            if (f - p < h * 0.06 || !(isPitStep(p) || Number.isFinite(pinPit) && Math.abs(p - pinPit) <= 2)) continue;
+            const rho = (p - yv) / (f - yv);
+            if (!(rho > 0.03 && rho < 0.75)) continue;
+            let cov = 0;
+            let n = 0;
+            for (let y = p + 3; y <= f - 3; y += 2) {
+              n++;
+              if (supported(y)) cov++;
+            }
+            tried.push(`f${f}/p${p}:cov${n ? (cov / n).toFixed(2) : "-"}`);
+            if (!n || cov / n < 0.5) continue;
+            const nearB = Math.max(0, 1 - Math.abs(f - b) / (0.06 * h));
+            const nearT = Math.max(0, 1 - Math.abs(p - t) / (0.05 * h));
+            const pitLow = Math.max(0, Math.min(1, (p - (t - pitBefore)) / (pitBefore + pitAfter)));
+            const belowP = pAvg(4, 10, p, plow);
+            const laneMatch = Number.isFinite(laneLevel) && Number.isFinite(belowP) ? 1 - Math.min(1, Math.abs(belowP - laneLevel) / Math.max(20, laneLevel * 0.35)) : 0;
+            const wF = Math.max(1, xAt(R2, f) - xAt(L, f));
+            const dRows = LANE_END_FT * rho / (1 - rho);
+            const fovDeg = 2 * Math.atan(Math.max(w, h) / 2 * (41.5 / 12) / (wF * dRows)) * 180 / Math.PI;
+            const fovFit = h > w ? Math.exp(-0.5 * ((fovDeg - 58) / 28) ** 2) : Math.exp(-0.5 * ((fovDeg - 66) / 22) ** 2);
+            const score = cov / n * 1 + prof[f] * 0.5 + Math.min(1, up[p]) * 0.5 + 1.2 * nearB + 0.6 * nearT + 0.8 * pitLow + 1.3 * laneMatch + 1.6 * fovFit + (Number.isFinite(walk2) && Math.abs(p - walk2) <= 2.5 ? 0.6 : 0) + (p === lowestPit ? 1.6 : 0) + (Number.isFinite(pinPit) && Math.abs(p - pinPit) <= 2 ? 2.2 : 0);
+            if (!best || score > best.score) best = { pit: p, foul: f, score };
+          }
+        }
+      if (!best && diag2 && !diag2.hint) diag2.hint = "I found both lane edges but not the foul line and the end of the lane together. Tilt the phone so the foul line, the arrows and the pins are all in view.";
+      if (!best) return fallback(L, R2, t, b, yv, up, notes) ?? (dbg(`reject: no foul/pit pair foul ${foulCands.join(",")} pit ${pitCands.join(",")} yv ${yv.toFixed(1)} t ${t} b ${b} | ${tried.slice(0, 8).join(" ")} | L(${L.xa.toFixed(0)},${L.xb.toFixed(0)}) R(${R2.xa.toFixed(0)},${R2.xb.toFixed(0)})`), null);
+      const centroid = (arr, y, r, base) => {
+        let sw = 0;
+        let sy = 0;
+        for (let k2 = Math.max(3, y - r); k2 <= Math.min(h - 4, y + r); k2++) {
+          const v = Math.max(0, arr[k2] - base);
+          sw += v;
+          sy += v * k2;
+        }
+        return sw > 0 ? sy / sw : y;
+      };
+      const foul = prof[best.foul] > 0.05 ? centroid(prof, best.foul, 4, prof[best.foul] * 0.4) : best.foul;
+      const halfway = (p) => {
+        const A = pAvg(-10, -4, p, plow);
+        const B = pAvg(4, 10, p, plow);
+        if (!Number.isFinite(A) || !Number.isFinite(B) || Math.abs(A - B) < 6) return NaN;
+        const mid = (A + B) / 2;
+        const rising = B > A;
+        for (let y = p - 5; y <= p + 5; y++) {
+          const a = plow[y], c2 = plow[y + 1];
+          if (!Number.isFinite(a) || !Number.isFinite(c2)) continue;
+          if (rising ? a < mid && c2 >= mid : a > mid && c2 <= mid) return y + (mid - a) / (c2 - a || 1) + 0.5;
+        }
+        return NaN;
+      };
+      const hw = halfway(best.pit);
+      const pit = Number.isFinite(pinPit) && Math.abs(best.pit - pinPit) <= 2 ? pinPit : Number.isFinite(hw) && Math.abs(hw - best.pit) <= (Number.isFinite(pinPit) ? 1.5 : 4) ? hw : up[best.pit] > 0.1 ? centroid(up, best.pit, 3, up[best.pit] * 0.3) : best.pit;
+      if (diag2 && !diag2.foulRow) {
+        diag2.foulRow = foul;
+        diag2.pitRow = pit;
+      }
+      const foulOk = true;
+      const pitOk = true;
+      const LR = refine(L.xa, L.xb, 1, Math.ceil(pit) + 4, Math.floor(foul) - 3, 2 * STEP);
+      const RR = refine(R2.xa, R2.xb, -1, Math.ceil(pit) + 4, Math.floor(foul) - 3, 2 * STEP);
+      L = { ...L, xa: LR.xa, xb: LR.xb };
+      R2 = { ...R2, xa: RR.xa, xb: RR.xb };
+      const sideRow = (guess, side, kind2) => {
+        let sw = 0;
+        let sy = 0;
+        for (let y = Math.round(guess) - 7; y <= Math.round(guess) + 7; y++) {
+          if (y < 3 || y >= h - 3) continue;
+          const xl = xAt(L, y);
+          const xr = xAt(R2, y);
+          const wid = xr - xl;
+          if (wid < 6) continue;
+          const x0 = side === "L" ? xl + 0.08 * wid : xl + 0.55 * wid;
+          const x1 = side === "L" ? xl + 0.45 * wid : xr - 0.08 * wid;
+          let c2 = 0;
+          let n = 0;
+          for (let x = Math.max(2, Math.ceil(x0)); x <= Math.min(w - 3, Math.floor(x1)); x++) {
+            const i = y * w + x;
+            n++;
+            if (kind2 === "foul") {
+              if (Math.abs(gy[i]) > thr * 0.6 && Math.abs(gy[i]) > 1.3 * Math.abs(gx[i])) c2++;
+            } else if (gy[i] > thr * 0.6 && gy[i] > 1.3 * Math.abs(gx[i])) c2++;
+          }
+          const v = n ? c2 / n : 0;
+          sw += v * v;
+          sy += v * v * y;
+        }
+        return sw > 0 ? sy / sw : guess;
+      };
+      let fyL = sideRow(foul, "L", "foul");
+      let fyR = sideRow(foul, "R", "foul");
+      let pL = sideRow(pit, "L", "pit");
+      let pR = sideRow(pit, "R", "pit");
+      const dF = fyR - fyL;
+      const dP = pR - pL;
+      if (Math.abs(dF) < 1.5 || Math.abs(dP) < 1.5 || Math.sign(dF) !== Math.sign(dP) || Math.abs(dP / dF) > 1.6 || Math.abs(dP / dF) < 0.15) {
+        fyL = fyR = foul;
+        pL = pR = pit;
+      }
+      const rowFor = (fyS, pS) => {
+        const rho = (pS - yv) / (fyS - yv);
+        if (!(rho > 0.03 && rho < 0.75)) return null;
+        const K = LANE_END_FT * rho / (1 - rho);
+        return yv + (fyS - yv) * K / (K + LANE_LEN);
+      };
+      const r60L = rowFor(fyL, pL);
+      const r60R = rowFor(fyR, pR);
+      if (r60L === null || r60R === null) return dbg(`reject: rho out of range yv ${yv.toFixed(1)} foul ${fyL.toFixed(1)}/${fyR.toFixed(1)} pit ${pL.toFixed(1)}/${pR.toFixed(1)}`), null;
+      if (!(r60L < fyL - 4 && r60R < fyR - 4)) return dbg(`reject: row60 ${r60L} ${r60R}`), null;
+      const fy = (fyL + fyR) / 2;
+      const row60 = (r60L + r60R) / 2;
+      const corners2 = [
+        { x: xAt(L, fyL), y: fyL },
+        { x: xAt(R2, fyR), y: fyR },
+        { x: xAt(R2, r60R), y: r60R },
+        { x: xAt(L, r60L), y: r60L }
+      ];
+      const wFoul = corners2[1].x - corners2[0].x;
+      const fPx = Math.max(w, h) / 2 / Math.tan(ASSUMED_HFOV_DEG * Math.PI / 360);
+      const distFromWidth = fPx * (41.5 / 12) / Math.max(1, wFoul);
+      const rhoMid = (pit - yv) / (fy - yv);
+      const distFromRows = LANE_END_FT * rhoMid / (1 - rhoMid);
+      const impliedHfov = 2 * Math.atan(Math.max(w, h) / 2 * (41.5 / 12) / (Math.max(1, wFoul) * distFromRows)) * 180 / Math.PI;
+      if (!(impliedHfov > (h > w ? 10 : 30) && impliedHfov < 118)) return dbg(`reject: the rows and the lane width imply a ${impliedHfov.toFixed(0)} degree field of view`), null;
+      const agree = distFromWidth / distFromRows;
+      const wBot = corners2[1].x - corners2[0].x;
+      const wTop = corners2[2].x - corners2[3].x;
+      if (!(wBot > 6 && wTop > 0.3 && wTop < wBot)) return dbg(`reject: widths ${wBot.toFixed(1)} ${wTop.toFixed(1)}`), null;
+      const confidence = Math.max(0, Math.min(1, 0.35 * Math.min(1, c.base / 1.6) + 0.25 * (foulOk ? 1 : 0.2) + 0.3 * (pitOk ? 1 : 0) + 0.1 * Math.min(1, (fy - row60) / (h * 0.15))));
+      return { corners: corners2, confidence, notes, rows: { foul: foulOk ? foul : null, pit: pitOk ? pit : null, vanishing: yv } };
+    }
+    function fallback(L, R2, t, b, yv, up, notes) {
+      let pit = t;
+      let pv = 0;
+      for (let y = Math.max(3, Math.floor(t - 12)); y <= Math.min(h - 4, Math.floor(t + 16)); y++) if (up[y] > pv) pv = up[y], pit = y;
+      const stepFound = pv > 0.2;
+      if (!stepFound) pit = t;
+      const wPit = xAt(R2, pit) - xAt(L, pit);
+      if (wPit < 4) return null;
+      const fPx = w / 2 / Math.tan(ASSUMED_HFOV_DEG * Math.PI / 360);
+      const zPit = fPx * (41.5 / 12) / wPit;
+      const zFoul = zPit - LANE_END_FT;
+      if (zFoul < 3 || pit - yv < 2) return null;
+      const c = (pit - yv) * zPit;
+      const rowAt = (ft) => yv + c / (zFoul + ft);
+      const fy = rowAt(0);
+      const r60 = rowAt(LANE_LEN);
+      const corners2 = [
+        { x: xAt(L, fy), y: fy },
+        { x: xAt(R2, fy), y: fy },
+        { x: xAt(R2, r60), y: r60 },
+        { x: xAt(L, r60), y: r60 }
+      ];
+      notes.push("foul line not visible: distances come from the lane's width and a typical phone field of view, so they are approximate");
+      if (!stepFound) notes.push("end of lane not clearly visible");
+      return { corners: corners2, confidence: stepFound ? 0.6 : 0.45, notes, rows: { foul: null, pit: stepFound ? pit : null, vanishing: yv } };
+    }
+  }
+  var isSolid = (d) => d.confidence >= 0.85 && d.rows.foul !== null && d.rows.pit !== null;
+  function oneOfEach(list, w) {
+    const mid = (d) => (d.corners[0].x + d.corners[1].x) / 2;
+    const wid = (d) => Math.abs(d.corners[1].x - d.corners[0].x);
+    const out = [];
+    for (const d of [...list].sort((a, b) => b.confidence - a.confidence)) {
+      const sharesEdge = (o) => {
+        const r = wid(o) / Math.max(1, wid(d));
+        return (r > 1.15 && r < 2.4 || r < 1 / 1.15 && r > 1 / 2.4) && (Math.abs(o.corners[0].x - d.corners[0].x) < 0.03 * w || Math.abs(o.corners[1].x - d.corners[1].x) < 0.03 * w);
+      };
+      const i = out.findIndex((o) => Math.abs(mid(o) - mid(d)) < 0.05 * w && wid(o) / Math.max(1, wid(d)) > 0.6 && wid(o) / Math.max(1, wid(d)) < 1.7 || sharesEdge(o));
+      if (i < 0) out.push(d);
+      else if (wid(d) < 0.85 * wid(out[i])) out[i] = d;
+    }
+    return out;
+  }
+  function chooseLane(cands, w) {
+    const solid2 = oneOfEach(cands.filter(isSolid), w);
+    if (solid2.length <= 1) return { pick: solid2[0] ?? null, choices: solid2 };
+    const off = (d) => Math.abs((d.corners[0].x + d.corners[1].x) / 2 - w / 2) / w;
+    const ranked = [...solid2].sort((a, b) => off(a) - off(b));
+    if (off(ranked[0]) < 0.12 && off(ranked[1]) - off(ranked[0]) > 0.1) return { pick: ranked[0], choices: solid2 };
+    return { pick: null, choices: ranked };
+  }
+  function detectLaneAt(gray, w, h, x, y) {
+    return detectLanes(gray, w, h, 1, { x, y })[0] ?? null;
+  }
+  function detectionsAgree(a, b, tol) {
+    return a.every((p, i) => Math.hypot(p.x - b[i].x, p.y - b[i].y) <= tol);
+  }
+
   // camera/guide.ts
   function openGuide() {
     const el = $("guide");
@@ -10108,6 +10263,8 @@ ${url}`);
     /** ball positions in picture pixels, for drawing */
     trail = [];
     confirmed = false;
+    /** every ball-like blob seen in the latest frame, in lane coordinates (the recording of these, over a whole shot, is what the shot is traced from) */
+    lastCands = [];
     /** last blob (grid pixels) and its speed per frame */
     last = null;
     lost = 0;
@@ -10296,6 +10453,7 @@ ${url}`);
         const q = Math.abs(Math.log(ratio)) + Math.abs(Math.log(Math.max(0.3, Math.min(3, aspect)))) * 0.6 + Math.abs(fill - 0.78) * 1.5 - 0.5 * Math.max(0, Math.min(1, (blue - 15) / 60));
         cands.push({ ...b, y: b.y, lx: l.x, ly: l.y, er, q, by: cy });
       }
+      this.lastCands = cands.map((c) => ({ lx: c.lx, ly: c.ly, q: c.q }));
       const used = /* @__PURE__ */ new Set();
       for (const hy of this.hyps) {
         const lastPt = hy.pts[hy.pts.length - 1];
@@ -10358,7 +10516,7 @@ ${url}`);
           if (hy.pts.length < 5) continue;
           const m = this.motion(hy);
           const steady = m.fwd >= 0.7 && m.span >= 3 && m.jerk <= 0.8 && !m.jumpy;
-          const farAndFast = hy.pts.length >= 12 && m.mph >= 9 && m.fwd >= 0.55 && m.span >= 12;
+          const farAndFast = hy.pts.length >= 12 && m.mph >= 9 && m.mph <= 32 && m.fwd >= 0.55 && m.span >= 12 && hy.qsum / hy.pts.length <= 0.95;
           if (m.mph >= 6 && m.mph <= 35 && (steady || farAndFast)) {
             const score = hy.pts.length - 3 * (hy.qsum / hy.pts.length) - 2 * m.jerk;
             if (score > pickScore) pick = hy, pickScore = score;
@@ -10375,7 +10533,7 @@ ${url}`);
       if (this.confirmed) lead = this.hyps[0] ?? this.lead;
       else lead = this.hyps.filter((x) => x.miss === 0 && x.pts.length >= 1).sort((a, b) => b.pts.length - 3 * (b.qsum / b.pts.length) - 2 * this.motion(b).jerk - (a.pts.length - 3 * (a.qsum / a.pts.length) - 2 * this.motion(a).jerk))[0] ?? null;
       this.lead = lead;
-      if (this.debug) this.dbg = { cands: cands.map((c) => ({ x: c.x, y: c.y, q: c.q, er: c.er, ly: c.ly, area: c.area })), hyps: this.hyps.map((x) => {
+      if (this.debug) this.dbg = { cands: cands.map((c) => ({ x: c.x, y: c.y, q: c.q, er: c.er, lx: c.lx, ly: c.ly, area: c.area })), hyps: this.hyps.map((x) => {
         const p = x.pts[x.pts.length - 1];
         return { id: x.id, n: x.pts.length, x: p.x, y: p.y, vx: x.vx, vy: x.vy, conf: x.confirmed, miss: x.miss };
       }), lead: lead ? lead.id : null, fgBox: null };
@@ -11138,6 +11296,7 @@ ${url}`);
     const a = readArrows(g, w, h, corners.map((p) => ({ x: p.x / k2, y: p.y / k2 })));
     if (a.length >= arrowsRead.length) arrowsRead = a.map((r) => ({ board: r.board, x: r.img.x * k2, y: r.img.y * k2 }));
   }
+  var candHist = [];
   var pinRefs = [];
   var pinTries = 0;
   var pinRefDone = false;
@@ -11745,7 +11904,7 @@ ${url}`);
       strokeTrail(v, lastShot.trail, age < 10 ? 1 : Math.max(0.35, 1 - (age - 10) / 10), false);
       drawShotMarkers(v, lastShot.a);
     }
-    if (trail.length > 1) {
+    if (confirmed && trail.length > 1) {
       strokeTrail(v, trail.slice(-40), 1, true);
       drawBallHead(v, trail[trail.length - 1]);
     }
@@ -11778,6 +11937,66 @@ ${url}`);
     const lockPct = laneMask ? Math.round(laneMask.reduce((a, m) => a + m, 0) / laneMask.length * 100) : 0;
     if (el) el.textContent = `Camera ${cameraFps || "?"} fps${cameraFps && cameraFps < 50 ? " (this phone's limit)" : ""} \xB7 analysing ${diag.perSec}/s \xB7 ball ${diag.ballSeen ? "seen" : "not seen"} \xB7 lane lock ${H ? armed ? `on, covers ${lockPct}% of the picture` : "paused" : "searching"}${ts && H && armed ? ` \xB7 moving pixels ${ts.fg}, blobs ${ts.blobs}, ball-like ${ts.cands} (dropped: wrong size ${ts.size}, wrong shape ${ts.shape}, off the lane ${ts.offLane})` : ""}`;
   }
+  var recActive = false;
+  var recBeganAt = 0;
+  var pendingClip = null;
+  var resetLooks = 0;
+  var lastResetLook = 0;
+  var motionRun = 0;
+  var prevMotion = null;
+  var approachAfter = 0;
+  var MOTION_STEP = 9;
+  function beginRecording(media) {
+    if (recActive) return;
+    recActive = true;
+    recBeganAt = performance.now();
+    startRecording(media);
+  }
+  function discardRecording() {
+    recActive = false;
+    void stopRecording(0);
+  }
+  async function attachClip() {
+    const p = pendingClip;
+    pendingClip = null;
+    resetLooks = 0;
+    recActive = false;
+    const clip = await stopRecording(250);
+    if (!p || !clip) return;
+    p.shot.recStartT = clip.startT - p.t0Abs;
+    p.shot.hasClip = true;
+    try {
+      await saveClip(p.shot.id, clip.blob);
+    } catch {
+      p.shot.hasClip = false;
+    }
+    await updateShot(p.shot);
+  }
+  function approachWatch(g, media, now) {
+    const sm = new Float32Array(Math.ceil(g.length / MOTION_STEP));
+    for (let i = 0, n = 0; i < g.length; i += MOTION_STEP) sm[n++] = g[i];
+    if (prevMotion && prevMotion.length === sm.length) {
+      let d = 0;
+      for (let i = 0; i < sm.length; i++) d += Math.abs(sm[i] - prevMotion[i]);
+      d /= sm.length;
+      motionRun = d > 6 ? motionRun + 1 : Math.max(0, motionRun - 1);
+      if (motionRun >= 5 && now >= approachAfter && now >= cooldownUntil) beginRecording(media);
+    }
+    prevMotion = sm;
+  }
+  function resetWatch(now) {
+    const p = pendingClip;
+    if (!p) return;
+    if (now - p.at > 6e4) return void attachClip();
+    if (now - lastResetLook < 1200 || now - p.at < 3e3) return;
+    lastResetLook = now;
+    const cur2 = lookAtPins();
+    if (!cur2 || !fullDeck || !pinsReadable(fullDeck)) return;
+    const r = readPins(fullDeck, cur2);
+    if (r.readable >= 6 && r.down === 0) {
+      if (++resetLooks >= 2) void attachClip();
+    } else resetLooks = 0;
+  }
   function onFrame(_now, meta) {
     schedule();
     if (tracing) return;
@@ -11786,7 +12005,7 @@ ${url}`);
     drawOverlay(now);
     enrollTick(now);
     if (!H) autoDetectTick(now);
-    else if (armed) driftCheck(now), pinWatch(now), pinRefineTick(now), arrowTick(now);
+    else if (armed) driftCheck(now), pinWatch(now), pinRefineTick(now), arrowTick(now), resetWatch(now);
     if (!H || !laneMask || !armed || enrolling) return;
     wctx.drawImage(video, 0, 0, GW, GH);
     const px = wctx.getImageData(0, 0, GW, GH).data;
@@ -11814,8 +12033,16 @@ ${url}`);
       }
     }
     if (!tracker) tracker = new BallTracker({ w: GW, h: GH, mask: laneMask, H, Hinv, scale: video.videoWidth / GW });
+    if (!tracker.confirmed && !pendingClip) approachWatch(g2, meta.mediaTime, now);
+    if (recActive && !pendingClip && !tracker.confirmed && now - recBeganAt > 3e4) {
+      discardRecording();
+      motionRun = 0;
+      approachAfter = now + 5e3;
+    }
     if (now < cooldownUntil) return;
     const ev = tracker.step(g2, meta.mediaTime, c2);
+    candHist.push({ t: meta.mediaTime, cands: tracker.lastCands.map((c) => ({ ...c })) });
+    while (candHist.length && candHist[0].t < meta.mediaTime - 14) candHist.shift();
     path = tracker.path;
     trail = tracker.trail;
     lastBlob = tracker.last ? { gx: tracker.last.x, gy: tracker.last.y } : null;
@@ -11826,7 +12053,10 @@ ${url}`);
     }
     if (ev === "confirmed") {
       status.textContent = "Ball detected, tracking\u2026";
-      startRecording(path[path.length - 1].t);
+      if (pendingClip) {
+        const media = meta.mediaTime;
+        void attachClip().then(() => beginRecording(media));
+      } else beginRecording(meta.mediaTime);
     } else if (ev === "finished") void finish();
     else if (ev === "reset") resetTrack();
   }
@@ -11950,24 +12180,37 @@ ${url}`);
     const startDeck = idleDeck;
     const fullRack = fullDeck;
     const points = path.length;
-    const smooth = smoothPath(path);
+    const liveSmooth = smoothPath(path);
+    const whole = tracePath(candHist.slice());
+    const t0Abs = whole && whole.length ? whole[0].t : tracker?.t0 ?? 0;
+    const wholeRel = whole ? whole.map((p) => ({ ...p, t: p.t - whole[0].t })) : null;
+    const wholeSmooth = wholeRel ? smoothPath(wholeRel) : null;
+    const reach = (p) => p.length ? p[p.length - 1].y - p[0].y : 0;
+    const smooth = wholeSmooth && reach(wholeSmooth) >= reach(liveSmooth) - 0.5 ? wholeSmooth : liveSmooth;
     const a = analyzeShot(smooth);
     const saved = forwardPath(smooth);
-    const savedTrail = trail;
+    const r2 = (n) => Math.round(n * 100) / 100;
+    const rawRecord = {
+      live: path.map((p) => ({ t: r2(p.t), x: r2(p.x), y: r2(p.y) })),
+      whole: wholeRel ? wholeRel.map((p) => ({ t: r2(p.t), x: r2(p.x), y: r2(p.y) })) : null,
+      smooth: smooth.map((p) => ({ t: r2(p.t), x: r2(p.x), y: r2(p.y) })),
+      cands: candHist.map((f) => ({ t: r2(f.t), cands: f.cands.map((c) => ({ lx: r2(c.lx), ly: r2(c.ly), q: r2(c.q) })) })),
+      arrows: arrowsRead.map((a2) => ({ board: a2.board, x: Math.round(a2.x), y: Math.round(a2.y) })),
+      lock: lastLockHow
+    };
     const sig = sigAcc.some((x) => x > 0) ? normalize(sigAcc) : null;
     resetTrack();
     tracker?.forgetBackground();
     cooldownUntil = performance.now() + 3e3;
-    const clipP = stopRecording(1200);
     if (!a) {
-      void clipP;
+      if (!pendingClip) discardRecording();
       status.textContent = `Ball seen but not enough evidence (${points} points). Watching for the next shot.`;
       return;
     }
+    cooldownUntil = performance.now() + 8e3;
     status.textContent = a.speedMph < 8 || a.speedMph > 26 ? `Speed reads ${a.speedMph.toFixed(1)} mph, which looks off. The lane lock may be wrong: tap Re-lock.` : "Shot captured. Watching for the next shot.";
-    const full = a.entryBoard === null ? savedTrail : [...savedTrail, laneToPx(boardToX(a.entryBoard), 59.5)];
-    lastShot = { trail: full, a, at: performance.now(), path: saved };
-    const clip = await clipP;
+    const drawn = saved.map((p) => laneToPx(p.x, p.y));
+    lastShot = { trail: drawn, a, at: performance.now(), path: saved };
     const shot = {
       id: newId(),
       at: (/* @__PURE__ */ new Date()).toISOString(),
@@ -11980,12 +12223,13 @@ ${url}`);
       vw: video.videoWidth,
       vh: video.videoHeight,
       lane: laneNo || void 0,
-      recStartT: clip?.startT ?? 0,
-      hasClip: !!clip,
-      sig
+      recStartT: 0,
+      hasClip: false,
+      sig,
+      raw: rawRecord
     };
-    if (clip) await saveClip(shot.id, clip.blob).catch(() => shot.hasClip = false);
     await registerShot(shot);
+    pendingClip = { shot, t0Abs, at: performance.now() };
     void readPinfall(shot, startDeck, fullRack);
   }
   try {
@@ -11997,6 +12241,7 @@ ${url}`);
     $("ver").textContent = v ? `version ${v.split("?v=")[1]}` : "";
     initPatchNotes();
   })();
+  $("tour-open").onclick = () => startTour();
   $("start").onclick = () => Promise.resolve().then(() => startCamera()).catch((e) => status.textContent = `Camera error: ${e.message}. Camera needs an https:// address.`);
   function synthPath(startX, bp, entryX, speedFtS) {
     const out = [];
@@ -12104,7 +12349,7 @@ ${url}`);
       renderResult(void 0);
       renderLane();
       handleIncoming();
-    } else showQuiz("first", () => (showTab("live"), handleIncoming()));
+    } else showQuiz("first", () => (showTab("live"), handleIncoming(), tourSeen() || startTour()));
     changed();
   })();
   if ("serviceWorker" in navigator) {
