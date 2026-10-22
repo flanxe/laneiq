@@ -53,6 +53,15 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-22-glow",
+      date: "2026-10-22",
+      title: "Glow off switch",
+      items: [
+        "New Glow setting (Me tab, and in Skins and rewards): turn it off for crisp lines and no halos on the ball tracer, lane and pins, so you can read each shot exactly.",
+        "Fixed the pins in the skin previews, which were drawn the wrong way round."
+      ]
+    },
+    {
       id: "2026-10-22-invites",
       date: "2026-10-22",
       title: "Friend invites that stick",
@@ -1364,6 +1373,20 @@
   var currentLane = () => LANES[sel.lane] ?? LANES[DEFAULTS.lane];
   var equippedSkins = () => ({ ...sel });
   var skinClock = () => performance.now() / 1e3;
+  var GLOW_KEY = "laneiq.glow";
+  var glow = true;
+  try {
+    glow = localStorage.getItem(GLOW_KEY) !== "off";
+  } catch {
+  }
+  var glowEnabled = () => glow;
+  function setGlow(on) {
+    glow = on;
+    try {
+      localStorage.setItem(GLOW_KEY, on ? "on" : "off");
+    } catch {
+    }
+  }
   function equip(slot, id) {
     sel[slot] = id;
     try {
@@ -1964,11 +1987,22 @@
       const u = 0.82 - 0.2 * t - 0.26 * Math.max(0, t - 0.55) ** 2 * 3.2;
       pts.push(P(u, 0.02 + t * 0.9));
     }
+    const glow2 = glowEnabled();
     g.save();
-    g.globalCompositeOperation = "lighter";
+    g.globalCompositeOperation = glow2 ? "lighter" : "source-over";
     g.lineCap = "round";
     for (let i = 1; i < pts.length; i++) {
       const t = i / Math.max(1, pts.length - 1);
+      if (!glow2) {
+        g.shadowBlur = 0;
+        g.strokeStyle = tr.color(t, 0.5 + 0.5 * t, clock);
+        g.lineWidth = 1.5 + 2.5 * t;
+        g.beginPath();
+        g.moveTo(pts[i - 1].x, pts[i - 1].y);
+        g.lineTo(pts[i].x, pts[i].y);
+        g.stroke();
+        continue;
+      }
       g.shadowBlur = tr.glow * 0.5;
       g.shadowColor = tr.color(t, 1, clock);
       g.strokeStyle = tr.color(t, 0.2 + 0.8 * t, clock);
@@ -2047,11 +2081,12 @@
       <div class="note">${hi - p.points} more points to level ${lv + 1}</div>
       <div class="u" style="margin-top:6px">${nx.play ? `<b>Play:</b> ${esc(nx.play.skin.name)} (${nx.play.skin.kind}): ${nx.play.need.toLocaleString()} more pins` : "Every play skin unlocked."}</div>
       <div class="u">${nx.improve ? `<b>Improve:</b> ${esc(nx.improve.skin.name)} (${nx.improve.skin.kind}): ${nx.improve.need} more points` : "Every improvement skin unlocked."}</div></div>
-    <div class="card"><div class="k">Your look</div><canvas id="rw-big" width="360" height="300" style="width:100%;max-width:420px;display:block;margin:0 auto"></canvas></div>
+    <div class="card"><div class="k">Your look</div><div class="chips"><button class="chip ${glowEnabled() ? "sel" : ""}" id="rw-glow">Glow: ${glowEnabled() ? "on" : "off"}</button></div><div class="note">Turn glow off for crisp lines and no halos, so you can read each shot exactly.</div><canvas id="rw-big" width="360" height="300" style="width:100%;max-width:420px;display:block;margin:0 auto"></canvas></div>
     ${grid("tracer", "Ball tracers")}${grid("pins", "Pins")}${grid("lane", "Lanes")}
     <div class="card"><div class="k">How you earned your points</div>
       ${p.earned.length ? `<ul>${p.earned.map((a) => `<li><b>+${a.points}</b> ${esc(a.title)} <span class="note">${esc(a.detail)}</span></li>`).join("")}</ul>` : `<div class="u">Nothing yet. Finish a game on the Score tab, or reach a target on the skills chart.</div>`}
       <div class="note">Points come from new high games, strike streaks, clean games, scoring milestones, a rising average, converted splits and skills reaching their targets.</div></div>`;
+    $("rw-glow").onclick = () => (setGlow(!glowEnabled()), void openRewards());
     $("rw-close").onclick = () => (cancelAnimationFrame(raf), el.classList.remove("on"), el.innerHTML = "");
     el.querySelectorAll("canvas[data-c]").forEach((c) => {
       const id = c.dataset.c;
@@ -3157,14 +3192,25 @@
     const { ctx: ctx2 } = v;
     const s = k(v);
     const tr = currentTracer();
+    const glow2 = glowEnabled();
     ctx2.save();
-    ctx2.globalCompositeOperation = "lighter";
+    ctx2.globalCompositeOperation = glow2 ? "lighter" : "source-over";
     ctx2.lineCap = "round";
     ctx2.lineJoin = "round";
     for (let i = 1; i < n; i++) {
       const t = i / (n - 1);
       const a = points[i - 1];
       const b = points[i];
+      if (!glow2) {
+        ctx2.shadowBlur = 0;
+        ctx2.strokeStyle = ramp(t, Math.min(1, baseAlpha * (headBoost ? 0.35 + 0.65 * t : 0.95)));
+        ctx2.lineWidth = (headBoost ? lerp2(2, 4.5, t) : 3.5) * s;
+        ctx2.beginPath();
+        ctx2.moveTo(a.x, a.y);
+        ctx2.lineTo(b.x, b.y);
+        ctx2.stroke();
+        continue;
+      }
       ctx2.shadowBlur = tr.glow * s;
       ctx2.shadowColor = ramp(t);
       ctx2.strokeStyle = ramp(t, baseAlpha * (headBoost ? 0.15 + 0.85 * t : 0.9));
@@ -3185,6 +3231,18 @@
   }
   function drawBallHead(v, h) {
     const s = k(v);
+    if (!glowEnabled()) {
+      v.ctx.save();
+      v.ctx.fillStyle = ramp(1, 1);
+      v.ctx.strokeStyle = "rgba(0,0,0,.6)";
+      v.ctx.lineWidth = 1.5 * s;
+      v.ctx.beginPath();
+      v.ctx.arc(h.x, h.y, 5 * s, 0, 7);
+      v.ctx.fill();
+      v.ctx.stroke();
+      v.ctx.restore();
+      return;
+    }
     const g = v.ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, 26 * s);
     g.addColorStop(0, "rgba(255,255,255,.95)");
     g.addColorStop(0.25, ramp(1, 0.6));
@@ -3282,7 +3340,7 @@
     ctx2.strokeStyle = L.foul;
     ctx2.lineWidth = 3 * s;
     ctx2.shadowColor = L.foul;
-    ctx2.shadowBlur = 10 * s;
+    ctx2.shadowBlur = glowEnabled() ? 10 * s : 0;
     line(v, P(0, 0), P(LANE_BOARDS, 0));
     ctx2.shadowBlur = 0;
     ctx2.setLineDash([6 * s, 8 * s]);
@@ -3312,7 +3370,7 @@
       ctx2.closePath();
       ctx2.fillStyle = L.arrow;
       ctx2.shadowColor = L.arrow;
-      ctx2.shadowBlur = 8 * s;
+      ctx2.shadowBlur = glowEnabled() ? 8 * s : 0;
       ctx2.fill();
     }
     ctx2.shadowBlur = 0;
@@ -3326,7 +3384,7 @@
     }
     ctx2.fillStyle = "rgba(255,255,255,.88)";
     ctx2.shadowColor = "rgba(255,255,255,.6)";
-    ctx2.shadowBlur = 6 * s;
+    ctx2.shadowBlur = glowEnabled() ? 6 * s : 0;
     for (let r = 0; r < 4; r++) {
       for (let i = 0; i <= r; i++) {
         const x = LANE_BOARDS / 2 + (i - r / 2) * PIN_SPACING_BOARDS;
@@ -8516,7 +8574,7 @@ ${url}`);
     const profs = listProfiles();
     el.innerHTML = `
     <h2>Me</h2>
-    <div class="card"><div class="k">Rewards</div><div class="note">Unlock ball tracers, pin looks and lane looks by playing and by improving.</div><div class="chips"><button class="btn" id="me-rewards">Skins and rewards</button></div></div>
+    <div class="card"><div class="k">Rewards</div><div class="note">Unlock ball tracers, pin looks and lane looks by playing and by improving.</div><div class="chips"><button class="btn" id="me-rewards">Skins and rewards</button><button class="chip ${glowEnabled() ? "sel" : ""}" id="me-glow">Glow: ${glowEnabled() ? "on" : "off"}</button></div><div class="note">Glow off gives crisp lines with no halos, for reading shots exactly.</div></div>
     ${p?.quiz ? `<div class="card"><div class="k">Your bowler profile</div><ul>${summarize(p.quiz).map((l) => `<li>${esc(l)}</li>`).join("")}</ul><div class="note">${esc(styleNotes(p.quiz.style).join(" "))}</div><div class="chips"><button class="btn ghost" id="me-quiz">Retake the quiz</button></div></div>` : p ? `<div class="card"><div class="u">Take the short bowler quiz so the app knows how you bowl.</div><div class="chips"><button class="btn" id="me-quiz">Take the quiz</button></div></div>` : ""}
     ${p ? `<div class="card"><div class="k">Ball motion (pro shop)</div>
       <div class="note">The live camera can't measure these. Enter numbers from a pro-shop tool, or measure them from a slow-motion release video.${p.spin ? ` Last set ${esc(when(p.spin.at))} (${p.spin.source === "video" ? "from video" : "entered"}).` : ""}</div>
@@ -8559,6 +8617,7 @@ ${url}`);
     );
     wireFriendsCard(renderMe);
     $("me-rewards").onclick = () => void openRewards();
+    $("me-glow").onclick = () => (setGlow(!glowEnabled()), renderMe());
     $("me-new").onclick = () => showQuiz("add", () => {
     });
     $("sp-save")?.addEventListener("click", () => {
