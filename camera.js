@@ -61,6 +61,7 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        'Reset Insights: a Reset insights button at the bottom of the Insights tab starts the averages, common errors, improvement plan, shot map and skills chart again from zero, for when somebody else has bowled on your app. Your shots and their videos stay in the Shots tab and your scorecards stay in Score; "Count my earlier shots again" puts them back into Insights.',
         'A Learn tab: the bowling words LaneIQ uses and what each means in the app, from the lane (boards, arrows, dots, pocket) to your shot (breakpoint, entry angle, axis rotation), the hit (high hit, light hit, Brooklyn), the ball (coverstock, RG, differential), layouts and oil. Lane sizes and markings follow the USBC Equipment Specifications. Search a word, or tap "what is this?" on a shot.',
         `Fixed: a ball that missed to the right could be called high. The app now judges the pocket only when the ball was seen all the way to the pins; before, it used a board worked out past where the camera lost the ball, and a few boards of guess flipped the call. A shot that was not seen reaching the pins says so instead of calling a hit. The call also says which side of the pocket it missed on, in boards ("Light hit, 2.0 boards right of the pocket"), and your saved shots are re-read with the new rule and your hand setting. A right-hander's miss to the right is light; a left-hander's miss to the right is high.`,
         'Standard words for where a shot hit: Pocket hit, High hit, Light hit, Brooklyn (a ball that crossed the head pin) and Very light hit, replacing "Way high" and "Way light".',
@@ -1400,6 +1401,8 @@
     catalog: [],
     patterns: [],
     plan: null,
+    /** Insights count only what happened after this moment (null: everything). Resetting Insights moves it to now; shots and videos are never removed. */
+    insightsSince: null,
     friends: [],
     /** sessions friends have shared with this profile, kept so they can be compared later */
     shared: [],
@@ -1424,6 +1427,7 @@
     S.friends = await dbGet(id, "meta", "friends") ?? [];
     S.shared = await dbGet(id, "meta", "shared") ?? [];
     S.laneLabels = await dbGet(id, "meta", "laneLabels") ?? {};
+    S.insightsSince = await dbGet(id, "meta", "insightsSince").catch(() => null) ?? null;
     if (p && !p.friendCode) {
       S.profile = { ...p, friendCode: newFriendCode() };
       saveProfiles(listProfiles().map((x) => x.id === id ? S.profile : x));
@@ -1511,6 +1515,25 @@
       await dbPut(S.profile.id, "meta", S.laneLabels, "laneLabels").catch(() => {
       });
     }
+    changed();
+  }
+  var insightShots = () => S.insightsSince ? S.shots.filter((s) => s.at > S.insightsSince) : S.shots;
+  var insightGames = (games2) => S.insightsSince ? games2.filter((g) => Date.parse(g.at) > Date.parse(S.insightsSince)) : games2;
+  async function resetInsights() {
+    S.insightsSince = (/* @__PURE__ */ new Date()).toISOString();
+    S.plan = null;
+    if (!S.demo && S.profile) {
+      await dbPut(S.profile.id, "meta", S.insightsSince, "insightsSince").catch(() => {
+      });
+      await dbPut(S.profile.id, "meta", null, "plan").catch(() => {
+      });
+    }
+    changed();
+  }
+  async function restoreInsights() {
+    S.insightsSince = null;
+    if (!S.demo && S.profile) await dbPut(S.profile.id, "meta", null, "insightsSince").catch(() => {
+    });
     changed();
   }
   async function savePlan() {
@@ -3469,29 +3492,29 @@
     return [x, y, Math.sqrt(1 - rr)];
   }
   function scanFrame(inp) {
-    const S2 = (p) => toSphere(p, inp.circle);
-    const fa = S2(inp.fingerA), fb = S2(inp.fingerB);
+    const S3 = (p) => toSphere(p, inp.circle);
+    const fa = S3(inp.fingerA), fb = S3(inp.fingerB);
     const F = unit([fa[0] + fb[0], fa[1] + fb[1], fa[2] + fb[2]]);
-    const T = inp.thumb ? S2(inp.thumb) : null;
+    const T = inp.thumb ? S3(inp.thumb) : null;
     const G = T ? unit([F[0] + T[0], F[1] + T[1], F[2] + T[2]]) : F;
     const up = T ? tangentToward(G, F) : tangentToward(G, [0, 1, 0]);
     return { ex: cross(up, G), up, g: G };
   }
   function layoutFromScan(inp) {
     const warnings = [];
-    const S2 = (p) => toSphere(p, inp.circle);
-    const T = inp.thumb ? S2(inp.thumb) : null;
-    const F = unit([S2(inp.fingerA)[0] + S2(inp.fingerB)[0], S2(inp.fingerA)[1] + S2(inp.fingerB)[1], S2(inp.fingerA)[2] + S2(inp.fingerB)[2]]);
+    const S3 = (p) => toSphere(p, inp.circle);
+    const T = inp.thumb ? S3(inp.thumb) : null;
+    const F = unit([S3(inp.fingerA)[0] + S3(inp.fingerB)[0], S3(inp.fingerA)[1] + S3(inp.fingerB)[1], S3(inp.fingerA)[2] + S3(inp.fingerB)[2]]);
     const { ex: e_x, up, g: G } = scanFrame(inp);
     const map = (v) => [dot(v, e_x), dot(v, up), dot(v, G)];
-    const pinCam = S2(inp.pin);
+    const pinCam = S3(inp.pin);
     const refPt = inp.asymmetric ? inp.mb ?? inp.cg ?? inp.baseline ?? null : inp.cg ?? inp.baseline ?? null;
     const reference = !refPt ? null : inp.asymmetric && inp.mb && refPt === inp.mb ? "mb" : "cg";
-    const baseCam = refPt ? S2(refPt) : null;
+    const baseCam = refPt ? S3(refPt) : null;
     const measured = measureLayout(map(pinCam), baseCam ? map(baseCam) : null, inp.pap, inp.hand, inp.grip ?? DEFAULT_GRIP);
     if (inp.asymmetric && !inp.mb && refPt) warnings.push("This ball has a mass bias, but it isn't placed, so I measured from the CG instead. Place the mass bias dot for the right drilling angle.");
-    const pinToCg = inp.cg ? surfDist(map(pinCam), map(S2(inp.cg))) : null;
-    const pinToMb = inp.asymmetric && inp.mb ? surfDist(map(pinCam), map(S2(inp.mb))) : null;
+    const pinToCg = inp.cg ? surfDist(map(pinCam), map(S3(inp.cg))) : null;
+    const pinToMb = inp.asymmetric && inp.mb ? surfDist(map(pinCam), map(S3(inp.mb))) : null;
     const near = (p) => Math.hypot(p.x - inp.circle.x, p.y - inp.circle.y) / inp.circle.r > 0.82;
     if (near(inp.pin) || refPt && near(refPt)) warnings.push("The pin or the CG / mass bias is near the edge of the ball in the picture, where distances are squeezed. Turn the ball so it is closer to the middle and scan again.");
     if (near(inp.fingerA) || near(inp.fingerB) || inp.thumb && near(inp.thumb)) warnings.push("A grip hole is near the edge of the ball in the picture. Turn the ball so the grip faces the camera.");
@@ -3508,8 +3531,8 @@
     void scale;
     void sub;
     const grp = inp.grip ?? DEFAULT_GRIP;
-    const cg = inp.cg ? measureMark(map(pinCam), map(S2(inp.cg)), inp.pap, inp.hand, grp) : null;
-    const mb = inp.asymmetric && inp.mb ? measureMark(map(pinCam), map(S2(inp.mb)), inp.pap, inp.hand, grp) : null;
+    const cg = inp.cg ? measureMark(map(pinCam), map(S3(inp.cg)), inp.pap, inp.hand, grp) : null;
+    const mb = inp.asymmetric && inp.mb ? measureMark(map(pinCam), map(S3(inp.mb)), inp.pap, inp.hand, grp) : null;
     return { measured, spanIn, reference, pinToCg, pinToMb, cg, mb, warnings };
   }
 
@@ -6136,8 +6159,8 @@
     <div class="note"><span class="badge ${a.basis === "benchmark" ? "good" : "moderate"}">${a.basis === "benchmark" ? "published benchmark" : "LaneIQ coaching target"}</span> ${esc(a.source)}</div>`;
   }
   async function mountSkills(host2) {
-    const games2 = await loadGames();
-    const axes = skillsProfile(games2, S.shots);
+    const games2 = insightGames(await loadGames());
+    const axes = skillsProfile(games2, insightShots());
     const scored = axes.filter((a) => a.score !== null);
     const card = document.createElement("div");
     card.className = "card";
@@ -8865,9 +8888,9 @@ ${url}`);
       if (tapStage === 2 && mark !== "ball") hint();
       drawMark();
     });
-    const crop = (cx, cy, S2, scale2, size, cnv, cctx) => {
+    const crop = (cx, cy, S3, scale2, size, cnv, cctx) => {
       cctx.clearRect(0, 0, size, size);
-      cctx.drawImage(v, cx - S2, cy - S2, 2 * S2, 2 * S2, 0, 0, size, size);
+      cctx.drawImage(v, cx - S3, cy - S3, 2 * S3, 2 * S3, 0, 0, size, size);
       const px = cctx.getImageData(0, 0, size, size).data;
       const g = new Float32Array(size * size);
       for (let i = 0; i < g.length; i++) g[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
@@ -8883,8 +8906,8 @@ ${url}`);
       out.innerHTML = "";
       const rs = 80;
       const scale2 = rs / circle.r;
-      const S2 = circle.r * 1.35;
-      const size = Math.round(2 * S2 * scale2);
+      const S3 = circle.r * 1.35;
+      const size = Math.round(2 * S3 * scale2);
       const cnv = document.createElement("canvas");
       cnv.width = cnv.height = size;
       const cctx = cnv.getContext("2d", { willReadFrequently: true });
@@ -8897,12 +8920,12 @@ ${url}`);
       for (let k2 = 0; k2 < frames && running; k2++) {
         prog.textContent = `Reading frame pair ${k2 + 1} of ${frames}\u2026`;
         await new Promise((r) => setTimeout(r, 0));
-        const a = crop(cx, cy, S2, scale2, size, cnv, cctx);
+        const a = crop(cx, cy, S3, scale2, size, cnv, cctx);
         let mtB = await seek(mtA + 1 / fps);
         if ((mtB - mtA) * fps < 0.4) mtB = await seek(mtA + 2 / fps);
         const steps = Math.max(0.5, (mtB - mtA) * fps);
         if (Math.abs(steps - 1) > 0.3) irregular++;
-        const b = crop(cx, cy, S2, scale2, size, cnv, cctx);
+        const b = crop(cx, cy, S3, scale2, size, cnv, cctx);
         const c0 = { cx: size / 2, cy: size / 2, r: rs };
         const c1 = trackCircle(a, b, c0, Math.round(Math.min(24, rs * 0.4)));
         const vc = { x: c1.cx - c0.cx, y: c1.cy - c0.cy };
@@ -9585,31 +9608,41 @@ ${url}`);
     );
   }
   var STATE_PLAN_RECENT = 15;
+  var resetCardHtml = () => `<h3>Reset</h3><div class="card"><div class="u">Start Insights again from zero: the averages, common errors, improvement plan, shot map and skills chart. Your shots and their videos stay in the Shots tab, and your scorecards stay in Score. Use this when somebody else has bowled on your app.</div><div class="chips"><button class="btn ghost danger" id="ins-reset">Reset insights</button></div></div>`;
+  function wireReset() {
+    $("ins-reset")?.addEventListener("click", async () => {
+      if (!confirm("Reset Insights?\n\nThis starts your averages, common errors, improvement plan, shot map and skills chart again from zero.\n\nYour shots and their videos stay in the Shots tab. Your scorecards stay in Score.")) return;
+      await resetInsights();
+    });
+  }
   function renderInsights() {
     renderInsightsBody();
     void mountSkills($("insights-page"));
   }
   function renderInsightsBody() {
     const el = $("insights-page");
-    const shots = S.shots;
+    const mine = insightShots();
+    const shots = mine;
     if (!shots.length) {
-      el.innerHTML = `<h2>Insights</h2><div class="card"><div class="u">Bowl a few shots first. Your averages, common errors and improvement plan build up here, and everything stays on this phone.</div></div>`;
+      el.innerHTML = `<h2>Insights</h2><div class="card"><div class="u">${S.insightsSince ? `Insights were reset on ${esc(when(S.insightsSince))}. They start again from the next shot you bowl. Your earlier shots and their videos are still in the Shots tab.` : "Bowl a few shots first. Your averages, common errors and improvement plan build up here, and everything stays on this phone."}</div>${S.insightsSince ? `<div class="chips"><button class="btn ghost" id="ins-restore">Count my earlier shots again</button></div>` : ""}</div>${resetCardHtml()}`;
+      $("ins-restore")?.addEventListener("click", () => void restoreInsights());
+      wireReset();
       return;
     }
     const p = computeProfile(shots);
     const issues = findIssues(shots, S.profile?.quiz?.focus ?? []);
-    const sessions = [...new Set(S.shots.map((s) => s.sessionId))];
+    const sessions = [...new Set(mine.map((s) => s.sessionId))];
     const zoneTotal = Object.values(p.zones).reduce((a, b) => a + b, 0) || 1;
     const zoneColor = { pocket: "#5affb0", high: "#ffd25a", light: "#ffd25a", "very-high": "#ff5a6e", "very-light": "#ff5a6e" };
     const sessionRows = sessions.map((id) => {
-      const g = S.shots.filter((s) => s.sessionId === id);
+      const g = mine.filter((s) => s.sessionId === id);
       const pp = computeProfile(g);
       const inPocket = g.filter((s) => s.m.pocketMiss !== null && Math.abs(s.m.pocketMiss) <= 1).length / (g.filter((s) => s.m.pocketMiss !== null).length || 1);
       return `<tr><td>${esc(when(g[0].at))}</td><td class="n">${g.length}</td><td class="n">${pp.stats.launchSpeed ? pp.stats.launchSpeed.mean.toFixed(1) : "-"}</td><td class="n">${pct(inPocket * 100)}</td><td class="n">${pp.strike.rate === null ? "-" : pct(pp.strike.rate * 100)}</td></tr>`;
     }).reverse().join("");
-    const ballIds = [...new Set(S.shots.map((s) => s.ballId).filter(Boolean))];
+    const ballIds = [...new Set(mine.map((s) => s.ballId).filter(Boolean))];
     const ballRows = ballIds.map((id) => {
-      const g = S.shots.filter((s) => s.ballId === id);
+      const g = mine.filter((s) => s.ballId === id);
       const pp = computeProfile(g);
       return `<tr><td>${esc(ballName(id))}</td><td class="n">${g.length}</td><td class="n">${pp.stats.launchSpeed ? pp.stats.launchSpeed.mean.toFixed(1) : "-"}</td><td class="n">${pp.stats.entryAngle ? pp.stats.entryAngle.mean.toFixed(1) + "\xB0" : "-"}</td><td class="n">${pp.strike.rate === null ? "-" : pct(pp.strike.rate * 100)}</td></tr>`;
     }).join("");
@@ -9620,7 +9653,7 @@ ${url}`);
       <div class="card"><div class="k">Shots tracked</div><div class="v">${p.shots}</div><div class="u">${sessions.length} session${sessions.length === 1 ? "" : "s"}</div></div>
       <div class="card"><div class="k">Strike rate</div><div class="v">${p.strike.rate === null ? "--" : pct(p.strike.rate * 100)}</div><div class="u">${p.strike.attempts} shots with results${p.strike.attempts && !p.strike.sufficient ? ", low sample" : ""}</div></div>
       <div class="card"><div class="k">In the pocket</div><div class="v">${(() => {
-      const m = S.shots.filter((s) => s.m.pocketMiss !== null);
+      const m = mine.filter((s) => s.m.pocketMiss !== null);
       return m.length ? pct(m.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / m.length * 100) : "--";
     })()}</div><div class="u">within 1 board</div></div>
     </div>
@@ -9642,9 +9675,11 @@ ${url}`);
 
     ${ballRows ? `<h3>By ball</h3><div class="card"><table><tr><th>Ball</th><th class="n">Shots</th><th class="n">Speed</th><th class="n">Entry</th><th class="n">Strikes</th></tr>${ballRows}</table></div>` : ""}
     <h3>Sessions</h3>
-    <div class="card"><table><tr><th>Date</th><th class="n">Shots</th><th class="n">mph</th><th class="n">Pocket</th><th class="n">Strikes</th></tr>${sessionRows}</table></div>`;
+    <div class="card"><table><tr><th>Date</th><th class="n">Shots</th><th class="n">mph</th><th class="n">Pocket</th><th class="n">Strikes</th></tr>${sessionRows}</table></div>
+    ${resetCardHtml()}`;
+    wireReset();
     const map = $("ins-map");
-    const paths = S.shots.slice(-80).map((s) => ({ path: s.path, color: !s.result ? "rgba(255,255,255,.4)" : s.result.pinsDown === 10 ? "rgba(90,255,176,.7)" : "rgba(255,90,110,.6)", width: 1.4, alpha: 0.75 }));
+    const paths = mine.slice(-80).map((s) => ({ path: s.path, color: !s.result ? "rgba(255,255,255,.4)" : s.result.pinsDown === 10 ? "rgba(90,255,176,.7)" : "rgba(255,90,110,.6)", width: 1.4, alpha: 0.75 }));
     drawTopDown(map.getContext("2d"), 360, 600, paths, { board: S.profile?.hand === "L" ? 22.5 : 17.5 });
     const box = $("plan-box");
     const plan = S.plan;
@@ -9656,7 +9691,7 @@ ${url}`);
       });
       return;
     }
-    const after = S.shots.filter((s) => s.at > plan.createdAt).slice(-STATE_PLAN_RECENT);
+    const after = mine.filter((s) => s.at > plan.createdAt).slice(-STATE_PLAN_RECENT);
     const prog = planProgress(plan, after);
     box.innerHTML = `<div class="note">Plan made ${esc(when(plan.createdAt))} from ${plan.basedOnShots} shots. Progress uses your shots since then (needs 5 or more).</div>` + prog.map(
       ({ item, current: current4, progress: progress2, met }) => `<div class="card"><div class="row"><div class="lr-head" style="font-size:16px">${esc(item.title)}</div><span class="badge ${met ? "good" : "moderate"}">${met ? "target met" : "in progress"}</span></div>
