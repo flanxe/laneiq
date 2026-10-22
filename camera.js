@@ -61,6 +61,9 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        "Ball tracking no longer throws out a real ball: a big, blurry ball with people moving behind it used to fail the smoothness test and was dropped. A chain that clearly rolls a long way down the lane at a believable speed is now accepted. Tested on a new real clip (a handheld Short from beside the approach): the ball is confirmed about where it is released and followed to the pins.",
+        "The tracked path is smoothed before it is measured and drawn, so the top-down view shows the roll instead of a zigzag.",
+        "The 3D view can be closed again: the Lane view / Raw / 3D switch was hidden underneath it.",
         "A Fix my lane button now stays on screen after the lane locks, so a wrong lock is one tap from being traced and corrected (before, the trace button disappeared once it locked).",
         "Tapping Re-lock now means it: the lock you threw away is not handed back, and a second Re-lock in a row opens Trace your lane, starting from the last outline.",
         "The drawn arrows now sit on the right boards (they were half a board off).",
@@ -1510,6 +1513,31 @@
       samples: p.length,
       confidence
     };
+  }
+  function smoothPath(p, half = 3) {
+    if (p.length < 5) return p;
+    const med2 = (a) => [...a].sort((x, y) => x - y)[a.length >> 1];
+    const xm = p.map((_, i) => med2(p.slice(Math.max(0, i - 3), Math.min(p.length, i + 4)).map((s) => s.x)));
+    const ym = p.map((_, i) => med2(p.slice(Math.max(0, i - 3), Math.min(p.length, i + 4)).map((s) => s.y)));
+    const out = p.map((s, i) => {
+      const lo = Math.max(0, i - half), hi = Math.min(p.length - 1, i + half);
+      let n = 0, st2 = 0, sx = 0, sy = 0, stt = 0, stx = 0, sty = 0;
+      for (let j = lo; j <= hi; j++) {
+        const t = p[j].t - s.t;
+        n++;
+        st2 += t;
+        sx += xm[j];
+        sy += ym[j];
+        stt += t * t;
+        stx += t * xm[j];
+        sty += t * ym[j];
+      }
+      const den = n * stt - st2 * st2;
+      if (Math.abs(den) < 1e-9) return { t: s.t, x: sx / n, y: sy / n };
+      return { t: s.t, x: (sx * stt - st2 * stx) / den, y: (sy * stt - st2 * sty) / den };
+    });
+    for (let i = 1; i < out.length; i++) if (out[i].y < out[i - 1].y) out[i] = { ...out[i], y: out[i - 1].y };
+    return out;
   }
 
   // camera/lanetrace.ts
@@ -10136,10 +10164,12 @@ ${url}`);
         for (const hy of this.hyps) {
           if (hy.pts.length < 5) continue;
           const m = this.motion(hy);
-          if (m.mph >= 6 && m.mph <= 35 && m.fwd >= 0.7 && m.span >= 3 && m.jerk <= 0.8 && !m.jumpy) {
+          const steady = m.fwd >= 0.7 && m.span >= 3 && m.jerk <= 0.8 && !m.jumpy;
+          const farAndFast = hy.pts.length >= 12 && m.mph >= 9 && m.fwd >= 0.55 && m.span >= 12;
+          if (m.mph >= 6 && m.mph <= 35 && (steady || farAndFast)) {
             const score = hy.pts.length - 3 * (hy.qsum / hy.pts.length) - 2 * m.jerk;
             if (score > pickScore) pick = hy, pickScore = score;
-          } else if (hy.pts.length >= 9) hy.miss = 99;
+          } else if (hy.pts.length >= 9 && !(m.fwd >= 0.4 && m.span >= 2 && m.mph >= 3)) hy.miss = 99;
         }
         if (pick) {
           pick.confirmed = true;
@@ -11635,8 +11665,9 @@ ${url}`);
     const startDeck = idleDeck;
     const fullRack = fullDeck;
     const points = path.length;
-    const a = analyzeShot(path);
-    const saved = forwardPath(path);
+    const smooth = smoothPath(path);
+    const a = analyzeShot(smooth);
+    const saved = forwardPath(smooth);
     const savedTrail = trail;
     const sig = sigAcc.some((x) => x > 0) ? normalize(sigAcc) : null;
     resetTrack();
