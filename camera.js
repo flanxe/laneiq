@@ -61,6 +61,7 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        "A second way to find the ball: every quarter of a second the app looks back over the last few seconds of frames for a ball-like chain rolling steadily down the lane, so a ball is found even when the live tracker's own rules did not confirm it while it rolled. The shot is finished when that chain stops. On a real clip it finds the ball about where it is released and follows it to the pins.",
         "60 frames a second, harder: the camera is now asked for 60 at every picture size a phone offers (exactly 60 first), and if it still opens below 60 the open camera is asked again for 60. The FPS badge shows the rate actually arriving at the app, and the diagnostics line says what the phone offered and why it may be lower (phones slow their camera in dim light).",
         "Spin for every shot: each recorded shot's rev rate, axis rotation and axis tilt are now read automatically from its own clip and shown in the shot review and the Spin lab. A clip too coarse to read a spin from (30 fps with a small ball, for example) says so plainly and shows no numbers instead of guessing; slow-motion video gives the best reads.",
         "The lane lock runs the full length of the lane, foul line to the head pin. After any lock that was found or picked (not one you traced by hand), the far end is checked against where the pins stand over the next few seconds and moved onto them when the readings agree. A lock saved by an older version, which could stop short of the pins, is dropped so the lane is found afresh.",
@@ -9861,7 +9862,7 @@ ${url}`);
   // core/src/retrace.ts
   var MAX_SKIP = 6;
   function tracePath(frames) {
-    const nodes = frames.map((fr2) => fr2.cands.map(() => ({ f: 0, c: 0, score: 0, prev: null })));
+    const nodes = frames.map((fr2) => fr2.cands.map(() => ({ f: 0, c: 0, q: 0, score: 0, prev: null })));
     let best = null;
     for (let f = 0; f < frames.length; f++) {
       for (let c = 0; c < frames[f].cands.length; c++) {
@@ -9886,7 +9887,7 @@ ${url}`);
             if (s > bestScore) bestScore = s, bestPrev = [fi, i];
           }
         }
-        nodes[f][c] = { f, c, score: bestScore, prev: bestPrev };
+        nodes[f][c] = { f, c, q: cj.q, score: bestScore, prev: bestPrev };
         if (!best || bestScore > best.score) best = { f, c, score: bestScore };
       }
     }
@@ -9895,7 +9896,7 @@ ${url}`);
     let cur2 = [best.f, best.c];
     while (cur2) {
       const [f, c] = cur2;
-      chain2.push({ t: frames[f].t, lx: frames[f].cands[c].lx, ly: frames[f].cands[c].ly });
+      chain2.push({ t: frames[f].t, lx: frames[f].cands[c].lx, ly: frames[f].cands[c].ly, q: frames[f].cands[c].q });
       cur2 = nodes[f][c].prev;
     }
     chain2.reverse();
@@ -9903,6 +9904,7 @@ ${url}`);
     const span = chain2[chain2.length - 1].ly - chain2[0].ly;
     const mph = span / Math.max(1e-6, chain2[chain2.length - 1].t - chain2[0].t) * (3600 / 5280);
     if (span < 12 || mph < 6 || mph > 40) return null;
+    if (chain2.reduce((s, p) => s + p.q, 0) / chain2.length > 1) return null;
     return chain2.map((p) => ({ t: p.t, x: p.lx, y: p.ly }));
   }
 
@@ -11414,6 +11416,14 @@ ${url}`);
     stream = await openCamera();
     video.srcObject = stream;
     await video.play();
+    if (!video.videoWidth || !video.videoHeight) {
+      await new Promise((res) => {
+        const done2 = () => (video.removeEventListener("loadedmetadata", done2), video.removeEventListener("resize", done2), res());
+        video.addEventListener("loadedmetadata", done2);
+        video.addEventListener("resize", done2);
+        setTimeout(done2, 4e3);
+      });
+    }
     overlay.width = video.videoWidth;
     overlay.height = video.videoHeight;
     await setupZoom();
@@ -11922,6 +11932,41 @@ ${url}`);
     if (a.length >= arrowsRead.length) arrowsRead = a.map((r) => ({ board: r.board, x: r.img.x * k2, y: r.img.y * k2 }));
   }
   var candHist = [];
+  var lastShotMedia = -1;
+  var histActive = false;
+  var histTrail = [];
+  var lastHistAt = 0;
+  function ballArrived(media) {
+    status.textContent = "Ball detected, tracking\u2026";
+    if (pendingClip) void attachClip().then(() => beginRecording(media));
+    else beginRecording(media);
+  }
+  function historyDetect(now, media) {
+    if (now - lastHistAt < 250) return;
+    lastHistAt = now;
+    const frames = candHist.filter((f) => f.t > lastShotMedia && f.t > media - 7);
+    if (frames.length < 10) {
+      histActive = false;
+      return;
+    }
+    const p = tracePath(frames);
+    const first = p?.[0];
+    const last = p?.[p.length - 1];
+    const mph = first && last ? (last.y - first.y) / Math.max(1e-6, last.t - first.t) * (3600 / 5280) : 0;
+    if (!p || !first || !last || mph < 8) {
+      histActive = false;
+      return;
+    }
+    if (!histActive) {
+      histActive = true;
+      ballArrived(media);
+    }
+    histTrail = p.map((s) => laneToPx(s.x, s.y));
+    if (media - last.t > 0.8 || last.y >= 56) {
+      histActive = false;
+      void finish();
+    }
+  }
   var refiningLock = false;
   var pinRefs = [];
   var pinTries = 0;
@@ -12532,7 +12577,7 @@ ${url}`);
       strokeTrail(v, lastShot.trail, age < 10 ? 1 : Math.max(0.35, 1 - (age - 10) / 10), false);
       drawShotMarkers(v, lastShot.a);
     }
-    if (confirmed && trail.length > 1) {
+    if ((confirmed || histActive) && trail.length > 1) {
       strokeTrail(v, trail.slice(-40), 1, true);
       drawBallHead(v, trail[trail.length - 1]);
     }
@@ -12683,8 +12728,9 @@ ${url}`);
     const ev = tracker.step(g2, meta.mediaTime, c2);
     candHist.push({ t: meta.mediaTime, cands: tracker.lastCands.map((c) => ({ ...c })) });
     while (candHist.length && candHist[0].t < meta.mediaTime - 14) candHist.shift();
+    if (!tracker.confirmed && now >= cooldownUntil) historyDetect(now, meta.mediaTime);
     path = tracker.path;
-    trail = tracker.trail;
+    trail = histActive && !tracker.confirmed ? histTrail : tracker.trail;
     lastBlob = tracker.last ? { gx: tracker.last.x, gy: tracker.last.y } : null;
     confirmed = tracker.confirmed;
     if (ev === "tracking" || ev === "confirmed") {
@@ -12692,11 +12738,7 @@ ${url}`);
       if (here && here.y < 30 && trail.length) captureBall(trail[trail.length - 1].x, trail[trail.length - 1].y, tracker.lastR * (video.videoWidth / GW));
     }
     if (ev === "confirmed") {
-      status.textContent = "Ball detected, tracking\u2026";
-      if (pendingClip) {
-        const media = meta.mediaTime;
-        void attachClip().then(() => beginRecording(media));
-      } else beginRecording(meta.mediaTime);
+      ballArrived(meta.mediaTime);
     } else if (ev === "finished") void finish();
     else if (ev === "reset") resetTrack();
   }
@@ -12821,7 +12863,9 @@ ${url}`);
     const fullRack = fullDeck;
     const points = path.length;
     const liveSmooth = smoothPath(path);
-    const whole = tracePath(candHist.slice());
+    const frames = candHist.filter((f) => f.t > lastShotMedia);
+    if (frames.length) lastShotMedia = frames[frames.length - 1].t;
+    const whole = tracePath(frames);
     const t0Abs = whole && whole.length ? whole[0].t : tracker?.t0 ?? 0;
     const wholeRel = whole ? whole.map((p) => ({ ...p, t: p.t - whole[0].t })) : null;
     const wholeSmooth = wholeRel ? smoothPath(wholeRel) : null;
@@ -12834,7 +12878,7 @@ ${url}`);
       live: path.map((p) => ({ t: r2(p.t), x: r2(p.x), y: r2(p.y) })),
       whole: wholeRel ? wholeRel.map((p) => ({ t: r2(p.t), x: r2(p.x), y: r2(p.y) })) : null,
       smooth: smooth.map((p) => ({ t: r2(p.t), x: r2(p.x), y: r2(p.y) })),
-      cands: candHist.map((f) => ({ t: r2(f.t), cands: f.cands.map((c) => ({ lx: r2(c.lx), ly: r2(c.ly), q: r2(c.q) })) })),
+      cands: frames.map((f) => ({ t: r2(f.t), cands: f.cands.map((c) => ({ lx: r2(c.lx), ly: r2(c.ly), q: r2(c.q) })) })),
       arrows: arrowsRead.map((a2) => ({ board: a2.board, x: Math.round(a2.x), y: Math.round(a2.y) })),
       lock: lastLockHow
     };
