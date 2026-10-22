@@ -61,6 +61,7 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        "A Fix my lane button now stays on screen after the lane locks, so a wrong lock is one tap from being traced and corrected (before, the trace button disappeared once it locked).",
         "Tapping Re-lock now means it: the lock you threw away is not handed back, and a second Re-lock in a row opens Trace your lane, starting from the last outline.",
         "The drawn arrows now sit on the right boards (they were half a board off).",
         "Snap to edges tightens your outline onto the real lane edges; Reset starts over."
@@ -10465,7 +10466,7 @@ ${url}`);
     candidate = null;
     setStep(4);
     setReady(true);
-    status.textContent = `Lane locked (${how}). Ready: just bowl, every shot is tracked automatically.`;
+    status.textContent = `Lane locked (${how}). Ready: just bowl. If the lines are not on your lane, tap Fix my lane.`;
     renderScan();
     try {
       localStorage.setItem(calKey(), JSON.stringify({ z: zoomCaps ? zoomNow : 1, n: corners.map((p) => ({ x: p.x / video.videoWidth, y: p.y / video.videoHeight })) }));
@@ -10580,7 +10581,8 @@ ${url}`);
     const el = $("scan");
     const show = document.body.classList.contains("live") && !H && mode !== "manual";
     el.classList.toggle("hide", !show);
-    $("tracebtn").classList.toggle("hide", !(document.body.classList.contains("live") && !H && mode !== "manual"));
+    $("tracebtn").classList.toggle("hide", !(document.body.classList.contains("live") && mode !== "manual"));
+    $("tracebtn").textContent = H ? "Fix my lane" : "Trace my lane";
     $("snapbtn").classList.toggle("hide", !(show && adjusted && pending));
     if (!show) return;
     if (mode === "choose") {
@@ -10978,7 +10980,7 @@ ${url}`);
     frame.width = W;
     frame.height = Hh;
     frame.getContext("2d").drawImage(video, 0, 0);
-    const start = from ?? lastCandidates[0]?.corners ?? [
+    const start = from ?? (H && corners.length === 4 ? corners.map((p) => ({ ...p })) : null) ?? lastCandidates[0]?.corners ?? [
       { x: W * 0.22, y: Hh * 0.92 },
       { x: W * 0.78, y: Hh * 0.92 },
       { x: W * 0.55, y: Hh * 0.36 },
@@ -11021,7 +11023,8 @@ ${url}`);
       },
       onCancel: () => {
         tracing = false;
-        status.textContent = "Looking for the lane again\u2026";
+        status.textContent = H ? "Kept your lane lock." : "Looking for the lane again\u2026";
+        renderScan();
       }
     });
   }
