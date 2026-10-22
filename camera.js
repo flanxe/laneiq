@@ -61,6 +61,9 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        'A Learn tab: the bowling words LaneIQ uses and what each means in the app, from the lane (boards, arrows, dots, pocket) to your shot (breakpoint, entry angle, axis rotation), the hit (high hit, light hit, Brooklyn), the ball (coverstock, RG, differential), layouts and oil. Lane sizes and markings follow the USBC Equipment Specifications. Search a word, or tap "what is this?" on a shot.',
+        `Fixed: a ball that missed to the right could be called high. The app now judges the pocket only when the ball was seen all the way to the pins; before, it used a board worked out past where the camera lost the ball, and a few boards of guess flipped the call. A shot that was not seen reaching the pins says so instead of calling a hit. The call also says which side of the pocket it missed on, in boards ("Light hit, 2.0 boards right of the pocket"), and your saved shots are re-read with the new rule and your hand setting. A right-hander's miss to the right is light; a left-hander's miss to the right is high.`,
+        'Standard words for where a shot hit: Pocket hit, High hit, Light hit, Brooklyn (a ball that crossed the head pin) and Very light hit, replacing "Way high" and "Way light".',
         `Start and Stop, for league: a Start / Stop button on the live screen. Stopped, the lane stays locked but no ball is followed, recorded or saved, so other bowlers' shots are not kept; tap Start on your turn. "One shot at a time" is league mode: it starts stopped and stops by itself after each of your shots (your shot and its clip are kept), so you only tap Start when it is your turn. The tour covers it.`,
         "Smoother paths before the arrows: the ball is biggest in the picture near the foul line and where its centre lands wobbles the most, so the first stretch is now smoothed over a longer window (easing to the normal one by about 22 ft), and sideways jumps no ball could make are dropped. The shot map and replays draw every path this way, including shots saved before, so old shots look cleaner too.",
         "No dead end for spin: a clip that cannot be read for spin (a ball turns 36 to 72 degrees a frame at 30 or 60 fps) now says it needs a slow-motion pass and has one tap to read it from a slow-motion clip, instead of a plain refusal. Where a browser offers more than 60 frames a second (some Android phones show 120 or 240), the app now asks for it and records every frame while feeding the tracker about 60 a second. No spin numbers are invented for a clip that cannot give them.",
@@ -264,6 +267,107 @@
     }
   ];
   var LATEST_NOTE_ID = PATCH_NOTES[0].id;
+
+  // core/src/terms.ts
+  var ZONE_LABEL = {
+    pocket: "Pocket hit",
+    high: "High hit",
+    light: "Light hit",
+    "very-high": "Brooklyn",
+    "very-light": "Very light hit"
+  };
+  function missSide(miss, hand2) {
+    const high = miss > 0;
+    return hand2 === "R" === high ? "left" : "right";
+  }
+  function zoneText(zone, miss, hand2) {
+    if (!zone || miss === null) return "";
+    if (zone === "pocket") return ZONE_LABEL.pocket;
+    return `${ZONE_LABEL[zone]}, ${Math.abs(miss).toFixed(1)} boards ${missSide(miss, hand2)} of the pocket`;
+  }
+  var GLOSSARY = [
+    // ---- the lane ----
+    { term: "Approach", cat: "The lane", def: "The floor behind the foul line where you walk and slide. By the USBC rules it must be at least 15 feet long, level, and at least as wide as the lane." },
+    { term: "Foul line", cat: "The lane", def: "The line between the approach and the lane, 3/8 to 1 inch wide. Touching or crossing it as you deliver is a foul, and the ball scores nothing." },
+    { term: "Boards", cat: "The lane", def: "The 39 strips that run down the lane, each about an inch wide. Bowlers count them from the right gutter (board 1) to the left gutter (board 39), as you look down the lane. The centre is board 20.", app: "Every board number in LaneIQ counts from the right gutter." },
+    { term: "Gutters", cat: "The lane", aka: ["channels"], def: "The channels on each side of the lane. A ball that goes in one scores only what it knocked down before." },
+    { term: "Arrows", cat: "The lane", aka: ["targets", "darts"], def: "The small markings down the lane that you aim at. The USBC rules allow up to seven, 12 to 16 feet past the foul line, equally spaced, each at most 1 1/4 inch wide and 6 inches long. Most houses put them on boards 5, 10, 15, 20, 25, 30 and 35 in a V shape, but the exact distance differs from house to house.", app: 'LaneIQ looks for the arrows on your lane instead of drawing them from a model. "Arrows board" is the board your ball crossed at about 15 feet.' },
+    { term: "Dots", cat: "The lane", aka: ["approach guides", "range dots"], def: "Round markings you use to line up your feet and your target. On the approach the rules allow up to seven at 2 to 6 inches, 3 to 4 feet, 6 to 7 feet, 9 to 10 feet, 11 to 12 feet and 14 to 15 feet from the foul line; on the lane up to ten guides sit 6 to 8 feet past it." },
+    { term: "Range finders", cat: "The lane", def: "Markings 33 to 44 feet down the lane (up to four, none wider than a board or longer than 36 inches) used to aim further down the lane than the arrows." },
+    { term: "Head pin", cat: "The lane", aka: ["1-pin"], def: "The front pin of the triangle. It is 60 feet, give or take half an inch, from the foul line to the centre of its spot. The pins are numbered 1 to 10 from the front, left to right, row by row; the pins stand 12 inches apart." },
+    { term: "Pin deck", cat: "The lane", def: "The area where the ten pins stand, beyond the end of the lane. Past it is the pit.", app: "LaneIQ puts the far end of the lane lock on the head pin line, 60 feet from the foul line." },
+    { term: "Pocket", cat: "The lane", def: "The best place to hit the pins: between the 1-pin and the pin beside it on your strong side. That is the 1-3 pocket for a right-hander and the 1-2 pocket for a left-hander.", app: "The pocket is board 17.5 for a right-hander and board 22.5 for a left-hander (counted from the right). Set your hand in your profile so this is right for you." },
+    // ---- your shot ----
+    { term: "Launch speed", cat: "Your shot", aka: ["ball speed"], def: "How fast the ball is travelling soon after you release it, in miles per hour.", app: "Measured over the first stretch the camera sees, roughly 3 to 20 feet." },
+    { term: "Launch angle", cat: "Your shot", def: "The direction the ball is heading in the first part of its path, measured in degrees from straight down the lane.", app: "+ means drifting right, \u2212 left." },
+    { term: "Starting board", cat: "Your shot", aka: ["start position"], def: "The board the ball is on soon after release, close to your foul-line position." },
+    { term: "Line", cat: "Your shot", aka: ["ball path", "shot path"], def: "The path the ball takes down the lane, usually described by the board it crosses at the arrows, its breakpoint and where it reaches the pins." },
+    { term: "Breakpoint", cat: "Your shot", def: "The point where the ball finishes going outward and starts turning back toward the pocket: the board it is on, and how many feet down the lane that is.", app: "LaneIQ finds it as the point farthest from the centre of the lane between 15 and 55 feet." },
+    { term: "Hook", cat: "Your shot", def: 'The sideways move of the ball as it turns toward the pocket. People also use "hook" for how much a ball reacts.', app: "In LaneIQ, Hook is the number of boards between the breakpoint and the entry point." },
+    { term: "Entry board", cat: "Your shot", def: "The board the ball is on when it reaches the pins, at about 59.5 feet.", app: 'LaneIQ only gives an entry board when the ball was seen right up to the pins. If the camera lost the ball earlier, the "At the pins" tile shows the board where it was last seen and how far down the lane that was, and nothing is guessed past it.' },
+    { term: "Entry angle", cat: "Your shot", aka: ["angle of entry", "impact angle"], def: "The angle at which the ball arrives at the pocket. A steeper entry angle gives the ball more room to carry the pins through the pocket.", app: "Measured over the last stretch of the path the camera saw." },
+    { term: "Speed loss", cat: "Your shot", def: "How much slower the ball is at the pins than at release, as a percentage. A ball that slows a lot has used up energy by hooking and rolling early." },
+    { term: "Rev rate", cat: "Your shot", aka: ["revs", "RPM"], def: "How many times the ball turns each minute.", app: "LaneIQ's setup question groups it as low (under 300), medium (300 to 400), high (400 to 500) and very high (over 500). It is read from a slow-motion video of the release in the Spin lab: at 30 or 60 frames a second a hook ball turns too far between frames to be read." },
+    { term: "Axis rotation", cat: "Your shot", def: "How far the ball's spin axis is turned sideways, seen from above. It, with axis tilt, says which way the spin axis points.", app: "In LaneIQ, 0\xB0 is a straight forward roll. Coaches use different zero points, so compare numbers only within the app." },
+    { term: "Axis tilt", cat: "Your shot", def: "How far the spin axis is tilted up from horizontal, seen from behind the ball. With axis rotation it says which way the spin axis points.", app: "Measured in degrees above horizontal." },
+    { term: "PAP", cat: "Your shot", aka: ["positive axis point"], def: "The point on the ball where your spin axis comes out at release. A ball is drilled relative to your PAP.", app: "Estimated in the Arsenal tab from three photos of the flare rings, or from a slow-motion video in the Spin lab." },
+    { term: "Track", cat: "Your shot", def: "The band of oil rings the ball leaves on its surface as it rolls. Its position on the ball and how wide it is show how the ball is being thrown." },
+    { term: "Flare", cat: "Your shot", def: "How far the track moves across the ball's surface as it travels. More flare gives the ball fresh dry surface to grip with, so more hook." },
+    // ---- the hit ----
+    { term: "Strike", cat: "The hit", def: "All ten pins knocked down by the first ball of a frame." },
+    { term: "Spare", cat: "The hit", def: "All the remaining pins knocked down by the second ball of a frame." },
+    { term: "Open frame", cat: "The hit", def: "A frame with neither a strike nor a spare." },
+    { term: "Leave", cat: "The hit", def: "The pins still standing after your first ball, such as the 10-pin or the 4-7-10." },
+    { term: "Split", cat: "The hit", def: "A leave where the head pin is down and the standing pins have a gap between them, for example the 7-10 or the 5-10. Splits are hard to convert." },
+    { term: "Pocket hit", cat: "The hit", def: "The ball enters in the pocket. A good pocket hit with a good entry angle is what makes strikes.", app: "Within one board of the pocket." },
+    { term: "High hit", cat: "The hit", def: "The ball enters too far toward the middle of the head pin, so it hits the head pin too full. For a right-hander that is left of the 1-3 pocket; for a left-hander it is right of the 1-2 pocket.", app: "1 to 2.5 boards from the pocket toward the head pin. LaneIQ says which side, in boards, so you can check it against what you saw." },
+    { term: "Light hit", cat: "The hit", aka: ["thin hit"], def: "The ball enters too far to the gutter side of the pocket, so it hits the head pin too thinly. For a right-hander that is right of the 1-3 pocket; for a left-hander it is left of the 1-2 pocket.", app: "1 to 2.5 boards from the pocket toward the gutter." },
+    { term: "Brooklyn", cat: "The hit", def: 'A ball that crosses over to the far side of the head pin: for a right-hander it hits left of the 1-pin, for a left-hander right of it. It can still strike (a "Brooklyn strike"), but it is usually a miss.', app: "More than 2.5 boards high, which is past the centre of the head pin." },
+    { term: "Very light hit", cat: "The hit", def: "A ball that misses the head pin side of the pocket by a wide margin, hitting the pins well to the gutter side.", app: "More than 2.5 boards to the gutter side of the pocket." },
+    { term: "Tap", cat: "The hit", def: "A good pocket hit that leaves a pin standing that looked as though it should have fallen." },
+    // ---- scoring ----
+    { term: "Frame", cat: "Scoring", def: "One turn at the pins: up to two balls (three in the tenth). A game is ten frames." },
+    { term: "Turkey", cat: "Scoring", def: "Three strikes in a row." },
+    { term: "Average", cat: "Scoring", def: "Your total pinfall divided by your games bowled." },
+    { term: "Spare conversion", cat: "Scoring", def: "The share of your spare chances that you make. Single-pin spares are the ones to get nearly every time." },
+    // ---- the ball ----
+    { term: "Coverstock", cat: "The ball", def: "The outer shell of the ball, which meets the lane. Plastic (polyester) is the least grippy and is used for spares; urethane is in between; reactive resin is the strongest, in solid, pearl and hybrid forms. Solid reactive covers usually grip earlier; pearls usually skid longer and then turn sharper." },
+    { term: "Core", cat: "The ball", def: "The weight block inside the ball. Its shape decides how the ball stores and releases energy. Symmetric cores are the same all round; asymmetric cores have a mass bias." },
+    { term: "RG", cat: "The ball", aka: ["radius of gyration"], def: "How far the ball's weight sits from its centre. A lower RG gets the ball revving up earlier; a higher RG holds energy for later." },
+    { term: "Differential", cat: "The ball", aka: ["diff"], def: "The difference between the ball's highest and lowest RG. A higher differential means more flare potential." },
+    { term: "Mass bias", cat: "The ball", aka: ["MB"], def: "On an asymmetric core, the mark that shows where the core's extra weight sits. With the CG mark it lets a driller place the core relative to your PAP." },
+    { term: "Pin", cat: "The ball", def: "A coloured dot on the ball that marks the top of the core. Layouts are described by where the pin sits relative to your PAP." },
+    { term: "Surface", cat: "The ball", aka: ["grit", "polish"], def: "How rough or shiny the ball's cover is. A lower grit number (such as 500) is rougher and grips earlier; higher grits and polish skid longer and save energy for the back end of the lane." },
+    // ---- layout and drilling ----
+    { term: "Layout", cat: "Layout and drilling", def: "Where the grip holes are drilled relative to the ball's core, pin and your PAP. The same ball reacts differently with different layouts." },
+    { term: "Span", cat: "Layout and drilling", def: "The distance between your thumb and finger holes, which sets how the ball fits your hand." },
+    { term: "Pin to PAP", cat: "Layout and drilling", def: "The distance from the pin to your PAP. Closer gives an earlier, smoother, less flaring move; farther keeps more flare potential for a later, stronger move." },
+    { term: "Drilling angle", cat: "Layout and drilling", def: "In the Dual Angle system, an angle from 10 to 90 degrees that sets how soon the ball rolls." },
+    { term: "VAL angle", cat: "Layout and drilling", def: "In the Dual Angle system, an angle from 20 to 70 degrees that sets how fast the ball changes from skid to hook. The drilling angle plus the VAL angle is the angle sum: 30 is the fastest transition and 160 the slowest." },
+    { term: "Pin buffer", cat: "Layout and drilling", def: "In the Pin Buffer system, the distance from the pin to the VAL. About 1 to 2 inches gives a faster transition, 4 to 5 slower." },
+    // ---- oil and the lane ----
+    { term: "Oil pattern", cat: "Oil and the lane", def: "The way oil is laid on the lane: how far it goes down the lane (length), how much there is (volume), and how it is shaped across the boards." },
+    { term: "Pattern length", cat: "Oil and the lane", def: "How many feet down the lane the oil goes. Roughly: under 36 feet is short, 36 to 41 medium, 42 and over long. Longer patterns ask for a stronger ball and more hook." },
+    { term: "House shot", cat: "Oil and the lane", def: "The usual league pattern: more oil in the middle and much less outside, so a ball thrown a little off line still gets pushed back toward the pocket." },
+    { term: "Sport pattern", cat: "Oil and the lane", def: "A flatter pattern with less difference between the middle and the outside, so misses are punished more." },
+    { term: "Reading the lane", cat: "Oil and the lane", def: 'Seeing how the ball reacts and choosing your ball, line or speed to match. A ball that hooks earlier than before is "reading" the lane sooner.' },
+    { term: "Breakdown", cat: "Oil and the lane", def: "Oil wearing thin where balls travel, so the ball starts reading the lane earlier there." },
+    { term: "Carrydown", cat: "Oil and the lane", def: "Oil being pushed down the lane by balls, so the ball skids farther than it did earlier." },
+    { term: "Transition", cat: "Oil and the lane", def: "The lane changing as the oil breaks down and carries down during play, so your line has to move.", app: "LaneIQ watches your breakpoint distance over several shots with the same ball before it calls a transition." },
+    { term: "Backend", cat: "Oil and the lane", def: "The last part of the lane, beyond the oil, where the ball makes its move toward the pins. A strong backend is a sharp, late move." },
+    { term: "Skid, hook, roll", cat: "Oil and the lane", def: "The three phases of a ball's path: it skids on the oil, turns (hooks) as it meets friction, then rolls forward as it reaches the pins." },
+    // ---- styles ----
+    { term: "Stroker", cat: "Styles", def: "A bowler with a smooth, accurate delivery, usually with lower rev rates and a steady hand position." },
+    { term: "Cranker", cat: "Styles", def: "A bowler who puts a lot of revs and side rotation on the ball for a big hook." },
+    { term: "Tweener", cat: "Styles", def: "A bowler between a stroker and a cranker." },
+    { term: "Two-handed", cat: "Styles", def: "A delivery with no thumb in the ball, the second hand supporting it through the swing, usually with high revs." },
+    // ---- LaneIQ ----
+    { term: "Lane lock", cat: "LaneIQ", def: "The outline of your lane that the app has found in the picture, from the foul line to the head pin. Every distance and board is worked out from it.", app: "If the lines are not on your lane, tap Fix my lane." },
+    { term: "Fix my lane", cat: "LaneIQ", def: "Freezes the picture so you can drag four numbered dots onto the lane, use Snap to edges, then place the head pin, 7 and 10 pins." },
+    { term: "At the pins", cat: "LaneIQ", def: "The board where the camera last saw the ball, and how many feet down the lane that was. It is what the camera saw, not a prediction." },
+    { term: "Partial", cat: "LaneIQ", def: "A shot the camera saw only part of. The part it saw is recorded; what it did not see is left empty." },
+    { term: "One shot at a time", cat: "LaneIQ", def: "League mode. The app starts stopped and stops by itself after each of your shots, so you tap Start only on your own turn." }
+  ];
 
   // core/src/lanereads.ts
   var MIN_SHOTS = 4;
@@ -857,7 +961,7 @@
       const meanMiss = mean2(missShots.map((s) => s.m.pocketMiss));
       if (a.rate !== null && b.rate !== null && inP.length >= MIN_PER_BIN && out.length >= MIN_PER_BIN && a.rate - b.rate >= 0.15) {
         const highShare = out.filter((s) => s.m.pocketMiss > 0).length / out.length;
-        const side = highShare > 0.65 ? "high (across the pocket)" : highShare < 0.35 ? "light (thin)" : "both sides";
+        const side = highShare > 0.65 ? "high (too full on the head pin)" : highShare < 0.35 ? "light (too thin on the head pin)" : "both sides";
         issues.push({
           id: "pocket-accuracy",
           title: `Missing the pocket ${side}`,
@@ -961,463 +1065,6 @@
       const met = item.direction === "down" ? current4 <= item.target : current4 >= item.target;
       return { item, current: current4, progress: progress2, met };
     });
-  }
-
-  // camera/db.ts
-  var PROFILES_KEY = "laneiq.profiles";
-  var CURRENT_KEY = "laneiq.currentProfile";
-  function listProfiles() {
-    try {
-      return JSON.parse(localStorage.getItem(PROFILES_KEY) ?? "[]");
-    } catch {
-      return [];
-    }
-  }
-  function saveProfiles(p) {
-    try {
-      localStorage.setItem(PROFILES_KEY, JSON.stringify(p));
-    } catch {
-    }
-  }
-  function currentProfileId() {
-    try {
-      return localStorage.getItem(CURRENT_KEY);
-    } catch {
-      return null;
-    }
-  }
-  function setCurrentProfile(id) {
-    try {
-      localStorage.setItem(CURRENT_KEY, id);
-    } catch {
-    }
-  }
-  var newId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
-  var opened = /* @__PURE__ */ new Map();
-  function open(profileId) {
-    let p = opened.get(profileId);
-    if (!p) {
-      p = new Promise((resolve, reject) => {
-        const req = indexedDB.open(`laneiq-p-${profileId}`, 1);
-        req.onupgradeneeded = () => {
-          const db = req.result;
-          db.createObjectStore("shots", { keyPath: "id" });
-          db.createObjectStore("clips");
-          db.createObjectStore("meta");
-        };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
-      opened.set(profileId, p);
-    }
-    return p;
-  }
-  var wrap = (req) => new Promise((res, rej) => (req.onsuccess = () => res(req.result), req.onerror = () => rej(req.error)));
-  async function dbAll(profileId, store) {
-    return wrap((await open(profileId)).transaction(store).objectStore(store).getAll());
-  }
-  async function dbGet(profileId, store, key2) {
-    return wrap((await open(profileId)).transaction(store).objectStore(store).get(key2));
-  }
-  async function dbPut(profileId, store, value, key2) {
-    const s = (await open(profileId)).transaction(store, "readwrite").objectStore(store);
-    await wrap(key2 === void 0 ? s.put(value) : s.put(value, key2));
-  }
-  async function dbDelete(profileId, store, key2) {
-    await wrap((await open(profileId)).transaction(store, "readwrite").objectStore(store).delete(key2));
-  }
-  async function deleteProfileData(profileId) {
-    const db = await open(profileId).catch(() => null);
-    db?.close();
-    opened.delete(profileId);
-    await new Promise((res) => {
-      const r = indexedDB.deleteDatabase(`laneiq-p-${profileId}`);
-      r.onsuccess = r.onerror = r.onblocked = () => res();
-    });
-  }
-
-  // camera/state.ts
-  var S = {
-    profile: null,
-    shots: [],
-    arsenal: [],
-    catalog: [],
-    patterns: [],
-    plan: null,
-    friends: [],
-    /** sessions friends have shared with this profile, kept so they can be compared later */
-    shared: [],
-    /** where each session was bowled, as typed by the bowler (used to tell if two sessions share a lane) */
-    laneLabels: {},
-    sessionId: newId(),
-    /** demo mode never writes to storage */
-    demo: false
-  };
-  var listeners = /* @__PURE__ */ new Set();
-  var onChange = (fn) => (listeners.add(fn), () => listeners.delete(fn));
-  var changed = () => listeners.forEach((fn) => fn());
-  async function loadProfile(id) {
-    const p = listProfiles().find((x) => x.id === id) ?? null;
-    S.profile = p;
-    if (!p) return;
-    setCurrentProfile(id);
-    S.shots = (await dbAll(id, "shots")).sort((a, b) => a.at.localeCompare(b.at));
-    S.arsenal = await dbGet(id, "meta", "arsenal") ?? [];
-    S.plan = await dbGet(id, "meta", "plan") ?? null;
-    S.friends = await dbGet(id, "meta", "friends") ?? [];
-    S.shared = await dbGet(id, "meta", "shared") ?? [];
-    S.laneLabels = await dbGet(id, "meta", "laneLabels") ?? {};
-    if (p && !p.friendCode) {
-      S.profile = { ...p, friendCode: newFriendCode() };
-      saveProfiles(listProfiles().map((x) => x.id === id ? S.profile : x));
-    }
-    S.sessionId = newId();
-    changed();
-  }
-  async function bootProfile() {
-    const id = currentProfileId();
-    const list = listProfiles();
-    const pick = list.find((p) => p.id === id) ?? list[0];
-    if (!pick) return false;
-    await loadProfile(pick.id);
-    return true;
-  }
-  function createProfile(a) {
-    const p = { id: newId(), name: a.name.trim() || "Bowler", username: a.username || void 0, hand: a.hand, revRpm: a.revRpm, quiz: a, created: (/* @__PURE__ */ new Date()).toISOString() };
-    saveProfiles([...listProfiles(), p]);
-    return p;
-  }
-  function updateProfile(patch) {
-    if (!S.profile) return;
-    S.profile = { ...S.profile, ...patch };
-    saveProfiles(listProfiles().map((p) => p.id === S.profile.id ? S.profile : p));
-    changed();
-  }
-  var shotListeners = [];
-  function onShot(fn) {
-    shotListeners.push(fn);
-  }
-  async function addShot(s) {
-    S.shots.push(s);
-    for (const fn of shotListeners) {
-      try {
-        fn(s);
-      } catch {
-      }
-    }
-    if (!S.demo && S.profile) await dbPut(S.profile.id, "shots", s).catch(() => {
-    });
-    changed();
-  }
-  async function updateShot(s) {
-    if (!S.demo && S.profile) await dbPut(S.profile.id, "shots", s).catch(() => {
-    });
-    changed();
-  }
-  async function removeShot(id) {
-    S.shots = S.shots.filter((s) => s.id !== id);
-    if (!S.demo && S.profile) {
-      await dbDelete(S.profile.id, "shots", id).catch(() => {
-      });
-      await dbDelete(S.profile.id, "clips", id).catch(() => {
-      });
-    }
-    changed();
-  }
-  async function saveClip(id, blob) {
-    if (!S.demo && S.profile) await dbPut(S.profile.id, "clips", blob, id);
-  }
-  async function loadClip(id) {
-    return S.profile ? dbGet(S.profile.id, "clips", id) : void 0;
-  }
-  async function saveArsenal() {
-    if (!S.demo && S.profile) await dbPut(S.profile.id, "meta", S.arsenal, "arsenal").catch(() => {
-    });
-    changed();
-  }
-  async function saveSocial() {
-    if (!S.demo && S.profile) {
-      await dbPut(S.profile.id, "meta", S.friends, "friends").catch(() => {
-      });
-      await dbPut(S.profile.id, "meta", S.shared, "shared").catch(() => {
-      });
-      await dbPut(S.profile.id, "meta", S.laneLabels, "laneLabels").catch(() => {
-      });
-    }
-    changed();
-  }
-  async function savePlan() {
-    if (!S.demo && S.profile) await dbPut(S.profile.id, "meta", S.plan, "plan").catch(() => {
-    });
-    changed();
-  }
-  async function loadReference() {
-    const get = async (u) => {
-      try {
-        const r = await fetch(u);
-        return r.ok ? await r.json() : [];
-      } catch {
-        return [];
-      }
-    };
-    [S.catalog, S.patterns] = await Promise.all([get("balls.json"), get("patterns.json")]);
-    changed();
-  }
-  var userSrc = () => ({ kind: "user", url: "entered by bowler", retrievedOn: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10) });
-  function ownedBalls() {
-    return S.arsenal.map((b) => {
-      const specs = b.catalogKey ? S.catalog.find((c) => c.key === b.catalogKey) : b.rg !== void 0 && b.diff !== void 0 ? rowToBall({ manufacturer: "(mine)", name: b.name, rg: b.rg, differential: b.diff, coverstockType: b.cover }, userSrc()) : void 0;
-      const mine = S.shots.filter((s) => s.ballId === b.id);
-      let observed;
-      if (mine.length >= 8) {
-        const avg2 = (v) => {
-          const x = v.filter((n) => n !== null);
-          return x.length ? x.reduce((a, c) => a + c, 0) / x.length : void 0;
-        };
-        const res = mine.filter((s) => s.result);
-        const miss = mine.filter((s) => s.m.pocketMiss !== null);
-        observed = {
-          shots: mine.length,
-          entryAngle: avg2(mine.map((s) => s.m.entryAngle)),
-          breakpointFt: avg2(mine.map((s) => s.m.breakpointFt)),
-          pocketPct: miss.length ? miss.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / miss.length * 100 : void 0,
-          strikePct: res.length >= 8 ? res.filter(isStrike).length / res.length * 100 : void 0
-        };
-      }
-      return { id: b.id, name: b.name, specs, observed };
-    });
-  }
-  function bowlerProfile() {
-    const p = computeProfile(S.shots);
-    const speed = p.stats.launchSpeed;
-    const angle = p.stats.entryAngle;
-    const q = S.profile?.quiz;
-    const sp = S.profile?.spin;
-    const rev = sp?.rpm ? { rpm: sp.rpm, source: sp.source === "video" ? "measured" : "entered" } : q ? estimateRev({ style: q.style, revTier: q.revTier, revRpm: S.profile?.revRpm ?? q.revRpm }) : S.profile?.revRpm ? { rpm: S.profile.revRpm, source: "entered" } : void 0;
-    return {
-      hand: S.profile?.hand ?? "R",
-      style: q?.style,
-      launchSpeed: speed && speed.n >= 5 ? speed.mean : void 0,
-      entryAngle: angle && angle.n >= 5 ? angle.mean : void 0,
-      revRpm: rev?.rpm,
-      revSource: rev?.source,
-      axisRotation: sp?.axisRotation,
-      axisTilt: sp?.axisTilt
-    };
-  }
-
-  // camera/live.ts
-  var $ = (id) => document.getElementById(id);
-  var esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  var setText = (id, v) => $(id).textContent = v;
-  var f1 = (n, d = 1) => n === null || n === void 0 ? "n/a" : n.toFixed(d);
-  function setStep(n) {
-    document.querySelectorAll(".dot").forEach((d, i) => d.classList.toggle("on", i < n));
-  }
-  function setReady(ready) {
-    const el = $("ready");
-    el.textContent = ready ? "READY" : "NOT READY";
-    el.classList.toggle("go", ready);
-  }
-  var guesses = /* @__PURE__ */ new Map();
-  var sessionShots = () => S.shots.filter((s) => s.sessionId === S.sessionId);
-  var enrollHandler = null;
-  var onEnroll = (fn) => enrollHandler = fn;
-  var scanHandler = null;
-  var onScan = (fn) => scanHandler = fn;
-  function attachSuggest(input) {
-    const box = document.createElement("div");
-    box.className = "suggest";
-    input.insertAdjacentElement("afterend", box);
-    input.addEventListener("input", () => {
-      const hits = input.value.trim().length >= 2 ? searchCatalog(S.catalog, input.value, 6) : [];
-      box.innerHTML = hits.map((h) => `<button class="chip" data-v="${esc(h.ball.manufacturer + " " + h.ball.name)}">${esc(h.ball.manufacturer)} ${esc(h.ball.name)}</button>`).join("");
-      box.querySelectorAll("button").forEach(
-        (b) => b.onclick = () => {
-          input.value = b.dataset.v;
-          box.innerHTML = "";
-        }
-      );
-    });
-  }
-  var ZONE_TEXT = { pocket: "In the pocket", high: "High", light: "Light", "very-high": "Way high", "very-light": "Way light" };
-  function setCards(s) {
-    const a = s.a;
-    const m = s.m;
-    setText("c-speed", a.speedMph.toFixed(1));
-    setText("c-speed-u", `\xB1 ${a.speedUncertainty.toFixed(1)} mph`);
-    setText("c-arrows", f1(a.boardAtArrows));
-    setText("c-bp", f1(a.breakpointBoard));
-    setText("c-bp-u", a.breakpointFt === null ? "" : `at ${a.breakpointFt.toFixed(0)} ft`);
-    setText("c-entry", a.entryMeasured ? f1(a.entryBoard) : a.lastSeen ? f1(a.lastSeen.board) : "n/a");
-    setText("c-entry-u", a.entryMeasured ? "board at 59.5 ft (seen)" : a.lastSeen ? `board where it was last seen, ${a.lastSeen.ft.toFixed(0)} ft down` : "");
-    setText("c-launch", a.launchAngleDeg === null ? "n/a" : `${a.launchAngleDeg.toFixed(1)}\xB0`);
-    setText("c-impact", a.impactAngleDeg === null ? "n/a" : `${a.impactAngleDeg.toFixed(1)}\xB0`);
-    setText("c-loss", m.speedLossPct === null ? "n/a" : `${m.speedLossPct.toFixed(0)}%`);
-    setText("c-hook", f1(m.hookBoards));
-    setText("c-miss", m.pocketMiss === null ? "n/a" : `${m.pocketMiss > 0 ? "+" : ""}${m.pocketMiss.toFixed(1)}`);
-    setText("c-miss-u", m.zone ? ZONE_TEXT[m.zone] : "+ high, \u2212 light");
-    $("c-conf").style.width = `${Math.round(a.confidence * 100)}%`;
-    setText("c-conf-t", a.partial ? `partial: the camera saw ${a.lastSeen && a.release ? Math.round(a.lastSeen.ft - a.release.ft) : "part of"} ft of the roll \xB7 ${a.samples} pts` : `${Math.round(a.confidence * 100)}% confidence \xB7 ${a.samples} pts`);
-    document.querySelectorAll("#tab-live .card").forEach((el) => {
-      el.classList.remove("pop");
-      void el.offsetWidth;
-      el.classList.add("pop");
-    });
-  }
-  function addHistory(s, n) {
-    const chip = document.createElement("div");
-    chip.className = "chip";
-    chip.textContent = `#${n} \xB7 ${s.a.speedMph.toFixed(1)} mph \xB7 entry ${f1(s.a.entryBoard)}`;
-    $("history").prepend(chip);
-  }
-  var resultExtra = null;
-  function setResultExtra(fn) {
-    resultExtra = fn;
-  }
-  function renderResult(s) {
-    const el = $("result-card");
-    if (!s) return void (el.innerHTML = `<div class="u">Waiting for your first shot</div>`);
-    const cur2 = s.result?.pinsDown;
-    el.innerHTML = `<div class="u">${s.result?.auto ? `Read from the camera: ${cur2 === 10 ? "a strike" : `${cur2} down${s.result.leave?.length ? `, leaving the ${s.result.leave.join("-")}` : ""}`}. Tap a number if that is wrong.` : "How many pins did this shot knock down? This is how the app learns what costs you strikes."}</div><div class="chips">` + [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((n) => `<button class="chip ${cur2 === n ? "sel" : n === 10 ? "x" : ""}" data-n="${n}">${n === 10 ? "Strike" : n}</button>`).join("") + `</div>` + (resultExtra?.() ?? "");
-    el.querySelectorAll("button[data-n]").forEach((b) => {
-      b.onclick = async () => {
-        s.result = { pinsDown: Number(b.dataset.n) };
-        await updateShot(s);
-        renderResult(s);
-      };
-    });
-  }
-  function renderBall(s) {
-    const el = $("ball-row");
-    el.innerHTML = "";
-    const name = (id) => S.arsenal.find((b) => b.id === id)?.name;
-    const guess = s ? guesses.get(s.id) : void 0;
-    const msg = document.createElement("div");
-    msg.className = "u";
-    if (!s) msg.textContent = S.arsenal.length ? "Balls ready: " + S.arsenal.map((b) => b.name).join(", ") : "No balls yet. Add one below and show it to the camera so it recognizes it from your very first shot.";
-    else if (s.ballId) msg.textContent = `Recognized: ${name(s.ballId)}${guess ? ` (${Math.round(guess.confidence * 100)}% match)` : ""}. Tap to correct.`;
-    else if (guess?.ballId) msg.textContent = `Best guess: ${name(guess.ballId)} (${Math.round(guess.confidence * 100)}%). Not sure enough, so please confirm.`;
-    else msg.textContent = S.arsenal.length ? "Which ball was that?" : "Add your first ball below.";
-    el.append(msg);
-    const mine = s?.ballId ? S.arsenal.find((b) => b.id === s.ballId) : void 0;
-    const cat = mine?.catalogKey ? S.catalog.find((c) => c.key === mine.catalogKey) : void 0;
-    if (mine && (cat || mine.rg !== void 0)) {
-      const info = document.createElement("div");
-      info.className = "note";
-      info.textContent = cat ? [`${cat.manufacturer} ${cat.name}`, cat.rg && `RG ${cat.rg.value}`, cat.differential && `diff ${cat.differential.value}`, cat.coverstock?.value, cat.core?.value, cat.colorway?.value].filter(Boolean).join(" \xB7 ") : `RG ${mine.rg} \xB7 diff ${mine.diff ?? "?"} (your specs)`;
-      el.append(info);
-    }
-    const row = document.createElement("div");
-    row.className = "chips";
-    for (const b of S.arsenal) {
-      const chip = document.createElement("button");
-      chip.className = "chip" + (s?.ballId === b.id ? " sel" : guess?.ballId === b.id ? " guess" : "");
-      chip.textContent = b.name;
-      chip.onclick = async () => {
-        if (!s) return;
-        s.ballId = b.id;
-        if (s.sig) b.exemplars = [...b.exemplars, s.sig].slice(-12);
-        await Promise.all([saveArsenal(), updateShot(s)]);
-        renderBall(s);
-        renderLane();
-      };
-      row.append(chip);
-    }
-    el.append(row);
-    const form = document.createElement("div");
-    form.className = "chips";
-    const input = document.createElement("input");
-    input.className = "ballinput";
-    input.placeholder = S.catalog.length ? `Search ${S.catalog.length} catalog balls or type a name` : "Ball name";
-    const add2 = document.createElement("button");
-    add2.className = "chip add";
-    add2.textContent = "+ Show me this ball";
-    add2.onclick = () => {
-      const n = input.value.trim();
-      if (!n) return void input.focus();
-      const hit = S.catalog.find((c) => `${c.manufacturer} ${c.name}`.toLowerCase() === n.toLowerCase());
-      enrollHandler?.(n, hit?.key);
-    };
-    const addNo = document.createElement("button");
-    addNo.className = "chip add";
-    addNo.textContent = "+ Add without showing";
-    addNo.onclick = async () => {
-      const n = input.value.trim();
-      if (!n) return void input.focus();
-      const hit = S.catalog.find((c) => `${c.manufacturer} ${c.name}`.toLowerCase() === n.toLowerCase());
-      const b = { id: Math.random().toString(36).slice(2, 9), name: n, exemplars: s?.sig ? [s.sig] : [], catalogKey: hit?.key };
-      S.arsenal.push(b);
-      if (s) s.ballId = b.id;
-      await Promise.all([saveArsenal(), s ? updateShot(s) : Promise.resolve()]);
-      renderBall(s);
-      renderLane();
-    };
-    const scan = document.createElement("button");
-    scan.className = "chip add";
-    scan.textContent = "+ Scan a ball (photo)";
-    scan.onclick = () => scanHandler?.();
-    form.append(input, add2, addNo, scan);
-    el.append(form);
-    attachSuggest(input);
-    const hint = document.createElement("div");
-    hint.className = "note";
-    hint.textContent = "\u201CShow me this ball\u201D learns it before you bowl: hold it up to the camera, rotate it slowly for a few seconds, and it can name it from shot 1.";
-    el.append(hint);
-  }
-  function renderLane() {
-    const tracked = sessionShots().map((x) => ({ a: x.a, ballId: x.ballId }));
-    const r = readLane(tracked);
-    const el = $("lane-read");
-    el.innerHTML = `<div class="lr-head">${esc(r.headline)}</div><span class="badge ${r.confidence}">${r.confidence} confidence \xB7 ${r.shotsUsed} shots</span><ul>${r.points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul><div class="lr-next">Next test: ${esc(r.next)}</div>`;
-    const last = sessionShots().at(-1);
-    const rec2 = recommendBall(r, last?.ballId, ownedBalls().map((b) => ({ id: b.id, name: b.name, catalog: b.specs })));
-    const rc = document.createElement("div");
-    rc.className = "lr-next rec";
-    rc.innerHTML = `Equipment: ${esc(rec2.text)}${rec2.basis.map((l) => `<div class="u">${esc(l)}</div>`).join("")}`;
-    el.append(rc);
-  }
-  async function registerShot(s) {
-    const arsenal = S.arsenal;
-    const guess = s.sig ? classifyBall(s.sig, arsenal) : classifyBall([], []);
-    guesses.set(s.id, guess);
-    if (guess.auto) s.ballId = guess.ballId;
-    await addShot(s);
-    setCards(s);
-    addHistory(s, sessionShots().length);
-    renderResult(s);
-    renderBall(s);
-    renderLane();
-  }
-
-  // camera/patchnotes.ts
-  var KEY = "laneiq.notesSeen";
-  var seen = () => {
-    try {
-      return localStorage.getItem(KEY);
-    } catch {
-      return null;
-    }
-  };
-  var markSeen = () => {
-    try {
-      localStorage.setItem(KEY, LATEST_NOTE_ID);
-    } catch {
-    }
-  };
-  function initPatchNotes() {
-    const box = document.getElementById("whatsnew");
-    if (!box) return;
-    const fresh2 = seen() !== LATEST_NOTE_ID;
-    box.innerHTML = `<button class="chip" id="notes-open">${fresh2 ? "NEW \xB7 " : ""}What's new</button>`;
-    document.getElementById("notes-open").onclick = () => {
-      const sheet6 = document.getElementById("notes");
-      sheet6.classList.add("on");
-      sheet6.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc(n.title)} <span class="note">${esc(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}`;
-      document.getElementById("notes-close").onclick = () => (sheet6.classList.remove("on"), sheet6.innerHTML = "");
-      markSeen();
-      document.getElementById("notes-open").textContent = "What's new";
-    };
   }
 
   // core/src/vision.ts
@@ -1623,6 +1270,520 @@
       entryMeasured: false,
       reachedDeck: last.y >= 60,
       partial: true
+    };
+  }
+
+  // core/src/metrics.ts
+  var POCKET_BOARD = { R: 17.5, L: 22.5 };
+  var MPH = 3600 / 5280;
+  function speedBetween(path2, y0, y1) {
+    const w = path2.filter((s) => s.y >= y0 && s.y <= y1);
+    if (w.length < 4) return null;
+    const dt = w[w.length - 1].t - w[0].t;
+    const dy = w[w.length - 1].y - w[0].y;
+    return dt > 0.05 && dy > 3 ? dy / dt * MPH : null;
+  }
+  function classifyZone(miss) {
+    const a = Math.abs(miss);
+    if (a <= 1) return "pocket";
+    if (a <= 2.5) return miss > 0 ? "high" : "light";
+    return miss > 0 ? "very-high" : "very-light";
+  }
+  function deriveMetrics(a, path2, hand2) {
+    const early = path2.filter((s) => s.y >= 2 && s.y <= 8);
+    const startBoard = early.length ? boardFromRight(early.reduce((t, s) => t + s.x, 0) / early.length) : null;
+    const launchSpeed = speedBetween(path2, 3, 20);
+    const entrySpeed = speedBetween(path2, 40, 58);
+    const speedLossPct = launchSpeed && entrySpeed ? (launchSpeed - entrySpeed) / launchSpeed * 100 : null;
+    const hookBoards = a.breakpointBoard !== null && a.entryBoard !== null ? Math.abs(a.entryBoard - a.breakpointBoard) : null;
+    const hookLengthFt = a.breakpointFt !== null ? Math.max(0, 59.5 - a.breakpointFt) : null;
+    const pocket = POCKET_BOARD[hand2];
+    const seenToPins = path2.length > 0 && path2[path2.length - 1].y >= ENTRY_FT - 2;
+    const pocketMiss = a.entryBoard === null || !seenToPins ? null : hand2 === "R" ? a.entryBoard - pocket : pocket - a.entryBoard;
+    return {
+      hand: hand2,
+      startBoard,
+      arrowsBoard: a.boardAtArrows,
+      breakpointBoard: a.breakpointBoard,
+      breakpointFt: a.breakpointFt,
+      entryBoard: a.entryBoard,
+      launchAngle: a.launchAngleDeg,
+      entryAngle: a.impactAngleDeg === null ? null : Math.abs(a.impactAngleDeg),
+      launchSpeed,
+      entrySpeed,
+      speedLossPct,
+      hookBoards,
+      hookLengthFt,
+      pocketMiss,
+      zone: pocketMiss === null ? null : classifyZone(pocketMiss)
+    };
+  }
+
+  // camera/db.ts
+  var PROFILES_KEY = "laneiq.profiles";
+  var CURRENT_KEY = "laneiq.currentProfile";
+  function listProfiles() {
+    try {
+      return JSON.parse(localStorage.getItem(PROFILES_KEY) ?? "[]");
+    } catch {
+      return [];
+    }
+  }
+  function saveProfiles(p) {
+    try {
+      localStorage.setItem(PROFILES_KEY, JSON.stringify(p));
+    } catch {
+    }
+  }
+  function currentProfileId() {
+    try {
+      return localStorage.getItem(CURRENT_KEY);
+    } catch {
+      return null;
+    }
+  }
+  function setCurrentProfile(id) {
+    try {
+      localStorage.setItem(CURRENT_KEY, id);
+    } catch {
+    }
+  }
+  var newId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  var opened = /* @__PURE__ */ new Map();
+  function open(profileId) {
+    let p = opened.get(profileId);
+    if (!p) {
+      p = new Promise((resolve, reject) => {
+        const req = indexedDB.open(`laneiq-p-${profileId}`, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          db.createObjectStore("shots", { keyPath: "id" });
+          db.createObjectStore("clips");
+          db.createObjectStore("meta");
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      opened.set(profileId, p);
+    }
+    return p;
+  }
+  var wrap = (req) => new Promise((res, rej) => (req.onsuccess = () => res(req.result), req.onerror = () => rej(req.error)));
+  async function dbAll(profileId, store) {
+    return wrap((await open(profileId)).transaction(store).objectStore(store).getAll());
+  }
+  async function dbGet(profileId, store, key2) {
+    return wrap((await open(profileId)).transaction(store).objectStore(store).get(key2));
+  }
+  async function dbPut(profileId, store, value, key2) {
+    const s = (await open(profileId)).transaction(store, "readwrite").objectStore(store);
+    await wrap(key2 === void 0 ? s.put(value) : s.put(value, key2));
+  }
+  async function dbDelete(profileId, store, key2) {
+    await wrap((await open(profileId)).transaction(store, "readwrite").objectStore(store).delete(key2));
+  }
+  async function deleteProfileData(profileId) {
+    const db = await open(profileId).catch(() => null);
+    db?.close();
+    opened.delete(profileId);
+    await new Promise((res) => {
+      const r = indexedDB.deleteDatabase(`laneiq-p-${profileId}`);
+      r.onsuccess = r.onerror = r.onblocked = () => res();
+    });
+  }
+
+  // camera/state.ts
+  var S = {
+    profile: null,
+    shots: [],
+    arsenal: [],
+    catalog: [],
+    patterns: [],
+    plan: null,
+    friends: [],
+    /** sessions friends have shared with this profile, kept so they can be compared later */
+    shared: [],
+    /** where each session was bowled, as typed by the bowler (used to tell if two sessions share a lane) */
+    laneLabels: {},
+    sessionId: newId(),
+    /** demo mode never writes to storage */
+    demo: false
+  };
+  var listeners = /* @__PURE__ */ new Set();
+  var onChange = (fn) => (listeners.add(fn), () => listeners.delete(fn));
+  var changed = () => listeners.forEach((fn) => fn());
+  async function loadProfile(id) {
+    const p = listProfiles().find((x) => x.id === id) ?? null;
+    S.profile = p;
+    if (!p) return;
+    setCurrentProfile(id);
+    S.shots = (await dbAll(id, "shots")).sort((a, b) => a.at.localeCompare(b.at));
+    recomputeMetrics();
+    S.arsenal = await dbGet(id, "meta", "arsenal") ?? [];
+    S.plan = await dbGet(id, "meta", "plan") ?? null;
+    S.friends = await dbGet(id, "meta", "friends") ?? [];
+    S.shared = await dbGet(id, "meta", "shared") ?? [];
+    S.laneLabels = await dbGet(id, "meta", "laneLabels") ?? {};
+    if (p && !p.friendCode) {
+      S.profile = { ...p, friendCode: newFriendCode() };
+      saveProfiles(listProfiles().map((x) => x.id === id ? S.profile : x));
+    }
+    S.sessionId = newId();
+    changed();
+  }
+  async function bootProfile() {
+    const id = currentProfileId();
+    const list = listProfiles();
+    const pick = list.find((p) => p.id === id) ?? list[0];
+    if (!pick) return false;
+    await loadProfile(pick.id);
+    return true;
+  }
+  function createProfile(a) {
+    const p = { id: newId(), name: a.name.trim() || "Bowler", username: a.username || void 0, hand: a.hand, revRpm: a.revRpm, quiz: a, created: (/* @__PURE__ */ new Date()).toISOString() };
+    saveProfiles([...listProfiles(), p]);
+    return p;
+  }
+  function recomputeMetrics() {
+    const hand2 = S.profile?.hand ?? "R";
+    for (const s of S.shots) {
+      try {
+        if (s.a && s.path?.length) s.m = deriveMetrics(s.a, s.path, hand2);
+      } catch {
+      }
+    }
+  }
+  function updateProfile(patch) {
+    if (!S.profile) return;
+    S.profile = { ...S.profile, ...patch };
+    if (patch.hand) recomputeMetrics();
+    saveProfiles(listProfiles().map((p) => p.id === S.profile.id ? S.profile : p));
+    changed();
+  }
+  var shotListeners = [];
+  function onShot(fn) {
+    shotListeners.push(fn);
+  }
+  async function addShot(s) {
+    S.shots.push(s);
+    for (const fn of shotListeners) {
+      try {
+        fn(s);
+      } catch {
+      }
+    }
+    if (!S.demo && S.profile) await dbPut(S.profile.id, "shots", s).catch(() => {
+    });
+    changed();
+  }
+  async function updateShot(s) {
+    if (!S.demo && S.profile) await dbPut(S.profile.id, "shots", s).catch(() => {
+    });
+    changed();
+  }
+  async function removeShot(id) {
+    S.shots = S.shots.filter((s) => s.id !== id);
+    if (!S.demo && S.profile) {
+      await dbDelete(S.profile.id, "shots", id).catch(() => {
+      });
+      await dbDelete(S.profile.id, "clips", id).catch(() => {
+      });
+    }
+    changed();
+  }
+  async function saveClip(id, blob) {
+    if (!S.demo && S.profile) await dbPut(S.profile.id, "clips", blob, id);
+  }
+  async function loadClip(id) {
+    return S.profile ? dbGet(S.profile.id, "clips", id) : void 0;
+  }
+  async function saveArsenal() {
+    if (!S.demo && S.profile) await dbPut(S.profile.id, "meta", S.arsenal, "arsenal").catch(() => {
+    });
+    changed();
+  }
+  async function saveSocial() {
+    if (!S.demo && S.profile) {
+      await dbPut(S.profile.id, "meta", S.friends, "friends").catch(() => {
+      });
+      await dbPut(S.profile.id, "meta", S.shared, "shared").catch(() => {
+      });
+      await dbPut(S.profile.id, "meta", S.laneLabels, "laneLabels").catch(() => {
+      });
+    }
+    changed();
+  }
+  async function savePlan() {
+    if (!S.demo && S.profile) await dbPut(S.profile.id, "meta", S.plan, "plan").catch(() => {
+    });
+    changed();
+  }
+  async function loadReference() {
+    const get = async (u) => {
+      try {
+        const r = await fetch(u);
+        return r.ok ? await r.json() : [];
+      } catch {
+        return [];
+      }
+    };
+    [S.catalog, S.patterns] = await Promise.all([get("balls.json"), get("patterns.json")]);
+    changed();
+  }
+  var userSrc = () => ({ kind: "user", url: "entered by bowler", retrievedOn: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10) });
+  function ownedBalls() {
+    return S.arsenal.map((b) => {
+      const specs = b.catalogKey ? S.catalog.find((c) => c.key === b.catalogKey) : b.rg !== void 0 && b.diff !== void 0 ? rowToBall({ manufacturer: "(mine)", name: b.name, rg: b.rg, differential: b.diff, coverstockType: b.cover }, userSrc()) : void 0;
+      const mine = S.shots.filter((s) => s.ballId === b.id);
+      let observed;
+      if (mine.length >= 8) {
+        const avg2 = (v) => {
+          const x = v.filter((n) => n !== null);
+          return x.length ? x.reduce((a, c) => a + c, 0) / x.length : void 0;
+        };
+        const res = mine.filter((s) => s.result);
+        const miss = mine.filter((s) => s.m.pocketMiss !== null);
+        observed = {
+          shots: mine.length,
+          entryAngle: avg2(mine.map((s) => s.m.entryAngle)),
+          breakpointFt: avg2(mine.map((s) => s.m.breakpointFt)),
+          pocketPct: miss.length ? miss.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / miss.length * 100 : void 0,
+          strikePct: res.length >= 8 ? res.filter(isStrike).length / res.length * 100 : void 0
+        };
+      }
+      return { id: b.id, name: b.name, specs, observed };
+    });
+  }
+  function bowlerProfile() {
+    const p = computeProfile(S.shots);
+    const speed = p.stats.launchSpeed;
+    const angle = p.stats.entryAngle;
+    const q = S.profile?.quiz;
+    const sp = S.profile?.spin;
+    const rev = sp?.rpm ? { rpm: sp.rpm, source: sp.source === "video" ? "measured" : "entered" } : q ? estimateRev({ style: q.style, revTier: q.revTier, revRpm: S.profile?.revRpm ?? q.revRpm }) : S.profile?.revRpm ? { rpm: S.profile.revRpm, source: "entered" } : void 0;
+    return {
+      hand: S.profile?.hand ?? "R",
+      style: q?.style,
+      launchSpeed: speed && speed.n >= 5 ? speed.mean : void 0,
+      entryAngle: angle && angle.n >= 5 ? angle.mean : void 0,
+      revRpm: rev?.rpm,
+      revSource: rev?.source,
+      axisRotation: sp?.axisRotation,
+      axisTilt: sp?.axisTilt
+    };
+  }
+
+  // camera/live.ts
+  var $ = (id) => document.getElementById(id);
+  var esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  var setText = (id, v) => $(id).textContent = v;
+  var f1 = (n, d = 1) => n === null || n === void 0 ? "n/a" : n.toFixed(d);
+  function setStep(n) {
+    document.querySelectorAll(".dot").forEach((d, i) => d.classList.toggle("on", i < n));
+  }
+  function setReady(ready) {
+    const el = $("ready");
+    el.textContent = ready ? "READY" : "NOT READY";
+    el.classList.toggle("go", ready);
+  }
+  var guesses = /* @__PURE__ */ new Map();
+  var sessionShots = () => S.shots.filter((s) => s.sessionId === S.sessionId);
+  var enrollHandler = null;
+  var onEnroll = (fn) => enrollHandler = fn;
+  var scanHandler = null;
+  var onScan = (fn) => scanHandler = fn;
+  function attachSuggest(input) {
+    const box = document.createElement("div");
+    box.className = "suggest";
+    input.insertAdjacentElement("afterend", box);
+    input.addEventListener("input", () => {
+      const hits = input.value.trim().length >= 2 ? searchCatalog(S.catalog, input.value, 6) : [];
+      box.innerHTML = hits.map((h) => `<button class="chip" data-v="${esc(h.ball.manufacturer + " " + h.ball.name)}">${esc(h.ball.manufacturer)} ${esc(h.ball.name)}</button>`).join("");
+      box.querySelectorAll("button").forEach(
+        (b) => b.onclick = () => {
+          input.value = b.dataset.v;
+          box.innerHTML = "";
+        }
+      );
+    });
+  }
+  var ZONE_TEXT = { ...ZONE_LABEL, pocket: "In the pocket" };
+  function setCards(s) {
+    const a = s.a;
+    const m = s.m;
+    setText("c-speed", a.speedMph.toFixed(1));
+    setText("c-speed-u", `\xB1 ${a.speedUncertainty.toFixed(1)} mph`);
+    setText("c-arrows", f1(a.boardAtArrows));
+    setText("c-bp", f1(a.breakpointBoard));
+    setText("c-bp-u", a.breakpointFt === null ? "" : `at ${a.breakpointFt.toFixed(0)} ft`);
+    setText("c-entry", a.entryMeasured ? f1(a.entryBoard) : a.lastSeen ? f1(a.lastSeen.board) : "n/a");
+    setText("c-entry-u", a.entryMeasured ? "board at 59.5 ft (seen)" : a.lastSeen ? `board where it was last seen, ${a.lastSeen.ft.toFixed(0)} ft down` : "");
+    setText("c-launch", a.launchAngleDeg === null ? "n/a" : `${a.launchAngleDeg.toFixed(1)}\xB0`);
+    setText("c-impact", a.impactAngleDeg === null ? "n/a" : `${a.impactAngleDeg.toFixed(1)}\xB0`);
+    setText("c-loss", m.speedLossPct === null ? "n/a" : `${m.speedLossPct.toFixed(0)}%`);
+    setText("c-hook", f1(m.hookBoards));
+    setText("c-miss", m.pocketMiss === null ? "n/a" : `${m.pocketMiss > 0 ? "+" : ""}${m.pocketMiss.toFixed(1)}`);
+    setText("c-miss-u", m.zone ? ZONE_TEXT[m.zone] : "+ high, \u2212 light");
+    $("c-conf").style.width = `${Math.round(a.confidence * 100)}%`;
+    setText("c-conf-t", a.partial ? `partial: the camera saw ${a.lastSeen && a.release ? Math.round(a.lastSeen.ft - a.release.ft) : "part of"} ft of the roll \xB7 ${a.samples} pts` : `${Math.round(a.confidence * 100)}% confidence \xB7 ${a.samples} pts`);
+    document.querySelectorAll("#tab-live .card").forEach((el) => {
+      el.classList.remove("pop");
+      void el.offsetWidth;
+      el.classList.add("pop");
+    });
+  }
+  function addHistory(s, n) {
+    const chip = document.createElement("div");
+    chip.className = "chip";
+    chip.textContent = `#${n} \xB7 ${s.a.speedMph.toFixed(1)} mph \xB7 entry ${f1(s.a.entryBoard)}`;
+    $("history").prepend(chip);
+  }
+  var resultExtra = null;
+  function setResultExtra(fn) {
+    resultExtra = fn;
+  }
+  function renderResult(s) {
+    const el = $("result-card");
+    if (!s) return void (el.innerHTML = `<div class="u">Waiting for your first shot</div>`);
+    const cur2 = s.result?.pinsDown;
+    el.innerHTML = `<div class="u">${s.result?.auto ? `Read from the camera: ${cur2 === 10 ? "a strike" : `${cur2} down${s.result.leave?.length ? `, leaving the ${s.result.leave.join("-")}` : ""}`}. Tap a number if that is wrong.` : "How many pins did this shot knock down? This is how the app learns what costs you strikes."}</div><div class="chips">` + [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((n) => `<button class="chip ${cur2 === n ? "sel" : n === 10 ? "x" : ""}" data-n="${n}">${n === 10 ? "Strike" : n}</button>`).join("") + `</div>` + (resultExtra?.() ?? "");
+    el.querySelectorAll("button[data-n]").forEach((b) => {
+      b.onclick = async () => {
+        s.result = { pinsDown: Number(b.dataset.n) };
+        await updateShot(s);
+        renderResult(s);
+      };
+    });
+  }
+  function renderBall(s) {
+    const el = $("ball-row");
+    el.innerHTML = "";
+    const name = (id) => S.arsenal.find((b) => b.id === id)?.name;
+    const guess = s ? guesses.get(s.id) : void 0;
+    const msg = document.createElement("div");
+    msg.className = "u";
+    if (!s) msg.textContent = S.arsenal.length ? "Balls ready: " + S.arsenal.map((b) => b.name).join(", ") : "No balls yet. Add one below and show it to the camera so it recognizes it from your very first shot.";
+    else if (s.ballId) msg.textContent = `Recognized: ${name(s.ballId)}${guess ? ` (${Math.round(guess.confidence * 100)}% match)` : ""}. Tap to correct.`;
+    else if (guess?.ballId) msg.textContent = `Best guess: ${name(guess.ballId)} (${Math.round(guess.confidence * 100)}%). Not sure enough, so please confirm.`;
+    else msg.textContent = S.arsenal.length ? "Which ball was that?" : "Add your first ball below.";
+    el.append(msg);
+    const mine = s?.ballId ? S.arsenal.find((b) => b.id === s.ballId) : void 0;
+    const cat = mine?.catalogKey ? S.catalog.find((c) => c.key === mine.catalogKey) : void 0;
+    if (mine && (cat || mine.rg !== void 0)) {
+      const info = document.createElement("div");
+      info.className = "note";
+      info.textContent = cat ? [`${cat.manufacturer} ${cat.name}`, cat.rg && `RG ${cat.rg.value}`, cat.differential && `diff ${cat.differential.value}`, cat.coverstock?.value, cat.core?.value, cat.colorway?.value].filter(Boolean).join(" \xB7 ") : `RG ${mine.rg} \xB7 diff ${mine.diff ?? "?"} (your specs)`;
+      el.append(info);
+    }
+    const row = document.createElement("div");
+    row.className = "chips";
+    for (const b of S.arsenal) {
+      const chip = document.createElement("button");
+      chip.className = "chip" + (s?.ballId === b.id ? " sel" : guess?.ballId === b.id ? " guess" : "");
+      chip.textContent = b.name;
+      chip.onclick = async () => {
+        if (!s) return;
+        s.ballId = b.id;
+        if (s.sig) b.exemplars = [...b.exemplars, s.sig].slice(-12);
+        await Promise.all([saveArsenal(), updateShot(s)]);
+        renderBall(s);
+        renderLane();
+      };
+      row.append(chip);
+    }
+    el.append(row);
+    const form = document.createElement("div");
+    form.className = "chips";
+    const input = document.createElement("input");
+    input.className = "ballinput";
+    input.placeholder = S.catalog.length ? `Search ${S.catalog.length} catalog balls or type a name` : "Ball name";
+    const add2 = document.createElement("button");
+    add2.className = "chip add";
+    add2.textContent = "+ Show me this ball";
+    add2.onclick = () => {
+      const n = input.value.trim();
+      if (!n) return void input.focus();
+      const hit = S.catalog.find((c) => `${c.manufacturer} ${c.name}`.toLowerCase() === n.toLowerCase());
+      enrollHandler?.(n, hit?.key);
+    };
+    const addNo = document.createElement("button");
+    addNo.className = "chip add";
+    addNo.textContent = "+ Add without showing";
+    addNo.onclick = async () => {
+      const n = input.value.trim();
+      if (!n) return void input.focus();
+      const hit = S.catalog.find((c) => `${c.manufacturer} ${c.name}`.toLowerCase() === n.toLowerCase());
+      const b = { id: Math.random().toString(36).slice(2, 9), name: n, exemplars: s?.sig ? [s.sig] : [], catalogKey: hit?.key };
+      S.arsenal.push(b);
+      if (s) s.ballId = b.id;
+      await Promise.all([saveArsenal(), s ? updateShot(s) : Promise.resolve()]);
+      renderBall(s);
+      renderLane();
+    };
+    const scan = document.createElement("button");
+    scan.className = "chip add";
+    scan.textContent = "+ Scan a ball (photo)";
+    scan.onclick = () => scanHandler?.();
+    form.append(input, add2, addNo, scan);
+    el.append(form);
+    attachSuggest(input);
+    const hint = document.createElement("div");
+    hint.className = "note";
+    hint.textContent = "\u201CShow me this ball\u201D learns it before you bowl: hold it up to the camera, rotate it slowly for a few seconds, and it can name it from shot 1.";
+    el.append(hint);
+  }
+  function renderLane() {
+    const tracked = sessionShots().map((x) => ({ a: x.a, ballId: x.ballId }));
+    const r = readLane(tracked);
+    const el = $("lane-read");
+    el.innerHTML = `<div class="lr-head">${esc(r.headline)}</div><span class="badge ${r.confidence}">${r.confidence} confidence \xB7 ${r.shotsUsed} shots</span><ul>${r.points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul><div class="lr-next">Next test: ${esc(r.next)}</div>`;
+    const last = sessionShots().at(-1);
+    const rec2 = recommendBall(r, last?.ballId, ownedBalls().map((b) => ({ id: b.id, name: b.name, catalog: b.specs })));
+    const rc = document.createElement("div");
+    rc.className = "lr-next rec";
+    rc.innerHTML = `Equipment: ${esc(rec2.text)}${rec2.basis.map((l) => `<div class="u">${esc(l)}</div>`).join("")}`;
+    el.append(rc);
+  }
+  async function registerShot(s) {
+    const arsenal = S.arsenal;
+    const guess = s.sig ? classifyBall(s.sig, arsenal) : classifyBall([], []);
+    guesses.set(s.id, guess);
+    if (guess.auto) s.ballId = guess.ballId;
+    await addShot(s);
+    setCards(s);
+    addHistory(s, sessionShots().length);
+    renderResult(s);
+    renderBall(s);
+    renderLane();
+  }
+
+  // camera/patchnotes.ts
+  var KEY = "laneiq.notesSeen";
+  var seen = () => {
+    try {
+      return localStorage.getItem(KEY);
+    } catch {
+      return null;
+    }
+  };
+  var markSeen = () => {
+    try {
+      localStorage.setItem(KEY, LATEST_NOTE_ID);
+    } catch {
+    }
+  };
+  function initPatchNotes() {
+    const box = document.getElementById("whatsnew");
+    if (!box) return;
+    const fresh2 = seen() !== LATEST_NOTE_ID;
+    box.innerHTML = `<button class="chip" id="notes-open">${fresh2 ? "NEW \xB7 " : ""}What's new</button>`;
+    document.getElementById("notes-open").onclick = () => {
+      const sheet6 = document.getElementById("notes");
+      sheet6.classList.add("on");
+      sheet6.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc(n.title)} <span class="note">${esc(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}`;
+      document.getElementById("notes-close").onclick = () => (sheet6.classList.remove("on"), sheet6.innerHTML = "");
+      markSeen();
+      document.getElementById("notes-open").textContent = "What's new";
     };
   }
 
@@ -5839,7 +6000,7 @@
     }
     const zs = Object.entries(zones).filter(([, v]) => v.n >= 2);
     if (zs.length) {
-      const label2 = { pocket: "In the pocket", high: "High (Brooklyn side)", light: "Light", "very-high": "Way high", "very-light": "Way light" };
+      const label2 = { ...ZONE_LABEL, pocket: "Pocket hit" };
       out.push(`<div class="k" style="margin-top:8px">Strikes by where the ball hit (camera-tracked first balls)</div><table>${zs.map(([k2, v]) => `<tr><td>${label2[k2] ?? esc(k2)}</td><td class="n">${v.x}/${v.n} strikes (${Math.round(v.x / v.n * 100)}%)</td></tr>`).join("")}</table>`);
     }
     return out.length ? out.join("") : `<div class="u">Play a few games and this will show what is costing you pins.</div>`;
@@ -9199,6 +9360,39 @@ ${url}`);
     window.scrollTo(0, 0);
     render2();
   }
+  var learnQuery = "";
+  var learnCat = "all";
+  function showLearn(term) {
+    learnQuery = term ?? "";
+    learnCat = "all";
+    showTab("learn");
+  }
+  function renderLearn() {
+    const el = $("learn-page");
+    const cats = ["all", ...Array.from(new Set(GLOSSARY.map((t) => t.cat)))];
+    el.innerHTML = `<h2>Learn</h2>
+    <div class="note">The bowling words LaneIQ uses, and exactly what each one means in the app. Lane sizes and markings follow the USBC Equipment Specifications; where coaches use a word in different ways, that is said.</div>
+    <div class="field"><input id="ln-q" type="search" placeholder="Search a word (pocket, breakpoint, PAP...)" value="${esc(learnQuery)}" autocomplete="off"></div>
+    <div class="chips" id="ln-cats">${cats.map((c) => `<button class="chip ${learnCat === c ? "sel" : ""}" data-c="${esc(c)}">${c === "all" ? "All" : esc(c)}</button>`).join("")}</div>
+    <div id="ln-list"></div>`;
+    const paint2 = () => {
+      const q = learnQuery.trim().toLowerCase();
+      const items = GLOSSARY.filter((t) => (learnCat === "all" || t.cat === learnCat) && (!q || t.term.toLowerCase().includes(q) || (t.aka ?? []).some((a) => a.toLowerCase().includes(q)) || t.def.toLowerCase().includes(q)));
+      items.sort((a, b) => Number(b.term.toLowerCase() === q) - Number(a.term.toLowerCase() === q));
+      $("ln-list").innerHTML = items.length ? items.map((t) => `<div class="card" style="margin-top:10px"><div class="k">${esc(t.cat)}</div><div class="lr-head" style="font-size:17px">${esc(t.term)}</div>${t.aka?.length ? `<div class="note">Also called: ${esc(t.aka.join(", "))}</div>` : ""}<div style="margin-top:6px;line-height:1.45">${esc(t.def)}</div>${t.app ? `<div class="note" style="margin-top:8px"><b>In LaneIQ:</b> ${esc(t.app)}</div>` : ""}</div>`).join("") : `<div class="note" style="margin-top:12px">No word matches that. Try a shorter search.</div>`;
+    };
+    paint2();
+    $("ln-q").addEventListener("input", (e) => {
+      learnQuery = e.target.value;
+      paint2();
+    });
+    el.querySelectorAll("#ln-cats button").forEach(
+      (b) => b.onclick = () => {
+        learnCat = b.dataset.c ?? "all";
+        renderLearn();
+      }
+    );
+  }
   function initTabs() {
     document.querySelectorAll(".tb").forEach((b) => b.onclick = () => showTab(b.dataset.tab));
     $("avatar").onclick = () => showTab("me");
@@ -9214,11 +9408,12 @@ ${url}`);
     else if (current3 === "insights") renderInsights();
     else if (current3 === "arsenal") renderArsenal();
     else if (current3 === "proshop") renderProshop();
+    else if (current3 === "learn") renderLearn();
     else if (current3 === "me") renderMe();
   }
   var ballName = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
   var when = (iso) => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-  var ZONE = { pocket: "Pocket", high: "High", light: "Light", "very-high": "Way high", "very-light": "Way light" };
+  var ZONE = ZONE_LABEL;
   var pct = (n) => `${Math.round(n)}%`;
   function renderShots() {
     const el = $("shots-page");
@@ -9256,7 +9451,7 @@ ${url}`);
     let modeSel = clip && canOverlay ? "lane" : "top";
     el.innerHTML = `
     <div class="row"><h2>${esc(when(s.at))}</h2><button class="btn ghost" id="rv-close">Close</button></div>
-    <div class="note">${esc(ballName(s.ballId))} \xB7 ${s.a.speedMph.toFixed(1)} mph \xB7 entry board ${f1(s.a.entryBoard)} \xB7 ${s.m.zone ? ZONE[s.m.zone] : ""}</div>
+    <div class="note">${esc(ballName(s.ballId))} \xB7 ${s.a.speedMph.toFixed(1)} mph \xB7 ${s.a.entryMeasured ? `entry board ${f1(s.a.entryBoard)}` : s.a.lastSeen ? `last seen on board ${f1(s.a.lastSeen.board)}, ${s.a.lastSeen.ft.toFixed(0)} ft down` : "entry board not seen"}${s.m.zone ? ` \xB7 ${esc(zoneText(s.m.zone, s.m.pocketMiss, s.m.hand))}` : " \xB7 hit not judged (the ball was not seen reaching the pins)"} \xB7 ${s.m.hand === "L" ? "left-handed: pocket 1-2" : "right-handed: pocket 1-3"} <a href="#" data-learn="${s.m.zone ? ZONE_LABEL[s.m.zone] : "Pocket"}">what is this?</a></div>
     <div class="chips" id="rv-modes">
       ${clip && canOverlay ? `<button class="chip ${modeSel === "lane" ? "sel" : ""}" data-m="lane">Lane view</button>` : ""}
       ${clip ? `<button class="chip ${modeSel === "raw" ? "sel" : ""}" data-m="raw">Raw footage</button>` : ""}
@@ -9275,6 +9470,13 @@ ${url}`);
     <h3>Ball</h3>
     <div class="chips">${S.arsenal.map((b) => `<button class="chip ${s.ballId === b.id ? "sel" : ""}" data-b="${b.id}">${esc(b.name)}</button>`).join("") || `<span class="note">Add balls in the Arsenal tab.</span>`}</div>
     <div class="chips"><button class="btn ghost danger" id="rv-del">Delete this shot</button></div>`;
+    el.querySelectorAll("a[data-learn]").forEach(
+      (a) => a.onclick = (e) => {
+        e.preventDefault();
+        closeReview();
+        showLearn(a.dataset.learn);
+      }
+    );
     const paintSpin = (state) => {
       const box = document.getElementById("rv-spin");
       if (!box || reviewShotId !== s.id) return;
@@ -9828,6 +10030,7 @@ ${url}`);
     { tab: "insights", sel: ".tb[data-tab='insights']", title: "Insights", text: "Trends over your sessions and a skills chart that shows your strengths and weaknesses, so you know what to work on." },
     { tab: "arsenal", sel: ".tb[data-tab='arsenal']", title: "Arsenal", text: "Your bowling balls. Photograph a ball to add it, estimate its PAP from three photos of the flare rings, and use the Spin lab on slow-motion video for rev rate, axis rotation and tilt." },
     { tab: "proshop", sel: ".tb[data-tab='proshop']", title: "Pro shop", text: "Layouts, drilling and surface advice built around how you throw and the balls you own." },
+    { tab: "learn", sel: ".tb[data-tab='learn']", title: "Learn", text: 'Every bowling word the app uses, and exactly what it means in the app: pocket, breakpoint, high hit, Brooklyn, PAP and more. Search a word, or tap "what is this?" on a shot to jump straight to it.' },
     { tab: "me", sel: ".tb[data-tab='me']", title: "Me", text: "Your profile, friends, rewards and skins, and settings such as turning the glow off for a plain view. You can take this tour again any time from the start screen." }
   ];
   function startTour(onDone) {
@@ -10162,51 +10365,6 @@ ${url}`);
       return out;
     }
   };
-
-  // core/src/metrics.ts
-  var POCKET_BOARD = { R: 17.5, L: 22.5 };
-  var MPH = 3600 / 5280;
-  function speedBetween(path2, y0, y1) {
-    const w = path2.filter((s) => s.y >= y0 && s.y <= y1);
-    if (w.length < 4) return null;
-    const dt = w[w.length - 1].t - w[0].t;
-    const dy = w[w.length - 1].y - w[0].y;
-    return dt > 0.05 && dy > 3 ? dy / dt * MPH : null;
-  }
-  function classifyZone(miss) {
-    const a = Math.abs(miss);
-    if (a <= 1) return "pocket";
-    if (a <= 2.5) return miss > 0 ? "high" : "light";
-    return miss > 0 ? "very-high" : "very-light";
-  }
-  function deriveMetrics(a, path2, hand2) {
-    const early = path2.filter((s) => s.y >= 2 && s.y <= 8);
-    const startBoard = early.length ? boardFromRight(early.reduce((t, s) => t + s.x, 0) / early.length) : null;
-    const launchSpeed = speedBetween(path2, 3, 20);
-    const entrySpeed = speedBetween(path2, 40, 58);
-    const speedLossPct = launchSpeed && entrySpeed ? (launchSpeed - entrySpeed) / launchSpeed * 100 : null;
-    const hookBoards = a.breakpointBoard !== null && a.entryBoard !== null ? Math.abs(a.entryBoard - a.breakpointBoard) : null;
-    const hookLengthFt = a.breakpointFt !== null ? Math.max(0, 59.5 - a.breakpointFt) : null;
-    const pocket = POCKET_BOARD[hand2];
-    const pocketMiss = a.entryBoard === null ? null : hand2 === "R" ? a.entryBoard - pocket : pocket - a.entryBoard;
-    return {
-      hand: hand2,
-      startBoard,
-      arrowsBoard: a.boardAtArrows,
-      breakpointBoard: a.breakpointBoard,
-      breakpointFt: a.breakpointFt,
-      entryBoard: a.entryBoard,
-      launchAngle: a.launchAngleDeg,
-      entryAngle: a.impactAngleDeg === null ? null : Math.abs(a.impactAngleDeg),
-      launchSpeed,
-      entrySpeed,
-      speedLossPct,
-      hookBoards,
-      hookLengthFt,
-      pocketMiss,
-      zone: pocketMiss === null ? null : classifyZone(pocketMiss)
-    };
-  }
 
   // core/src/lanedetect.ts
   var LANE_END_FT = 62.85;
