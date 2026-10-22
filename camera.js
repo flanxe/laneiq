@@ -61,6 +61,7 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        "FIXED: balls were never tracked on iPhone. A phone's own log showed every moving chain rejected at millions of miles an hour: the camera's frame clock stood still, so the app saw no time pass between points. The tracker now uses the time each frame was presented (or the page's own clock), which always moves forward.",
         "Copy diagnostics now also carries a ball-tracking log: every few seconds how many moving blobs were seen and why they were dropped, when a ball was found, why a chain was thrown out (speed, steadiness, distance), and how each shot ended. Paste it and a miss can be explained from your own phone's numbers.",
         "A second way to find the ball: every quarter of a second the app looks back over the last few seconds of frames for a ball-like chain rolling steadily down the lane, so a ball is found even when the live tracker's own rules did not confirm it while it rolled. The shot is finished when that chain stops. On a real clip it finds the ball about where it is released and follows it to the pins.",
         "60 frames a second, harder: the camera is now asked for 60 at every picture size a phone offers (exactly 60 first), and if it still opens below 60 the open camera is asked again for 60. The FPS badge shows the rate actually arriving at the app, and the diagnostics line says what the phone offered and why it may be lower (phones slow their camera in dim light).",
@@ -12698,6 +12699,19 @@ ${url}`);
       if (++resetLooks >= 2) void attachClip();
     } else resetLooks = 0;
   }
+  var lastFrameT = -1;
+  var lastPres = -1;
+  function frameClock(meta, now) {
+    const pt2 = meta.presentationTime;
+    let t;
+    if (typeof pt2 === "number" && pt2 > 0 && pt2 > lastPres) {
+      lastPres = pt2;
+      t = pt2 / 1e3;
+    } else t = now / 1e3;
+    if (t <= lastFrameT) t = lastFrameT + 1e-3;
+    lastFrameT = t;
+    return t;
+  }
   function onFrame(_now, meta) {
     schedule();
     deliv.n++;
@@ -12745,23 +12759,24 @@ ${url}`);
       }
     }
     if (!tracker) tracker = new BallTracker({ w: GW, h: GH, mask: laneMask, H, Hinv, scale: video.videoWidth / GW });
-    if (!tracker.confirmed && !pendingClip) approachWatch(g2, meta.mediaTime, now);
+    const ft = frameClock(meta, now);
+    if (!tracker.confirmed && !pendingClip) approachWatch(g2, ft, now);
     if (recActive && !pendingClip && !tracker.confirmed && now - recBeganAt > 3e4) {
       discardRecording();
       motionRun = 0;
       approachAfter = now + 5e3;
     }
     if (now < cooldownUntil) return;
-    const ev = tracker.step(g2, meta.mediaTime, c2);
-    candHist.push({ t: meta.mediaTime, cands: tracker.lastCands.map((c) => ({ ...c })) });
-    while (candHist.length && candHist[0].t < meta.mediaTime - 14) candHist.shift();
+    const ev = tracker.step(g2, ft, c2);
+    candHist.push({ t: ft, cands: tracker.lastCands.map((c) => ({ ...c })) });
+    while (candHist.length && candHist[0].t < ft - 14) candHist.shift();
     if (tracker.rejects.length) for (const r of tracker.rejects.splice(0)) logTrack("chain thrown out", r);
     if (now - lastTrackLog > 5e3) {
       lastTrackLog = now;
       const s = tracker.stats;
       if (s && (s.blobs > 0 || tracker.confirmed)) logTrack("sample", { fps: cameraFps, arriving: deliv.fps, analysed: diag.perSec, blobs: s.blobs, ballLike: s.cands, tiny: s.tiny, wrongSize: s.size, wrongShape: s.shape, offLane: s.offLane, chains: s.hyps, confirmed: tracker.confirmed, lanePct: laneMask ? Math.round(laneMask.reduce((a, m) => a + m, 0) / laneMask.length * 100) : 0 });
     }
-    if (!tracker.confirmed && now >= cooldownUntil) historyDetect(now, meta.mediaTime);
+    if (!tracker.confirmed && now >= cooldownUntil) historyDetect(now, ft);
     path = tracker.path;
     trail = histActive && !tracker.confirmed ? histTrail : tracker.trail;
     lastBlob = tracker.last ? { gx: tracker.last.x, gy: tracker.last.y } : null;
@@ -12772,7 +12787,7 @@ ${url}`);
     }
     if (ev === "confirmed") {
       logTrack("ball confirmed live", { points: path.length, atFt: path.length ? +path[path.length - 1].y.toFixed(1) : null });
-      ballArrived(meta.mediaTime);
+      ballArrived(ft);
     } else if (ev === "finished") void finish();
     else if (ev === "reset") resetTrack();
   }
