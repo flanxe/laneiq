@@ -61,6 +61,7 @@
         "Four big numbered dots you can grab anywhere near them, and drag inside the lane to move the whole thing.",
         "A live grid shows how the lane lines up with the arrows and pins, and a magnifier shows exactly where your finger is.",
         "New Arrows step: drag the centre and two outside yellow dots onto the real arrow tips. New Pins step: drag the head pin, 7 pin and 10 pin dots onto the real pins. The grid refits to what you marked, so the arrows and pin deck line up exactly.",
+        "Updates install themselves: when a newer LaneIQ is published while the camera is running, the app now counts down and reloads between shots (never while a ball is being followed, a clip is recording, or you are in the lane editor). Your saved lane lock comes straight back. Before, a running camera never updated, so a fix could sit unused for a whole session.",
         "FIXED: balls were never tracked on iPhone. A phone's own log showed every moving chain rejected at millions of miles an hour: the camera's frame clock stood still, so the app saw no time pass between points. The tracker now uses the time each frame was presented (or the page's own clock), which always moves forward.",
         "Copy diagnostics now also carries a ball-tracking log: every few seconds how many moving blobs were seen and why they were dropped, when a ball was found, why a chain was thrown out (speed, steadiness, distance), and how each shot ended. Paste it and a miss can be explained from your own phone's numbers.",
         "A second way to find the ball: every quarter of a second the app looks back over the last few seconds of frames for a ball-like chain rolling steadily down the lane, so a ball is found even when the live tracker's own rules did not confirm it while it rolled. The shot is finished when that chain stops. On a real clip it finds the ball about where it is released and follows it to the pins.",
@@ -12114,9 +12115,24 @@ ${url}`);
     const bar = document.createElement("div");
     bar.className = "invitebox";
     bar.style.cssText = "position:fixed;left:12px;right:12px;bottom:78px;z-index:50;display:flex;gap:10px;align-items:center;justify-content:space-between";
-    bar.innerHTML = `<b>${msg}</b><button class="btn" id="upd-go">Update</button>`;
+    bar.innerHTML = `<b id="upd-msg">${msg}</b><button class="btn" id="upd-go">Update</button>`;
     document.body.append(bar);
     bar.querySelector("button").onclick = reload;
+    let left = 12;
+    const tick = setInterval(() => {
+      const busy = tracing || path.length > 0 || recActive || !!pendingClip || histActive;
+      if (busy) {
+        left = 12;
+        return;
+      }
+      left--;
+      const m = document.getElementById("upd-msg");
+      if (m) m.textContent = `A newer LaneIQ is ready. Updating in ${Math.max(0, left)} s\u2026`;
+      if (left <= 0) {
+        clearInterval(tick);
+        reload();
+      }
+    }, 1e3);
   }, () => !document.body.classList.contains("live"));
   $("guide-open").onclick = openGuide;
   $("guide-hud").onclick = openGuide;
