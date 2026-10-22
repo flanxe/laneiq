@@ -60,7 +60,8 @@
         "Ball tracking rebuilt: it now follows several possible balls at once and keeps the one that moves like a delivery (smooth, steady, forward), so a bowler's legs, arms and shoes are no longer mistaken for the ball. On a real clip filmed from beside the approach it followed a blue ball from release to the pins and read speed, arrows, breakpoint, entry board and launch angle.",
         "Lane lock now works on an upright phone filmed from the side: it found the right lane on its own, and no longer returns two lanes stuck together or a thin sliver.",
         "An upright phone now shows an upright picture instead of cropping it to a wide strip, and analyses at a size that keeps the phone fast.",
-        "If the camera loses the ball just before the pins, the entry board is carried on from the last stretch it saw."
+        "If the camera loses the ball just before the pins, the entry board is carried on from the last stretch it saw. Dust and pin motion picked up after the ball arrives are dropped, so speed at the pins reads true.",
+        "When several lanes are in view and you tap yours, the app remembers where it is and picks the same lane next time instead of asking again."
       ]
     },
     {
@@ -10362,6 +10363,15 @@ ${url}`);
     pill("PLACE CORNERS", "ask");
     renderScan();
   }
+  var nearMid = (d) => (d.corners[0].x + d.corners[1].x) / 2 / video.videoWidth;
+  function rememberedLane() {
+    try {
+      const v = Number(localStorage.getItem("laneiq.pickedLane"));
+      return Number.isFinite(v) && v > 0 ? v : null;
+    } catch {
+      return null;
+    }
+  }
   function autoDetectTick(now) {
     if (mode !== "auto") return;
     if (!detectStartedAt) detectStartedAt = now;
@@ -10370,10 +10380,16 @@ ${url}`);
     lastDetectAt = now;
     detectNow();
     const ch = chooseLane(lastCandidates, video.videoWidth);
-    chooseSeen = !ch.pick && ch.choices.length > 1 ? chooseSeen + 1 : 0;
-    lastLockConf = ch.pick?.confidence ?? lastCandidates[0]?.confidence ?? null;
+    let picked = ch.pick;
+    if (!picked && ch.choices.length > 1) {
+      const mem = rememberedLane();
+      const near = mem === null ? null : [...ch.choices].sort((a, b) => Math.abs(nearMid(a) - mem) - Math.abs(nearMid(b) - mem))[0];
+      if (near && mem !== null && Math.abs(nearMid(near) - mem) < 0.08) picked = near;
+    }
+    chooseSeen = !picked && ch.choices.length > 1 ? chooseSeen + 1 : 0;
+    lastLockConf = picked?.confidence ?? lastCandidates[0]?.confidence ?? null;
     if (chooseSeen >= 2) return enterChoose(ch.choices.map((c) => c.corners));
-    const d = ch.pick ?? lastCandidates[0] ?? null;
+    const d = picked ?? lastCandidates[0] ?? null;
     pill("SCANNING\u2026", "scan");
     const tol = video.videoWidth * 0.03;
     if (d && solid(d)) {
@@ -10525,7 +10541,13 @@ ${url}`);
       chooseList = [];
       mode = "auto";
       $("manualbtn").classList.add("hide");
-      if (hit) applyCalibration(hit, "you picked it");
+      if (hit) {
+        try {
+          localStorage.setItem("laneiq.pickedLane", String((hit[0].x + hit[1].x) / 2 / video.videoWidth));
+        } catch {
+        }
+        applyCalibration(hit, "you picked it");
+      }
       return;
     }
     if (mode === "tap") {
