@@ -248,8 +248,8 @@
   }
   function readLane(all) {
     const last = all[all.length - 1];
-    const sameBall = last?.ballId ? all.filter((s) => s.ballId === last.ballId) : all;
-    const shots = sameBall.slice(-12);
+    const sameBall2 = last?.ballId ? all.filter((s) => s.ballId === last.ballId) : all;
+    const shots = sameBall2.slice(-12);
     const n = shots.length;
     if (n < MIN_SHOTS) {
       return {
@@ -1500,7 +1500,7 @@
       const mine = S.shots.filter((s) => s.ballId === b.id);
       let observed;
       if (mine.length >= 8) {
-        const avg2 = (v) => {
+        const avg3 = (v) => {
           const x = v.filter((n) => n !== null);
           return x.length ? x.reduce((a, c) => a + c, 0) / x.length : void 0;
         };
@@ -1508,8 +1508,8 @@
         const miss = mine.filter((s) => s.m.pocketMiss !== null);
         observed = {
           shots: mine.length,
-          entryAngle: avg2(mine.map((s) => s.m.entryAngle)),
-          breakpointFt: avg2(mine.map((s) => s.m.breakpointFt)),
+          entryAngle: avg3(mine.map((s) => s.m.entryAngle)),
+          breakpointFt: avg3(mine.map((s) => s.m.breakpointFt)),
           pocketPct: miss.length ? miss.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / miss.length * 100 : void 0,
           strikePct: res.length >= 8 ? res.filter(isStrike).length / res.length * 100 : void 0
         };
@@ -1889,7 +1889,7 @@
   function bowlingStats(games2) {
     const complete = games2.filter((g) => replay(g.rolls).complete);
     const scores = complete.map((g) => scoreGame(g.rolls).total);
-    let fresh2 = 0, strikes = 0, freshPins = 0, spareTry = 0, spareMade = 0, open2 = 0;
+    let fresh2 = 0, strikes = 0, freshPins = 0, spareTry = 0, spareMade = 0, open3 = 0;
     const single = { attempts: 0, made: 0 }, multi = { attempts: 0, made: 0 };
     const byLeave = {};
     for (const g of games2) {
@@ -1915,20 +1915,20 @@
       const frameRolls = /* @__PURE__ */ new Map();
       rp.states.forEach((s, k2) => frameRolls.set(s.frame, [...frameRolls.get(s.frame) ?? [], g.rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length]));
       for (const [f, c] of frameRolls) {
-        if (f < 10 && c.length === 2 && c[0] + c[1] < 10) open2++;
-        if (f === 10 && c.length >= 2 && c[0] < 10 && c[0] + c[1] < 10) open2++;
+        if (f < 10 && c.length === 2 && c[0] + c[1] < 10) open3++;
+        if (f === 10 && c.length >= 2 && c[0] < 10 && c[0] + c[1] < 10) open3++;
       }
     }
-    const avg2 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+    const avg3 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
     return {
       games: games2.length,
       completeGames: complete.length,
-      average: avg2(scores),
+      average: avg3(scores),
       high: scores.length ? Math.max(...scores) : null,
       strikePct: fresh2 ? strikes / fresh2 * 100 : null,
       firstBallAvg: fresh2 ? freshPins / fresh2 : null,
       sparePct: spareTry ? spareMade / spareTry * 100 : null,
-      openFrames: open2,
+      openFrames: open3,
       singlePin: single,
       multiPin: multi,
       byLeave
@@ -2163,8 +2163,8 @@
     if (clean >= 1) out.push({ id: "clean-1", title: "Clean game", detail: "A game with no open frames", points: 50 });
     if (clean >= 5) out.push({ id: "clean-5", title: "Five clean games", detail: "Five games with no open frames", points: 150 });
     if (done2.length >= 10) {
-      const avg2 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
-      const gain = avg2(scores.slice(-5)) - avg2(scores.slice(0, 5));
+      const avg3 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+      const gain = avg3(scores.slice(-5)) - avg3(scores.slice(0, 5));
       for (const [need, pts] of [[5, 30], [10, 60], [20, 120]]) if (gain >= need) out.push({ id: `avg-${need}`, title: `Average up ${need} pins`, detail: "Your last five games against your first five", points: pts });
     }
     let splits = 0;
@@ -2245,7 +2245,7 @@
 
   // core/src/skills.ts
   function frameOutcomes(games2) {
-    let closed = 0, open2 = 0;
+    let closed = 0, open3 = 0;
     for (const g of games2) {
       const rp = replay(g.rolls);
       const by = /* @__PURE__ */ new Map();
@@ -2253,13 +2253,13 @@
       for (const [f, c] of by) {
         if (f < 10) {
           if (c[0] === 10) closed++;
-          else if (c.length === 2) c[0] + c[1] === 10 ? closed++ : open2++;
+          else if (c.length === 2) c[0] + c[1] === 10 ? closed++ : open3++;
         } else if (rp.complete) {
-          c[0] === 10 || c.length >= 2 && c[0] + c[1] >= 10 ? closed++ : open2++;
+          c[0] === 10 || c.length >= 2 && c[0] + c[1] >= 10 ? closed++ : open3++;
         }
       }
     }
-    return { closed, open: open2 };
+    return { closed, open: open3 };
   }
   function measure(games2, shots) {
     const st2 = bowlingStats(games2);
@@ -2561,12 +2561,12 @@
   async function checkUnlocks() {
     try {
       const p = await current();
-      const open2 = SKINS.filter((s) => isUnlocked(s, p)).map((s) => s.id);
+      const open3 = SKINS.filter((s) => isUnlocked(s, p)).map((s) => s.id);
       const raw = localStorage.getItem(SEEN_KEY);
-      localStorage.setItem(SEEN_KEY, JSON.stringify(open2));
+      localStorage.setItem(SEEN_KEY, JSON.stringify(open3));
       if (raw === null) return;
       const seen2 = new Set(JSON.parse(raw));
-      const fresh2 = SKINS.filter((s) => open2.includes(s.id) && !seen2.has(s.id));
+      const fresh2 = SKINS.filter((s) => open3.includes(s.id) && !seen2.has(s.id));
       if (fresh2.length) toast(`Unlocked: ${fresh2.slice(0, 2).map((s) => s.name).join(", ")}${fresh2.length > 2 ? ` and ${fresh2.length - 2} more` : ""}. Tap to equip.`);
     } catch {
     }
@@ -2586,8 +2586,8 @@
     const eq = skinsEnabled() ? equippedSkins() : { tracer: "", pins: "", lane: "" };
     const base = activeSkins();
     const grid = (kind2, title) => `<h3>${title}</h3><div class="skin-grid">${SKINS.filter((s) => s.kind === kind2).map((s) => {
-      const open2 = isUnlocked(s, p);
-      return `<button class="skin ${open2 ? "" : "locked"} ${eq[kind2] === s.id ? "on" : ""}" data-skin="${s.id}" data-kind="${kind2}" ${open2 ? "" : "disabled"}><canvas width="150" height="170" data-c="${s.id}"></canvas><div class="n">${esc(s.name)}</div><div class="r ${"points" in s.unlock ? "rare" : ""}">${open2 ? eq[kind2] === s.id ? "Equipped" : "Tap to equip" : "Locked: " + esc(unlockText(s))}</div></button>`;
+      const open3 = isUnlocked(s, p);
+      return `<button class="skin ${open3 ? "" : "locked"} ${eq[kind2] === s.id ? "on" : ""}" data-skin="${s.id}" data-kind="${kind2}" ${open3 ? "" : "disabled"}><canvas width="150" height="170" data-c="${s.id}"></canvas><div class="n">${esc(s.name)}</div><div class="r ${"points" in s.unlock ? "rare" : ""}">${open3 ? eq[kind2] === s.id ? "Equipped" : "Tap to equip" : "Locked: " + esc(unlockText(s))}</div></button>`;
     }).join("")}</div>`;
     el.innerHTML = `
     <div class="row"><h2>Rewards</h2><button class="btn ghost" id="rw-close">Close</button></div>
@@ -2659,8 +2659,8 @@
     const used = new Set(games.flatMap((g) => g.rolls.map((r) => r.shotId)).filter(Boolean));
     const s = [...S.shots].reverse().find((x) => x.result?.auto && !used.has(x.id));
     if (!s || !s.result) return null;
-    const when3 = Date.now() - new Date(s.at).getTime();
-    if (when3 > 15 * 6e4) return null;
+    const when4 = Date.now() - new Date(s.at).getTime();
+    if (when4 > 15 * 6e4) return null;
     return { shotId: s.id, leave: s.result.pinsDown === 10 ? [] : s.result.leave ?? [] };
   }
   function deckSvg(standing, sel2) {
@@ -2743,10 +2743,10 @@
     const out = [];
     if (done2.length) {
       const w = done2.map((g) => whatIf(g.rolls));
-      const avg2 = (f) => w.reduce((a, b) => a + f(b), 0) / w.length;
-      const gain = avg2((x) => x.ifSingles - x.actual);
-      out.push(`<div class="u">Missed single-pin spares cost you <b>${gain.toFixed(1)} pins a game</b> (${avg2((x) => x.missedSingles).toFixed(1)} a game). Make them all and your average would be ${avg2((x) => x.ifSingles).toFixed(0)} instead of ${avg2((x) => x.actual).toFixed(0)}.</div>`);
-      out.push(`<div class="note">Missed spares of every kind: ${avg2((x) => x.missedSpares).toFixed(1)} a game; making all of them would score about ${avg2((x) => x.ifAllSpares).toFixed(0)}.</div>`);
+      const avg3 = (f) => w.reduce((a, b) => a + f(b), 0) / w.length;
+      const gain = avg3((x) => x.ifSingles - x.actual);
+      out.push(`<div class="u">Missed single-pin spares cost you <b>${gain.toFixed(1)} pins a game</b> (${avg3((x) => x.missedSingles).toFixed(1)} a game). Make them all and your average would be ${avg3((x) => x.ifSingles).toFixed(0)} instead of ${avg3((x) => x.actual).toFixed(0)}.</div>`);
+      out.push(`<div class="note">Missed spares of every kind: ${avg3((x) => x.missedSpares).toFixed(1)} a game; making all of them would score about ${avg3((x) => x.ifAllSpares).toFixed(0)}.</div>`);
     }
     const st2 = bowlingStats(games);
     const weak = Object.entries(st2.byLeave).filter(([, t]) => t.attempts >= 3 && t.made / t.attempts < 0.6).sort((a, b) => b[1].attempts - a[1].attempts).slice(0, 4);
@@ -2944,21 +2944,21 @@
     const t = text.replace(/\s+/g, "").replace(/µ/g, "u").replace(/->/g, "\u2192");
     const notes = [];
     const out = { rows: [], tableOk: false, notes };
-    const num4 = (re) => {
+    const num5 = (re) => {
       const m = re.exec(t);
       return m ? Number(m[1]) : void 0;
     };
     const n = /(\d{2})FEET([\d.]+)mL([\d.]+):1([\d.]+)mL(\d{2})FEET([\d.]+)mL/i.exec(t);
     if (n) [out.lengthFt, out.volumeMl, out.ratio, out.forwardMl, out.brushDropFt, out.reverseMl] = n.slice(1, 7).map(Number);
-    out.lengthFt ??= num4(/OilPatternDistance:?(\d{2})(?!\d)/i) ?? num4(/Distance:?(\d{2})(?:Feet|ft)/i);
-    out.volumeMl ??= num4(/VolumeOilTotal:?([\d.]+)mL/i) ?? num4(/(?:Total)?Volume:?([\d.]+)mL/i);
-    out.forwardMl ??= num4(/ForwardOilTotal:?([\d.]+)mL/i);
-    out.reverseMl ??= num4(/ReverseOilTotal:?([\d.]+)mL/i);
-    out.brushDropFt ??= num4(/ReverseBrushDrop:?(\d{2})/i);
-    out.ratio ??= num4(/(?:Pattern)?Ratio:?([\d.]+):1/i);
-    out.lengthFt ??= num4(/(\d{2})(?:FEET|FT)/i);
-    out.volumeMl ??= num4(/(\d{2}(?:\.\d+)?)mL/i);
-    out.ratio ??= num4(/(\d{1,2}(?:\.\d+)?):1(?!\d)/);
+    out.lengthFt ??= num5(/OilPatternDistance:?(\d{2})(?!\d)/i) ?? num5(/Distance:?(\d{2})(?:Feet|ft)/i);
+    out.volumeMl ??= num5(/VolumeOilTotal:?([\d.]+)mL/i) ?? num5(/(?:Total)?Volume:?([\d.]+)mL/i);
+    out.forwardMl ??= num5(/ForwardOilTotal:?([\d.]+)mL/i);
+    out.reverseMl ??= num5(/ReverseOilTotal:?([\d.]+)mL/i);
+    out.brushDropFt ??= num5(/ReverseBrushDrop:?(\d{2})/i);
+    out.ratio ??= num5(/(?:Pattern)?Ratio:?([\d.]+):1/i);
+    out.lengthFt ??= num5(/(\d{2})(?:FEET|FT)/i);
+    out.volumeMl ??= num5(/(\d{2}(?:\.\d+)?)mL/i);
+    out.ratio ??= num5(/(\d{1,2}(?:\.\d+)?):1(?!\d)/);
     if (out.lengthFt !== void 0 && !(out.lengthFt >= 20 && out.lengthFt <= 55)) out.lengthFt = void 0;
     if (out.volumeMl !== void 0 && !(out.volumeMl >= 8 && out.volumeMl <= 45)) out.volumeMl = void 0;
     if (out.ratio !== void 0 && !(out.ratio >= 1 && out.ratio <= 15)) out.ratio = void 0;
@@ -3692,9 +3692,9 @@
     if (b.enteringAvg !== void 0 && g.length < l.establishGames) return b.enteringAvg;
     return g.length ? sum(g) / g.length : null;
   }
-  function handicapFor(avg2, l) {
-    if (avg2 === null) return 0;
-    const h = Math.max(0, Math.floor((l.hcpBase - avg2) * l.hcpPct / 100 + 1e-9));
+  function handicapFor(avg3, l) {
+    if (avg3 === null) return 0;
+    const h = Math.max(0, Math.floor((l.hcpBase - avg3) * l.hcpPct / 100 + 1e-9));
     return l.hcpCap !== void 0 ? Math.min(h, l.hcpCap) : h;
   }
   function nightLines(l, week) {
@@ -3824,8 +3824,8 @@
         establishGames: Math.round(est),
         roster: roster.map((r) => {
           const x = r;
-          const avg2 = Number(x.enteringAvg);
-          return { name: str(x.name, 40), team: str(x.team, 40) || void 0, enteringAvg: finite(x.enteringAvg) && avg2 >= 0 && avg2 <= 300 ? Math.round(avg2) : void 0, junior: x.junior === true ? true : void 0 };
+          const avg3 = Number(x.enteringAvg);
+          return { name: str(x.name, 40), team: str(x.team, 40) || void 0, enteringAvg: finite(x.enteringAvg) && avg3 >= 0 && avg3 <= 300 ? Math.round(avg3) : void 0, junior: x.junior === true ? true : void 0 };
         }).filter((r) => r.name)
       };
     }
@@ -3857,7 +3857,7 @@
     }
     return null;
   }
-  function leagueFromInvite(i, newId2) {
+  function leagueFromInvite(i, newId3) {
     return {
       id: i.id,
       name: i.name,
@@ -3867,17 +3867,17 @@
       hcpPct: i.hcpPct,
       hcpCap: i.hcpCap,
       establishGames: i.establishGames,
-      bowlers: i.roster.map((r) => ({ id: newId2(), name: r.name, team: r.team, enteringAvg: r.enteringAvg, junior: r.junior })),
+      bowlers: i.roster.map((r) => ({ id: newId3(), name: r.name, team: r.team, enteringAvg: r.enteringAvg, junior: r.junior })),
       weeks: [],
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     };
   }
-  function applyNight(l, c, newId2) {
+  function applyNight(l, c, newId3) {
     const league = { ...l, bowlers: [...l.bowlers], weeks: l.weeks.map((w2) => ({ ...w2, scores: { ...w2.scores } })) };
     let b = league.bowlers.find((x) => norm4(x.name) === norm4(c.name));
     let added = false;
     if (!b) {
-      b = { id: newId2(), name: c.name };
+      b = { id: newId3(), name: c.name };
       league.bowlers.push(b);
       added = true;
     }
@@ -3964,7 +3964,7 @@
     }
     const all = [...inp.games.map((g) => g.at), ...inp.shots.map((s) => s.at)].map((t) => Date.parse(t)).filter(Number.isFinite);
     const lastActive = all.length ? new Date(Math.max(...all)).toISOString().slice(0, 10) : null;
-    const avg2 = st2.completeGames >= 3 ? st2.average : null;
+    const avg3 = st2.completeGames >= 3 ? st2.average : null;
     const avgChange = st2.completeGames >= 3 && prevSt.completeGames >= 3 && st2.average !== null && prevSt.average !== null ? st2.average - prevSt.average : null;
     const card = {
       v: 1,
@@ -3975,7 +3975,7 @@
       days,
       sessions: days_.size,
       games: st2.completeGames,
-      avg: avg2 === null ? null : Math.round(avg2),
+      avg: avg3 === null ? null : Math.round(avg3),
       avgChange: avgChange === null ? null : Math.round(avgChange),
       high: st2.high,
       strikePct: st2.strikePct === null || st2.completeGames < 3 ? null : Math.round(st2.strikePct),
@@ -4209,12 +4209,12 @@ Games: ${p.games.join(", ")}`)) return;
     <div class="chips"><button class="btn" id="le-save">${l ? "Save" : "Start the league"}</button></div><div class="note" id="le-err"></div>`;
     $("le-back").onclick = () => l ? openLeague(l.id) : openLeagues();
     $("le-save").onclick = async () => {
-      const num4 = (id) => {
+      const num5 = (id) => {
         const v = parseFloat($(id).value);
         return Number.isFinite(v) ? v : void 0;
       };
       const name = $("le-name").value.trim();
-      const gpn = num4("le-gpn"), est = num4("le-est"), base = num4("le-base"), pct4 = num4("le-pct"), cap = num4("le-cap");
+      const gpn = num5("le-gpn"), est = num5("le-est"), base = num5("le-base"), pct4 = num5("le-pct"), cap = num5("le-cap");
       const err = $("le-err");
       if (!name) return void (err.textContent = "Give the league a name.");
       if (!gpn || gpn < 1 || gpn > 6) return void (err.textContent = "Games a night: 1 to 6.");
@@ -4269,9 +4269,9 @@ Games: ${p.games.join(", ")}`)) return;
       <div class="field"><label>Week</label><select id="lo-week">${Array.from({ length: nextWeek }, (_, i) => `<option value="${i + 1}" ${i + 1 === weekSel ? "selected" : ""}>Week ${i + 1}${l.weeks.some((w) => w.n === i + 1) ? " (entered)" : " (new)"}</option>`).join("")}</select></div>
       <div class="field"><label>Date</label><input id="lo-date" type="date" value="${wk?.date ?? today()}"></div>
       <table>${l.bowlers.map((b) => {
-      const avg2 = leagueAverage(l, b, weekSel);
-      const h = handicapFor(avg2, l);
-      return `<tr><td style="width:36%">${esc(b.name)}<div class="note">avg ${avg2 === null ? "\u2013" : Math.round(avg2)} \xB7 hcp ${h}</div></td>${Array.from({ length: l.gamesPerNight }, (_, g) => `<td><input data-b="${b.id}" data-g="${g}" inputmode="numeric" maxlength="3" style="width:100%;min-width:44px;text-align:center" value="${wk?.scores[b.id]?.[g] ?? ""}"></td>`).join("")}</tr>`;
+      const avg3 = leagueAverage(l, b, weekSel);
+      const h = handicapFor(avg3, l);
+      return `<tr><td style="width:36%">${esc(b.name)}<div class="note">avg ${avg3 === null ? "\u2013" : Math.round(avg3)} \xB7 hcp ${h}</div></td>${Array.from({ length: l.gamesPerNight }, (_, g) => `<td><input data-b="${b.id}" data-g="${g}" inputmode="numeric" maxlength="3" style="width:100%;min-width:44px;text-align:center" value="${wk?.scores[b.id]?.[g] ?? ""}"></td>`).join("")}</tr>`;
     }).join("")}</table>
       <div class="chips"><button class="btn" id="lo-save">Save week ${weekSel}</button><button class="chip" id="lo-mine">Fill in my own games</button></div><div class="note" id="lo-msg"></div></div>
     <h3>Send and share</h3>
@@ -4624,11 +4624,11 @@ Friends, live sharing and sharing data are switched off, and anything shared sho
     const leader = a.score === null || b.score === null ? null : a.score === b.score ? "tie" : a.score > b.score ? "a" : "b";
     return { a, b, leader };
   }
-  function friendlyStatus(crew, c, today2 = isoDay(/* @__PURE__ */ new Date())) {
+  function friendlyStatus(crew, c, today3 = isoDay(/* @__PURE__ */ new Date())) {
     const p = participation(crew, c);
-    const left = daysLeft(c, today2);
+    const left = daysLeft(c, today3);
     const s = sides(crew, c);
-    if (hasEnded(c, today2)) return s?.leader === "tie" ? "Finished: a tie, which means everyone wins." : `Finished. ${p.reported} of ${p.members} in the crew took part.`;
+    if (hasEnded(c, today3)) return s?.leader === "tie" ? "Finished: a tie, which means everyone wins." : `Finished. ${p.reported} of ${p.members} in the crew took part.`;
     if (!p.reported) return `${left} day${left === 1 ? "" : "s"} left. Be the first to put a score up.`;
     return `${p.reported} of ${p.members} in so far. ${left} day${left === 1 ? "" : "s"} left.`;
   }
@@ -4744,8 +4744,8 @@ Friends, live sharing and sharing data are switched off, and anything shared sho
     if (known) return { kind: "known", crewId: known.id };
     const versus = crews.find((c) => p.challenges.some((ch) => ch.vs?.crewId === c.id || ch.crewId === c.id && ch.vs?.crewId === p.crew.id));
     if (versus) return { kind: "versus", crewId: versus.id };
-    const open2 = p.challenges.find((ch) => ch.vs && !ch.vs.crewId && ch.end >= isoDay(/* @__PURE__ */ new Date()));
-    if (open2) return { kind: "challenge-invite", challenge: open2 };
+    const open3 = p.challenges.find((ch) => ch.vs && !ch.vs.crewId && ch.end >= isoDay(/* @__PURE__ */ new Date()));
+    if (open3) return { kind: "challenge-invite", challenge: open3 };
     return { kind: "new" };
   }
   function crewFromPacket(p, me3, now = /* @__PURE__ */ new Date()) {
@@ -4762,12 +4762,12 @@ Friends, live sharing and sharing data are switched off, and anything shared sho
     return mergeInto(mine, { ...p, crew: { ...p.crew, id: "other" }, challenges: [accepted], entries: inChallenge, cheers: [], events: [], rsvps: [] }, now);
   }
   function reportMine(crew, me3, d, typedAvg2 = {}, now = /* @__PURE__ */ new Date()) {
-    const today2 = isoDay(now);
+    const today3 = isoDay(now);
     const reported = [];
     const needBaseline = [];
     let entries = crew.entries;
     for (const c of crew.challenges) {
-      if (c.start > today2) continue;
+      if (c.start > today3) continue;
       const typed = typedAvg2[c.id];
       if (needsBaseline(c, d.games, typed)) {
         needBaseline.push(c);
@@ -4787,8 +4787,8 @@ Friends, live sharing and sharing data are switched off, and anything shared sho
     const c = { id: rid(), from, to, kind: kind2, challengeId, at: now.toISOString() };
     return { ...crew, cheers: [...crew.cheers, c].slice(-LIMITS.cheers) };
   }
-  function addEvent(crew, by, when3, time, place, now = /* @__PURE__ */ new Date()) {
-    const e = { id: rid(), by, when: when3, time, place: cleanName(place, 40), at: now.toISOString() };
+  function addEvent(crew, by, when4, time, place, now = /* @__PURE__ */ new Date()) {
+    const e = { id: rid(), by, when: when4, time, place: cleanName(place, 40), at: now.toISOString() };
     return { ...crew, events: [...crew.events, e].sort((a, b) => a.when.localeCompare(b.when)).slice(-LIMITS.events) };
   }
   function setRsvp(crew, me3, eventId, going, now = /* @__PURE__ */ new Date()) {
@@ -4815,9 +4815,9 @@ Friends, live sharing and sharing data are switched off, and anything shared sho
       DAY2 = 864e5;
       isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       dayOf = (iso2) => isoDay(new Date(iso2));
-      isActive = (c, today2 = isoDay(/* @__PURE__ */ new Date())) => c.start <= today2 && today2 <= c.end;
-      hasEnded = (c, today2 = isoDay(/* @__PURE__ */ new Date())) => c.end < today2;
-      daysLeft = (c, today2 = isoDay(/* @__PURE__ */ new Date())) => Math.max(0, Math.round((Date.parse(c.end + "T12:00:00") - Date.parse(today2 + "T12:00:00")) / DAY2));
+      isActive = (c, today3 = isoDay(/* @__PURE__ */ new Date())) => c.start <= today3 && today3 <= c.end;
+      hasEnded = (c, today3 = isoDay(/* @__PURE__ */ new Date())) => c.end < today3;
+      daysLeft = (c, today3 = isoDay(/* @__PURE__ */ new Date())) => Math.max(0, Math.round((Date.parse(c.end + "T12:00:00") - Date.parse(today3 + "T12:00:00")) / DAY2));
       challengeTitle = (c) => c.kind === "drill" ? `Drill: ${c.drill ?? "practice"}` : KIND_INFO[c.kind].title;
       mean4 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
       inWindow = (iso2, c) => {
@@ -5041,18 +5041,18 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     const text = banner || refreshed.text;
     const el = sheet7();
     el.classList.add("on");
-    const today2 = isoDay(/* @__PURE__ */ new Date());
+    const today3 = isoDay(/* @__PURE__ */ new Date());
     const meW = me2();
-    const active = crew.challenges.filter((c) => !hasEnded(c, today2)).sort((a, b) => a.end.localeCompare(b.end));
-    const done2 = crew.challenges.filter((c) => hasEnded(c, today2)).slice(-3).reverse();
+    const active = crew.challenges.filter((c) => !hasEnded(c, today3)).sort((a, b) => a.end.localeCompare(b.end));
+    const done2 = crew.challenges.filter((c) => hasEnded(c, today3)).slice(-3).reverse();
     const games2 = await myGames();
-    const needs = crew.challenges.filter((c) => !hasEnded(c, today2) && c.start <= today2 && needsBaseline(c, games2, typedAvg(c.id)));
-    const upcoming = crew.events.filter((e) => e.when >= today2);
+    const needs = crew.challenges.filter((c) => !hasEnded(c, today3) && c.start <= today3 && needsBaseline(c, games2, typedAvg(c.id)));
+    const upcoming = crew.events.filter((e) => e.when >= today3);
     const mine = cheersFor(crew, meW.code).slice(0, 5);
     const board = (c) => {
       const rows2 = leaderboard(crew, c);
       const s = sides(crew, c);
-      return `<div class="card"><div class="row"><div><b>${esc(challengeTitle(c))}${c.vs ? ` \xB7 ${esc(c.crewName)} vs ${esc(c.vs.name)}` : ""}</b><div class="note">${esc(dayText2(c.start))} to ${esc(dayText2(c.end))} \xB7 ${esc(friendlyStatus(crew, c, today2))}</div></div></div>
+      return `<div class="card"><div class="row"><div><b>${esc(challengeTitle(c))}${c.vs ? ` \xB7 ${esc(c.crewName)} vs ${esc(c.vs.name)}` : ""}</b><div class="note">${esc(dayText2(c.start))} to ${esc(dayText2(c.end))} \xB7 ${esc(friendlyStatus(crew, c, today3))}</div></div></div>
       <div class="note">${esc(KIND_INFO[c.kind].how)}</div>
       ${s ? `<div class="row" style="padding:8px 0"><div style="text-align:center;flex:1"><div class="note">${esc(s.a.name)}</div><div class="lr-head">${s.a.score === null ? "\u2013" : fmtValue(c.kind, s.a.score)}</div><div class="note">${s.a.entrants} in</div></div><div class="note">vs</div><div style="text-align:center;flex:1"><div class="note">${esc(s.b.name)}</div><div class="lr-head">${s.b.score === null ? "\u2013" : fmtValue(c.kind, s.b.score)}</div><div class="note">${s.b.entrants} in</div></div></div><div class="note">Each crew scores the average of the bowlers who took part.</div>` : ""}
       ${rows2.length ? `<table>${rows2.map((r) => `<tr><td>${r.rank}</td><td>${esc(r.name)}${r.code === meW.code ? ` <span class="note">(you)</span>` : ""}${c.vs ? `<div class="note">${r.crewId === c.crewId ? esc(c.crewName) : esc(c.vs.name)}</div>` : ""}</td><td class="n"><b>${fmtValue(c.kind, r.value)}</b><div class="note">${r.n} ${c.kind === "days" ? r.n === 1 ? "day" : "days" : c.kind === "drill" ? r.n === 1 ? "run" : "runs" : r.n === 1 ? "game" : "games"}</div></td><td class="n">${r.code !== meW.code && r.crewId === crew.id ? `<button class="chip" data-cheer="${r.code}" data-ch="${c.id}">Cheer</button>` : ""}</td></tr>`).join("")}</table>` : `<div class="u" style="margin-top:6px">No scores yet. Bowl a finished game in My scores and yours goes up on its own.</div>`}</div>`;
@@ -5079,7 +5079,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       const my = crew.rsvps.find((r) => r.eventId === e.id && r.code === meW.code);
       return `<div class="card"><div class="row"><div><b>${esc(dayText2(e.when))}${e.time ? ` \xB7 ${esc(e.time)}` : ""}</b><div class="note">${esc(e.place || "Place to be decided")} \xB7 planned by ${esc(e.by.name)}</div></div></div><div class="u">${going.length ? `${going.map((g) => esc(g.name)).join(", ")} ${going.length === 1 ? "is" : "are"} in.` : "No one has said yet."}</div><div class="chips"><button class="chip ${my?.going ? "sel" : ""}" data-rsvp="${e.id}" data-go="1">I'm in</button><button class="chip ${my && !my.going ? "sel" : ""}" data-rsvp="${e.id}" data-go="0">Can't make it</button></div></div>`;
     }).join("") : `<div class="card"><div class="u">No bowl night planned. Pick a day: it's the easiest way to get everyone out.</div></div>`}
-    <div class="card"><div class="k">Plan a bowl night</div><div class="two"><div class="field"><label>Day</label><input id="cw-when" type="date" min="${today2}" value="${isoDay(new Date(Date.now() + 3 * 864e5))}"></div><div class="field"><label>Time (optional)</label><input id="cw-time" type="time"></div></div><div class="field"><label>Where (optional)</label><input id="cw-place" maxlength="40" placeholder="e.g. Main Street Lanes"></div><div class="chips"><button class="btn" id="cw-event">Plan it</button></div></div>
+    <div class="card"><div class="k">Plan a bowl night</div><div class="two"><div class="field"><label>Day</label><input id="cw-when" type="date" min="${today3}" value="${isoDay(new Date(Date.now() + 3 * 864e5))}"></div><div class="field"><label>Time (optional)</label><input id="cw-time" type="time"></div></div><div class="field"><label>Where (optional)</label><input id="cw-place" maxlength="40" placeholder="e.g. Main Street Lanes"></div><div class="chips"><button class="btn" id="cw-event">Plan it</button></div></div>
     <div class="chips"><button class="btn ghost danger" id="cw-leave">Leave this crew</button></div>`;
     $("cw-close").onclick = close7;
     $("cw-all").onclick = openCrews;
@@ -5099,7 +5099,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     kindSel.onchange = showDrill;
     showDrill();
     $("cw-make").onclick = async () => {
-      if (crew.challenges.filter((c2) => !hasEnded(c2, today2)).length >= LIMITS.challenges - 2) return void (msg.textContent = "That's plenty on at once. Let one finish first.");
+      if (crew.challenges.filter((c2) => !hasEnded(c2, today3)).length >= LIMITS.challenges - 2) return void (msg.textContent = "That's plenty on at once. Let one finish first.");
       const vs = $("cw-vs").value.trim();
       const c = newChallenge(crew, meW, kindSel.value, { days: Number($("cw-days").value), drill: $("cw-drill").value, vsName: vs || void 0 });
       const next = { ...crew, challenges: [...crew.challenges, c] };
@@ -5114,11 +5114,11 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       }
     );
     $("cw-event").onclick = async () => {
-      const when3 = $("cw-when").value;
-      if (!when3) return void (msg.textContent = "Pick a day.");
+      const when4 = $("cw-when").value;
+      if (!when4) return void (msg.textContent = "Pick a day.");
       const time = $("cw-time").value || void 0;
       const before = new Set(crew.events.map((e) => e.id));
-      const withEvent = addEvent(crew, meW, when3, time, $("cw-place").value);
+      const withEvent = addEvent(crew, meW, when4, time, $("cw-place").value);
       const ev = withEvent.events.find((e) => !before.has(e.id));
       await save(setRsvp(withEvent, meW, ev.id, true));
       void openCrew(crew.id, "Bowl night planned and you're in. Send an update to tell the crew.");
@@ -6111,33 +6111,33 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
                 var characterCountSize = [10, 12, 14][size];
                 var length = stream2.readBits(characterCountSize);
                 while (length >= 3) {
-                  var num4 = stream2.readBits(10);
-                  if (num4 >= 1e3) {
+                  var num5 = stream2.readBits(10);
+                  if (num5 >= 1e3) {
                     throw new Error("Invalid numeric value above 999");
                   }
-                  var a = Math.floor(num4 / 100);
-                  var b = Math.floor(num4 / 10) % 10;
-                  var c = num4 % 10;
+                  var a = Math.floor(num5 / 100);
+                  var b = Math.floor(num5 / 10) % 10;
+                  var c = num5 % 10;
                   bytes.push(48 + a, 48 + b, 48 + c);
                   text += a.toString() + b.toString() + c.toString();
                   length -= 3;
                 }
                 if (length === 2) {
-                  var num4 = stream2.readBits(7);
-                  if (num4 >= 100) {
+                  var num5 = stream2.readBits(7);
+                  if (num5 >= 100) {
                     throw new Error("Invalid numeric value above 99");
                   }
-                  var a = Math.floor(num4 / 10);
-                  var b = num4 % 10;
+                  var a = Math.floor(num5 / 10);
+                  var b = num5 % 10;
                   bytes.push(48 + a, 48 + b);
                   text += a.toString() + b.toString();
                 } else if (length === 1) {
-                  var num4 = stream2.readBits(4);
-                  if (num4 >= 10) {
+                  var num5 = stream2.readBits(4);
+                  if (num5 >= 10) {
                     throw new Error("Invalid numeric value above 9");
                   }
-                  bytes.push(48 + num4);
-                  text += num4.toString();
+                  bytes.push(48 + num5);
+                  text += num5.toString();
                 }
                 return { bytes, text };
               }
@@ -16184,18 +16184,18 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
           };
           return _this;
         })();
-        function qrPolynomial(num4, shift) {
-          if (typeof num4.length == "undefined") {
-            throw num4.length + "/" + shift;
+        function qrPolynomial(num5, shift) {
+          if (typeof num5.length == "undefined") {
+            throw num5.length + "/" + shift;
           }
           var _num = (function() {
             var offset = 0;
-            while (offset < num4.length && num4[offset] == 0) {
+            while (offset < num5.length && num5[offset] == 0) {
               offset += 1;
             }
-            var _num2 = new Array(num4.length - offset + shift);
-            for (var i = 0; i < num4.length - offset; i += 1) {
-              _num2[i] = num4[i + offset];
+            var _num2 = new Array(num5.length - offset + shift);
+            for (var i = 0; i < num5.length - offset; i += 1) {
+              _num2[i] = num5[i + offset];
             }
             return _num2;
           })();
@@ -16207,27 +16207,27 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
             return _num.length;
           };
           _this.multiply = function(e) {
-            var num5 = new Array(_this.getLength() + e.getLength() - 1);
+            var num6 = new Array(_this.getLength() + e.getLength() - 1);
             for (var i = 0; i < _this.getLength(); i += 1) {
               for (var j = 0; j < e.getLength(); j += 1) {
-                num5[i + j] ^= QRMath.gexp(QRMath.glog(_this.getAt(i)) + QRMath.glog(e.getAt(j)));
+                num6[i + j] ^= QRMath.gexp(QRMath.glog(_this.getAt(i)) + QRMath.glog(e.getAt(j)));
               }
             }
-            return qrPolynomial(num5, 0);
+            return qrPolynomial(num6, 0);
           };
           _this.mod = function(e) {
             if (_this.getLength() - e.getLength() < 0) {
               return _this;
             }
             var ratio = QRMath.glog(_this.getAt(0)) - QRMath.glog(e.getAt(0));
-            var num5 = new Array(_this.getLength());
+            var num6 = new Array(_this.getLength());
             for (var i = 0; i < _this.getLength(); i += 1) {
-              num5[i] = _this.getAt(i);
+              num6[i] = _this.getAt(i);
             }
             for (var i = 0; i < e.getLength(); i += 1) {
-              num5[i] ^= QRMath.gexp(QRMath.glog(e.getAt(i)) + ratio);
+              num6[i] ^= QRMath.gexp(QRMath.glog(e.getAt(i)) + ratio);
             }
-            return qrPolynomial(num5, 0).mod(e);
+            return qrPolynomial(num6, 0).mod(e);
           };
           return _this;
         }
@@ -16490,9 +16490,9 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
             var bufIndex = Math.floor(index / 8);
             return (_buffer[bufIndex] >>> 7 - index % 8 & 1) == 1;
           };
-          _this.put = function(num4, length) {
+          _this.put = function(num5, length) {
             for (var i = 0; i < length; i += 1) {
-              _this.putBit((num4 >>> length - i - 1 & 1) == 1);
+              _this.putBit((num5 >>> length - i - 1 & 1) == 1);
             }
           };
           _this.getLengthInBits = function() {
@@ -16536,11 +16536,11 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
             }
           };
           var strToNum = function(s) {
-            var num4 = 0;
+            var num5 = 0;
             for (var i = 0; i < s.length; i += 1) {
-              num4 = num4 * 10 + chatToNum(s.charAt(i));
+              num5 = num5 * 10 + chatToNum(s.charAt(i));
             }
-            return num4;
+            return num5;
           };
           var chatToNum = function(c) {
             if ("0" <= c && c <= "9") {
@@ -20352,9 +20352,9 @@ ${url}`);
       ${res.warnings.map((w) => `<div class="note" style="color:var(--gold)">${esc(w)}</div>`).join("")}
       <div class="note">A careful photo reads distances to about an eighth to a quarter inch and angles to a few degrees, if the outline fits the ball and the points are on the right spots. Check against the ball's drill sheet before relying on it. Negative angles and distances mean the other side of the line.</div>
       <div class="chips">${m.drilling !== null ? `<button class="btn" id="bs-open">Open in the Layout Lab</button>` : ""}</div></div>`;
-    const open2 = document.getElementById("bs-open");
-    if (open2)
-      open2.onclick = () => {
+    const open3 = document.getElementById("bs-open");
+    if (open3)
+      open3.onclick = () => {
         close();
         const frame2 = scanFrame({ circle: s.circle, thumb: s.noThumb ? null : s.thumb, fingerA: s.fingerA, fingerB: s.fingerB });
         const keepImg = document.createElement("canvas");
@@ -23537,6 +23537,234 @@ ${url}`);
     };
   }
 
+  // core/src/balllayouts.ts
+  var SYSTEM_LABEL = { dual: "Dual Angle", pinbuffer: "Pin Buffer", "2ls": "2LS", other: "Other" };
+  function parseInches2(input) {
+    const s = String(input ?? "").toLowerCase().replace(/(inches|inch|in|")/g, "").replace(/[-–]/g, " ").trim();
+    if (!s) return null;
+    let m = /^(\d+(?:\.\d+)?)$/.exec(s);
+    if (m) return bound(parseFloat(m[1]), 0, 12);
+    m = /^(\d+)\s+(\d+)\s*\/\s*(\d+)$/.exec(s);
+    if (m && +m[3] > 0 && +m[3] <= 64) return bound(+m[1] + +m[2] / +m[3], 0, 12);
+    m = /^(\d+)\s*\/\s*(\d+)$/.exec(s);
+    if (m && +m[2] > 0 && +m[2] <= 64) return bound(+m[1] / +m[2], 0, 12);
+    return null;
+  }
+  var bound = (v, lo, hi) => Number.isFinite(v) && v >= lo && v <= hi ? v : null;
+  function fmtInches(n) {
+    const e = Math.round(n * 8);
+    const whole = Math.floor(e / 8), rest = e % 8;
+    const frac = { 0: "", 1: "1/8", 2: "1/4", 3: "3/8", 4: "1/2", 5: "5/8", 6: "3/4", 7: "7/8" }[rest];
+    return `${whole || !frac ? whole : ""}${whole && frac ? " " : ""}${frac}`.trim() || "0";
+  }
+  var txt = (s, max) => typeof s === "string" ? s.replace(/\s+/g, " ").trim().slice(0, max) : "";
+  var num4 = (v, lo, hi) => {
+    const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
+    return Number.isFinite(n) && n >= lo && n <= hi ? n : void 0;
+  };
+  var day = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s)) ? s : void 0;
+  function cleanLayout(l) {
+    const out = { id: txt(l.id, 24) || "x" };
+    const on3 = day(l.on);
+    if (on3) out.on = on3;
+    if (l.system && l.system in SYSTEM_LABEL) out.system = l.system;
+    const set = (k2, v) => {
+      if (v !== void 0 && v !== "") out[k2] = v;
+    };
+    set("drilling", num4(l.drilling, 0, 180));
+    set("pinToPap", num4(l.pinToPap, 0, 12));
+    set("valAngle", num4(l.valAngle, 0, 180));
+    set("psaToPap", num4(l.psaToPap, 0, 12));
+    set("pinBuffer", num4(l.pinBuffer, 0, 12));
+    set("pinToGrip", num4(l.pinToGrip, 0, 12));
+    set("pap", txt(l.pap, 60));
+    set("text", txt(l.text, 160));
+    set("surface", txt(l.surface, 80));
+    set("shop", txt(l.shop, 80));
+    set("note", txt(l.note, 600));
+    if (l.fromLab) out.fromLab = true;
+    return Object.keys(out).filter((k2) => k2 !== "id" && k2 !== "fromLab").length ? out : null;
+  }
+  function layoutLine2(l) {
+    const sys = l.system ? SYSTEM_LABEL[l.system] : "Layout";
+    const deg2 = (v) => `${Math.round(v * 10) / 10}\xB0`;
+    const parts = [];
+    if (l.system === "dual" || !l.system && l.drilling !== void 0) {
+      if (l.drilling !== void 0) parts.push(deg2(l.drilling));
+      if (l.pinToPap !== void 0) parts.push(`${fmtInches(l.pinToPap)}"`);
+      if (l.valAngle !== void 0) parts.push(deg2(l.valAngle));
+    } else if (l.system === "pinbuffer") {
+      if (l.pinToPap !== void 0) parts.push(`${fmtInches(l.pinToPap)}"`);
+      if (l.psaToPap !== void 0) parts.push(`${fmtInches(l.psaToPap)}"`);
+      if (l.pinBuffer !== void 0) parts.push(`${fmtInches(l.pinBuffer)}"`);
+    } else if (l.system === "2ls") {
+      if (l.pinToPap !== void 0) parts.push(`${fmtInches(l.pinToPap)}"`);
+      if (l.psaToPap !== void 0) parts.push(`${fmtInches(l.psaToPap)}"`);
+      if (l.pinToGrip !== void 0) parts.push(`${fmtInches(l.pinToGrip)}"`);
+    }
+    if (parts.length) return `${sys}: ${parts.join(" \xD7 ")}${l.text ? " \xB7 " + l.text : ""}`;
+    return l.text ? `${sys}: ${l.text}` : sys;
+  }
+  var avg2 = (v) => {
+    const x = v.filter((n) => typeof n === "number" && Number.isFinite(n));
+    return x.length ? x.reduce((a, b) => a + b, 0) / x.length : null;
+  };
+  function layoutStats(layouts, shots) {
+    const dated = layouts.filter((l) => l.on).sort((a, b) => a.on.localeCompare(b.on));
+    const out = /* @__PURE__ */ new Map();
+    dated.forEach((l, i) => {
+      const from = l.on, to = dated[i + 1]?.on ?? null;
+      const t0 = Date.parse(from + "T00:00:00"), t1 = to ? Date.parse(to + "T00:00:00") : Infinity;
+      const mine = shots.filter((s) => {
+        const t = Date.parse(s.at);
+        return Number.isFinite(t) && t >= t0 && t < t1;
+      });
+      const enough = mine.length >= 3;
+      out.set(l.id, { shots: mine.length, entryAngle: enough ? avg2(mine.map((s) => s.entryAngle)) : null, breakpointFt: enough ? avg2(mine.map((s) => s.breakpointFt)) : null, speedMph: enough ? avg2(mine.map((s) => s.speedMph)) : null, from, to });
+    });
+    return out;
+  }
+  function currentLayout(layouts) {
+    if (!layouts.length) return null;
+    const dated = layouts.filter((l) => l.on).sort((a, b) => a.on.localeCompare(b.on));
+    return dated.length ? dated[dated.length - 1] : layouts[layouts.length - 1];
+  }
+
+  // camera/ballnotes.ts
+  init_state();
+  var esc3 = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  var newId2 = () => Math.random().toString(36).slice(2, 9);
+  var today2 = () => {
+    const d = /* @__PURE__ */ new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  var when = (on3) => on3 ? (/* @__PURE__ */ new Date(on3 + "T00:00:00")).toLocaleDateString(void 0, { month: "short", day: "numeric", year: "numeric" }) : "no date";
+  var open2 = /* @__PURE__ */ new Set();
+  var FIELDS = [
+    { key: "drilling", label: "Drilling angle (\xB0)", kind: "deg", systems: ["dual"], placeholder: "70" },
+    { key: "pinToPap", label: "Pin to PAP (in)", kind: "in", systems: ["dual", "pinbuffer", "2ls"], placeholder: "3 3/4" },
+    { key: "valAngle", label: "Angle to the VAL (\xB0)", kind: "deg", systems: ["dual"], placeholder: "60" },
+    { key: "psaToPap", label: "PSA to PAP (in)", kind: "in", systems: ["pinbuffer", "2ls"], placeholder: "5 5/8" },
+    { key: "pinBuffer", label: "Pin buffer (in)", kind: "in", systems: ["pinbuffer"], placeholder: "3 1/8" },
+    { key: "pinToGrip", label: "Pin to grip centre (in)", kind: "in", systems: ["2ls"], placeholder: "2 7/8" }
+  ];
+  var sameBall = (sheetName, b) => {
+    const a = sheetName.toLowerCase().trim(), n = b.name.toLowerCase().trim();
+    return !!a && (a === n || n.endsWith(a) || a.endsWith(n));
+  };
+  function labEntries(b) {
+    const f = (v) => fmtInches(v);
+    return (S.profile?.sheets ?? []).filter((s) => sameBall(`${s.ball.manufacturer ?? ""} ${s.ball.name}`.trim(), b) || sameBall(s.ball.name, b)).map((s) => {
+      const e = { id: newId2(), on: (s.at || "").slice(0, 10), system: s.system, pap: `${f(s.pap.over)} over, ${f(s.pap.up)} up`, text: s.layoutText, fromLab: true };
+      if (s.system === "dual") Object.assign(e, { drilling: s.dual.drilling, pinToPap: s.dual.pinToPap, valAngle: s.dual.valAngle });
+      else if (s.system === "pinbuffer") Object.assign(e, { pinToPap: s.pb.pinToPap, psaToPap: s.pb.psaToPap, pinBuffer: s.pb.pinBuffer });
+      else Object.assign(e, { pinToPap: s.ls2.pinToPap, psaToPap: s.ls2.psaToPap, pinToGrip: s.ls2.pinToGrip });
+      return cleanLayout(e);
+    }).filter((e) => !!e);
+  }
+  function ballNotesHtml(b) {
+    const layouts = b.layouts ?? [];
+    const cur2 = currentLayout(layouts);
+    const shots = S.shots.filter((s) => s.ballId === b.id).map((s) => ({ at: s.at, entryAngle: s.m?.entryAngle ?? null, breakpointFt: s.m?.breakpointFt ?? null, speedMph: s.a?.speedMph ?? null }));
+    const stats = layoutStats(layouts, shots);
+    const ordered = [...layouts].sort((x, y) => (y.on ?? "").localeCompare(x.on ?? ""));
+    const lab2 = labEntries(b).filter((l) => !layouts.some((x) => x.fromLab && x.on === l.on && x.text === l.text));
+    const entry = (l) => {
+      const st2 = stats.get(l.id);
+      const track = !l.on ? `Add the date it was drilled to see the shots made with this layout.` : st2 && st2.shots ? `${st2.shots} shot${st2.shots === 1 ? "" : "s"} with this ball ${st2.to ? `from ${when(st2.from)} to ${when(st2.to)}` : `since ${when(st2.from)}`}${st2.entryAngle !== null ? `: ${st2.entryAngle.toFixed(1)}\xB0 entry${st2.breakpointFt !== null ? `, breakpoint ${st2.breakpointFt.toFixed(0)} ft` : ""}${st2.speedMph !== null ? `, ${st2.speedMph.toFixed(1)} mph` : ""}` : st2.shots < 3 ? " (too few to average)" : ""}` : `No shots with this ball since ${when(l.on)} yet.`;
+      return `<div class="bn-entry" data-lid="${esc3(l.id)}" style="border-top:1px solid var(--line);padding:8px 0"><div class="row"><b>${esc3(layoutLine2(l))}</b><span class="u">${esc3(when(l.on))}${l.id === cur2?.id ? " \xB7 current" : ""}</span></div>
+      ${l.pap ? `<div class="u">PAP: ${esc3(l.pap)}</div>` : ""}${l.surface ? `<div class="u">Surface: ${esc3(l.surface)}</div>` : ""}${l.shop ? `<div class="u">Drilled by: ${esc3(l.shop)}</div>` : ""}${l.note ? `<div class="note" style="white-space:pre-wrap">${esc3(l.note)}</div>` : ""}
+      <div class="u" style="opacity:.85">${esc3(track)}</div>
+      <div class="chips"><button class="chip" data-bn="edit">Edit</button><button class="chip danger" data-bn="rm">Remove</button></div></div>`;
+    };
+    return `<details class="bn" data-bn-card="${esc3(b.id)}" ${open2.has(b.id) ? "open" : ""} style="margin-top:8px"><summary class="k" style="cursor:pointer">Notes and layouts${layouts.length ? ` (${layouts.length})` : ""}${b.notes ? " \xB7 notes" : ""}</summary>
+    <div class="u" style="margin:6px 0">${cur2 ? `Now: <b>${esc3(layoutLine2(cur2))}</b>${cur2.on ? `, drilled ${esc3(when(cur2.on))}` : ""}.` : "No layout recorded. Add it if you know it: it's on the drill sheet your driller gave you, and your pro shop can tell you."}</div>
+    ${ordered.map(entry).join("")}
+    ${lab2.length ? `<div class="chips">${lab2.map((l, i) => `<button class="chip add" data-bn="lab" data-i="${i}">+ Use my Layout Lab layout: ${esc3(layoutLine2(l))}</button>`).join("")}</div>` : ""}
+    <details class="bn-form" style="margin-top:6px"><summary class="chip add" style="display:inline-block;cursor:pointer">+ Add a layout</summary>
+      <div class="two"><div class="field"><label>Date drilled or resurfaced</label><input type="date" data-bf="on" value="${today2()}" max="${today2()}"></div>
+        <div class="field"><label>System</label><select data-bf="system"><option value="">don't know</option>${Object.keys(SYSTEM_LABEL).map((k2) => `<option value="${k2}">${SYSTEM_LABEL[k2]}</option>`).join("")}</select></div></div>
+      <div class="two">${FIELDS.map((f) => `<div class="field" data-systems="${f.systems.join(",")}"><label>${f.label}</label><input data-bf="${f.key}" data-kind="${f.kind}" inputmode="${f.kind === "in" ? "text" : "decimal"}" placeholder="${f.placeholder}"></div>`).join("")}</div>
+      <div class="field"><label>PAP (over / up, as on the sheet)</label><input data-bf="pap" placeholder="4 1/2 over, 1 up"></div>
+      <div class="field"><label>The layout in words, or a driller's notation</label><input data-bf="text" placeholder="pin up, thumb slug, 1/4 inch bevel"></div>
+      <div class="two"><div class="field"><label>Surface</label><input data-bf="surface" placeholder="2000 Abralon, polished"></div><div class="field"><label>Drilled by</label><input data-bf="shop" placeholder="shop or driller"></div></div>
+      <div class="field"><label>Notes on this layout</label><textarea data-bf="note" rows="2" placeholder="how it reads, what you'd change"></textarea></div>
+      <div class="chips"><button class="chip add" data-bn="save">Save layout</button><button class="chip" data-bn="cancel">Cancel</button></div>
+      <div class="note" data-bn="msg"></div></details>
+    <div class="field" style="margin-top:8px"><label>Notes on this ball</label><textarea data-bn="notes" rows="3" placeholder="grip, how it reads on different patterns, when you got it, anything you want to remember">${esc3(b.notes ?? "")}</textarea></div>
+    <div class="note">Kept only on this phone. Fill in only what you know; your driller's sheet is the record.</div></details>`;
+  }
+  function wireBallNotes(card, b) {
+    const det = card.querySelector("details.bn");
+    if (!det) return;
+    det.addEventListener("toggle", () => det.open ? open2.add(b.id) : open2.delete(b.id));
+    const form = det.querySelector(".bn-form");
+    const get = (k2) => form.querySelector(`[data-bf="${k2}"]`);
+    const msg = form.querySelector('[data-bn="msg"]');
+    let editing = null;
+    const sys = () => get("system").value;
+    const showFields = () => form.querySelectorAll("[data-systems]").forEach((f) => f.style.display = !sys() || f.dataset.systems.split(",").includes(sys()) ? "" : "none");
+    get("system").onchange = showFields;
+    showFields();
+    const done2 = async () => {
+      open2.add(b.id);
+      await saveArsenal();
+    };
+    form.querySelector('[data-bn="cancel"]').onclick = () => form.open = false;
+    form.querySelector('[data-bn="save"]').onclick = async () => {
+      const e = { id: editing ?? newId2(), on: get("on").value || void 0, system: sys() || void 0 };
+      for (const f of FIELDS) {
+        const raw = get(f.key).value.trim();
+        if (!raw) continue;
+        const v = f.kind === "in" ? parseInches2(raw) : Number.isFinite(parseFloat(raw)) && parseFloat(raw) >= 0 && parseFloat(raw) <= 180 ? parseFloat(raw) : null;
+        if (v === null) return void (msg.textContent = `I couldn't read "${raw}" for ${f.label}. ${f.kind === "in" ? "Write it like 3 3/4 or 3.75." : "Write a number of degrees."}`);
+        e[f.key] = v;
+      }
+      for (const k2 of ["pap", "text", "surface", "shop", "note"]) e[k2] = get(k2).value;
+      const clean = cleanLayout(e);
+      if (!clean) return void (msg.textContent = "Fill in at least one thing you know.");
+      const prev = (b.layouts ?? []).find((x) => x.id === clean.id);
+      if (prev?.fromLab) clean.fromLab = true;
+      b.layouts = [...(b.layouts ?? []).filter((x) => x.id !== clean.id), clean];
+      await done2();
+    };
+    det.querySelectorAll(".bn-entry").forEach((row) => {
+      const id = row.dataset.lid;
+      row.querySelector('[data-bn="rm"]').onclick = async () => {
+        if (!confirm("Remove this layout entry?")) return;
+        b.layouts = (b.layouts ?? []).filter((x) => x.id !== id);
+        await done2();
+      };
+      row.querySelector('[data-bn="edit"]').onclick = () => {
+        const l = (b.layouts ?? []).find((x) => x.id === id);
+        if (!l) return;
+        editing = id;
+        form.open = true;
+        get("on").value = l.on ?? "";
+        get("system").value = l.system ?? "";
+        for (const f of FIELDS) get(f.key).value = l[f.key] === void 0 ? "" : f.kind === "in" ? fmtInches(l[f.key]) : String(l[f.key]);
+        for (const k2 of ["pap", "text", "surface", "shop", "note"]) get(k2).value = l[k2] ?? "";
+        showFields();
+        msg.textContent = "Editing this entry. Save to keep your changes.";
+        form.scrollIntoView({ block: "center", behavior: "smooth" });
+      };
+    });
+    det.querySelectorAll('[data-bn="lab"]').forEach((btn) => {
+      btn.onclick = async () => {
+        const list = labEntries(b).filter((l2) => !(b.layouts ?? []).some((x) => x.fromLab && x.on === l2.on && x.text === l2.text));
+        const l = list[Number(btn.dataset.i)];
+        if (!l) return;
+        b.layouts = [...b.layouts ?? [], l];
+        await done2();
+      };
+    });
+    const notes = det.querySelector('textarea[data-bn="notes"]');
+    notes.onchange = async () => {
+      b.notes = notes.value.replace(/\r/g, "").slice(0, 2e3).trim() || void 0;
+      await done2();
+    };
+  }
+
   // camera/view3d.ts
   init_vision();
   var LANE_W = 41.5;
@@ -23965,7 +24193,7 @@ ${url}`);
     const spB = smoothNums(speeds(r, tB, scale2), 1);
     const spHip = smoothNums(speeds(r, hipT, scale2), 2);
     const hOf = (i) => r[i].wrist && hipT[i] && shT[i] ? (hipT[i].y - r[i].wrist.y) / Math.max(1, hipT[i].y - shT[i].y) : NaN;
-    const near = r.map((x, i) => i).filter((i) => r[i].ok && r[i].wristV >= 0.3 && r[i].t >= o.releaseT - 0.6 && r[i].t <= o.releaseT + 0.1 && Number.isFinite(hOf(i)));
+    const near = r.map((x, i) => i).filter((i) => r[i].ok && r[i].wristV >= 0.3 && r[i].t >= o.releaseT - 0.3 && r[i].t <= o.releaseT + 0.1 && Number.isFinite(hOf(i)));
     if (near.length >= 3) {
       const bottom = near.reduce((a, b) => hOf(b) < hOf(a) ? b : a);
       if (hOf(bottom) < 0.1) o = { ...o, releaseT: r[bottom].t };
@@ -24316,7 +24544,7 @@ ${url}`);
   var tool = "line";
   var rate2 = 0.5;
   var lead = 2.5;
-  var when = (iso2) => new Date(iso2).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  var when2 = (iso2) => new Date(iso2).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   var ballName = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
   function bestShotFor(s) {
     const pool = S.shots.filter((x) => x.id !== s.id && x.hasClip && (!s.ballId || x.ballId === s.ballId));
@@ -24468,7 +24696,7 @@ ${url}`);
     const lines = [`LaneIQ shot comparison${S.profile ? ` for ${S.profile.name}` : ""}`];
     sides2.forEach((s, i) => {
       const m = s.shot.m;
-      lines.push("", `${i ? "B" : "A"}: ${when(s.shot.at)}, ${ballName(s.shot.ballId)}${s.shot.result ? `, ${s.shot.result.pinsDown === 10 ? "strike" : `${s.shot.result.pinsDown} pins`}` : ""}`);
+      lines.push("", `${i ? "B" : "A"}: ${when2(s.shot.at)}, ${ballName(s.shot.ballId)}${s.shot.result ? `, ${s.shot.result.pinsDown === 10 ? "strike" : `${s.shot.result.pinsDown} pins`}` : ""}`);
       for (const f of FEATURES) {
         const v = m[f.key];
         if (typeof v === "number") lines.push(`  ${f.label}: ${v.toFixed(1)} ${f.unit}`.trimEnd());
@@ -24498,12 +24726,12 @@ ${url}`);
     const other = b ?? bestShotFor(a);
     sides2 = [await sideFor(a), ...other ? [await sideFor(other)] : []];
     const pickList = S.shots.filter((x) => x.id !== a.id && x.hasClip).slice(-60).reverse();
-    const head = (s, i) => `<div class="note"><b style="color:${i ? "var(--mg)" : "var(--cy)"}">${i ? "B" : "A"}</b> ${esc(when(s.shot.at))} \xB7 ${esc(ballName(s.shot.ballId))} \xB7 ${s.shot.a.speedMph.toFixed(1)} mph${s.shot.result ? ` \xB7 ${s.shot.result.pinsDown === 10 ? "strike" : s.shot.result.pinsDown + " pins"}` : ""}</div>`;
+    const head = (s, i) => `<div class="note"><b style="color:${i ? "var(--mg)" : "var(--cy)"}">${i ? "B" : "A"}</b> ${esc(when2(s.shot.at))} \xB7 ${esc(ballName(s.shot.ballId))} \xB7 ${s.shot.a.speedMph.toFixed(1)} mph${s.shot.result ? ` \xB7 ${s.shot.result.pinsDown === 10 ? "strike" : s.shot.result.pinsDown + " pins"}` : ""}</div>`;
     const stage = (s, i) => s.url ? `<div style="flex:1;min-width:0">${head(s, i)}<div class="stagebox" style="margin:4px 0"><video id="cp-v${i}" src="${s.url}" playsinline muted preload="auto"></video><canvas class="ov" id="cp-o${i}" width="${s.shot.vw}" height="${s.shot.vh}"></canvas><canvas class="ov" id="cp-d${i}" style="touch-action:none;pointer-events:auto"></canvas></div></div>` : `<div style="flex:1;min-width:0">${head(s, i)}<div class="note">No video for this shot.</div></div>`;
     const rows2 = FEATURES.filter((f) => sides2.some((s) => typeof s.shot.m[f.key] === "number"));
     el.innerHTML = `<div class="row"><h2>Side by side</h2><button class="btn ghost" id="cp-close">Close</button></div>
     <div class="note">Both clips are lined up at the moment the ball leaves the hand. Draw on either picture to mark it up.</div>
-    <div class="field"><label>Compare with</label><select id="cp-pick">${other ? "" : `<option value="">choose a shot\u2026</option>`}${pickList.map((x) => `<option value="${x.id}" ${other?.id === x.id ? "selected" : ""}>${esc(when(x.at))} \xB7 ${esc(ballName(x.ballId))} \xB7 ${x.a.speedMph.toFixed(1)} mph${x.result?.pinsDown === 10 ? " \xB7 strike" : ""}${x.id === bestShotFor(a)?.id ? " (your best)" : ""}</option>`).join("")}</select></div>
+    <div class="field"><label>Compare with</label><select id="cp-pick">${other ? "" : `<option value="">choose a shot\u2026</option>`}${pickList.map((x) => `<option value="${x.id}" ${other?.id === x.id ? "selected" : ""}>${esc(when2(x.at))} \xB7 ${esc(ballName(x.ballId))} \xB7 ${x.a.speedMph.toFixed(1)} mph${x.result?.pinsDown === 10 ? " \xB7 strike" : ""}${x.id === bestShotFor(a)?.id ? " (your best)" : ""}</option>`).join("")}</select></div>
     <div style="display:flex;gap:8px">${sides2.map(stage).join("")}</div>
     <div class="field"><label>From release (s)</label><input id="cp-scrub" type="range" min="-3" max="3" step="0.02" value="-${lead}"></div>
     <div class="chips"><button class="btn" id="cp-play">Play both</button><button class="chip" id="cp-back">\u25C0 frame</button><button class="chip" id="cp-fwd">frame \u25B6</button>${[0.25, 0.5, 1].map((r) => `<button class="chip ${r === rate2 ? "sel" : ""}" data-rate="${r}">${r}\xD7</button>`).join("")}</div>
@@ -24682,8 +24910,8 @@ ${url}`);
   var dirWord = (b) => b > 0 ? "left" : "right";
   function adviseMove(recent, hand3, plan, lane) {
     const last = recent[recent.length - 1];
-    const sameBall = last?.ballId ? recent.filter((s) => s.ballId === last.ballId) : recent;
-    const window2 = sameBall.slice(-6);
+    const sameBall2 = last?.ballId ? recent.filter((s) => s.ballId === last.ballId) : recent;
+    const window2 = sameBall2.slice(-6);
     const base = { kind: "insufficient", headline: "", feet: 0, eyes: 0, from: { stand: null, arrows: null }, to: { stand: null, arrows: null }, why: [], shotsUsed: 0 };
     const stands = window2.map((s) => s.plan?.stand ?? s.body?.startBoard ?? null).filter((x) => x !== null);
     const aims = window2.map((s) => s.plan?.arrows ?? s.m.arrowsBoard).filter((x) => x !== null);
@@ -25233,8 +25461,8 @@ ${url}`);
     if (R2 >= 3) for (let i = 0; i < 50; i++) h = md5(h.subarray(0, n));
     return { key: h.subarray(0, n), aes: /\/CFM\s*\/AESV2/.test(dict), n };
   }
-  async function decryptStream(d, enc, num4, gen) {
-    const ext = Uint8Array.from([num4 & 255, num4 >> 8 & 255, num4 >> 16 & 255, gen & 255, gen >> 8 & 255]);
+  async function decryptStream(d, enc, num5, gen) {
+    const ext = Uint8Array.from([num5 & 255, num5 >> 8 & 255, num5 >> 16 & 255, gen & 255, gen >> 8 & 255]);
     const k2 = md5(concat(enc.key, ext, enc.aes ? fromLatin1("sAlT") : new Uint8Array(0))).subarray(0, Math.min(enc.n + 5, 16));
     if (!enc.aes) return rc4(k2, d);
     const subtle = globalThis.crypto?.subtle;
@@ -25284,7 +25512,7 @@ ${url}`);
     }
     return Uint8Array.from(out);
   };
-  function parseCMap(txt) {
+  function parseCMap(txt2) {
     const map = /* @__PURE__ */ new Map();
     let width = 1;
     const u16 = (h) => {
@@ -25293,12 +25521,12 @@ ${url}`);
       for (let i = 0; i + 1 < b.length; i += 2) s += String.fromCharCode(b[i] << 8 | b[i + 1]);
       return s;
     };
-    for (const blk of txt.matchAll(/beginbfchar([\s\S]*?)endbfchar/g))
+    for (const blk of txt2.matchAll(/beginbfchar([\s\S]*?)endbfchar/g))
       for (const m of blk[1].matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g)) {
         width = Math.max(width, m[1].length / 2);
         map.set(parseInt(m[1], 16), u16(m[2]));
       }
-    for (const blk of txt.matchAll(/beginbfrange([\s\S]*?)endbfrange/g))
+    for (const blk of txt2.matchAll(/beginbfrange([\s\S]*?)endbfrange/g))
       for (const m of blk[1].matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*(?:<([0-9A-Fa-f]+)>|\[([^\]]*)\])/g)) {
         width = Math.max(width, m[1].length / 2);
         const lo = parseInt(m[1], 16);
@@ -25319,7 +25547,7 @@ ${url}`);
     const heads = [...s.matchAll(/(?:^|[\r\n\s])(\d+)\s+(\d+)\s+obj\b/g)];
     const streamOf = async (o) => o?.raw ? /\/Filter/.test(o.dict) ? inflate(o.raw) : o.raw : null;
     for (let k2 = 0; k2 < heads.length; k2++) {
-      const num4 = Number(heads[k2][1]);
+      const num5 = Number(heads[k2][1]);
       const gen = Number(heads[k2][2]);
       const start = heads[k2].index + heads[k2][0].length;
       const stop = k2 + 1 < heads.length ? heads[k2 + 1].index : s.length;
@@ -25334,14 +25562,14 @@ ${url}`);
           raw = buf.subarray(a, e);
           if (enc && !/\/Type\s*\/XRef/.test(dict)) {
             try {
-              raw = await decryptStream(raw, enc, num4, gen);
+              raw = await decryptStream(raw, enc, num5, gen);
             } catch {
               raw = null;
             }
           }
         }
       }
-      objs.set(num4, { dict, raw });
+      objs.set(num5, { dict, raw });
     }
     for (const [, o] of [...objs]) {
       if (!/\/Type\s*\/ObjStm/.test(o.dict)) continue;
@@ -25352,10 +25580,10 @@ ${url}`);
       const text = latin1(data);
       const nums3 = (text.slice(0, first).match(/\d+/g) ?? []).map(Number);
       for (let k2 = 0; k2 < n; k2++) {
-        const num4 = nums3[2 * k2];
+        const num5 = nums3[2 * k2];
         const off = nums3[2 * k2 + 1];
         const nxt = k2 + 1 < n ? nums3[2 * k2 + 3] : text.length - first;
-        objs.set(num4, { dict: text.slice(first + off, first + nxt), raw: null });
+        objs.set(num5, { dict: text.slice(first + off, first + nxt), raw: null });
       }
     }
     const ref = (str5, key2) => {
@@ -25554,26 +25782,26 @@ ${url}`);
     </div>
     <div class="card"><div class="k">The oil, from above</div><div style="display:flex;gap:12px;align-items:flex-start"><canvas id="pe-prev" width="180" height="315" style="width:120px;height:210px;border-radius:10px;flex:none"></canvas><div class="note" id="pe-desc"></div></div></div>
     <div class="chips"><button class="btn" id="pe-save">${existing ? "Save" : "Save pattern"}</button></div><div class="note" id="pe-err"></div>`;
-    const num4 = (id) => {
+    const num5 = (id) => {
       const v = parseFloat($(id).value);
       return Number.isFinite(v) ? v : void 0;
     };
     const build = () => {
-      const len = num4("pe-len");
+      const len = num5("pe-len");
       if (len === void 0 || len < 20 || len > 55) return null;
       const nm = $("pe-name").value.trim() || `${len} ft pattern`;
-      const ratio = num4("pe-ratio");
+      const ratio = num5("pe-ratio");
       return {
         id: existing?.id ?? newId(),
         key: nm.toLowerCase(),
         name: nm,
         series: "mine",
         lengthFt: Math.round(len),
-        volumeMl: num4("pe-vol"),
+        volumeMl: num5("pe-vol"),
         ratio: ratio !== void 0 && ratio >= 1 && ratio <= 15 ? ratio : void 0,
-        forwardMl: num4("pe-fwd"),
-        reverseMl: num4("pe-rev"),
-        brushDropFt: num4("pe-drop"),
+        forwardMl: num5("pe-fwd"),
+        reverseMl: num5("pe-rev"),
+        brushDropFt: num5("pe-drop"),
         // the load table is only kept while the length still matches the sheet it came from
         rows: r.tableOk && Math.round(len) === r.lengthFt ? r.rows : existing?.rows && Math.round(len) === existing.lengthFt ? existing.rows : void 0,
         from,
@@ -25609,7 +25837,7 @@ ${url}`);
   // camera/coachlive.ts
   var hand2 = () => S.profile?.hand ?? "R";
   var ballName2 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "unknown ball";
-  var day = (iso2) => new Date(iso2).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  var day2 = (iso2) => new Date(iso2).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
   function moveNow() {
     const shots = sessionShots();
     return adviseMove(shots, hand2(), S.target, readLane(shots.map((x) => ({ a: x.a, ballId: x.ballId }))));
@@ -25631,7 +25859,7 @@ ${url}`);
       <div class="field"><label>Oil pattern tonight</label><div class="chips" style="margin:0;align-items:center"><select id="tg-pat" style="flex:1;min-width:0"><option value="">None / not known</option>${S.myPatterns.map((p) => `<option value="${esc(p.id)}" ${S.where.patternId === p.id ? "selected" : ""}>${esc(p.name)} \xB7 ${p.lengthFt} ft</option>`).join("")}</select><button class="chip" id="tg-pats">My patterns</button></div></div>
       <div class="note">Used to remember how each pair played for you, and to draw the oil on your lane. It stays on this phone.</div></div>
     <div class="chips"><button class="btn" id="tg-save">Save target</button>${S.target ? `<button class="btn ghost" id="tg-clear">No target</button>` : ""}</div>`;
-    const num4 = (id) => {
+    const num5 = (id) => {
       const v = parseFloat($(id).value);
       return Number.isFinite(v) ? Math.max(1, Math.min(39, v)) : void 0;
     };
@@ -25651,9 +25879,9 @@ ${url}`);
       renderTonight();
     });
     $("tg-save").onclick = async () => {
-      const arrows = num4("tg-arrows");
+      const arrows = num5("tg-arrows");
       if (arrows === void 0) return void $("tg-arrows").focus();
-      S.target = { arrows, stand: num4("tg-stand"), breakpoint: num4("tg-bp"), at: (/* @__PURE__ */ new Date()).toISOString() };
+      S.target = { arrows, stand: num5("tg-stand"), breakpoint: num5("tg-bp"), at: (/* @__PURE__ */ new Date()).toISOString() };
       S.where = { center: $("tg-center").value.trim(), lane: $("tg-lane").value.trim(), patternId: $("tg-pat").value };
       await saveCoach();
       el.classList.remove("on");
@@ -25705,7 +25933,7 @@ ${url}`);
       const p = activePattern();
       return p ? `<div class="note">Oil: <b>${esc(p.name)}</b>, ${p.lengthFt} ft${p.volumeMl !== void 0 ? `, ${p.volumeMl} mL` : ""}${p.ratio !== void 0 ? `, ${p.ratio}:1` : ""}. Rule of 31: break near board ${ruleOf31(p.lengthFt)}. ${p.rows?.length ? "Drawn on the lane from the sheet's load table." : "Shape on the lane is estimated."}</div>` : `<div class="note">Add tonight's oil pattern (Target, then My patterns) to see the oil drawn on your lane.</div>`;
     })()}
-    ${last ? `<div class="lr-next"><b>Last time on this pair</b> (${esc(day(last.date))}): ${esc(lineOf(last) || "no line recorded")}${last.ballIds.length ? ` with the ${esc(last.ballIds.map(ballName2).join(", "))}` : ""}${last.pocketPct !== null ? `, ${Math.round(last.pocketPct)}% in the pocket` : ""}${last.strikePct !== null ? `, ${Math.round(last.strikePct)}% strikes` : ""}.${best && best !== last ? `<div class="u">Best here: ${esc(day(best.date))}, ${esc(lineOf(best))}, ${Math.round(best.pocketPct)}% in the pocket.</div>` : ""}${(best ?? last).arrows !== null ? `<div class="chips"><button class="chip" id="tn-use">Start on that line</button></div>` : ""}</div>` : ""}</div>`;
+    ${last ? `<div class="lr-next"><b>Last time on this pair</b> (${esc(day2(last.date))}): ${esc(lineOf(last) || "no line recorded")}${last.ballIds.length ? ` with the ${esc(last.ballIds.map(ballName2).join(", "))}` : ""}${last.pocketPct !== null ? `, ${Math.round(last.pocketPct)}% in the pocket` : ""}${last.strikePct !== null ? `, ${Math.round(last.strikePct)}% strikes` : ""}.${best && best !== last ? `<div class="u">Best here: ${esc(day2(best.date))}, ${esc(lineOf(best))}, ${Math.round(best.pocketPct)}% in the pocket.</div>` : ""}${(best ?? last).arrows !== null ? `<div class="chips"><button class="chip" id="tn-use">Start on that line</button></div>` : ""}</div>` : ""}</div>`;
     $("tn-edit").onclick = () => openTarget();
     $("tn-use")?.addEventListener("click", () => {
       const src = best ?? last;
@@ -26033,7 +26261,7 @@ ${url}`);
     return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
   };
   var mean10 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
-  var day2 = (iso2) => new Date(iso2).toLocaleDateString([], { month: "short", day: "numeric" });
+  var day3 = (iso2) => new Date(iso2).toLocaleDateString([], { month: "short", day: "numeric" });
   var ballName3 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "unknown ball";
   var specLine2 = (b) => [b.rg && `RG ${b.rg.value}`, b.differential && `diff ${b.differential.value}`, b.coverstock?.value ?? b.coverstockType?.value, b.core?.value].filter(Boolean).join(" \xB7 ");
   var badge = (ok, text, warn = false) => `<span class="badge ${ok ? "good" : warn ? "low" : "moderate"}">${esc(text)}</span>`;
@@ -26108,7 +26336,7 @@ ${url}`);
       <div class="chips"><button class="chip" id="co-target">${S.target ? `Target: aim ${S.target.arrows}${S.target.stand !== void 0 ? ` from ${S.target.stand}` : ""}` : "Set my target"}</button></div></div>
 
     <h3>Move to try</h3>
-    <div class="card"><div class="lr-head" style="font-size:17px">${esc(move.headline)}</div><div class="note">${sess.length ? `From your latest session (${day2(sess[0].at)}, ${sess.length} shots).` : "Bowl a session first."}</div><ul>${move.why.map((w) => `<li>${esc(w)}</li>`).join("")}</ul></div>
+    <div class="card"><div class="lr-head" style="font-size:17px">${esc(move.headline)}</div><div class="note">${sess.length ? `From your latest session (${day3(sess[0].at)}, ${sess.length} shots).` : "Bowl a session first."}</div><ul>${move.why.map((w) => `<li>${esc(w)}</li>`).join("")}</ul></div>
 
     <h3>Ball advice, to take to your pro shop</h3>
     <div class="card"><div class="lr-head" style="font-size:17px">${esc(balls.headline)}</div>
@@ -26132,7 +26360,7 @@ ${url}`);
     <div class="card"><div class="lr-head" style="font-size:17px">${esc(tired.headline)}</div><ul>${tired.points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul></div>
 
     <h3>Lane-pair memory</h3>
-    <div class="card">${mems.length ? mems.slice(0, 8).map((m) => `<div style="padding:8px 0;border-top:1px solid var(--line)"><b>${esc(m.center)} \xB7 lanes ${esc(m.pair)}</b><div class="note">${m.sessions.length} session${m.sessions.length === 1 ? "" : "s"}, last ${esc(day2(m.sessions[0].date))}${m.best ? ` \xB7 best: ${m.best.stand !== null ? `stood ${m.best.stand.toFixed(0)}, ` : ""}${m.best.arrows !== null ? `arrows ${m.best.arrows.toFixed(0)}, ` : ""}${Math.round(m.best.pocketPct)}% pocket with the ${esc(m.best.ballIds.map(ballName3).join(", ") || "unknown ball")}` : ""}</div></div>`).join("") : `<div class="u">Type your centre and lane under Target on the Live screen. Next time you're on that pair, the app shows where you stood, what you aimed at and how it went.</div>`}</div>
+    <div class="card">${mems.length ? mems.slice(0, 8).map((m) => `<div style="padding:8px 0;border-top:1px solid var(--line)"><b>${esc(m.center)} \xB7 lanes ${esc(m.pair)}</b><div class="note">${m.sessions.length} session${m.sessions.length === 1 ? "" : "s"}, last ${esc(day3(m.sessions[0].date))}${m.best ? ` \xB7 best: ${m.best.stand !== null ? `stood ${m.best.stand.toFixed(0)}, ` : ""}${m.best.arrows !== null ? `arrows ${m.best.arrows.toFixed(0)}, ` : ""}${Math.round(m.best.pocketPct)}% pocket with the ${esc(m.best.ballIds.map(ballName3).join(", ") || "unknown ball")}` : ""}</div></div>`).join("") : `<div class="u">Type your centre and lane under Target on the Live screen. Next time you're on that pair, the app shows where you stood, what you aimed at and how it went.</div>`}</div>
 
     <h3>Share</h3>
     <div class="card"><div class="k">Bowler DNA card</div><div class="u">Your speed, rev rate, axis, PAP, entry angle, pocket and strike rate on one picture, each marked measured or entered. For your coach, your pro shop or your friends.</div><div class="chips"><button class="btn" id="co-dna">Make my card</button></div><div class="note" id="co-dna-note"></div></div>
@@ -26276,7 +26504,7 @@ ${url}`);
     const mine = S.shots;
     const last = mine[mine.length - 1];
     const tile = (tab, title, line2) => `<button class="card" data-mypage="${tab}" style="text-align:left;cursor:pointer;color:inherit;font:inherit;width:100%"><div class="lr-head" style="font-size:16px">${title}</div><div class="note">${esc(line2)}</div></button>`;
-    return `<div id="me-hub" class="grid">${tile("shots", "My shots", mine.length ? `${mine.length} shot${mine.length === 1 ? "" : "s"} with video \xB7 last ${when2(last.at)}` : "Replays, lane view, top-down and 3D")}${tile("score", "My scores", "Scorecard, spare coach and statistics")}${tile("coach", "My coach", "What to work on, a move to try, ball advice, drills")}${tile("insights", "My insights", "Averages, common errors, plan, shot map, skills")}</div>`;
+    return `<div id="me-hub" class="grid">${tile("shots", "My shots", mine.length ? `${mine.length} shot${mine.length === 1 ? "" : "s"} with video \xB7 last ${when3(last.at)}` : "Replays, lane view, top-down and 3D")}${tile("score", "My scores", "Scorecard, spare coach and statistics")}${tile("coach", "My coach", "What to work on, a move to try, ball advice, drills")}${tile("insights", "My insights", "Averages, common errors, plan, shot map, skills")}</div>`;
   }
   var communityView = "friends";
   function renderCommunity() {
@@ -26301,14 +26529,14 @@ ${url}`);
     $("me-junior")?.addEventListener("click", () => void openJuniorHub());
   }
   var ballName4 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
-  var when2 = (iso2) => new Date(iso2).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  var when3 = (iso2) => new Date(iso2).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   var ZONE = ZONE_LABEL;
   var pct3 = (n) => `${Math.round(n)}%`;
   function renderShots() {
     const el = $("shots-page");
     const list = [...S.shots].reverse().slice(0, 200);
     el.innerHTML = `<h2>Shots</h2>${S.profile?.junior ? "" : `<div class="chips"><button class="btn ghost" id="sh-share">Share a session</button><button class="btn ghost" id="sh-compare">Compare with a friend</button></div>`}<div class="note">Every tracked shot is saved on this phone with its raw footage. Tap one to replay it, flip between the lane view and the raw video, and fix its ball or result.</div>` + (list.length ? "" : `<div class="card"><div class="u">No shots yet. Start the camera on the Live tab and bowl.</div></div>`) + list.map(
-      (s) => `<div class="card shot" data-id="${s.id}"><div class="big">${s.a.speedMph.toFixed(1)}<small style="font-size:12px;color:var(--dim)"> mph</small></div><div style="flex:1"><div>${esc(when2(s.at))} \xB7 ${esc(ballName4(s.ballId))}</div><div>${s.m.zone ? `<span class="tag ${s.m.zone}">${ZONE[s.m.zone]}</span>` : ""}${s.result ? `<span class="tag ${s.result.pinsDown === 10 ? "strike" : ""}">${s.result.pinsDown === 10 ? "Strike" : s.result.pinsDown + " pins"}</span>` : `<span class="tag">no result</span>`}${s.hasClip ? `<span class="tag">video</span>` : ""}<span class="tag">entry ${f1(s.a.entryBoard)}</span></div></div></div>`
+      (s) => `<div class="card shot" data-id="${s.id}"><div class="big">${s.a.speedMph.toFixed(1)}<small style="font-size:12px;color:var(--dim)"> mph</small></div><div style="flex:1"><div>${esc(when3(s.at))} \xB7 ${esc(ballName4(s.ballId))}</div><div>${s.m.zone ? `<span class="tag ${s.m.zone}">${ZONE[s.m.zone]}</span>` : ""}${s.result ? `<span class="tag ${s.result.pinsDown === 10 ? "strike" : ""}">${s.result.pinsDown === 10 ? "Strike" : s.result.pinsDown + " pins"}</span>` : `<span class="tag">no result</span>`}${s.hasClip ? `<span class="tag">video</span>` : ""}<span class="tag">entry ${f1(s.a.entryBoard)}</span></div></div></div>`
     ).join("");
     if ($("sh-share")) {
       $("sh-share").onclick = openShareSession;
@@ -26341,7 +26569,7 @@ ${url}`);
     const canOverlay = s.cal.length === 4;
     let modeSel = clip && canOverlay ? "lane" : "top";
     el.innerHTML = `
-    <div class="row"><h2>${esc(when2(s.at))}</h2><button class="btn ghost" id="rv-close">Close</button></div>
+    <div class="row"><h2>${esc(when3(s.at))}</h2><button class="btn ghost" id="rv-close">Close</button></div>
     <div class="note">${esc(ballName4(s.ballId))} \xB7 ${s.a.speedMph.toFixed(1)} mph \xB7 ${s.a.entryMeasured ? `entry board ${f1(s.a.entryBoard)}` : s.a.lastSeen ? `last seen on board ${f1(s.a.lastSeen.board)}, ${s.a.lastSeen.ft.toFixed(0)} ft down` : "entry board not seen"}${s.m.zone ? ` \xB7 ${esc(zoneText(s.m.zone, s.m.pocketMiss, s.m.hand))}` : " \xB7 hit not judged (the ball was not seen reaching the pins)"} \xB7 ${s.m.hand === "L" ? "left-handed: pocket 1-2" : "right-handed: pocket 1-3"} <a href="#" data-learn="${s.m.zone ? ZONE_LABEL[s.m.zone] : "Pocket"}">what is this?</a></div>
     <div class="chips" id="rv-modes">
       ${clip && canOverlay ? `<button class="chip ${modeSel === "lane" ? "sel" : ""}" data-m="lane">Lane view</button>` : ""}
@@ -26524,7 +26752,7 @@ ${url}`);
     const mine = insightShots();
     const shots = mine;
     if (!shots.length) {
-      el.innerHTML = `<h2>Insights</h2><div class="card"><div class="u">${S.insightsSince ? `Insights were reset on ${esc(when2(S.insightsSince))}. They start again from the next shot you bowl. Your earlier shots and their videos are still in My shots.` : "Bowl a few shots first. Your averages, common errors and improvement plan build up here, and everything stays on this phone."}</div>${S.insightsSince ? `<div class="chips"><button class="btn ghost" id="ins-restore">Count my earlier shots again</button></div>` : ""}</div>${resetCardHtml()}`;
+      el.innerHTML = `<h2>Insights</h2><div class="card"><div class="u">${S.insightsSince ? `Insights were reset on ${esc(when3(S.insightsSince))}. They start again from the next shot you bowl. Your earlier shots and their videos are still in My shots.` : "Bowl a few shots first. Your averages, common errors and improvement plan build up here, and everything stays on this phone."}</div>${S.insightsSince ? `<div class="chips"><button class="btn ghost" id="ins-restore">Count my earlier shots again</button></div>` : ""}</div>${resetCardHtml()}`;
       $("ins-restore")?.addEventListener("click", () => void restoreInsights());
       wireReset();
       return;
@@ -26538,7 +26766,7 @@ ${url}`);
       const g = mine.filter((s) => s.sessionId === id);
       const pp = computeProfile(g);
       const inPocket = g.filter((s) => s.m.pocketMiss !== null && Math.abs(s.m.pocketMiss) <= 1).length / (g.filter((s) => s.m.pocketMiss !== null).length || 1);
-      return `<tr><td>${esc(when2(g[0].at))}</td><td class="n">${g.length}</td><td class="n">${pp.stats.launchSpeed ? pp.stats.launchSpeed.mean.toFixed(1) : "-"}</td><td class="n">${pct3(inPocket * 100)}</td><td class="n">${pp.strike.rate === null ? "-" : pct3(pp.strike.rate * 100)}</td></tr>`;
+      return `<tr><td>${esc(when3(g[0].at))}</td><td class="n">${g.length}</td><td class="n">${pp.stats.launchSpeed ? pp.stats.launchSpeed.mean.toFixed(1) : "-"}</td><td class="n">${pct3(inPocket * 100)}</td><td class="n">${pp.strike.rate === null ? "-" : pct3(pp.strike.rate * 100)}</td></tr>`;
     }).reverse().join("");
     const ballIds = [...new Set(mine.map((s) => s.ballId).filter(Boolean))];
     const ballRows = ballIds.map((id) => {
@@ -26593,7 +26821,7 @@ ${url}`);
     }
     const after = mine.filter((s) => s.at > plan.createdAt).slice(-STATE_PLAN_RECENT);
     const prog = planProgress(plan, after);
-    box.innerHTML = `<div class="note">Plan made ${esc(when2(plan.createdAt))} from ${plan.basedOnShots} shots. Progress uses your shots since then (needs 5 or more).</div>` + prog.map(
+    box.innerHTML = `<div class="note">Plan made ${esc(when3(plan.createdAt))} from ${plan.basedOnShots} shots. Progress uses your shots since then (needs 5 or more).</div>` + prog.map(
       ({ item, current: current4, progress: progress2, met }) => `<div class="card"><div class="row"><div class="lr-head" style="font-size:16px">${esc(item.title)}</div><span class="badge ${met ? "good" : "moderate"}">${met ? "target met" : "in progress"}</span></div>
       <div class="u">Baseline ${item.baseline} \u2192 target ${item.target} ${esc(item.unit)} \xB7 now ${current4 === null ? "need 5+ new shots" : current4}</div>
       <div class="prog"><i style="width:${Math.round((progress2 ?? 0) * 100)}%"></i></div>
@@ -26641,6 +26869,7 @@ ${url}`);
           <div class="u">${b.exemplars.length} look${b.exemplars.length === 1 ? "" : "s"} learned${idx !== null ? ` \xB7 motion index ${idx.toFixed(2)}` : ""}${o.observed ? ` \xB7 ${o.observed.shots} shots, ${f1(o.observed.entryAngle)}\xB0 entry, breakpoint ${f1(o.observed.breakpointFt, 0)} ft` : ""}</div>
           ${b.catalogKey ? "" : `<div class="two"><div class="field"><label>RG</label><input data-f="rg" inputmode="decimal" value="${b.rg ?? ""}" placeholder="2.50"></div><div class="field"><label>Differential</label><input data-f="diff" inputmode="decimal" value="${b.diff ?? ""}" placeholder="0.045"></div></div>
           <div class="field"><label>Cover</label><select data-f="cover"><option value="">choose\u2026</option>${["solid", "hybrid", "pearl", "urethane", "plastic"].map((c) => `<option ${b.cover === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>`}
+          ${ballNotesHtml(b)}
           <div class="chips">${b.catalogKey ? "" : `<button class="chip" data-act="save">Save specs</button>`}<button class="chip danger" data-act="del">Remove</button></div></div>`;
     }).join("")}
     <div class="card"><div class="k">Add a ball</div><div class="chips"><input id="ab-name" class="ballinput" placeholder="${S.catalog.length ? `Search ${S.catalog.length} catalog balls or type a name` : "Ball name"}"><button class="chip add" id="ab-add">+ Add</button><button class="chip add" id="ab-scan">+ Scan a ball (photo)</button></div></div>
@@ -26657,10 +26886,11 @@ ${url}`);
     <div id="lineup"></div>`;
     el.querySelectorAll("[data-ball]").forEach((card) => {
       const b = S.arsenal.find((x) => x.id === card.dataset.ball);
+      wireBallNotes(card, b);
       card.querySelector("[data-act=save]")?.addEventListener("click", async () => {
-        const num4 = (f) => parseFloat(card.querySelector(`[data-f=${f}]`).value);
-        const rg = num4("rg");
-        const diff = num4("diff");
+        const num5 = (f) => parseFloat(card.querySelector(`[data-f=${f}]`).value);
+        const rg = num5("rg");
+        const diff = num5("diff");
         b.rg = Number.isFinite(rg) ? rg : void 0;
         b.diff = Number.isFinite(diff) ? diff : void 0;
         b.cover = card.querySelector("[data-f=cover]").value || void 0;
@@ -26729,9 +26959,9 @@ ${url}`);
     const targets = [{ target: lineup.target, label: `tonight's pattern (${pat.name})` }, ...opt.scenarios.filter((s) => s.status !== "covered").map((s) => ({ target: s.target, label: `a gap in your arsenal: ${s.name.toLowerCase()}` }))];
     const picks = upcomingForBowler(S.catalog, ownedKeys, targets, 6);
     const box = document.createElement("div");
-    const when3 = (d) => d ? (/* @__PURE__ */ new Date(d + "T12:00:00")).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" }) : "date not announced";
+    const when4 = (d) => d ? (/* @__PURE__ */ new Date(d + "T12:00:00")).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" }) : "date not announced";
     box.innerHTML = `<h3>New balls coming out you might be interested in</h3>
-    <div class="card">${picks.length ? picks.map((p) => `<div style="padding:8px 0;border-top:1px solid var(--line);display:flex;gap:12px">${ballThumb(p.ball)}<div style="flex:1;min-width:0"><div class="row"><b>${esc(p.ball.manufacturer)} ${esc(p.ball.name)}</b><span class="badge ${p.index !== null ? "good" : "tentative"}">${esc(p.ball.availableOn ? "out " + when3(p.ball.availableOn.value) : "date not announced")}</span></div>
+    <div class="card">${picks.length ? picks.map((p) => `<div style="padding:8px 0;border-top:1px solid var(--line);display:flex;gap:12px">${ballThumb(p.ball)}<div style="flex:1;min-width:0"><div class="row"><b>${esc(p.ball.manufacturer)} ${esc(p.ball.name)}</b><span class="badge ${p.index !== null ? "good" : "tentative"}">${esc(p.ball.availableOn ? "out " + when4(p.ball.availableOn.value) : "date not announced")}</span></div>
         <div class="u">${p.index !== null ? esc(specLine3(p.ball)) : "Specs not published yet"}</div><div class="u">${esc(p.why)}</div>
         <div class="note">Source: <a style="color:var(--cy)" href="${esc((p.ball.rg ?? p.ball.status).source.url)}" target="_blank" rel="noopener">${esc(srcWord((p.ball.rg ?? p.ball.status).source.kind))}</a>, ${esc((p.ball.rg ?? p.ball.status).source.retrievedOn)}</div></div></div>`).join("") : `<div class="u">Nothing announced that fits yet. This list fills in when manufacturers announce new balls and the catalog is refreshed.</div>`}
       <div class="note">Release dates and specs come from the manufacturers' announcements and can change before a ball ships.</div></div>`;
@@ -26866,7 +27096,7 @@ ${url}`);
     <div class="card"><div class="k">Rewards</div><div class="note">Unlock ball tracers, pin looks and lane looks by playing and by improving.</div><div class="chips"><button class="btn" id="me-rewards">Skins and rewards</button><button class="chip ${glowEnabled() ? "sel" : ""}" id="me-glow">Glow: ${glowEnabled() ? "on" : "off"}</button></div><div class="note">Glow off gives crisp lines with no halos, for reading shots exactly.</div></div>
     ${p?.quiz ? `<div class="card"><div class="k">Your bowler profile</div><ul>${summarize(p.quiz).map((l) => `<li>${esc(l)}</li>`).join("")}</ul><div class="note">${esc(styleNotes(p.quiz.style).join(" "))}</div><div class="chips"><button class="btn ghost" id="me-quiz">Retake the quiz</button></div></div>` : p ? `<div class="card"><div class="u">Take the short bowler quiz so the app knows how you bowl.</div><div class="chips"><button class="btn" id="me-quiz">Take the quiz</button></div></div>` : ""}
     ${p ? `<div class="card"><div class="k">Ball motion (pro shop)</div>
-      <div class="note">The live camera can't measure these. Enter numbers from a pro-shop tool, or measure them from a slow-motion release video.${p.spin ? ` Last set ${esc(when2(p.spin.at))} (${p.spin.source === "video" ? "from video" : "entered"}).` : ""}</div>
+      <div class="note">The live camera can't measure these. Enter numbers from a pro-shop tool, or measure them from a slow-motion release video.${p.spin ? ` Last set ${esc(when3(p.spin.at))} (${p.spin.source === "video" ? "from video" : "entered"}).` : ""}</div>
       <div class="two"><div class="field"><label>Rev rate (RPM)</label><input id="sp-rpm" inputmode="numeric" value="${p.spin?.rpm ?? ""}"></div><div class="field"><label>Axis rotation (\xB0)</label><input id="sp-rot" inputmode="decimal" value="${p.spin?.axisRotation ?? ""}"></div></div>
       <div class="two"><div class="field"><label>Axis tilt (\xB0)</label><input id="sp-tilt" inputmode="decimal" value="${p.spin?.axisTilt ?? ""}"></div><div class="field"><label>PAP (e.g. 4 1/4 over, 1/2 up)</label><input id="sp-pap" value="${esc(p.spin?.pap ?? "")}"></div></div>
       <div class="chips"><button class="btn ghost" id="sp-save">Save</button><button class="btn ghost" id="sp-lab">Measure from a release video</button><button class="btn ghost" id="sp-pap">Estimate PAP from photos of the flare rings</button></div>${p.spin?.papFrom ? `<div class="note">Your PAP was ${p.spin.papFrom === "photo" ? "estimated from photos of the flare rings" : "measured from your release video"}.</div>` : ""}</div>` : ""}
@@ -26911,22 +27141,22 @@ ${url}`);
     $("me-new").onclick = () => showQuiz("add", () => {
     });
     $("sp-save")?.addEventListener("click", () => {
-      const num4 = (id) => {
+      const num5 = (id) => {
         const v = parseFloat($(id).value);
         return Number.isFinite(v) ? v : void 0;
       };
-      updateProfile({ spin: { rpm: num4("sp-rpm"), axisRotation: num4("sp-rot"), axisTilt: num4("sp-tilt"), pap: $("sp-pap").value.trim() || void 0, source: "entered", at: (/* @__PURE__ */ new Date()).toISOString() } });
+      updateProfile({ spin: { rpm: num5("sp-rpm"), axisRotation: num5("sp-rot"), axisTilt: num5("sp-tilt"), pap: $("sp-pap").value.trim() || void 0, source: "entered", at: (/* @__PURE__ */ new Date()).toISOString() } });
     });
     $("sp-lab")?.addEventListener("click", () => openSpinLab(() => renderMe()));
     $("sp-pap")?.addEventListener("click", () => openPapScan());
     $("me-quiz")?.addEventListener("click", () => showQuiz("retake", () => renderMe()));
     $("me-diag").onclick = async () => {
-      const txt = diagnosticsText();
+      const txt2 = diagnosticsText();
       try {
-        await navigator.clipboard.writeText(txt);
+        await navigator.clipboard.writeText(txt2);
         $("me-diag").textContent = "Copied";
       } catch {
-        prompt("Copy these diagnostics:", txt);
+        prompt("Copy these diagnostics:", txt2);
       }
     };
     $("me-export").onclick = () => {
@@ -27019,6 +27249,7 @@ ${url}`);
     { part: SHOP, tab: "proshop", sel: "@Layout checker", title: "Pro shop toolkit", text: "Open each: the layout checker (rules, hole clearance, conversion, estimated effect of drilling, static weight), the reaction doctor (what is the ball doing, and what to change), the surface guide, fit, grip and ball weight, and a theory library that names its sources, including where experts disagree." },
     { part: SHOP, tab: "proshop", sel: "#ps-print", title: "What to look for at a pro shop", text: "A printable sheet built from your own profile: what to know before you walk in, questions to ask the pro shop, what a good fitting includes, what to look for in your next ball, and things to watch for." },
     { part: SHOP, tab: "arsenal", sel: "#arsenal-page h2", title: "My arsenal", text: "Your bowling balls, saved on your profile. Add one by name from the 1,000+ ball catalog (every spec with its source), by photo, or by entering RG, differential and cover for balls not in it." },
+    { part: SHOP, tab: "arsenal", sel: "@Notes and layouts", title: "Notes and layouts for each ball", text: "Open a ball to write down what you know about it: the layout (Dual Angle, Pin Buffer or 2LS numbers, the PAP), when it was drilled or resurfaced, the surface, who did it, and your own notes. Keep each re-drill as its own entry and, with the date, the app shows the shots made with the ball in that time. Copy in layouts you saved in the Layout Lab. Everything stays on your phone." },
     { part: SHOP, tab: "arsenal", sel: "#pat-mine", title: "Oil patterns: add your centre's sheet", text: "LaneIQ has no built-in pattern library. Add the sheet your centre posts (a PDF, screenshot or photo): it's read on your phone, you check the numbers, and Kegel load tables are read row by row to draw the oil exactly. Lineups and ball picks use it." },
     { part: SHOP, tab: "arsenal", sel: "@Your lineup", title: "Your lineup", text: "Which of your balls to start with and which to move to when the lane hooks early or skids, for the pattern, your speed, your entry angle and your rev rate and axis, with the gaps in your bag." },
     { part: SHOP, tab: "arsenal", sel: "@Arsenal optimizer", title: "Arsenal optimizer", text: "Scores how well your balls cover heavy oil, a typical house shot, dry lanes and short and long sport patterns, shows overlaps, whether you have a spare ball, and the best balls to add." },
@@ -27407,14 +27638,14 @@ ${url}`);
         if (rob.filter((r) => r > 0.05).length < Math.max(5, n * 0.5)) rob = rob.map((r) => Math.max(r, 0.05));
       }
       if (!ok) continue;
-      let num4 = 0, den = 0;
+      let num5 = 0, den = 0;
       for (let i = 0; i < n; i++) {
         if (rob[i] <= 0.05) continue;
         const loo = (points[i].v - fit[i]) / (1 - hat[i]) / points[i].s;
-        num4 += Math.min(loo * loo, 36);
+        num5 += Math.min(loo * loo, 36);
         den++;
       }
-      const score = den ? num4 / den : Infinity;
+      const score = den ? num5 / den : Infinity;
       const z2 = points.map((q, i) => rob[i] > 0.05 ? (q.v - fit[i]) / q.s : 0);
       const chi = Math.sqrt(z2.reduce((s, v) => s + v * v, 0) / Math.max(1, rob.filter((r) => r > 0.05).length));
       if (!best || score < best.score) best = { score, res: { fit, slope, trust: rob, chi, span } };
