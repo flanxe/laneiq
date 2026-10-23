@@ -53,6 +53,18 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-23-oil",
+      date: "2026-10-23",
+      title: "See the oil on your lane",
+      items: [
+        "My oil patterns: add the pattern your centre posts from the sheet itself: a PDF, a screenshot or a photo. It's read on your phone, you check the numbers, and nothing is uploaded.",
+        "Sheets with a load table (most from Kegel lane machines) are read row by row, and every row is checked against the sheet's totals, so the oil is drawn exactly where the machine puts it, board by board, foot by foot. Other sheets get an estimated shape from the length and ratio, and say so.",
+        "The oil on your lane in the Live view: pick tonight's pattern under Target, and the camera picture shows the oil, where it ends, and Kegel's rule-of-31 starting board. Oil on/off is on the Live screen. Replays show the pattern that was on the lane for that shot.",
+        "Arsenal uses your own patterns for lineups and next-ball picks. The built-in pattern library has been removed.",
+        "New words in Learn: volume, ratio, rule of 31, brush drop and loads."
+      ]
+    },
+    {
       id: "2026-10-22-coach",
       date: "2026-10-22",
       title: "Your coach: the biggest update yet",
@@ -376,8 +388,13 @@
     { term: "VAL angle", cat: "Layout and drilling", def: "In the Dual Angle system, an angle from 20 to 70 degrees that sets how fast the ball changes from skid to hook. The drilling angle plus the VAL angle is the angle sum: 30 is the fastest transition and 160 the slowest." },
     { term: "Pin buffer", cat: "Layout and drilling", def: "In the Pin Buffer system, the distance from the pin to the VAL. About 1 to 2 inches gives a faster transition, 4 to 5 slower." },
     // ---- oil and the lane ----
-    { term: "Oil pattern", cat: "Oil and the lane", def: "The way oil is laid on the lane: how far it goes down the lane (length), how much there is (volume), and how it is shaped across the boards." },
-    { term: "Pattern length", cat: "Oil and the lane", def: "How many feet down the lane the oil goes. Roughly: under 36 feet is short, 36 to 41 medium, 42 and over long. Longer patterns ask for a stronger ball and more hook." },
+    { term: "Oil pattern", cat: "Oil and the lane", def: "The way oil is laid on the lane: how far it goes down the lane (length), how much there is (volume), and how it is shaped across the boards. Centres post the pattern sheet their lane machine runs.", app: "Add your centre's sheet under My patterns (a PDF, a screenshot or a photo) and the oil is drawn on your lane in the Live view." },
+    { term: "Pattern length", cat: "Oil and the lane", def: "How many feet down the lane the oil goes. Roughly: 37 feet and under is short, 38 to 41 medium, 42 and over long. Longer patterns ask for a stronger ball and more hook." },
+    { term: "Volume", cat: "Oil and the lane", aka: ["oil volume"], def: "The total oil on the lane, in millilitres (mL). More oil means less friction, so the ball skids farther before it hooks." },
+    { term: "Ratio", cat: "Oil and the lane", aka: ["oil ratio"], def: "How much more oil is in the middle of the lane than on the outside boards, written as N:1. A big ratio (a house shot, often 5:1 or more) pushes a missed ball back toward the pocket; USBC sport patterns are 3:1 or less." },
+    { term: "Rule of 31", cat: "Oil and the lane", def: "Kegel's rule of thumb for a starting line: subtract 31 from the pattern length to get the board to have the ball on at the breakpoint (a 41 ft pattern: board 10). A starting point to adjust from, not a rule.", app: "Shown as a gold ring on the lane where the oil ends." },
+    { term: "Brush drop", cat: "Oil and the lane", aka: ["reverse brush drop"], def: "Where the lane machine's buffer brush drops back onto the lane on its way back to the foul line. Oil gets moved around past it, so the back of the pattern is usually lighter than the front." },
+    { term: "Loads", cat: "Oil and the lane", aka: ["load table"], def: "The lane machine's instructions on a pattern sheet: for each part of the lane, which boards get oil (e.g. 2L to 2R), how many passes (loads), how many microlitres per board, and over what distance.", app: "When a sheet has the load table, LaneIQ reads it and draws the oil on each board exactly as the machine lays it, foot by foot." },
     { term: "House shot", cat: "Oil and the lane", def: "The usual league pattern: more oil in the middle and much less outside, so a ball thrown a little off line still gets pushed back toward the pocket." },
     { term: "Sport pattern", cat: "Oil and the lane", def: "A flatter pattern with less difference between the middle and the outside, so misses are punished more." },
     { term: "Reading the lane", cat: "Oil and the lane", def: 'Seeing how the ball reacts and choosing your ball, line or speed to match. A ball that hooks earlier than before is "reading" the lane sooner.' },
@@ -1448,8 +1465,10 @@
     demo: false,
     /** the line the bowler is playing: where they stand and aim (set with Target on the Live screen); every new shot carries a copy */
     target: null,
-    /** where they're bowling tonight (for lane-pair memory) */
-    where: { center: "", lane: "" },
+    /** where they're bowling tonight (for lane-pair memory), and the oil pattern on the lane (one of myPatterns) */
+    where: { center: "", lane: "", patternId: "" },
+    /** oil patterns the bowler added from their centre's sheets (or typed in); there is no built-in library */
+    myPatterns: [],
     /** the practice drill under way, and every finished one */
     drill: null,
     drills: []
@@ -1472,6 +1491,7 @@
     S.insightsSince = await dbGet(id, "meta", "insightsSince").catch(() => null) ?? null;
     S.target = await dbGet(id, "meta", "target").catch(() => null) ?? null;
     S.where = await dbGet(id, "meta", "where").catch(() => null) ?? { center: "", lane: "" };
+    S.myPatterns = await dbGet(id, "meta", "patterns").catch(() => null) ?? [];
     S.drill = await dbGet(id, "meta", "drill").catch(() => null) ?? null;
     S.drills = await dbGet(id, "meta", "drills").catch(() => null) ?? [];
     if (p && !p.friendCode) {
@@ -1592,6 +1612,8 @@
       });
       await dbPut(S.profile.id, "meta", S.drills, "drills").catch(() => {
       });
+      await dbPut(S.profile.id, "meta", S.myPatterns, "patterns").catch(() => {
+      });
     }
     changed();
   }
@@ -1609,7 +1631,7 @@
         return [];
       }
     };
-    [S.catalog, S.patterns] = await Promise.all([get("balls.json"), get("patterns.json")]);
+    S.catalog = await get("balls.json");
     changed();
   }
   var userSrc = () => ({ kind: "user", url: "entered by bowler", retrievedOn: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10) });
@@ -1876,10 +1898,10 @@
     const fresh2 = seen() !== LATEST_NOTE_ID;
     box.innerHTML = `<button class="chip" id="notes-open">${fresh2 ? "NEW \xB7 " : ""}What's new</button>`;
     document.getElementById("notes-open").onclick = () => {
-      const sheet6 = document.getElementById("notes");
-      sheet6.classList.add("on");
-      sheet6.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc(n.title)} <span class="note">${esc(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}`;
-      document.getElementById("notes-close").onclick = () => (sheet6.classList.remove("on"), sheet6.innerHTML = "");
+      const sheet7 = document.getElementById("notes");
+      sheet7.classList.add("on");
+      sheet7.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc(n.title)} <span class="note">${esc(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}`;
+      document.getElementById("notes-close").onclick = () => (sheet7.classList.remove("on"), sheet7.innerHTML = "");
       markSeen();
       document.getElementById("notes-open").textContent = "What's new";
     };
@@ -2075,9 +2097,9 @@
       mode2 = m;
       hint.textContent = HINTS[m];
       root.querySelectorAll(".tl-mode").forEach((b) => {
-        const on2 = b.dataset.mode === m;
-        b.style.background = on2 ? "linear-gradient(90deg,#46e6ff,#ff4fd8)" : "";
-        b.style.color = on2 ? "#06101c" : "";
+        const on3 = b.dataset.mode === m;
+        b.style.background = on3 ? "linear-gradient(90deg,#46e6ff,#ff4fd8)" : "";
+        b.style.color = on3 ? "#06101c" : "";
       });
       redraw2();
     };
@@ -2311,12 +2333,12 @@
     };
     cv.addEventListener("pointerup", up);
     cv.addEventListener("pointercancel", up);
-    const close7 = () => {
+    const close8 = () => {
       cancelAnimationFrame(raf3);
       window.removeEventListener("resize", onResize);
       root.remove();
     };
-    root.querySelector("#tl-cancel").onclick = () => (close7(), o.onCancel());
+    root.querySelector("#tl-cancel").onclick = () => (close8(), o.onCancel());
     root.querySelectorAll(".tl-mode").forEach((b) => b.onclick = () => setMode2(b.dataset.mode));
     root.querySelector("#tl-reset").onclick = () => (c = initial.map((p) => ({ ...p })), anchors = makeAnchors(), touched = false, setMode2("lane"));
     root.querySelector("#tl-snap").onclick = () => {
@@ -2333,7 +2355,7 @@
       const area2 = Math.abs(c.reduce((a, p, i) => a + (p.x * c[(i + 1) % 4].y - c[(i + 1) % 4].x * p.y), 0)) / 2;
       if (area2 < cv.width * cv.height * 0.01) return void (hint.textContent = "The lane outline is too small. Drag the dots out onto the lane.");
       const out = c.map((p) => ({ x: p.x / k0, y: p.y / k0 }));
-      close7();
+      close8();
       o.onConfirm(out);
     };
   }
@@ -5443,10 +5465,10 @@
   } catch {
   }
   var skinsEnabled = () => skinsOn;
-  function setSkinsOn(on2) {
-    skinsOn = on2;
+  function setSkinsOn(on3) {
+    skinsOn = on3;
     try {
-      localStorage.setItem(ON_KEY, on2 ? "on" : "off");
+      localStorage.setItem(ON_KEY, on3 ? "on" : "off");
     } catch {
     }
   }
@@ -5463,10 +5485,10 @@
   } catch {
   }
   var glowEnabled = () => glow;
-  function setGlow(on2) {
-    glow = on2;
+  function setGlow(on3) {
+    glow = on3;
     try {
-      localStorage.setItem(GLOW_KEY, on2 ? "on" : "off");
+      localStorage.setItem(GLOW_KEY, on3 ? "on" : "off");
     } catch {
     }
   }
@@ -6854,6 +6876,165 @@
     }
   }
 
+  // core/src/oilsheet.ts
+  var boardOf = (k2, side) => side === "L" ? LANE_BOARDS + 1 - k2 : k2;
+  function rowsOf(sec, dir, hasBuff, hasTank) {
+    const h = sec.indexOf("T.OIL");
+    if (h < 0) return null;
+    const body = sec.slice(h + 5);
+    const solve = (pos, n, prevEnd, depth) => {
+      if (pos >= body.length || !body.slice(pos).trim()) return [];
+      if (depth > 40) return null;
+      const head = new RegExp(`^${n}(\\d{1,2})([LR])(\\d{1,2})([LR])(\\d+)`).exec(body.slice(pos));
+      if (!head) return null;
+      const b1 = boardOf(Number(head[1]), head[2]);
+      const b2 = boardOf(Number(head[3]), head[4]);
+      if (b1 < 1 || b1 > LANE_BOARDS || b2 < 1 || b2 > LANE_BOARDS) return null;
+      const boards = Math.abs(b1 - b2) + 1;
+      const blob = head[5];
+      let rest = pos + head[0].length;
+      let distStartFixed = null;
+      if (hasTank) {
+        const tk = /^([A-Z])-([A-Z]+?)(\d{1,2})→/.exec(body.slice(rest));
+        if (!tk) return null;
+        distStartFixed = Number(tk[3]);
+        rest += tk[0].length;
+      } else {
+        if (body[rest] !== "\u2192") return null;
+        rest += 1;
+      }
+      const run = /^[\d,]+/.exec(body.slice(rest))?.[0] ?? "";
+      const afterRun = rest + run.length;
+      const cands = [];
+      const parts = 3 + (hasBuff ? 1 : 0) + (hasTank ? 0 : 1);
+      const splits = (s, k2) => {
+        if (k2 === 1) return s.length >= 1 && s.length <= 4 ? [[s]] : [];
+        const out = [];
+        for (let i = 1; i <= Math.min(4, s.length - k2 + 1); i++) for (const tail of splits(s.slice(i), k2 - 1)) out.push([s.slice(0, i), ...tail]);
+        return out;
+      };
+      for (const sp of splits(blob, parts)) {
+        const nums3 = sp.map(Number);
+        if (sp.some((x) => x.length > 1 && x[0] === "0")) continue;
+        const [loads, mics, speed] = nums3;
+        const buff = hasBuff ? nums3[3] : 0;
+        const ds = hasTank ? distStartFixed : nums3[parts - 1];
+        if (loads > 30 || mics < 5 || mics > 250 || speed < 4 || speed > 40 || hasBuff && buff > 2e3 || ds > 60) continue;
+        if (prevEnd !== null && ds !== prevEnd) continue;
+        if (dir === "forward" && prevEnd === null && ds !== 0) continue;
+        for (let e = 1; e <= 2 && e < run.length; e++) {
+          const end = Number(run.slice(0, e));
+          if (run[0] === "0" && e > 1) continue;
+          if (end > 60 || (dir === "forward" ? end <= ds : end >= ds)) continue;
+          const want = loads * mics * boards;
+          const wantStr = want >= 1e3 ? want.toLocaleString("en-US") : String(want);
+          if (!run.slice(e).startsWith(wantStr)) continue;
+          const tail = run.slice(e + wantStr.length);
+          const nextPrefix = String(n + 1);
+          if (tail === "" || tail.startsWith(nextPrefix)) cands.push({ row: { dir, fromBoard: Math.min(b1, b2), toBoard: Math.max(b1, b2), loads, mics, fromFt: ds, toFt: end, oilUl: want }, next: tail === "" ? afterRun : afterRun - tail.length });
+        }
+      }
+      for (const c of cands) {
+        const restRows = solve(c.next, n + 1, c.row.toFt, depth + 1);
+        if (restRows) return [c.row, ...restRows];
+      }
+      return null;
+    };
+    return solve(0, 1, null, 0);
+  }
+  function readSheetText(text) {
+    const t = text.replace(/\s+/g, "").replace(/µ/g, "u").replace(/->/g, "\u2192");
+    const notes = [];
+    const out = { rows: [], tableOk: false, notes };
+    const num3 = (re) => {
+      const m = re.exec(t);
+      return m ? Number(m[1]) : void 0;
+    };
+    const n = /(\d{2})FEET([\d.]+)mL([\d.]+):1([\d.]+)mL(\d{2})FEET([\d.]+)mL/i.exec(t);
+    if (n) [out.lengthFt, out.volumeMl, out.ratio, out.forwardMl, out.brushDropFt, out.reverseMl] = n.slice(1, 7).map(Number);
+    out.lengthFt ??= num3(/OilPatternDistance:?(\d{2})(?!\d)/i) ?? num3(/Distance:?(\d{2})(?:Feet|ft)/i);
+    out.volumeMl ??= num3(/VolumeOilTotal:?([\d.]+)mL/i) ?? num3(/(?:Total)?Volume:?([\d.]+)mL/i);
+    out.forwardMl ??= num3(/ForwardOilTotal:?([\d.]+)mL/i);
+    out.reverseMl ??= num3(/ReverseOilTotal:?([\d.]+)mL/i);
+    out.brushDropFt ??= num3(/ReverseBrushDrop:?(\d{2})/i);
+    out.ratio ??= num3(/(?:Pattern)?Ratio:?([\d.]+):1/i);
+    out.lengthFt ??= num3(/(\d{2})(?:FEET|FT)/i);
+    out.volumeMl ??= num3(/(\d{2}(?:\.\d+)?)mL/i);
+    out.ratio ??= num3(/(\d{1,2}(?:\.\d+)?):1(?!\d)/);
+    if (out.lengthFt !== void 0 && !(out.lengthFt >= 20 && out.lengthFt <= 55)) out.lengthFt = void 0;
+    if (out.volumeMl !== void 0 && !(out.volumeMl >= 8 && out.volumeMl <= 45)) out.volumeMl = void 0;
+    if (out.ratio !== void 0 && !(out.ratio >= 1 && out.ratio <= 15)) out.ratio = void 0;
+    const fi = t.indexOf("FORWARDLOADSDATA");
+    const ri = t.indexOf("REVERSELOADSDATA");
+    if (fi >= 0) {
+      const end = /THISPATTERN|Thispattern|Created/.exec(t.slice(Math.max(fi, ri)))?.index;
+      const fsec = t.slice(fi, ri > fi ? ri : void 0);
+      const rsec = ri > fi ? t.slice(ri, end !== void 0 ? Math.max(fi, ri) + end : void 0) : "";
+      const hasBuff = /SPEEDBUFF/.test(fsec);
+      const hasTank = /TANKDISTANCE/.test(fsec);
+      const f = rowsOf(fsec, "forward", hasBuff, hasTank);
+      const r = rsec ? rowsOf(rsec, "reverse", /SPEEDBUFF/.test(rsec), /TANKDISTANCE/.test(rsec)) : [];
+      if (f && r) {
+        const fwd = f.reduce((a, x) => a + x.oilUl, 0) / 1e3;
+        const rev = r.reduce((a, x) => a + x.oilUl, 0) / 1e3;
+        const okF = out.forwardMl === void 0 || Math.abs(fwd - out.forwardMl) <= Math.max(0.05, out.forwardMl * 0.01);
+        const okR = out.reverseMl === void 0 || Math.abs(rev - out.reverseMl) <= Math.max(0.05, out.reverseMl * 0.01);
+        if (okF && okR && f.length) {
+          out.rows = [...f, ...r];
+          out.tableOk = true;
+        } else notes.push("The load table didn't add up to the sheet's totals, so the oil shape is estimated.");
+      } else notes.push("The load table couldn't be read, so the oil shape is estimated from the length and ratio.");
+    } else notes.push("This sheet has no load table, so the oil shape is estimated from the length and ratio.");
+    return out;
+  }
+  var FEET = 60;
+  function oilMapFromRows(rows2, lengthFt) {
+    const cells = Array.from({ length: LANE_BOARDS }, () => new Array(FEET).fill(0));
+    for (const r of rows2) {
+      const lo = Math.min(r.fromFt, r.toFt);
+      const hi = Math.max(r.fromFt, r.toFt);
+      if (hi <= lo || r.loads === 0) continue;
+      const perFt = r.loads * r.mics / (hi - lo);
+      for (let b = r.fromBoard; b <= r.toBoard; b++) for (let f = Math.floor(lo); f < Math.ceil(hi) && f < FEET; f++) cells[b - 1][f] += perFt * Math.max(0, Math.min(f + 1, hi) - Math.max(f, lo));
+    }
+    const out = cells.map(
+      (row) => row.map((_, f) => {
+        if (f >= lengthFt) return 0;
+        let s = 0, w = 0;
+        for (let k2 = -2; k2 <= 2; k2++) {
+          const g = f + k2;
+          if (g < 0 || g >= FEET) continue;
+          const wt = 3 - Math.abs(k2);
+          s += row[g] * wt;
+          w += wt;
+        }
+        return s / w;
+      })
+    );
+    const lastOiled = Math.max(0, ...rows2.filter((r) => r.loads > 0).map((r) => Math.max(r.fromFt, r.toFt)));
+    for (const row of out) {
+      const edge = row[Math.max(0, Math.min(FEET - 1, Math.floor(lastOiled) - 1))];
+      for (let f = Math.floor(lastOiled); f < Math.min(lengthFt, FEET); f++) row[f] = Math.max(row[f], edge * 0.35 * (1 - (f - lastOiled) / Math.max(1, lengthFt - lastOiled)));
+    }
+    return { cells: out, max: Math.max(1e-9, ...out.flat()), lengthFt, source: "loads" };
+  }
+  function oilMapEstimate(lengthFt, ratio) {
+    const r = ratio && ratio >= 1 ? ratio : 3;
+    const outside = 1 / r;
+    const cells = Array.from({ length: LANE_BOARDS }, (_, i) => {
+      const b = i + 1;
+      const fromEdge = Math.min(b, LANE_BOARDS + 1 - b);
+      const k2 = fromEdge <= 3 ? 0 : fromEdge >= 11 ? 1 : (1 - Math.cos((fromEdge - 3) / 8 * Math.PI)) / 2;
+      const across = outside + (1 - outside) * k2;
+      return Array.from({ length: FEET }, (_2, f) => f >= lengthFt ? 0 : f < lengthFt * 0.8 ? across : across * (1 - (f - lengthFt * 0.8) / (lengthFt * 0.2)) * 0.85 + across * 0.15);
+    });
+    return { cells, max: 1, lengthFt, source: "estimate" };
+  }
+  function oilMapFor(p) {
+    return p.rows && p.rows.length ? oilMapFromRows(p.rows, p.lengthFt) : oilMapEstimate(p.lengthFt, p.ratio);
+  }
+  var ruleOf31 = (lengthFt) => Math.max(1, Math.min(LANE_BOARDS, Math.round(lengthFt - 31)));
+
   // camera/render.ts
   var k = (v) => v.width / 1280;
   var lerp2 = (a, b, t) => a + (b - a) * t;
@@ -7061,7 +7242,7 @@
     }
     ctx2.restore();
   }
-  function drawTopDown(ctx2, w, h, paths, pocket) {
+  function drawTopDown(ctx2, w, h, paths, pocket, oil) {
     const padX = 18;
     const top = 24;
     const bottom = 18;
@@ -7074,6 +7255,24 @@
     ctx2.save();
     ctx2.fillStyle = L2.fill;
     ctx2.fillRect(px(0), py(DECK_END_FT), laneW, laneH);
+    if (oil) {
+      for (let b = 1; b <= LANE_BOARDS; b++)
+        for (let f = 0; f < Math.min(LANE_LENGTH_FT, oil.lengthFt + 1); f++) {
+          const v = oil.cells[b - 1][f] / oil.max;
+          if (v <= 0.01) continue;
+          ctx2.fillStyle = oilColor(v);
+          const x = boardToX(b) - 0.5;
+          ctx2.fillRect(px(x), py(f + 1), laneW / LANE_BOARDS + 0.5, laneH / DECK_END_FT + 0.5);
+        }
+      ctx2.strokeStyle = "rgba(255,210,90,.9)";
+      ctx2.lineWidth = 1.5;
+      ctx2.setLineDash([5, 4]);
+      ctx2.beginPath();
+      ctx2.moveTo(px(0), py(oil.lengthFt));
+      ctx2.lineTo(px(LANE_BOARDS), py(oil.lengthFt));
+      ctx2.stroke();
+      ctx2.setLineDash([]);
+    }
     ctx2.lineWidth = 1;
     for (let i = 0; i <= LANE_BOARDS; i++) {
       const major = (LANE_BOARDS - i) % 5 === 0;
@@ -7140,6 +7339,58 @@
       ctx2.beginPath();
       smoothPath(m.path).forEach((s, i) => i ? ctx2.lineTo(px(s.x), py(s.y)) : ctx2.moveTo(px(s.x), py(s.y)));
       ctx2.stroke();
+    }
+    ctx2.restore();
+  }
+  var oilColor = (v, alpha = 1) => `rgba(${Math.round(90 - 50 * v)},${Math.round(170 + 30 * v)},255,${((0.1 + 0.5 * Math.min(1, v)) * alpha).toFixed(3)})`;
+  function drawOil(v, oil, label2 = true) {
+    const { ctx: ctx2, P } = v;
+    const s = k(v);
+    ctx2.save();
+    const end = Math.min(LANE_LENGTH_FT, oil.lengthFt);
+    for (let b = 1; b <= LANE_BOARDS; b++) {
+      const x0 = boardToX(b) - 0.5;
+      const x1 = x0 + 1;
+      for (let f = 0; f < end; f += 2) {
+        const f12 = Math.min(end, f + 2);
+        const val2 = (oil.cells[b - 1][f] + (oil.cells[b - 1][f + 1] ?? 0)) / 2 / oil.max;
+        if (val2 <= 0.01) continue;
+        const q = [P(x0, f), P(x1, f), P(x1, f12), P(x0, f12)];
+        ctx2.beginPath();
+        q.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
+        ctx2.closePath();
+        ctx2.fillStyle = oilColor(val2, 0.85);
+        ctx2.fill();
+      }
+    }
+    ctx2.strokeStyle = "rgba(255,210,90,.95)";
+    ctx2.lineWidth = 2.4 * s;
+    ctx2.setLineDash([10 * s, 7 * s]);
+    line(v, P(0, end), P(LANE_BOARDS, end));
+    ctx2.setLineDash([]);
+    if (label2) {
+      const r31 = ruleOf31(oil.lengthFt);
+      const c = P(boardToX(r31), end);
+      const edge = P(boardToX(r31) + 1.5, end);
+      const rad2 = Math.max(5 * s, Math.hypot(edge.x - c.x, edge.y - c.y));
+      ctx2.strokeStyle = "rgba(255,210,90,.95)";
+      ctx2.lineWidth = 2 * s;
+      ctx2.beginPath();
+      ctx2.arc(c.x, c.y, rad2, 0, 7);
+      ctx2.stroke();
+      ctx2.font = `700 ${12 * s}px -apple-system, system-ui, sans-serif`;
+      ctx2.textAlign = "left";
+      ctx2.textBaseline = "bottom";
+      ctx2.lineWidth = 3 * s;
+      ctx2.strokeStyle = "rgba(0,0,0,.75)";
+      const tag = `Oil ends ${oil.lengthFt} ft${oil.source === "estimate" ? " (shape estimated)" : ""}`;
+      const at3 = P(LANE_BOARDS * 0.02, end);
+      ctx2.strokeText(tag, at3.x, at3.y - 4 * s);
+      ctx2.fillStyle = "#ffd25a";
+      ctx2.fillText(tag, at3.x, at3.y - 4 * s);
+      const t31 = `Rule of 31: board ${r31}`;
+      ctx2.strokeText(t31, c.x + rad2 + 4 * s, c.y - 2 * s);
+      ctx2.fillText(t31, c.x + rad2 + 4 * s, c.y - 2 * s);
     }
     ctx2.restore();
   }
@@ -7876,7 +8127,7 @@ ${url}`);
     const install = standalone ? "" : `<div class="note" style="margin-top:6px"><b>Keep your data:</b> ${ios ? "tap the Share button, then Add to Home Screen" : "open the browser menu, then Add to Home Screen"}, and open LaneIQ from there. ${tag ? `If ${esc(inv.name)} isn't waiting for you in the app, enter their tag in the "Invited by a friend?" box: <b style="user-select:all">${esc(tag)}</b>` : ""}</div>`;
     return `<div class="invitebox"><b>${esc(inv.name)} invited you</b><div class="note">${m[1] === "invite" ? "Set up your profile first, then you'll see their friend request and can compare shots on the same lane." : "Set up your profile first, then you can add them back."}</div>${install}</div>`;
   }
-  function showQuiz(mode2, onDone) {
+  function showQuiz(mode2, onDone2) {
     const el = $("onboard");
     const base = mode2 === "retake" && S.profile?.quiz ? { ...S.profile.quiz } : defaultAnswers(mode2 === "retake" ? S.profile?.name : "");
     const a = base;
@@ -7946,7 +8197,7 @@ ${url}`);
           updateProfile({ name: a.name.trim() || S.profile.name, username: isUsername(a.username ?? "") ? a.username : S.profile.username, hand: a.hand, revRpm: a.revRpm, quiz: a });
           el.classList.remove("on");
           el.innerHTML = "";
-          return onDone();
+          return onDone2();
         }
         const p = createProfile(a);
         if (mode2 === "add") {
@@ -7957,7 +8208,7 @@ ${url}`);
         await loadProfile(p.id);
         el.classList.remove("on");
         el.innerHTML = "";
-        onDone();
+        onDone2();
       };
     };
     const readInputs = () => {
@@ -10743,6 +10994,549 @@ ${url}`);
     return s.endsWith(".0") ? s.slice(0, -2) : s.replace(".", " point ");
   };
 
+  // camera/oilview.ts
+  var KEY5 = "laneiq.oilOn";
+  var on2 = (() => {
+    try {
+      return localStorage.getItem(KEY5) !== "0";
+    } catch {
+      return true;
+    }
+  })();
+  var oilOn = () => on2;
+  function setOilOn(v) {
+    on2 = v;
+    try {
+      localStorage.setItem(KEY5, v ? "1" : "0");
+    } catch {
+    }
+  }
+  var patternById = (id) => id ? S.myPatterns.find((p) => p.id === id) ?? null : null;
+  var activePattern = () => patternById(S.where.patternId);
+  var maps = /* @__PURE__ */ new Map();
+  function mapOf(p) {
+    const k2 = `${p.id}|${p.lengthFt}|${p.ratio ?? ""}|${p.rows?.length ?? 0}`;
+    let m = maps.get(k2);
+    if (!m) {
+      m = oilMapFor(p);
+      maps.set(k2, m);
+    }
+    return m;
+  }
+  var cache = null;
+  function drawOilLayer(v, w, h, lockKey) {
+    const p = activePattern();
+    if (!on2 || !p) return;
+    const key2 = `${lockKey}|${w}x${h}|${p.id}|${p.lengthFt}|${p.rows?.length ?? 0}|${p.ratio ?? ""}`;
+    if (!cache || cache.key !== key2) {
+      const c = cache?.canvas ?? document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      const g = c.getContext("2d");
+      g.clearRect(0, 0, w, h);
+      drawOil({ ctx: g, width: v.width, P: v.P }, mapOf(p));
+      cache = { key: key2, canvas: c };
+    }
+    v.ctx.drawImage(cache.canvas, 0, 0);
+  }
+
+  // core/src/pdftext.ts
+  var latin1 = (b) => {
+    let s = "";
+    for (let i = 0; i < b.length; i += 8192) s += String.fromCharCode(...b.subarray(i, i + 8192));
+    return s;
+  };
+  var fromLatin1 = (s) => Uint8Array.from(s, (c) => c.charCodeAt(0) & 255);
+  var fromHex = (h) => {
+    const clean = h.replace(/[^0-9A-Fa-f]/g, "");
+    const even = clean.length % 2 ? clean + "0" : clean;
+    const out = new Uint8Array(even.length / 2);
+    for (let i = 0; i < out.length; i++) out[i] = parseInt(even.slice(2 * i, 2 * i + 2), 16);
+    return out;
+  };
+  var concat = (...parts) => {
+    const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+    let o = 0;
+    for (const p of parts) {
+      out.set(p, o);
+      o += p.length;
+    }
+    return out;
+  };
+  var K = Array.from({ length: 64 }, (_, i) => Math.floor(Math.abs(Math.sin(i + 1)) * 2 ** 32) >>> 0);
+  var SH = [7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21];
+  function md5(msg) {
+    const len = msg.length;
+    const padLen = (len + 8 >> 6) * 64 + 64;
+    const m = new Uint8Array(padLen);
+    m.set(msg);
+    m[len] = 128;
+    const bits = len * 8;
+    for (let i = 0; i < 8; i++) m[padLen - 8 + i] = Math.floor(bits / 2 ** (8 * i)) & 255;
+    let a0 = 1732584193, b0 = 4023233417, c0 = 2562383102, d0 = 271733878;
+    const w = new Uint32Array(16);
+    for (let off = 0; off < padLen; off += 64) {
+      for (let i = 0; i < 16; i++) w[i] = m[off + 4 * i] | m[off + 4 * i + 1] << 8 | m[off + 4 * i + 2] << 16 | m[off + 4 * i + 3] << 24;
+      let A = a0, B = b0, C2 = c0, D = d0;
+      for (let i = 0; i < 64; i++) {
+        let F, g;
+        if (i < 16) F = B & C2 | ~B & D, g = i;
+        else if (i < 32) F = D & B | ~D & C2, g = (5 * i + 1) % 16;
+        else if (i < 48) F = B ^ C2 ^ D, g = (3 * i + 5) % 16;
+        else F = C2 ^ (B | ~D), g = 7 * i % 16;
+        const tmp = D;
+        D = C2;
+        C2 = B;
+        const x = A + F + K[i] + w[g] >>> 0;
+        B = B + (x << SH[i] | x >>> 32 - SH[i]) >>> 0;
+        A = tmp;
+      }
+      a0 = a0 + A >>> 0;
+      b0 = b0 + B >>> 0;
+      c0 = c0 + C2 >>> 0;
+      d0 = d0 + D >>> 0;
+    }
+    const out = new Uint8Array(16);
+    [a0, b0, c0, d0].forEach((v, i) => {
+      for (let k2 = 0; k2 < 4; k2++) out[4 * i + k2] = v >>> 8 * k2 & 255;
+    });
+    return out;
+  }
+  function rc4(key2, data) {
+    const S3 = Array.from({ length: 256 }, (_, i) => i);
+    let j = 0;
+    for (let i = 0; i < 256; i++) {
+      j = j + S3[i] + key2[i % key2.length] & 255;
+      [S3[i], S3[j]] = [S3[j], S3[i]];
+    }
+    const out = new Uint8Array(data.length);
+    let a = 0, b = 0;
+    for (let k2 = 0; k2 < data.length; k2++) {
+      a = a + 1 & 255;
+      b = b + S3[a] & 255;
+      [S3[a], S3[b]] = [S3[b], S3[a]];
+      out[k2] = data[k2] ^ S3[S3[a] + S3[b] & 255];
+    }
+    return out;
+  }
+  var PAD = fromHex("28BF4E5E4E758A4164004E56FFFA01082E2E00B6D0683E802F0CA9FE6453697A");
+  function strAfter(s, key2) {
+    const i = s.indexOf(key2);
+    if (i < 0) return null;
+    let p = i + key2.length;
+    while (/\s/.test(s[p])) p++;
+    if (s[p] === "<") return fromHex(s.slice(p + 1, s.indexOf(">", p)));
+    if (s[p] !== "(") return null;
+    const out = [];
+    let depth = 1;
+    for (p++; p < s.length && depth > 0; p++) {
+      const c = s[p];
+      if (c === "\\") {
+        const n = s[++p];
+        if (/[0-7]/.test(n)) {
+          let o = n;
+          while (o.length < 3 && /[0-7]/.test(s[p + 1])) o += s[++p];
+          out.push(parseInt(o, 8) & 255);
+        } else out.push({ n: 10, r: 13, t: 9, b: 8, f: 12 }[n] ?? n.charCodeAt(0));
+      } else if (c === "(") depth++, out.push(40);
+      else if (c === ")") {
+        if (--depth > 0) out.push(41);
+      } else out.push(c.charCodeAt(0));
+    }
+    return Uint8Array.from(out);
+  }
+  function setupDecrypt(s) {
+    const e = /\/Encrypt\s+(\d+)\s+\d+\s+R/.exec(s);
+    let dict;
+    if (e) {
+      const at3 = s.search(new RegExp(`\\b${e[1]}\\s+0\\s+obj`));
+      dict = s.slice(at3, s.indexOf("endobj", at3));
+    } else {
+      const at3 = s.indexOf("/Encrypt");
+      dict = s.slice(at3, at3 + 2e3);
+    }
+    const V = Number(/\/V\s+(\d)/.exec(dict)?.[1] ?? 0);
+    const R2 = Number(/\/R\s+(\d)/.exec(dict)?.[1] ?? 0);
+    if (V >= 5 || R2 >= 5) return { key: new Uint8Array(0), aes: false, n: 0, unsupported: true };
+    const n = V === 1 ? 5 : Number(/\/Length\s+(\d+)/.exec(dict)?.[1] ?? 40) / 8;
+    const O = strAfter(dict, "/O") ?? new Uint8Array(0);
+    const P = Number(/\/P\s+(-?\d+)/.exec(dict)?.[1]);
+    const idm = /\/ID\s*\[\s*<([0-9A-Fa-f]+)>/.exec(s);
+    const id0 = idm ? fromHex(idm[1]) : strAfter(s, "/ID[") ?? new Uint8Array(0);
+    const p4 = new Uint8Array(4);
+    new DataView(p4.buffer).setInt32(0, P, true);
+    let h = md5(concat(PAD, O, p4, id0, /\/EncryptMetadata\s+false/.test(dict) && R2 >= 4 ? fromHex("FFFFFFFF") : new Uint8Array(0)));
+    if (R2 >= 3) for (let i = 0; i < 50; i++) h = md5(h.subarray(0, n));
+    return { key: h.subarray(0, n), aes: /\/CFM\s*\/AESV2/.test(dict), n };
+  }
+  async function decryptStream(d, enc, num3, gen) {
+    const ext = Uint8Array.from([num3 & 255, num3 >> 8 & 255, num3 >> 16 & 255, gen & 255, gen >> 8 & 255]);
+    const k2 = md5(concat(enc.key, ext, enc.aes ? fromLatin1("sAlT") : new Uint8Array(0))).subarray(0, Math.min(enc.n + 5, 16));
+    if (!enc.aes) return rc4(k2, d);
+    const subtle = globalThis.crypto?.subtle;
+    if (!subtle || d.length < 32) throw new Error("no AES");
+    const key2 = await subtle.importKey("raw", k2, { name: "AES-CBC" }, false, ["decrypt"]);
+    const body = d.subarray(16, 16 + Math.floor((d.length - 16) / 16) * 16);
+    return new Uint8Array(await subtle.decrypt({ name: "AES-CBC", iv: d.subarray(0, 16) }, key2, body));
+  }
+  async function inflate(d) {
+    try {
+      const DS = globalThis.DecompressionStream;
+      if (!DS) return null;
+      const stream2 = new Blob([d]).stream().pipeThrough(new DS("deflate"));
+      const reader = stream2.getReader();
+      const parts = [];
+      for (; ; ) {
+        try {
+          const { done: done2, value } = await reader.read();
+          if (done2) break;
+          parts.push(value);
+        } catch {
+          break;
+        }
+      }
+      return parts.length ? concat(...parts) : null;
+    } catch {
+      return null;
+    }
+  }
+  var unescapeLit = (str) => {
+    const out = [];
+    for (let p = 0; p < str.length; p++) {
+      const c = str[p];
+      if (c !== "\\") {
+        out.push(c.charCodeAt(0) & 255);
+        continue;
+      }
+      const n = str[++p];
+      if (n === void 0) break;
+      if (/[0-7]/.test(n)) {
+        let o = n;
+        while (o.length < 3 && /[0-7]/.test(str[p + 1] ?? "")) o += str[++p];
+        out.push(parseInt(o, 8) & 255);
+      } else if (n === "\r" || n === "\n") {
+        if (n === "\r" && str[p + 1] === "\n") p++;
+      } else out.push({ n: 10, r: 13, t: 9, b: 8, f: 12 }[n] ?? n.charCodeAt(0));
+    }
+    return Uint8Array.from(out);
+  };
+  function parseCMap(txt) {
+    const map = /* @__PURE__ */ new Map();
+    let width = 1;
+    const u16 = (h) => {
+      const b = fromHex(h);
+      let s = "";
+      for (let i = 0; i + 1 < b.length; i += 2) s += String.fromCharCode(b[i] << 8 | b[i + 1]);
+      return s;
+    };
+    for (const blk of txt.matchAll(/beginbfchar([\s\S]*?)endbfchar/g))
+      for (const m of blk[1].matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g)) {
+        width = Math.max(width, m[1].length / 2);
+        map.set(parseInt(m[1], 16), u16(m[2]));
+      }
+    for (const blk of txt.matchAll(/beginbfrange([\s\S]*?)endbfrange/g))
+      for (const m of blk[1].matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*(?:<([0-9A-Fa-f]+)>|\[([^\]]*)\])/g)) {
+        width = Math.max(width, m[1].length / 2);
+        const lo = parseInt(m[1], 16);
+        const hi = parseInt(m[2], 16);
+        if (m[3] !== void 0) {
+          const base = u16(m[3]);
+          for (let c = lo; c <= hi && c - lo < 5e3; c++) map.set(c, base.slice(0, -1) + String.fromCharCode(base.charCodeAt(base.length - 1) + (c - lo)));
+        } else [...m[4].matchAll(/<([0-9A-Fa-f]+)>/g)].map((x) => u16(x[1])).forEach((v, k2) => map.set(lo + k2, v));
+      }
+    return { map, width };
+  }
+  async function pdfText(buf) {
+    const s = latin1(buf);
+    if (!s.startsWith("%PDF")) return null;
+    const enc = s.includes("/Encrypt") ? setupDecrypt(s) : null;
+    if (enc?.unsupported) return null;
+    const objs = /* @__PURE__ */ new Map();
+    const heads = [...s.matchAll(/(?:^|[\r\n\s])(\d+)\s+(\d+)\s+obj\b/g)];
+    const streamOf = async (o) => o?.raw ? /\/Filter/.test(o.dict) ? inflate(o.raw) : o.raw : null;
+    for (let k2 = 0; k2 < heads.length; k2++) {
+      const num3 = Number(heads[k2][1]);
+      const gen = Number(heads[k2][2]);
+      const start = heads[k2].index + heads[k2][0].length;
+      const stop = k2 + 1 < heads.length ? heads[k2 + 1].index : s.length;
+      const body = s.slice(start, stop);
+      const sm = /stream\r?\n/.exec(body);
+      const dict = sm ? body.slice(0, sm.index) : body.slice(0, body.indexOf("endobj") >= 0 ? body.indexOf("endobj") : body.length);
+      let raw = null;
+      if (sm) {
+        const a = start + sm.index + sm[0].length;
+        const e = s.lastIndexOf("endstream", stop);
+        if (e > a) {
+          raw = buf.subarray(a, e);
+          if (enc && !/\/Type\s*\/XRef/.test(dict)) {
+            try {
+              raw = await decryptStream(raw, enc, num3, gen);
+            } catch {
+              raw = null;
+            }
+          }
+        }
+      }
+      objs.set(num3, { dict, raw });
+    }
+    for (const [, o] of [...objs]) {
+      if (!/\/Type\s*\/ObjStm/.test(o.dict)) continue;
+      const data = await streamOf(o);
+      if (!data) continue;
+      const n = Number(/\/N\s+(\d+)/.exec(o.dict)?.[1]);
+      const first = Number(/\/First\s+(\d+)/.exec(o.dict)?.[1]);
+      const text = latin1(data);
+      const nums3 = (text.slice(0, first).match(/\d+/g) ?? []).map(Number);
+      for (let k2 = 0; k2 < n; k2++) {
+        const num3 = nums3[2 * k2];
+        const off = nums3[2 * k2 + 1];
+        const nxt = k2 + 1 < n ? nums3[2 * k2 + 3] : text.length - first;
+        objs.set(num3, { dict: text.slice(first + off, first + nxt), raw: null });
+      }
+    }
+    const ref = (str, key2) => {
+      const m = new RegExp(`${key2}\\s+(\\d+)\\s+\\d+\\s+R`).exec(str);
+      return m ? Number(m[1]) : null;
+    };
+    const cmapCache = /* @__PURE__ */ new Map();
+    const cmapOf = async (fontNum) => {
+      if (cmapCache.has(fontNum)) return cmapCache.get(fontNum);
+      const f = objs.get(fontNum);
+      const tu = f ? ref(f.dict, "/ToUnicode") : null;
+      const data = tu !== null ? await streamOf(objs.get(tu)) : null;
+      const c = data ? parseCMap(latin1(data)) : null;
+      cmapCache.set(fontNum, c);
+      return c;
+    };
+    const resourcesOf = (dict) => {
+      let d = dict;
+      for (let hop = 0; hop < 6 && d; hop++) {
+        const r = ref(d, "/Resources");
+        if (r !== null) return objs.get(r)?.dict ?? "";
+        const i = d.indexOf("/Resources");
+        if (i >= 0) return d.slice(i, i + 4e3);
+        const par = ref(d, "/Parent");
+        d = par !== null ? objs.get(par)?.dict : void 0;
+      }
+      return "";
+    };
+    const fontsOf = (res) => {
+      const out2 = /* @__PURE__ */ new Map();
+      let fd = res;
+      const r = ref(res, "/Font");
+      if (r !== null) fd = objs.get(r)?.dict ?? "";
+      else {
+        const i = res.indexOf("/Font");
+        fd = i >= 0 ? res.slice(i, i + 3e3) : "";
+      }
+      for (const m of fd.matchAll(/\/([^\s/<>\[\]()]+)\s+(\d+)\s+\d+\s+R/g)) out2.set(m[1], Number(m[2]));
+      return out2;
+    };
+    const decodeStr = (bytes, cm) => {
+      if (!cm) return latin1(bytes);
+      let out2 = "";
+      if (cm.width >= 2) for (let i = 0; i + 1 < bytes.length; i += 2) out2 += cm.map.get(bytes[i] << 8 | bytes[i + 1]) ?? "";
+      else for (const b of bytes) out2 += cm.map.get(b) ?? String.fromCharCode(b);
+      return out2;
+    };
+    let out = "";
+    const draw3 = async (data, fonts) => {
+      let cur2 = null;
+      for (const m of latin1(data).matchAll(/\/([^\s/<>\[\]()]+)\s+[\d.]+\s+Tf|\[((?:[^\]\\]|\\.)*)\]\s*TJ|\(((?:[^)\\]|\\.)*)\)\s*(?:Tj|'|")|<([0-9A-Fa-f\s]+)>\s*(?:Tj|'|")/g)) {
+        if (m[1] !== void 0) {
+          const fn = fonts.get(m[1]);
+          cur2 = fn !== void 0 ? await cmapOf(fn) : null;
+          continue;
+        }
+        if (m[2] !== void 0) {
+          for (const x of m[2].matchAll(/\(((?:[^)\\]|\\.)*)\)|<([0-9A-Fa-f\s]+)>|(-?[\d.]+)/g)) {
+            if (x[3] !== void 0) {
+              if (Number(x[3]) < -250) out += " ";
+              continue;
+            }
+            out += decodeStr(x[1] !== void 0 ? unescapeLit(x[1]) : fromHex(x[2]), cur2);
+          }
+        } else out += decodeStr(m[3] !== void 0 ? unescapeLit(m[3]) : fromHex(m[4]), cur2);
+        out += " ";
+      }
+    };
+    for (const [, o] of objs) {
+      if (/\/Type\s*\/Page\b(?!s)/.test(o.dict)) {
+        const fonts = fontsOf(resourcesOf(o.dict));
+        const cm = o.dict.indexOf("/Contents");
+        const cstr = cm >= 0 ? o.dict.slice(cm, cm + 600) : "";
+        const list = /\/Contents\s*\[([^\]]*)\]/.exec(cstr);
+        const nums3 = list ? [...list[1].matchAll(/(\d+)\s+\d+\s+R/g)].map((m) => Number(m[1])) : [ref(cstr, "/Contents")].filter((x) => x !== null);
+        for (const n of nums3) {
+          const data = await streamOf(objs.get(n));
+          if (data) await draw3(data, fonts);
+        }
+      } else if (/\/Subtype\s*\/Form\b/.test(o.dict)) {
+        const data = await streamOf(o);
+        if (data) await draw3(data, fontsOf(resourcesOf(o.dict)));
+      }
+    }
+    return out.replace(/\s+/g, " ");
+  }
+  var tidy = (t) => t.replace(/ ?([.:]) ?/g, "$1 ").replace(/(\w) (?=\w)/g, "$1").replace(/(\d)[.] ?(\d)/g, "$1.$2");
+
+  // camera/patternsheet.ts
+  var sheet6 = () => $("coachsheet");
+  var onDone = null;
+  function close7() {
+    sheet6().classList.remove("on");
+    sheet6().innerHTML = "";
+    onDone?.();
+  }
+  var describe = (p) => [`${p.lengthFt} ft (${lengthClass(p.lengthFt)})`, p.volumeMl !== void 0 ? `${p.volumeMl} mL` : "", p.ratio !== void 0 ? `${p.ratio}:1` : ""].filter(Boolean).join(" \xB7 ");
+  function preview(canvas, p) {
+    drawTopDown(canvas.getContext("2d"), canvas.width, canvas.height, [], void 0, mapOf(p));
+  }
+  function openPatterns(done2) {
+    onDone = done2 ?? null;
+    const el = sheet6();
+    el.classList.add("on");
+    const list = S.myPatterns;
+    el.innerHTML = `<div class="row"><h2>My oil patterns</h2><button class="btn ghost" id="mp-close">Close</button></div>
+    <div class="note">Add the pattern your centre posts: the PDF of the sheet, a screenshot, or a photo of the printed one. It's read on your phone, you check the numbers, and nothing is uploaded. Sheets with a load table (most from Kegel lane machines) show exactly where the oil is; for the others the shape is estimated from the length and ratio, and says so.</div>
+    <div class="chips"><label class="btn" style="display:inline-block;cursor:pointer">Add from a sheet<input id="mp-file" type="file" accept="application/pdf,image/*" style="display:none"></label><button class="btn ghost" id="mp-type">Type it in</button></div>
+    <div class="note" id="mp-prog"></div>
+    ${list.length ? "" : `<div class="card"><div class="u">No patterns yet. Ask the front desk for tonight's pattern sheet, or look for it on the centre's website or the board by the lanes.</div></div>`}
+    ${list.map(
+      (p) => `<div class="card" data-p="${p.id}"><div style="display:flex;gap:12px"><canvas width="96" height="168" style="width:72px;height:126px;border-radius:8px;flex:none" data-prev="${p.id}"></canvas><div style="flex:1;min-width:0">
+          <div class="row"><b>${esc(p.name)}</b>${S.where.patternId === p.id ? `<span class="badge good">tonight</span>` : ""}</div>
+          <div class="u">${esc(describe(p))}</div>
+          <div class="note">${p.rows?.length ? `Oil map from the sheet's load table (${p.rows.length} rows)` : "Oil shape estimated from the length and ratio"} \xB7 rule of 31: board ${ruleOf31(p.lengthFt)} \xB7 ${p.from === "pdf" ? "from a PDF" : p.from === "photo" ? "from a photo" : "typed in"}</div>
+          <div class="chips">${S.where.patternId === p.id ? `<button class="chip" data-act="off">Not tonight</button>` : `<button class="chip sel" data-act="use">Use tonight</button>`}<button class="chip" data-act="edit">Edit</button><button class="chip danger" data-act="del">Delete</button></div></div></div></div>`
+    ).join("")}`;
+    $("mp-close").onclick = close7;
+    $("mp-type").onclick = () => openEditor({ rows: [], tableOk: false, notes: [] }, "typed", "");
+    $("mp-file").onchange = async (e) => {
+      const f = e.target.files?.[0];
+      if (!f) return;
+      const prog = $("mp-prog");
+      try {
+        const read2 = await readFile(f, (m) => prog.textContent = m);
+        openEditor(read2.sheet, read2.from, f.name.replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ").trim());
+      } catch (err) {
+        prog.textContent = `Couldn't read that file: ${err instanceof Error ? err.message : String(err)}. You can type the numbers in instead.`;
+      }
+    };
+    el.querySelectorAll("canvas[data-prev]").forEach((c) => {
+      const p = S.myPatterns.find((x) => x.id === c.dataset.prev);
+      if (p) preview(c, p);
+    });
+    el.querySelectorAll("[data-p]").forEach((card) => {
+      const p = S.myPatterns.find((x) => x.id === card.dataset.p);
+      card.querySelector("[data-act=use]")?.addEventListener("click", async () => {
+        S.where = { ...S.where, patternId: p.id };
+        await saveCoach();
+        openPatterns(done2);
+      });
+      card.querySelector("[data-act=off]")?.addEventListener("click", async () => {
+        S.where = { ...S.where, patternId: "" };
+        await saveCoach();
+        openPatterns(done2);
+      });
+      card.querySelector("[data-act=edit]")?.addEventListener("click", () => openEditor({ rows: p.rows ?? [], tableOk: !!p.rows?.length, notes: [], lengthFt: p.lengthFt, volumeMl: p.volumeMl, ratio: p.ratio, forwardMl: p.forwardMl, reverseMl: p.reverseMl, brushDropFt: p.brushDropFt }, p.from, p.name, p));
+      card.querySelector("[data-act=del]")?.addEventListener("click", async () => {
+        if (!confirm(`Delete ${p.name}?`)) return;
+        S.myPatterns = S.myPatterns.filter((x) => x.id !== p.id);
+        if (S.where.patternId === p.id) S.where = { ...S.where, patternId: "" };
+        await saveCoach();
+        openPatterns(done2);
+      });
+    });
+  }
+  async function readFile(f, progress2) {
+    const isPdf = f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+    if (isPdf) {
+      progress2("Reading the sheet\u2026");
+      const text2 = await pdfText(new Uint8Array(await f.arrayBuffer()));
+      if (text2 === null) throw new Error("this PDF uses a protection the reader can't open");
+      return { sheet: readSheetText(tidy(text2)), from: "pdf" };
+    }
+    progress2("Loading the text reader (first time only)\u2026");
+    const T = await loadTesseract();
+    progress2("Reading the photo\u2026");
+    const img = await createImageBitmap(f);
+    const scale2 = Math.min(1, 2200 / Math.max(img.width, img.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.width * scale2);
+    c.height = Math.round(img.height * scale2);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    const { data } = await T.recognize(c, "eng");
+    const text = data.text ?? data.words.map((w) => w.text).join(" ");
+    progress2("");
+    return { sheet: readSheetText(text), from: "photo" };
+  }
+  function openEditor(r, from, name, existing) {
+    const el = sheet6();
+    el.classList.add("on");
+    const field = (id, label2, v, hint) => `<div class="field"><label>${label2}</label><input id="${id}" inputmode="decimal" value="${v ?? ""}" placeholder="${hint}"></div>`;
+    el.innerHTML = `<div class="row"><h2>${existing ? "Edit pattern" : "Check the pattern"}</h2><button class="btn ghost" id="pe-back">Back</button></div>
+    <div class="note">${from === "typed" ? "Type the numbers from the sheet." : `Read from your ${from === "pdf" ? "PDF" : "photo"}. Check each number against the sheet and fix any that are wrong.`}${r.notes.length ? " " + esc(r.notes.join(" ")) : ""}</div>
+    ${r.tableOk ? `<div class="card" style="border-color:var(--mint)"><div class="u">Load table read: ${r.rows.length} rows, and they add up to the sheet's totals. The oil on your lane will be drawn from it, board by board.</div></div>` : ""}
+    <div class="card">
+      <div class="field"><label>Name</label><input id="pe-name" value="${esc(name)}" placeholder="e.g. Main Street house shot"></div>
+      <div class="two">${field("pe-len", "Length (ft)", r.lengthFt, "e.g. 41")}${field("pe-vol", "Volume (mL)", r.volumeMl, "e.g. 24.5")}</div>
+      <div class="two">${field("pe-ratio", "Ratio (the N of N:1)", r.ratio, "e.g. 4")}${field("pe-drop", "Brush drop (ft)", r.brushDropFt, "optional")}</div>
+      <div class="two">${field("pe-fwd", "Forward oil (mL)", r.forwardMl, "optional")}${field("pe-rev", "Reverse oil (mL)", r.reverseMl, "optional")}</div>
+    </div>
+    <div class="card"><div class="k">The oil, from above</div><div style="display:flex;gap:12px;align-items:flex-start"><canvas id="pe-prev" width="180" height="315" style="width:120px;height:210px;border-radius:10px;flex:none"></canvas><div class="note" id="pe-desc"></div></div></div>
+    <div class="chips"><button class="btn" id="pe-save">${existing ? "Save" : "Save pattern"}</button></div><div class="note" id="pe-err"></div>`;
+    const num3 = (id) => {
+      const v = parseFloat($(id).value);
+      return Number.isFinite(v) ? v : void 0;
+    };
+    const build = () => {
+      const len = num3("pe-len");
+      if (len === void 0 || len < 20 || len > 55) return null;
+      const nm = $("pe-name").value.trim() || `${len} ft pattern`;
+      const ratio = num3("pe-ratio");
+      return {
+        id: existing?.id ?? newId(),
+        key: nm.toLowerCase(),
+        name: nm,
+        series: "mine",
+        lengthFt: Math.round(len),
+        volumeMl: num3("pe-vol"),
+        ratio: ratio !== void 0 && ratio >= 1 && ratio <= 15 ? ratio : void 0,
+        forwardMl: num3("pe-fwd"),
+        reverseMl: num3("pe-rev"),
+        brushDropFt: num3("pe-drop"),
+        // the load table is only kept while the length still matches the sheet it came from
+        rows: r.tableOk && Math.round(len) === r.lengthFt ? r.rows : existing?.rows && Math.round(len) === existing.lengthFt ? existing.rows : void 0,
+        from,
+        addedAt: existing?.addedAt ?? (/* @__PURE__ */ new Date()).toISOString(),
+        source: { kind: "user", url: "the bowler's own pattern sheet", retrievedOn: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10) }
+      };
+    };
+    const repaint = () => {
+      const p = build();
+      const c = $("pe-prev");
+      const desc = $("pe-desc");
+      if (!p) {
+        c.getContext("2d").clearRect(0, 0, c.width, c.height);
+        desc.textContent = "Enter the length (20 to 55 ft) to see the oil.";
+        return;
+      }
+      preview(c, p);
+      desc.textContent = `${p.rows?.length ? "Drawn from the sheet's load table: each board's oil, foot by foot." : `Estimated shape: full oil across the middle, the outside boards at 1/${p.ratio ?? 3} of it${p.ratio === void 0 ? " (no ratio given, so 3:1 is assumed)" : ""}, tapering off over the last part.`} The gold line is where the oil ends. Kegel's rule of 31 puts a starting breakpoint near board ${ruleOf31(p.lengthFt)} (${p.lengthFt} \u2212 31).`;
+    };
+    el.querySelectorAll("input").forEach((i) => i.addEventListener("input", repaint));
+    repaint();
+    $("pe-back").onclick = () => openPatterns(onDone ?? void 0);
+    $("pe-save").onclick = async () => {
+      const p = build();
+      if (!p) return void ($("pe-err").textContent = "The length must be between 20 and 55 feet.");
+      S.myPatterns = existing ? S.myPatterns.map((x) => x.id === p.id ? p : x) : [...S.myPatterns, p];
+      if (!existing && !S.where.patternId) S.where = { ...S.where, patternId: p.id };
+      await saveCoach();
+      openPatterns(onDone ?? void 0);
+    };
+  }
+
   // camera/coachlive.ts
   var hand2 = () => S.profile?.hand ?? "R";
   var ballName2 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "unknown ball";
@@ -10765,7 +11559,8 @@ ${url}`);
     </div>
     <div class="card"><div class="k">Where I'm bowling</div>
       <div class="two"><div class="field"><label>Centre</label><input id="tg-center" value="${esc(S.where.center)}" placeholder="Centre name" autocomplete="off"></div><div class="field"><label>Lane</label><input id="tg-lane" inputmode="numeric" value="${esc(S.where.lane)}" placeholder="e.g. 17"></div></div>
-      <div class="note">Used to remember how each pair played for you. It stays on this phone.</div></div>
+      <div class="field"><label>Oil pattern tonight</label><div class="chips" style="margin:0;align-items:center"><select id="tg-pat" style="flex:1;min-width:0"><option value="">None / not known</option>${S.myPatterns.map((p) => `<option value="${esc(p.id)}" ${S.where.patternId === p.id ? "selected" : ""}>${esc(p.name)} \xB7 ${p.lengthFt} ft</option>`).join("")}</select><button class="chip" id="tg-pats">My patterns</button></div></div>
+      <div class="note">Used to remember how each pair played for you, and to draw the oil on your lane. It stays on this phone.</div></div>
     <div class="chips"><button class="btn" id="tg-save">Save target</button>${S.target ? `<button class="btn ghost" id="tg-clear">No target</button>` : ""}</div>`;
     const num3 = (id) => {
       const v = parseFloat($(id).value);
@@ -10779,6 +11574,7 @@ ${url}`);
       }
     );
     $("tg-close").onclick = () => el.classList.remove("on");
+    $("tg-pats").onclick = () => openPatterns(() => openTarget(prefill));
     $("tg-clear")?.addEventListener("click", async () => {
       S.target = null;
       await saveCoach();
@@ -10789,7 +11585,7 @@ ${url}`);
       const arrows = num3("tg-arrows");
       if (arrows === void 0) return void $("tg-arrows").focus();
       S.target = { arrows, stand: num3("tg-stand"), breakpoint: num3("tg-bp"), at: (/* @__PURE__ */ new Date()).toISOString() };
-      S.where = { center: $("tg-center").value.trim(), lane: $("tg-lane").value.trim() };
+      S.where = { center: $("tg-center").value.trim(), lane: $("tg-lane").value.trim(), patternId: $("tg-pat").value };
       await saveCoach();
       el.classList.remove("on");
       renderTonight();
@@ -10836,6 +11632,10 @@ ${url}`);
     const lineOf = (x) => [x.stand !== null ? `stood on ${x.stand.toFixed(0)}` : "", x.arrows !== null ? `crossed the arrows on ${x.arrows.toFixed(0)}` : ""].filter(Boolean).join(", ");
     el.innerHTML = `<div class="card"><div class="row"><div><div class="k">My target</div><div class="lr-head" style="font-size:16px">${t ? `${t.stand !== void 0 ? `Stand ${t.stand} \xB7 ` : ""}aim ${t.arrows} at the arrows${t.breakpoint !== void 0 ? ` \xB7 break at ${t.breakpoint}` : ""}` : "No target set"}</div></div><button class="chip" id="tn-edit">${t ? "Change" : "Set target"}</button></div>
     ${S.where.center ? `<div class="note">${esc(S.where.center)}${S.where.lane ? ` \xB7 lanes ${esc(pairOf(S.where.lane))}` : ""}</div>` : `<div class="note">Set a target to have every shot graded against it, and your centre and lane so the app remembers how each pair played.</div>`}
+    ${(() => {
+      const p = activePattern();
+      return p ? `<div class="note">Oil: <b>${esc(p.name)}</b>, ${p.lengthFt} ft${p.volumeMl !== void 0 ? `, ${p.volumeMl} mL` : ""}${p.ratio !== void 0 ? `, ${p.ratio}:1` : ""}. Rule of 31: break near board ${ruleOf31(p.lengthFt)}. ${p.rows?.length ? "Drawn on the lane from the sheet's load table." : "Shape on the lane is estimated."}</div>` : `<div class="note">Add tonight's oil pattern (Target, then My patterns) to see the oil drawn on your lane.</div>`;
+    })()}
     ${last ? `<div class="lr-next"><b>Last time on this pair</b> (${esc(day(last.date))}): ${esc(lineOf(last) || "no line recorded")}${last.ballIds.length ? ` with the ${esc(last.ballIds.map(ballName2).join(", "))}` : ""}${last.pocketPct !== null ? `, ${Math.round(last.pocketPct)}% in the pocket` : ""}${last.strikePct !== null ? `, ${Math.round(last.strikePct)}% strikes` : ""}.${best && best !== last ? `<div class="u">Best here: ${esc(day(best.date))}, ${esc(lineOf(best))}, ${Math.round(best.pocketPct)}% in the pocket.</div>` : ""}${(best ?? last).arrows !== null ? `<div class="chips"><button class="chip" id="tn-use">Start on that line</button></div>` : ""}</div>` : ""}</div>`;
     $("tn-edit").onclick = () => openTarget();
     $("tn-use")?.addEventListener("click", () => {
@@ -10873,6 +11673,13 @@ ${url}`);
     else if (move.kind === "fix-aim") bits.push("hit your target before you move");
     return bits.join(". ") + ".";
   }
+  function paintOil() {
+    const b = document.getElementById("oil-btn");
+    if (!b) return;
+    b.classList.toggle("hide", !activePattern());
+    b.textContent = oilOn() ? "Oil: on" : "Oil: off";
+    b.classList.toggle("sel", oilOn());
+  }
   function paintVoice() {
     const b = document.getElementById("voice-btn");
     if (b) {
@@ -10885,6 +11692,7 @@ ${url}`);
       if (S.target) s.plan = { ...S.target };
       if (S.where.center) s.center = S.where.center;
       if (S.where.lane && !s.lane) s.lane = S.where.lane;
+      if (S.where.patternId) s.pattern = S.where.patternId;
       if (S.drill) {
         const run = addDrillShot(S.drill, s);
         const r = run.results[run.results.length - 1];
@@ -10909,11 +11717,17 @@ ${url}`);
       paintVoice();
     });
     document.getElementById("drill-chip")?.addEventListener("click", () => openDrillStatus());
+    document.getElementById("oil-btn")?.addEventListener("click", () => {
+      setOilOn(!oilOn());
+      paintOil();
+    });
     onChange(() => {
       paintDrill();
+      paintOil();
       if (document.getElementById("tab-live")?.classList.contains("on")) renderTonight();
     });
     paintVoice();
+    paintOil();
     paintDrill();
     renderTonight();
     renderMove();
@@ -11528,10 +12342,13 @@ ${url}`);
       const P = (x, y) => applyHomography(Hinv2, { x, y });
       const view3 = { ctx: cx, width: s.vw, P };
       const last = s.path[s.path.length - 1]?.t ?? 0;
+      const pat = patternById(s.pattern);
+      const oilMap = pat && oilOn() ? mapOf(pat) : null;
       const loop = () => {
         cx.clearRect(0, 0, s.vw, s.vh);
         if (modeSel === "lane") {
           drawLaneGrid(view3);
+          if (oilMap) drawOil(view3, oilMap);
           const t = v.currentTime + s.recStartT;
           const upto = s.path.filter((p) => p.t <= t).map((p) => P(p.x, p.y));
           strokeTrail(view3, upto, 1, t < last);
@@ -11679,16 +12496,13 @@ ${url}`);
   }
   var showOlder = false;
   var srcWord = (kind2) => kind2 === "manufacturer" ? "manufacturer page" : kind2 === "retailer" ? "retailer's announcement" : kind2 === "reviewer" ? "review site" : kind2;
-  var selSeries = "";
-  var patFind = "";
   function patOptions() {
-    const q = patFind.trim().toLowerCase();
-    const shown = S.patterns.filter((p) => p.key === selPattern || (!selSeries || p.series === selSeries) && (!q || `${p.name} ${p.series ?? ""} ${p.lengthFt}`.toLowerCase().includes(q)));
-    const label2 = (p) => `${p.name}${p.series && !p.name.toLowerCase().includes(p.series.toLowerCase()) ? " \xB7 " + p.series : ""} \xB7 ${p.lengthFt} ft`;
-    return `<option value="">Custom (enter from the center's sheet)</option>` + shown.sort((a, b) => a.name.localeCompare(b.name)).map((p) => `<option value="${esc(p.key)}" ${p.key === selPattern ? "selected" : ""}>${esc(label2(p))}</option>`).join("") + (shown.length === 0 ? `<option disabled>No patterns match</option>` : "");
+    const label2 = (p) => `${p.name} \xB7 ${p.lengthFt} ft${p.id === S.where.patternId ? " (tonight)" : ""}`;
+    return `<option value="custom" ${selPattern === "custom" ? "selected" : ""}>Type the numbers in</option>` + S.myPatterns.map((p) => `<option value="${esc(p.id)}" ${p.id === effectivePattern() ? "selected" : ""}>${esc(label2(p))}</option>`).join("");
   }
+  var effectivePattern = () => selPattern && selPattern !== "custom" && S.myPatterns.some((p) => p.id === selPattern) ? selPattern : selPattern === "custom" ? "" : S.where.patternId ?? "";
   function currentPattern() {
-    const found = S.patterns.find((p) => p.key === selPattern);
+    const found = S.myPatterns.find((p) => p.id === effectivePattern());
     return found ?? customPattern(custom.len, custom.vol || void 0, custom.ratio || void 0, custom.name || "Custom pattern");
   }
   function renderArsenal() {
@@ -11717,13 +12531,12 @@ ${url}`);
 
     <h3>Build my arsenal for a pattern</h3>
     <div class="card">
-      <div class="field"><label>Oil pattern (${S.patterns.length} in the library)</label>
-        ${S.patterns.length > 12 ? `<div class="two"><select id="pat-series"><option value="">All groups</option>${[...new Set(S.patterns.map((p) => p.series).filter(Boolean))].sort().map((s) => `<option ${s === selSeries ? "selected" : ""}>${esc(s)}</option>`).join("")}</select><input id="pat-find" placeholder="Search (name, length)" value="${esc(patFind)}" autocomplete="off"></div>` : ""}
-        <select id="pat-sel">${patOptions()}</select></div>
-      ${selPattern ? "" : `<div class="two"><div class="field"><label>Length (ft)</label><input id="cp-len" inputmode="decimal" value="${custom.len}"></div><div class="field"><label>Volume (mL)</label><input id="cp-vol" inputmode="decimal" value="${custom.vol}"></div></div><div class="field"><label>Ratio (the first number of N:1)</label><input id="cp-ratio" inputmode="decimal" value="${custom.ratio}"></div>`}
+      <div class="field"><label>Oil pattern</label>
+        <div class="chips" style="margin:0;align-items:center"><select id="pat-sel" style="flex:1;min-width:0">${patOptions()}</select><button class="chip" id="pat-mine">My patterns</button></div></div>
+      ${effectivePattern() ? "" : `<div class="two"><div class="field"><label>Length (ft)</label><input id="cp-len" inputmode="decimal" value="${custom.len}"></div><div class="field"><label>Volume (mL)</label><input id="cp-vol" inputmode="decimal" value="${custom.vol}"></div></div><div class="field"><label>Ratio (the first number of N:1)</label><input id="cp-ratio" inputmode="decimal" value="${custom.ratio}"></div>`}
       <div class="u">${lengthClass(pat.lengthFt)} pattern${pat.ratio !== void 0 ? ` \xB7 ${pat.ratio}:1 ratio, ${isSportRatio(pat.ratio) ? `within the ${SPORT_RATIO_LIMIT}:1 sport limit` : `above the ${SPORT_RATIO_LIMIT}:1 sport limit`}` : ""}${pat.volumeMl !== void 0 ? ` \xB7 ${pat.volumeMl} mL` : ""}</div>
       ${pat.source.kind === "user" ? "" : `<div class="note">Source: <a style="color:var(--cy)" href="${esc(pat.source.url)}" target="_blank" rel="noopener">${esc(pat.source.kind)}</a>, retrieved ${esc(pat.source.retrievedOn)}.${pat.note ? " " + esc(pat.note) : ""}</div>`}
-      ${S.patterns.length ? "" : `<div class="note">The pattern library is empty. Enter any pattern from the center's sheet above, or import more with tools/import-patterns.ts.</div>`}
+      ${S.myPatterns.length ? "" : `<div class="note">Add the pattern your centre posts (My patterns: a PDF, a screenshot or a photo of the sheet) and it appears here, and on your lane in the Live view.</div>`}
     </div>
     <div id="lineup"></div>`;
     el.querySelectorAll("[data-ball]").forEach((card) => {
@@ -11753,14 +12566,7 @@ ${url}`);
       S.arsenal.push({ id: Math.random().toString(36).slice(2, 9), name: n, exemplars: [], catalogKey: hit?.key });
       await saveArsenal();
     };
-    $("pat-series")?.addEventListener("change", (e) => {
-      selSeries = e.target.value;
-      $("pat-sel").innerHTML = patOptions();
-    });
-    $("pat-find")?.addEventListener("input", (e) => {
-      patFind = e.target.value;
-      $("pat-sel").innerHTML = patOptions();
-    });
+    $("pat-mine").onclick = () => openPatterns(() => renderArsenal());
     $("pat-sel").onchange = (e) => {
       selPattern = e.target.value;
       renderArsenal();
@@ -12037,7 +12843,7 @@ ${url}`);
     { tab: "learn", sel: ".tb[data-tab='learn']", title: "Learn", text: 'Every bowling word the app uses, and exactly what it means in the app: pocket, breakpoint, high hit, Brooklyn, PAP and more. Search a word, or tap "what is this?" on a shot to jump straight to it.' },
     { tab: "me", sel: ".tb[data-tab='me']", title: "Me", text: "Your profile, friends, rewards and skins, and settings such as turning the glow off for a plain view. You can take this tour again any time from the start screen." }
   ];
-  function startTour(onDone) {
+  function startTour(onDone2) {
     document.getElementById("tour")?.remove();
     let i = 0;
     const root = document.createElement("div");
@@ -12099,7 +12905,7 @@ ${url}`);
       } catch {
       }
       showTab("live");
-      onDone?.();
+      onDone2?.();
     };
     window.addEventListener("resize", place);
     q("#tour-next").onclick = () => i === STEPS.length - 1 ? finish2() : (i++, show());
@@ -12997,8 +13803,8 @@ ${url}`);
       const rowFor = (fyS, pS) => {
         const rho = (pS - yv) / (fyS - yv);
         if (!(rho > 0.03 && rho < 0.75)) return null;
-        const K = LANE_END_FT * rho / (1 - rho);
-        return yv + (fyS - yv) * K / (K + LANE_LEN);
+        const K2 = LANE_END_FT * rho / (1 - rho);
+        return yv + (fyS - yv) * K2 / (K2 + LANE_LEN);
       };
       const r60L = rowFor(fyL, pL);
       const r60R = rowFor(fyR, pR);
@@ -14736,8 +15542,8 @@ ${url}`);
     { passive: false }
   );
   $("expandbtn").onclick = () => {
-    const on2 = document.body.classList.toggle("expanded");
-    $("expandbtn").textContent = on2 ? "Close" : "Expand";
+    const on3 = document.body.classList.toggle("expanded");
+    $("expandbtn").textContent = on3 ? "Close" : "Expand";
     window.scrollTo(0, 0);
     applyView();
   };
@@ -14895,6 +15701,7 @@ ${url}`);
     }
     if (!H2 || !Hinv) return;
     drawLaneGrid(v);
+    drawOilLayer(v, overlay.width, overlay.height, corners.map((p) => `${Math.round(p.x)},${Math.round(p.y)}`).join(";"));
     for (const a of arrowsRead) {
       const s = overlay.width / 1280;
       ctx.save();
@@ -14967,14 +15774,14 @@ ${url}`);
       el.classList.remove("ask");
     }
   }
-  function setShotsOn(on2, msg, keepClip = false) {
-    if (on2 === shotsOn) return paintStartStop();
-    shotsOn = on2;
-    logTrack(on2 ? "started" : "stopped", { oneShot });
+  function setShotsOn(on3, msg, keepClip = false) {
+    if (on3 === shotsOn) return paintStartStop();
+    shotsOn = on3;
+    logTrack(on3 ? "started" : "stopped", { oneShot });
     resetTrack();
     candHist.length = 0;
     histActive = false;
-    if (!on2) {
+    if (!on3) {
       if (pendingClip && !keepClip) void attachClip();
       else if (recActive && !pendingClip) discardRecording();
       status.textContent = msg ?? (oneShot ? "Stopped. Tap Start when it is your turn." : "Stopped: no shots are being recorded. Tap Start to record again.");

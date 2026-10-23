@@ -1,8 +1,8 @@
 // Offline support: precache the shell on install, then network-first (fresh when online) with cache fallback.
 // Paths are relative to where this file is served, so the app works at a site root or in a subfolder.
-const CACHE = "laneiq-v9";
+const CACHE = "laneiq-v10";
 const SCOPE = self.registration.scope;
-const SHELL = ["./", "camera.js", "manifest.webmanifest", "balls.json", "patterns.json", "icon-180.png", "icon-192.png", "icon-512.png"].map((u) => new URL(u, SCOPE).href);
+const SHELL = ["./", "camera.js", "manifest.webmanifest", "balls.json", "icon-180.png", "icon-192.png", "icon-512.png"].map((u) => new URL(u, SCOPE).href);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -28,8 +28,8 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (req.method !== "GET") return;
   if (url.origin !== location.origin) {
-    // The text reader used by "Scan a ball" is downloaded once and kept for offline use.
-    if (/^(cdn\.jsdelivr\.net|tessdata\.projectnaptha\.com)$/.test(url.hostname)) {
+    // The text reader ("Scan a ball", pattern photos) and the pose model (reading the approach) are downloaded once and kept for offline use.
+    if (/^(cdn\.jsdelivr\.net|tessdata\.projectnaptha\.com)$/.test(url.hostname) || (url.hostname === "storage.googleapis.com" && url.pathname.startsWith("/mediapipe-models/"))) {
       event.respondWith(
         (async () => {
           const cache = await caches.open(CACHE);
