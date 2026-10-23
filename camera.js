@@ -3026,9 +3026,18 @@
   });
 
   // camera/render.ts
-  function strokeTrail(v, points, baseAlpha, headBoost) {
+  function thin(points) {
     const n = points.length;
-    if (n < 2) return;
+    if (n <= MAX_TRAIL_POINTS) return points;
+    const out = [];
+    for (let i = 0; i < MAX_TRAIL_POINTS - 1; i++) out.push(points[Math.round(i * (n - 1) / (MAX_TRAIL_POINTS - 1))]);
+    out.push(points[n - 1]);
+    return out;
+  }
+  function strokeTrail(v, pointsIn, baseAlpha, headBoost) {
+    if (pointsIn.length < 2) return;
+    const points = thin(pointsIn);
+    const n = points.length;
     const { ctx: ctx2 } = v;
     const s = k(v);
     const tr = currentTracer();
@@ -3037,12 +3046,12 @@
     ctx2.globalCompositeOperation = glow2 ? "lighter" : "source-over";
     ctx2.lineCap = "round";
     ctx2.lineJoin = "round";
+    ctx2.shadowBlur = 0;
     for (let i = 1; i < n; i++) {
       const t = i / (n - 1);
       const a = points[i - 1];
       const b = points[i];
       if (!glow2) {
-        ctx2.shadowBlur = 0;
         ctx2.strokeStyle = ramp(t, Math.min(1, baseAlpha * (headBoost ? 0.35 + 0.65 * t : 0.95)));
         ctx2.lineWidth = (headBoost ? lerp2(2, 4.5, t) : 3.5) * s;
         ctx2.beginPath();
@@ -3051,15 +3060,19 @@
         ctx2.stroke();
         continue;
       }
-      ctx2.shadowBlur = tr.glow * s;
-      ctx2.shadowColor = ramp(t);
-      ctx2.strokeStyle = ramp(t, baseAlpha * (headBoost ? 0.15 + 0.85 * t : 0.9));
-      ctx2.lineWidth = (headBoost ? lerp2(3, 14, t) : 10) * s * tr.width;
+      const body = (headBoost ? lerp2(3, 14, t) : 10) * s * tr.width;
+      ctx2.strokeStyle = ramp(t, baseAlpha * (headBoost ? 0.05 + 0.2 * t : 0.18));
+      ctx2.lineWidth = body * 2.4;
       ctx2.beginPath();
       ctx2.moveTo(a.x, a.y);
       ctx2.lineTo(b.x, b.y);
       ctx2.stroke();
-      ctx2.shadowBlur = 0;
+      ctx2.strokeStyle = ramp(t, baseAlpha * (headBoost ? 0.15 + 0.85 * t : 0.9));
+      ctx2.lineWidth = body;
+      ctx2.beginPath();
+      ctx2.moveTo(a.x, a.y);
+      ctx2.lineTo(b.x, b.y);
+      ctx2.stroke();
       ctx2.strokeStyle = `rgba(${tr.core},${baseAlpha * (headBoost ? t : 0.8)})`;
       ctx2.lineWidth = (headBoost ? lerp2(1, 4, t) : 3.5) * s * tr.width;
       ctx2.beginPath();
@@ -3334,17 +3347,29 @@
     for (let b = 1; b <= LANE_BOARDS; b++) {
       const x0 = boardToX(b) - 0.5;
       const x1 = x0 + 1;
-      for (let f = 0; f < end; f += 2) {
-        const f12 = Math.min(end, f + 2);
-        const val2 = (oil.cells[b - 1][f] + (oil.cells[b - 1][f + 1] ?? 0)) / 2 / oil.max;
-        if (val2 <= 0.01) continue;
-        const q = [P(x0, f), P(x1, f), P(x1, f12), P(x0, f12)];
-        ctx2.beginPath();
-        q.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
-        ctx2.closePath();
-        ctx2.fillStyle = oilColor(val2, 0.85);
-        ctx2.fill();
+      const xc = x0 + 0.5;
+      const n0 = P(xc, 0);
+      const n1 = P(xc, end);
+      const ax = n1.x - n0.x;
+      const ay = n1.y - n0.y;
+      const len2 = ax * ax + ay * ay;
+      if (len2 < 1) continue;
+      const g = ctx2.createLinearGradient(n0.x, n0.y, n1.x, n1.y);
+      let any = false;
+      for (let f = 0; f <= end; f += 2) {
+        const val2 = (oil.cells[b - 1][Math.min(f, 59)] + (oil.cells[b - 1][Math.min(f + 1, 59)] ?? 0)) / 2 / oil.max;
+        const p = P(xc, f);
+        const t = Math.max(0, Math.min(1, ((p.x - n0.x) * ax + (p.y - n0.y) * ay) / len2));
+        g.addColorStop(t, val2 <= 0.01 ? "rgba(0,0,0,0)" : oilColor(val2, 0.85));
+        if (val2 > 0.01) any = true;
       }
+      if (!any) continue;
+      const q = [P(x0, 0), P(x1, 0), P(x1, end), P(x0, end)];
+      ctx2.beginPath();
+      q.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
+      ctx2.closePath();
+      ctx2.fillStyle = g;
+      ctx2.fill();
     }
     ctx2.strokeStyle = "rgba(255,210,90,.95)";
     ctx2.lineWidth = 2.4 * s;
@@ -3377,7 +3402,7 @@
     }
     ctx2.restore();
   }
-  var k, lerp2, ramp, DECK_END_FT, ROW_FT, PIN_SPACING_BOARDS, oilColor;
+  var k, lerp2, ramp, DECK_END_FT, ROW_FT, PIN_SPACING_BOARDS, MAX_TRAIL_POINTS, oilColor;
   var init_render = __esm({
     "camera/render.ts"() {
       init_vision();
@@ -3389,6 +3414,7 @@
       DECK_END_FT = 63;
       ROW_FT = 10.39 / 12;
       PIN_SPACING_BOARDS = 12 / (41.5 / LANE_BOARDS);
+      MAX_TRAIL_POINTS = 56;
       oilColor = (v, alpha = 1) => `rgba(${Math.round(90 - 50 * v)},${Math.round(170 + 30 * v)},255,${((0.1 + 0.5 * Math.min(1, v)) * alpha).toFixed(3)})`;
     }
   });
@@ -17773,6 +17799,15 @@ ${url}`);
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-28-smooth-tracer",
+      date: "2026-10-28",
+      title: "A smoother tracer",
+      items: [
+        "Fixed the laggy ball tracer in lane view, live and in replays. The glow was a blurred shadow on every little piece of the path, which phones draw very slowly; it is now plain soft lines that look almost the same, and a long path is drawn from fewer points. On a test computer a long tracer takes about a tenth of the time it did.",
+        "The oil shading is lighter to draw too, and in a replay it is drawn once instead of every frame."
+      ]
+    },
+    {
       id: "2026-10-27-friends",
       date: "2026-10-27",
       title: "Friends made easier",
@@ -25013,6 +25048,13 @@ ${url}`);
     }
     return m;
   }
+  function bakeOil(v, w, h, map) {
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    drawOil({ ctx: c.getContext("2d"), width: v.width, P: v.P }, map);
+    return c;
+  }
   var cache = null;
   function drawOilLayer(v, w, h, lockKey) {
     const p = activePattern();
@@ -26393,11 +26435,12 @@ ${url}`);
       const last = s.path[s.path.length - 1]?.t ?? 0;
       const pat = patternById(s.pattern);
       const oilMap = pat && oilOn() ? mapOf(pat) : null;
+      const oilCv = oilMap ? bakeOil(view3, s.vw, s.vh, oilMap) : null;
       const loop = () => {
         cx.clearRect(0, 0, s.vw, s.vh);
         if (modeSel === "lane") {
           drawLaneGrid(view3);
-          if (oilMap) drawOil(view3, oilMap);
+          if (oilCv) cx.drawImage(oilCv, 0, 0);
           const t = v.currentTime + s.recStartT;
           const upto = s.path.filter((p) => p.t <= t).map((p) => P(p.x, p.y));
           strokeTrail(view3, upto, 1, t < last);
@@ -29853,7 +29896,7 @@ ${url}`);
     }
     if (!H2 || !Hinv) return;
     drawLaneGrid(v);
-    drawOilLayer(v, overlay.width, overlay.height, corners.map((p) => `${Math.round(p.x)},${Math.round(p.y)}`).join(";"));
+    drawOilLayer(v, overlay.width, overlay.height, corners.map((p) => `${Math.round(p.x / 3)},${Math.round(p.y / 3)}`).join(";"));
     for (const a of arrowsRead) {
       const s = overlay.width / 1280;
       ctx.save();
