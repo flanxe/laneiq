@@ -53,6 +53,26 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-22-coach",
+      date: "2026-10-22",
+      title: "Your coach: the biggest update yet",
+      items: [
+        "A Coach tab (it was Insights): your one thing to work on right now, with everything that leads to it. My numbers keeps your averages, errors, plan, shot map and skills chart.",
+        "Miss Finder: ranks what goes with where your ball meets the pins (speed, your aim, where the ball lands, drift, timing, how far into the session) and how much of your misses each explains, with the fix to test.",
+        "Target and plan vs execution: tap Target on the Live screen and say where you stand and which board you aim at. Every shot is graded against it, so the app can tell a missed shot (aim) from a good shot on the wrong line.",
+        `Move Advisor: after each shot, the move to make in boards ("Move 2 and 1 left: stand on 27, aim at 11"), only when the misses are one-sided and you're hitting your mark. One tap makes it your new target.`,
+        "Ball Advisor: judges each of your balls from your own shots and suggests a cleaner or stronger one, from your bag first, then current USBC-approved balls from the catalog. It only blames a ball when where it hits and the shape of its reaction agree.",
+        "Body and approach: a pose model on your phone reads your clips for steps, timing, drift, where the ball lands next to your slide foot and whether you held your finish. Turn on reading every new shot in Coach, or tap Read my approach on a shot.",
+        "Side by side: two shots lined up at release, slow motion and frame steps, both paths from above, drawing tools with angles, and a packet to send to your coach.",
+        "Voice caddie: turn on Voice on the Live screen and hear the speed, the arrows board, the pocket and your next move after every shot.",
+        "Drills that score themselves: Arrow Sniper, Speed Lock, Pocket Hunter, Speed Ladder and Corner Pins, with personal bests.",
+        "Lane-pair memory: type your centre and lane, and next time you're on that pair it shows where you stood, what you aimed at and how it went.",
+        "Entry angle and carry, and how you hold up through a session.",
+        "Bowler DNA card and highlight reels to share.",
+        "16 new words in Learn: mark, laydown, slide, drift, timing, posting, tempo, adjustment and the new coaching features."
+      ]
+    },
+    {
       id: "2026-10-22-lane-trace",
       date: "2026-10-22",
       title: "Drawing your lane is easy now",
@@ -278,14 +298,14 @@
     "very-high": "Brooklyn",
     "very-light": "Very light hit"
   };
-  function missSide(miss, hand2) {
+  function missSide(miss, hand3) {
     const high = miss > 0;
-    return hand2 === "R" === high ? "left" : "right";
+    return hand3 === "R" === high ? "left" : "right";
   }
-  function zoneText(zone, miss, hand2) {
+  function zoneText(zone, miss, hand3) {
     if (!zone || miss === null) return "";
     if (zone === "pocket") return ZONE_LABEL.pocket;
-    return `${ZONE_LABEL[zone]}, ${Math.abs(miss).toFixed(1)} boards ${missSide(miss, hand2)} of the pocket`;
+    return `${ZONE_LABEL[zone]}, ${Math.abs(miss).toFixed(1)} boards ${missSide(miss, hand3)} of the pocket`;
   }
   var GLOSSARY = [
     // ---- the lane ----
@@ -306,6 +326,14 @@
     { term: "Line", cat: "Your shot", aka: ["ball path", "shot path"], def: "The path the ball takes down the lane, usually described by the board it crosses at the arrows, its breakpoint and where it reaches the pins." },
     { term: "Breakpoint", cat: "Your shot", def: "The point where the ball finishes going outward and starts turning back toward the pocket: the board it is on, and how many feet down the lane that is.", app: "LaneIQ finds it as the point farthest from the centre of the lane between 15 and 55 feet." },
     { term: "Hook", cat: "Your shot", def: 'The sideways move of the ball as it turns toward the pocket. People also use "hook" for how much a ball reacts.', app: "In LaneIQ, Hook is the number of boards between the breakpoint and the entry point." },
+    { term: "Mark", cat: "Your shot", aka: ["target", "spot"], def: "The board you aim at, usually an arrow. Hitting your mark means the ball rolled over it. Coaches separate a missed mark (the shot) from a hit mark that still misses the pocket (the line).", app: "Set your mark with Target on the Live screen. A shot within a board of it at the arrows counts as on the mark." },
+    { term: "Laydown point", cat: "Your shot", aka: ["laydown"], def: "Where the ball first touches the lane after you let it go, usually a few boards to the bowling-hand side of your slide foot. A laydown that wanders moves the whole shot." },
+    { term: "Slide", cat: "Your shot", def: "The last step of the approach, where the foot opposite your bowling hand glides to a stop at the line as the ball is released." },
+    { term: "Drift", cat: "Your shot", def: "How far you walk sideways during the approach: the board your slide foot finishes on minus the board it started on. A little drift is common; what matters is that it is the same every time.", app: "Read from your clip: your slide foot is placed on the approach through the lane lock." },
+    { term: "Timing", cat: "Your shot", def: "How your swing lines up with your feet. A common teaching point: the ball should be near the top of the backswing as the slide begins. Earlier than that is early timing (the ball is ahead of the feet); later is late timing.", app: "Read from your clip: when your bowling wrist is highest in the swing, against when your slide begins. Within 0.1 s is on time." },
+    { term: "Posting the shot", cat: "Your shot", aka: ["holding the finish", "post"], def: "Staying balanced at the foul line after the release, holding your finish until the ball is well down the lane. It shows the shot was in balance.", app: "Read from your clip: held for a second or more counts as posted." },
+    { term: "Tempo", cat: "Your shot", def: "The pace of the approach. Repeating the same tempo helps you repeat the same speed.", app: "Seconds from your first step to the release, read from your clip." },
+    { term: "Adjustment", cat: "Your shot", aka: ["move", "2-and-1"], def: "Changing where you stand and aim when the ball keeps missing the pocket the same way. The usual rule: move your feet and your target the same way, toward the side the ball missed, feet about twice as far as the target (2 boards and 1, say). Small misses get small moves; judge a couple of shots before moving again.", app: "The Move Advisor works the move out after each shot, only when the misses are one-sided and you're hitting your mark." },
     { term: "Entry board", cat: "Your shot", def: "The board the ball is on when it reaches the pins, at about 59.5 feet.", app: 'LaneIQ only gives an entry board when the ball was seen right up to the pins. If the camera lost the ball earlier, the "At the pins" tile shows the board where it was last seen and how far down the lane that was, and nothing is guessed past it.' },
     { term: "Entry angle", cat: "Your shot", aka: ["angle of entry", "impact angle"], def: "The angle at which the ball arrives at the pocket. A steeper entry angle gives the ball more room to carry the pins through the pocket.", app: "Measured over the last stretch of the path the camera saw." },
     { term: "Speed loss", cat: "Your shot", def: "How much slower the ball is at the pins than at release, as a percentage. A ball that slows a lot has used up energy by hooking and rolling early." },
@@ -368,7 +396,13 @@
     { term: "Fix my lane", cat: "LaneIQ", def: "Freezes the picture so you can drag four numbered dots onto the lane, use Snap to edges, then place the head pin, 7 and 10 pins." },
     { term: "At the pins", cat: "LaneIQ", def: "The board where the camera last saw the ball, and how many feet down the lane that was. It is what the camera saw, not a prediction." },
     { term: "Partial", cat: "LaneIQ", def: "A shot the camera saw only part of. The part it saw is recorded; what it did not see is left empty." },
-    { term: "One shot at a time", cat: "LaneIQ", def: "League mode. The app starts stopped and stops by itself after each of your shots, so you tap Start only on your own turn." }
+    { term: "One shot at a time", cat: "LaneIQ", def: "League mode. The app starts stopped and stops by itself after each of your shots, so you tap Start only on your own turn." },
+    { term: "Miss Finder", cat: "LaneIQ", def: "Ranks what goes with where your ball meets the pins: speed, your aim, where the ball lands, your drift and timing, how far into the session you are. The percentage is how much of the spread in your misses goes with that one thing. It shows what goes together, not proof of cause, so its fix is a test." },
+    { term: "Plan vs execution", cat: "LaneIQ", def: "Every shot is graded against the target you set. Missing the mark is execution; hitting it and still missing the pocket the same way is the line. The fix is different for each." },
+    { term: "Move Advisor", cat: "LaneIQ", def: "The adjustment to make, in boards, worked out after each shot from your last few with the same ball. It stays quiet when the misses go both ways or you're missing your mark, because a move would only chase them." },
+    { term: "Ball Advisor", cat: "LaneIQ", def: "Judges each of your balls from your own shots with it. It calls a ball too strong or too weak only when where it hits AND the shape of its reaction (breakpoint and entry angle) agree, then suggests what to try from your bag or what to buy: current, USBC-approved balls on the app's motion index." },
+    { term: "Voice caddie", cat: "LaneIQ", def: "Says the speed, the arrows board, the breakpoint, the pocket and your next move out loud after each shot, using your phone's own speech. Turn it on with Voice on the Live screen." },
+    { term: "Bowler DNA", cat: "LaneIQ", def: "A shareable card with your speed, rev rate, axis, PAP, entry angle, pocket and strike rate, each marked measured or entered." }
   ];
 
   // core/src/lanereads.ts
@@ -413,11 +447,11 @@
     const bpFt = shots.map((s) => s.a.breakpointFt).filter((x) => x !== null);
     const bpBd = shots.map((s) => s.a.breakpointBoard).filter((x) => x !== null);
     const arrows = shots.map((s) => s.a.boardAtArrows).filter((x) => x !== null);
-    const speeds = shots.map((s) => s.a.speedMph);
+    const speeds2 = shots.map((s) => s.a.speedMph);
     const entry = shots.map((s) => s.a.impactAngleDeg).filter((x) => x !== null);
     const points = [];
     const arrowsSd = arrows.length >= 3 ? sd(arrows) : null;
-    const speedSd = sd(speeds);
+    const speedSd = sd(speeds2);
     const sloppy = arrowsSd !== null && arrowsSd > 2 || speedSd > 0.8;
     if (arrowsSd !== null) points.push(`Observed: arrows board varies \xB1${arrowsSd.toFixed(1)} boards and speed \xB1${speedSd.toFixed(1)} mph across these shots.`);
     if (sloppy) points.push("That's enough execution variation to blur any lane signal, so treat the lane read below as tentative.");
@@ -847,7 +881,7 @@
   };
   function compareSessions(mine, theirs) {
     const row = (label2, unit4, pick) => ({ label: label2, unit: unit4, mine: avg(mine.shots.map(pick)), theirs: avg(theirs.shots.map(pick)) });
-    const rows = [
+    const rows2 = [
       row("Speed", "mph", (s) => s.sp),
       row("Arrows board", "", (s) => s.ar),
       row("Breakpoint board", "", (s) => s.bb),
@@ -858,12 +892,12 @@
     const same = sameLane(mine.lane, theirs.lane);
     const notes = [];
     notes.push(same ? `Both sessions were on "${mine.lane}", so differences reflect the bowlers and equipment, not just the lane.` : `These were on different lanes ("${mine.lane}" and "${theirs.lane}"), so treat the comparison loosely.`);
-    const bp = rows[3];
+    const bp = rows2[3];
     if (bp.mine !== null && bp.theirs !== null && Math.abs(bp.mine - bp.theirs) >= 3) notes.push(`${theirs.from.name}'s ball breaks ${bp.theirs > bp.mine ? "farther down-lane" : "earlier"} than yours by about ${Math.abs(bp.mine - bp.theirs).toFixed(0)} ft.`);
-    const en = rows[4];
+    const en = rows2[4];
     if (en.mine !== null && en.theirs !== null && Math.abs(en.mine - en.theirs) >= 1.5) notes.push(`They enter the pocket about ${Math.abs(en.mine - en.theirs).toFixed(1)} boards ${en.theirs > en.mine ? "farther left" : "farther right"} of where you do.`);
     if (mine.hand !== theirs.hand) notes.push("One of you is left-handed and one is right-handed, so board numbers mirror: compare shapes rather than raw boards.");
-    return { rows, notes, sameLane: same };
+    return { rows: rows2, notes, sameLane: same };
   }
 
   // core/src/stats.ts
@@ -924,12 +958,12 @@
     return { shots: shots.length, withResults: r.length, strike: rate(r.filter(isStrike).length, r.length), stats, zones };
   }
   function correlation(shots, a, b) {
-    const rows = shots.map((s) => [s.m[a], s.m[b]]).filter((r) => typeof r[0] === "number" && typeof r[1] === "number");
-    if (rows.length < 5) return 0;
-    const ma = mean2(rows.map((r) => r[0]));
-    const mb = mean2(rows.map((r) => r[1]));
+    const rows2 = shots.map((s) => [s.m[a], s.m[b]]).filter((r) => typeof r[0] === "number" && typeof r[1] === "number");
+    if (rows2.length < 5) return 0;
+    const ma = mean2(rows2.map((r) => r[0]));
+    const mb = mean2(rows2.map((r) => r[1]));
     let sab = 0, saa = 0, sbb = 0;
-    for (const [x, y] of rows) {
+    for (const [x, y] of rows2) {
       sab += (x - ma) * (y - mb);
       saa += (x - ma) ** 2;
       sbb += (y - mb) ** 2;
@@ -939,12 +973,12 @@
   var MIN_OUTCOMES = 20;
   var MIN_PER_BIN = 6;
   function bins(shots, key2, n = 3) {
-    const rows = withResult(shots).map((s) => ({ v: s.m[key2], strike: isStrike(s) })).filter((r) => typeof r.v === "number" && Number.isFinite(r.v)).sort((a, b) => a.v - b.v);
+    const rows2 = withResult(shots).map((s) => ({ v: s.m[key2], strike: isStrike(s) })).filter((r) => typeof r.v === "number" && Number.isFinite(r.v)).sort((a, b) => a.v - b.v);
     const out = [];
-    const size = Math.floor(rows.length / n);
+    const size = Math.floor(rows2.length / n);
     if (size < MIN_PER_BIN) return out;
     for (let i = 0; i < n; i++) {
-      const chunk = rows.slice(i * size, i === n - 1 ? rows.length : (i + 1) * size);
+      const chunk = rows2.slice(i * size, i === n - 1 ? rows2.length : (i + 1) * size);
       out.push({ lo: chunk[0].v, hi: chunk[chunk.length - 1].v, rate: rate(chunk.filter((r) => r.strike).length, chunk.length) });
     }
     return out;
@@ -1151,12 +1185,12 @@
     const fps = fit.slope;
     const speed = fps * (3600 / 5280);
     const speedUnc = fit.rmse / (p[p.length - 1].t - p[0].t) * (3600 / 5280) * 2;
-    const mid = p.filter((s) => s.y >= ARROWS_FT && s.y <= 55);
+    const mid2 = p.filter((s) => s.y >= ARROWS_FT && s.y <= 55);
     let bpBoard = null;
     let bpFt = null;
-    if (mid.length >= 4) {
+    if (mid2.length >= 4) {
       const c = LANE_BOARDS / 2;
-      const ext = mid.reduce((best, s) => Math.abs(s.x - c) > Math.abs(best.x - c) ? s : best);
+      const ext = mid2.reduce((best, s) => Math.abs(s.x - c) > Math.abs(best.x - c) ? s : best);
       bpBoard = boardFromRight(ext.x);
       bpFt = ext.y;
     }
@@ -1291,7 +1325,7 @@
     if (a <= 2.5) return miss > 0 ? "high" : "light";
     return miss > 0 ? "very-high" : "very-light";
   }
-  function deriveMetrics(a, path2, hand2) {
+  function deriveMetrics(a, path2, hand3) {
     const early = path2.filter((s) => s.y >= 2 && s.y <= 8);
     const startBoard = early.length ? boardFromRight(early.reduce((t, s) => t + s.x, 0) / early.length) : null;
     const launchSpeed = speedBetween(path2, 3, 20);
@@ -1299,11 +1333,11 @@
     const speedLossPct = launchSpeed && entrySpeed ? (launchSpeed - entrySpeed) / launchSpeed * 100 : null;
     const hookBoards = a.breakpointBoard !== null && a.entryBoard !== null ? Math.abs(a.entryBoard - a.breakpointBoard) : null;
     const hookLengthFt = a.breakpointFt !== null ? Math.max(0, 59.5 - a.breakpointFt) : null;
-    const pocket = POCKET_BOARD[hand2];
+    const pocket = POCKET_BOARD[hand3];
     const seenToPins = path2.length > 0 && path2[path2.length - 1].y >= ENTRY_FT - 2;
-    const pocketMiss = a.entryBoard === null || !seenToPins ? null : hand2 === "R" ? a.entryBoard - pocket : pocket - a.entryBoard;
+    const pocketMiss = a.entryBoard === null || !seenToPins ? null : hand3 === "R" ? a.entryBoard - pocket : pocket - a.entryBoard;
     return {
-      hand: hand2,
+      hand: hand3,
       startBoard,
       arrowsBoard: a.boardAtArrows,
       breakpointBoard: a.breakpointBoard,
@@ -1411,7 +1445,14 @@
     laneLabels: {},
     sessionId: newId(),
     /** demo mode never writes to storage */
-    demo: false
+    demo: false,
+    /** the line the bowler is playing: where they stand and aim (set with Target on the Live screen); every new shot carries a copy */
+    target: null,
+    /** where they're bowling tonight (for lane-pair memory) */
+    where: { center: "", lane: "" },
+    /** the practice drill under way, and every finished one */
+    drill: null,
+    drills: []
   };
   var listeners = /* @__PURE__ */ new Set();
   var onChange = (fn) => (listeners.add(fn), () => listeners.delete(fn));
@@ -1429,6 +1470,10 @@
     S.shared = await dbGet(id, "meta", "shared") ?? [];
     S.laneLabels = await dbGet(id, "meta", "laneLabels") ?? {};
     S.insightsSince = await dbGet(id, "meta", "insightsSince").catch(() => null) ?? null;
+    S.target = await dbGet(id, "meta", "target").catch(() => null) ?? null;
+    S.where = await dbGet(id, "meta", "where").catch(() => null) ?? { center: "", lane: "" };
+    S.drill = await dbGet(id, "meta", "drill").catch(() => null) ?? null;
+    S.drills = await dbGet(id, "meta", "drills").catch(() => null) ?? [];
     if (p && !p.friendCode) {
       S.profile = { ...p, friendCode: newFriendCode() };
       saveProfiles(listProfiles().map((x) => x.id === id ? S.profile : x));
@@ -1450,10 +1495,10 @@
     return p;
   }
   function recomputeMetrics() {
-    const hand2 = S.profile?.hand ?? "R";
+    const hand3 = S.profile?.hand ?? "R";
     for (const s of S.shots) {
       try {
-        if (s.a && s.path?.length) s.m = deriveMetrics(s.a, s.path, hand2);
+        if (s.a && s.path?.length) s.m = deriveMetrics(s.a, s.path, hand3);
       } catch {
       }
     }
@@ -1535,6 +1580,19 @@
     S.insightsSince = null;
     if (!S.demo && S.profile) await dbPut(S.profile.id, "meta", null, "insightsSince").catch(() => {
     });
+    changed();
+  }
+  async function saveCoach() {
+    if (!S.demo && S.profile) {
+      await dbPut(S.profile.id, "meta", S.target, "target").catch(() => {
+      });
+      await dbPut(S.profile.id, "meta", S.where, "where").catch(() => {
+      });
+      await dbPut(S.profile.id, "meta", S.drill, "drill").catch(() => {
+      });
+      await dbPut(S.profile.id, "meta", S.drills, "drills").catch(() => {
+      });
+    }
     changed();
   }
   async function savePlan() {
@@ -1768,17 +1826,33 @@
     rc.innerHTML = `Equipment: ${esc(rec2.text)}${rec2.basis.map((l) => `<div class="u">${esc(l)}</div>`).join("")}`;
     el.append(rc);
   }
+  var afterShot = [];
+  var onAfterShot = (fn) => afterShot.push(fn);
+  var beforeSave = [];
+  var onBeforeSave = (fn) => beforeSave.push(fn);
   async function registerShot(s) {
     const arsenal = S.arsenal;
     const guess = s.sig ? classifyBall(s.sig, arsenal) : classifyBall([], []);
     guesses.set(s.id, guess);
     if (guess.auto) s.ballId = guess.ballId;
+    for (const fn of beforeSave) {
+      try {
+        fn(s);
+      } catch {
+      }
+    }
     await addShot(s);
     setCards(s);
     addHistory(s, sessionShots().length);
     renderResult(s);
     renderBall(s);
     renderLane();
+    for (const fn of afterShot) {
+      try {
+        fn(s);
+      } catch {
+      }
+    }
   }
 
   // camera/patchnotes.ts
@@ -1820,13 +1894,13 @@
     return g[i] * (1 - fx) * (1 - fy) + g[i + 1] * fx * (1 - fy) + g[i + w] * (1 - fx) * fy + g[i + w + 1] * fx * fy;
   };
   function readArrows(gray, w, h, corners2) {
-    let H2;
+    let H3;
     try {
-      H2 = solveHomography(LANE, corners2);
+      H3 = solveHomography(LANE, corners2);
     } catch {
       return [];
     }
-    const P = (x, ft) => applyHomography(H2, { x, y: ft });
+    const P = (x, ft) => applyHomography(H3, { x, y: ft });
     const found = [];
     const search = (b, ftLo, ftHi, minC, sign2 = 0) => {
       const cx0 = LANE_BOARDS + 0.5 - b;
@@ -1905,11 +1979,11 @@
       const x = src[i].x / LANE_BOARDS, y = src[i].y / LANE_LENGTH_FT;
       const u = dst[i].x / sw, v = dst[i].y / sh;
       const q = wt?.[i] ?? 1;
-      const rows = [
+      const rows2 = [
         [[x, y, 1, 0, 0, 0, -u * x, -u * y], u],
         [[0, 0, 0, x, y, 1, -v * x, -v * y], v]
       ];
-      for (const [r, b] of rows) for (let a = 0; a < 8; a++) {
+      for (const [r, b] of rows2) for (let a = 0; a < 8; a++) {
         for (let c2 = 0; c2 < 8; c2++) N2[a][c2] += q * r[a] * r[c2];
         N2[a][8] += q * r[a] * b;
       }
@@ -1948,9 +2022,9 @@
     const cv = root.querySelector("#tl-cv");
     const hint = root.querySelector("#tl-hint");
     const g = cv.getContext("2d");
-    const W = o.frame.width, Hh = o.frame.height;
-    const k0 = Math.min(1, 1280 / Math.max(W, Hh));
-    cv.width = Math.round(W * k0);
+    const W2 = o.frame.width, Hh = o.frame.height;
+    const k0 = Math.min(1, 1280 / Math.max(W2, Hh));
+    cv.width = Math.round(W2 * k0);
     cv.height = Math.round(Hh * k0);
     const fit = () => {
       const wrap2 = root.querySelector("#tl-wrap");
@@ -2001,9 +2075,9 @@
       mode2 = m;
       hint.textContent = HINTS[m];
       root.querySelectorAll(".tl-mode").forEach((b) => {
-        const on = b.dataset.mode === m;
-        b.style.background = on ? "linear-gradient(90deg,#46e6ff,#ff4fd8)" : "";
-        b.style.color = on ? "#06101c" : "";
+        const on2 = b.dataset.mode === m;
+        b.style.background = on2 ? "linear-gradient(90deg,#46e6ff,#ff4fd8)" : "";
+        b.style.color = on2 ? "#06101c" : "";
       });
       redraw2();
     };
@@ -2018,9 +2092,9 @@
     const reread = () => {
       readNow = readArrows(grayBuf, cv.width, cv.height, c).map((a) => a.img);
     };
-    let raf2 = 0;
+    let raf3 = 0;
     const draw3 = () => {
-      raf2 = 0;
+      raf3 = 0;
       const px = 1 / cssPerPx();
       g.clearRect(0, 0, cv.width, cv.height);
       g.drawImage(o.frame, 0, 0, cv.width, cv.height);
@@ -2165,7 +2239,7 @@
       }
     };
     const redraw2 = () => {
-      if (!raf2) raf2 = requestAnimationFrame(draw3);
+      if (!raf3) raf3 = requestAnimationFrame(draw3);
     };
     reread();
     setMode2("lane");
@@ -2237,12 +2311,12 @@
     };
     cv.addEventListener("pointerup", up);
     cv.addEventListener("pointercancel", up);
-    const close6 = () => {
-      cancelAnimationFrame(raf2);
+    const close7 = () => {
+      cancelAnimationFrame(raf3);
       window.removeEventListener("resize", onResize);
       root.remove();
     };
-    root.querySelector("#tl-cancel").onclick = () => (close6(), o.onCancel());
+    root.querySelector("#tl-cancel").onclick = () => (close7(), o.onCancel());
     root.querySelectorAll(".tl-mode").forEach((b) => b.onclick = () => setMode2(b.dataset.mode));
     root.querySelector("#tl-reset").onclick = () => (c = initial.map((p) => ({ ...p })), anchors = makeAnchors(), touched = false, setMode2("lane"));
     root.querySelector("#tl-snap").onclick = () => {
@@ -2259,7 +2333,7 @@
       const area2 = Math.abs(c.reduce((a, p, i) => a + (p.x * c[(i + 1) % 4].y - c[(i + 1) % 4].x * p.y), 0)) / 2;
       if (area2 < cv.width * cv.height * 0.01) return void (hint.textContent = "The lane outline is too small. Drag the dots out onto the lane.");
       const out = c.map((p) => ({ x: p.x / k0, y: p.y / k0 }));
-      close6();
+      close7();
       o.onConfirm(out);
     };
   }
@@ -2340,9 +2414,9 @@
   function patternDemand(p, b) {
     const reasons = [];
     let t = 0;
-    const L = (p.lengthFt - 39) * 0.2;
-    t += L;
-    reasons.push(`${p.lengthFt} ft is a ${lengthClass(p.lengthFt)} pattern, which ${L > 0.05 ? "asks for a ball that reads sooner" : L < -0.05 ? "asks for a cleaner, later-reading ball" : "sits in the middle"}.`);
+    const L2 = (p.lengthFt - 39) * 0.2;
+    t += L2;
+    reasons.push(`${p.lengthFt} ft is a ${lengthClass(p.lengthFt)} pattern, which ${L2 > 0.05 ? "asks for a ball that reads sooner" : L2 < -0.05 ? "asks for a cleaner, later-reading ball" : "sits in the middle"}.`);
     if (p.volumeMl !== void 0) {
       const v = (p.volumeMl - 24) * 0.04;
       t += v;
@@ -2682,8 +2756,8 @@
   function orthogonal(p) {
     return unit(Math.abs(p[0]) < 0.9 ? cross(p, [1, 0, 0]) : cross(p, [0, 1, 0]));
   }
-  function walk(p, dir, dist) {
-    const a = dist / R;
+  function walk(p, dir, dist2) {
+    const a = dist2 / R;
     return unit(add(scale(p, Math.cos(a)), scale(dir, Math.sin(a))));
   }
   function rotate(v, axis, ang2) {
@@ -2693,8 +2767,8 @@
   var DEFAULT_GRIP = { span: 4.25, thumbDia: 1.05, fingerDia: 0.9, bridge: 0.25 };
   var N = [0, 0, 1];
   var UP = [0, 1, 0];
-  function gripFrame(grip, hand2) {
-    const hs = hand2 === "R" ? 1 : -1;
+  function gripFrame(grip, hand3) {
+    const hs = hand3 === "R" ? 1 : -1;
     const thumbR = grip.thumbDia / 2, fingerR = grip.fingerDia / 2;
     const c2c = grip.noThumb ? 0 : grip.span + thumbR + fingerR;
     const half = c2c / 2;
@@ -2715,9 +2789,9 @@
     return { pap: p, q, valUp: v };
   }
   var ang = (inch3) => inch3 / R;
-  function solveLayout(input, pap, hand2, grip = DEFAULT_GRIP, flip = false) {
+  function solveLayout(input, pap, hand3, grip = DEFAULT_GRIP, flip = false) {
     const problems = [];
-    const { hs, fingers, thumb, middle, ring } = gripFrame(grip, hand2);
+    const { hs, fingers, thumb, middle, ring } = gripFrame(grip, hand3);
     const { pap: P, q, valUp } = papPoint(pap, hs);
     const toMid = Math.abs(pap.over) < 1e-6 ? unit(sub([-hs, 0, 0], scale(P, dot([-hs, 0, 0], P)))) : tangentToward(P, q);
     let a = 0;
@@ -2805,8 +2879,8 @@
     else if (val2 - drilling > 20) out.push("A smaller drilling angle than VAL angle points to a sooner, heavier roll (more midlane).");
     return out;
   }
-  function measureLayout(pin, baseline, pap, hand2, grip = DEFAULT_GRIP) {
-    const { hs } = gripFrame(grip, hand2);
+  function measureLayout(pin, baseline, pap, hand3, grip = DEFAULT_GRIP) {
+    const { hs } = gripFrame(grip, hand3);
     const { pap: P, q, valUp } = papPoint(pap, hs);
     const toMid = Math.abs(pap.over) < 1e-6 ? unit(sub([-hs, 0, 0], scale(P, dot([-hs, 0, 0], P)))) : tangentToward(P, q);
     const a = surfDist(pin, P);
@@ -2831,8 +2905,8 @@
     }
     return { pinToPap: a, valAngle, pinBuffer, pinToGrip: surfDist(pin, N), papToGrip: surfDist(P, N), pinPlacement: { up: pinUp, over: pinOver, label: classifyPin(pinUp, pinOver, fingerY, grip) }, drilling, psaToPap, points: { pap: P, pin, psa, q, valUp } };
   }
-  function measureMark(pin, mark, pap, hand2, grip = DEFAULT_GRIP) {
-    const { hs } = gripFrame(grip, hand2);
+  function measureMark(pin, mark, pap, hand3, grip = DEFAULT_GRIP) {
+    const { hs } = gripFrame(grip, hand3);
     const { pap: P } = papPoint(pap, hs);
     const toPap = tangentToward(pin, P);
     const toMark = tangentToward(pin, mark);
@@ -3117,9 +3191,9 @@
       const bins2 = new Uint8Array(24);
       for (let q = 0; q < edges.length; q += 2) {
         const p = pt2(edges[q]);
-        const dist = Math.hypot(p.x - ux, p.y - uy);
-        if (Math.abs(dist - r) > tol) continue;
-        const rx = (p.x - ux) / (dist || 1), ry = (p.y - uy) / (dist || 1);
+        const dist2 = Math.hypot(p.x - ux, p.y - uy);
+        if (Math.abs(dist2 - r) > tol) continue;
+        const rx = (p.x - ux) / (dist2 || 1), ry = (p.y - uy) / (dist2 || 1);
         const m = mag[edges[q]] || 1;
         if (Math.abs((gx[edges[q]] * rx + gy[edges[q]] * ry) / m) > 0.8) {
           n++;
@@ -3364,22 +3438,22 @@
       }
       return I;
     });
-    const mean3 = (j, x, y) => {
+    const mean9 = (j, x, y) => {
       const x0 = Math.max(0, x - rad2), x1 = Math.min(sw, x + rad2 + 1), y0 = Math.max(0, y - rad2), y1 = Math.min(sh, y + rad2 + 1);
       const I = integ[j];
       return (I[y1 * (sw + 1) + x1] - I[y0 * (sw + 1) + x1] - I[y1 * (sw + 1) + x0] + I[y0 * (sw + 1) + x0]) / ((x1 - x0) * (y1 - y0));
     };
     const clear = (avoidR || ball.r * 0.2) * 1 / k2;
     const nearAvoid = (x, y) => avoid.some((q) => Math.hypot(q.x / k2 - x, q.y / k2 - y) < clear);
-    const dist = new Float32Array(sw * sh);
+    const dist2 = new Float32Array(sw * sh);
     const sat = new Float32Array(sw * sh);
     const vals = [];
     for (let y = 0; y < sh; y++)
       for (let x = 0; x < sw; x++) {
         if (Math.hypot(x - c.x, y - c.y) > c.r * 0.9 || nearAvoid(x, y)) continue;
         const i = y * sw + x;
-        const d = Math.hypot(ch[0][i] - mean3(0, x, y), ch[1][i] - mean3(1, x, y), ch[2][i] - mean3(2, x, y));
-        dist[i] = d;
+        const d = Math.hypot(ch[0][i] - mean9(0, x, y), ch[1][i] - mean9(1, x, y), ch[2][i] - mean9(2, x, y));
+        dist2[i] = d;
         const mx = Math.max(ch[0][i], ch[1][i], ch[2][i]), mn = Math.min(ch[0][i], ch[1][i], ch[2][i]);
         sat[i] = mx ? (mx - mn) / mx : 0;
         vals.push(d);
@@ -3390,7 +3464,7 @@
     const seen2 = new Uint8Array(sw * sh);
     const out = [];
     for (let s = 0; s < sw * sh; s++) {
-      if (seen2[s] || dist[s] < t) continue;
+      if (seen2[s] || dist2[s] < t) continue;
       const stack = [s];
       seen2[s] = 1;
       let n = 0, sx = 0, sy = 0, x0 = sw, x1 = 0, y0 = sh, y1 = 0, dsum = 0, ssum = 0;
@@ -3400,13 +3474,13 @@
         n++;
         sx += x;
         sy += y;
-        dsum += dist[i];
+        dsum += dist2[i];
         ssum += sat[i];
         if (x < x0) x0 = x;
         if (x > x1) x1 = x;
         if (y < y0) y0 = y;
         if (y > y1) y1 = y;
-        for (const j of [i - 1, i + 1, i - sw, i + sw]) if (j >= 0 && j < sw * sh && !seen2[j] && dist[j] >= t) seen2[j] = 1, stack.push(j);
+        for (const j of [i - 1, i + 1, i - sw, i + sw]) if (j >= 0 && j < sw * sh && !seen2[j] && dist2[j] >= t) seen2[j] = 1, stack.push(j);
       }
       const coreContrast = dsum / n;
       {
@@ -3416,7 +3490,7 @@
         const q = [];
         for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) {
           const i = yy * sw + xx;
-          if (seen2[i] && dist[i] >= t) grown[i] = 1, q.push(i);
+          if (seen2[i] && dist2[i] >= t) grown[i] = 1, q.push(i);
         }
         let gn = 0, gx = 0, gy = 0, gx0 = sw, gx1 = 0, gy0 = sh, gy1 = 0, gs = 0;
         while (q.length && gn < cap * 1.2) {
@@ -3465,7 +3539,7 @@
         if (d < 0.12 || d > 0.5) continue;
         const same = 1 - Math.abs(a.r - b.r) / Math.max(a.r, b.r);
         if (same < 0.6) continue;
-        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const mid2 = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
         if (noThumb) {
           const s = same + (a.contrast + b.contrast) / 400;
           if (!best || s > best.score) best = { thumb: null, fingers: [a, b], score: s };
@@ -3473,9 +3547,9 @@
         }
         for (const t of blobs) {
           if (t === a || t === b) continue;
-          const dt = Math.hypot(t.x - mid.x, t.y - mid.y) / ball.r;
+          const dt = Math.hypot(t.x - mid2.x, t.y - mid2.y) / ball.r;
           if (dt < 0.7 || dt > 1.35) continue;
-          const ax = mid.x - ball.x, ay = mid.y - ball.y, tx = t.x - ball.x, ty = t.y - ball.y;
+          const ax = mid2.x - ball.x, ay = mid2.y - ball.y, tx = t.x - ball.x, ty = t.y - ball.y;
           const opposite = -(ax * tx + ay * ty) / (Math.hypot(ax, ay) * Math.hypot(tx, ty) || 1);
           const s = same + (a.contrast + b.contrast + t.contrast) / 600 + 0.3 * opposite - Math.abs(dt - 1.05);
           if (!best || s > best.score) best = { thumb: t, fingers: [a, b], score: s };
@@ -3627,7 +3701,7 @@
     }
     return { g, rgb };
   }
-  function begin(img, hand2, kind2) {
+  function begin(img, hand3, kind2) {
     const pap = S.profile?.spin?.pap ? parsePap(S.profile.spin.pap) : null;
     st = {
       img,
@@ -3646,7 +3720,7 @@
       mode: "pin",
       kind: kind2,
       noThumb: kind2 !== "thumb",
-      hand: hand2,
+      hand: hand3,
       holeR: 0,
       showHoles: true,
       papText: { over: pap ? fractionInches(pap.over).replace(/"/g, "") : "", up: pap ? fractionInches(pap.up).replace(/"/g, "") : "" },
@@ -3659,10 +3733,10 @@
     if (!st) return;
     const s = st;
     const { g, rgb } = pixels(s.img);
-    const W = s.img.width, H2 = s.img.height;
+    const W2 = s.img.width, H3 = s.img.height;
     const notes = [];
-    const rough = { x: W / 2, y: H2 / 2, r: Math.min(W, H2) * 0.48 };
-    const blobs = detectHoles(g, W, H2, rough);
+    const rough = { x: W2 / 2, y: H3 / 2, r: Math.min(W2, H3) * 0.48 };
+    const blobs = detectHoles(g, W2, H3, rough);
     const grip = pickGrip(blobs, rough, s.noThumb);
     s.thumb = s.fingerA = s.fingerB = null;
     s.guessed.holes = false;
@@ -3677,12 +3751,12 @@
     s.outlines = [];
     if (grip) {
       const pts = [s.fingerA, s.fingerB, ...s.thumb ? [s.thumb] : []];
-      const mid = { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length };
-      const rGuess = Math.max(Math.min(W, H2) * 0.2, Math.min(Math.min(W, H2) * 0.5, s.holeR * 9.2));
-      s.outlines = findBalls(g, W, H2, mid, rGuess, rgb, 3);
+      const mid2 = { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length };
+      const rGuess = Math.max(Math.min(W2, H3) * 0.2, Math.min(Math.min(W2, H3) * 0.5, s.holeR * 9.2));
+      s.outlines = findBalls(g, W2, H3, mid2, rGuess, rgb, 3);
     }
     if (!s.outlines.length) {
-      const edge = detectBall(g, W, H2);
+      const edge = detectBall(g, W2, H3);
       if (edge) s.outlines = [edge];
     }
     s.outlineIx = 0;
@@ -3690,7 +3764,7 @@
     notes.push(s.outlines.length ? `I found the ball's outline${s.outlines.length > 1 ? ` (and ${s.outlines.length - 1} other possible one${s.outlines.length > 2 ? "s" : ""}: try them if it's wrong)` : ""}.` : "I couldn't find the ball's outline on my own: drag the circle to fit the ball.");
     notes.push(grip ? `I found the grip holes (${s.noThumb ? "two finger holes" : "thumb and two finger holes"}).` : "I couldn't pick out the grip holes on my own: tap them.");
     if (grip && s.outlines.length) {
-      const again = pickGrip(detectHoles(g, W, H2, s.circle), s.circle, s.noThumb);
+      const again = pickGrip(detectHoles(g, W2, H3, s.circle), s.circle, s.noThumb);
       if (again) {
         s.thumb = again.thumb ? { x: again.thumb.x, y: again.thumb.y } : null;
         s.fingerA = { x: again.fingers[0].x, y: again.fingers[0].y };
@@ -3700,7 +3774,7 @@
       }
     }
     const holes = [s.thumb, s.fingerA, s.fingerB].filter((p) => !!p);
-    const dots = detectDots(rgb, W, H2, s.circle, holes, s.holeR ? s.holeR * 2.2 : 0);
+    const dots = detectDots(rgb, W2, H3, s.circle, holes, s.holeR ? s.holeR * 2.2 : 0);
     s.marks = dots.map((d) => ({ x: d.x, y: d.y }));
     notes.push(s.marks.length ? `I found ${s.marks.length} small colored dot${s.marks.length === 1 ? "" : "s"}. I took the most vivid as the pin${s.marks.length > 1 ? s.asym ? ", the next as the mass bias" : ", the next as the CG" : ""}. Check ${s.marks.length === 1 ? "it" : "them"}.` : "I didn't see a pin dot: tap where the pin is.");
     assignDots();
@@ -3975,12 +4049,12 @@
     if (open2)
       open2.onclick = () => {
         close();
-        const frame = scanFrame({ circle: s.circle, thumb: s.noThumb ? null : s.thumb, fingerA: s.fingerA, fingerB: s.fingerB });
+        const frame2 = scanFrame({ circle: s.circle, thumb: s.noThumb ? null : s.thumb, fingerA: s.fingerA, fingerB: s.fingerB });
         const keepImg = document.createElement("canvas");
         keepImg.width = s.img.width;
         keepImg.height = s.img.height;
         keepImg.getContext("2d").drawImage(s.img, 0, 0);
-        openLayoutLab({ marks: { symmetric: !s.asym, pinToCg: res.pinToCg ?? void 0, mb: res.pinToMb !== null ? { dist: res.pinToMb, angle: 0 } : void 0 }, photo: { img: keepImg, circle: s.circle, ...frame }, layout: { dualAngle: { drilling: m.drilling, pinToPap: m.pinToPap, valAngle: m.valAngle }, pap, hand: s.hand } });
+        openLayoutLab({ marks: { symmetric: !s.asym, pinToCg: res.pinToCg ?? void 0, mb: res.pinToMb !== null ? { dist: res.pinToMb, angle: 0 } : void 0 }, photo: { img: keepImg, circle: s.circle, ...frame2 }, layout: { dualAngle: { drilling: m.drilling, pinToPap: m.pinToPap, valAngle: m.valAngle }, pap, hand: s.hand } });
       };
   }
   function saveExample() {
@@ -4074,9 +4148,9 @@
   }
   function drawBall(canvas, l, s, f, m, opts = {}) {
     const ctx2 = canvas.getContext("2d");
-    const W = canvas.width, H2 = canvas.height;
-    const cx = W / 2, cy = H2 / 2, r = Math.min(W, H2) * 0.44;
-    ctx2.clearRect(0, 0, W, H2);
+    const W2 = canvas.width, H3 = canvas.height;
+    const cx = W2 / 2, cy = H3 / 2, r = Math.min(W2, H3) * 0.44;
+    ctx2.clearRect(0, 0, W2, H3);
     const proj = (v) => {
       const p = apply(m, v);
       return { x: cx + p[0] * r, y: cy - p[1] * r, z: p[2] };
@@ -4192,7 +4266,7 @@
     }
     ctx2.fillStyle = "rgba(255,255,255,.35)";
     ctx2.font = `${Math.round(r * 0.06)}px system-ui`;
-    ctx2.fillText("drag to turn the ball", 10, H2 - 10);
+    ctx2.fillText("drag to turn the ball", 10, H3 - 10);
   }
   function drawPhotoSphere(ctx2, cx, cy, r, ph, m) {
     if (!ph.pixels) ph.pixels = ph.img.getContext("2d").getImageData(0, 0, ph.img.width, ph.img.height);
@@ -5105,25 +5179,25 @@
   function replay(rolls) {
     const states = [];
     let standing = ALL_PINS.slice();
-    let frame = 1, ball = 1;
+    let frame2 = 1, ball = 1;
     let complete = false;
     let tenthBalls = [];
     for (const r of rolls) {
       if (complete) break;
       const before = standing.slice();
-      states.push({ frame, ball, standingBefore: before, fresh: before.length === 10 });
+      states.push({ frame: frame2, ball, standingBefore: before, fresh: before.length === 10 });
       const down = r.down.filter((p) => before.includes(p));
       const after = minus(before, down);
-      if (frame < 10) {
+      if (frame2 < 10) {
         if (after.length === 0 && ball === 1) {
-          frame++;
+          frame2++;
           ball = 1;
           standing = ALL_PINS.slice();
         } else if (ball === 1) {
           ball = 2;
           standing = after;
         } else {
-          frame++;
+          frame2++;
           ball = 1;
           standing = ALL_PINS.slice();
         }
@@ -5142,8 +5216,8 @@
         } else complete = true;
       }
     }
-    if (frame > 10) complete = true;
-    return { states, standing, frame: complete ? 11 : frame, ball: complete ? 1 : ball, complete };
+    if (frame2 > 10) complete = true;
+    return { states, standing, frame: complete ? 11 : frame2, ball: complete ? 1 : ball, complete };
   }
   function scoreGame(rolls) {
     const counts = rolls.map((r) => r.down.length);
@@ -5301,14 +5375,14 @@
   function keyPinOf(leave) {
     return sorted(leave).sort((a, b) => PIN_XY[a].row - PIN_XY[b].row || Math.abs(PIN_XY[a].x) - Math.abs(PIN_XY[b].x))[0];
   }
-  function adviseSpare(leaveIn, hand2 = "R") {
+  function adviseSpare(leaveIn, hand3 = "R") {
     const leave = sorted(leaveIn);
     const split = isSplit(leave);
     const k2 = leave.join("-");
     const name = NAMES2[k2] ?? (leave.length === 1 ? `the ${leave[0]} pin` : split ? `a split (${k2})` : `${k2}`);
     const keyPin = keyPinOf(leave);
     const notes = [];
-    const raw = (MOVE_RIGHT_HANDED[keyPin] ?? 0) * (hand2 === "L" ? -1 : 1);
+    const raw = (MOVE_RIGHT_HANDED[keyPin] ?? 0) * (hand3 === "L" ? -1 : 1);
     const boards = Math.abs(raw);
     const direction = raw === 0 ? "none" : raw > 0 ? "right" : "left";
     let text;
@@ -5335,7 +5409,7 @@
     "tracer-plasma": { color: ramp2(275, 215, 100, 60, 66), core: "235,225,255", glow: 34, width: 1.15 },
     "tracer-gold": { color: (t, a = 1) => hsl(lerp(38, 50, t), 100, lerp(48, 68, t), a), core: "255,250,220", glow: 36, width: 1.2 },
     "tracer-inferno": { color: (t, a = 1) => hsl(lerp(2, 52, t * t), 100, lerp(45, 72, t), a), core: "255,255,235", glow: 42, width: 1.3 },
-    "tracer-prism": { color: (t, a = 1, clock = 0) => hsl(clock * 90 + t * 300, 100, 62, a), core: "255,255,255", glow: 40, width: 1.2 }
+    "tracer-prism": { color: (t, a = 1, clock2 = 0) => hsl(clock2 * 90 + t * 300, 100, 62, a), core: "255,255,255", glow: 40, width: 1.2 }
   };
   var PINS = {
     "pins-classic": { standing: { fill: "rgba(90,255,176,.28)", stroke: "rgba(90,255,176,.95)", text: "#fff" }, down: { fill: "rgba(255,90,110,.32)", stroke: "rgba(255,90,110,.95)", text: "rgba(255,255,255,.35)" }, unknown: { fill: "rgba(70,230,255,.10)", stroke: "rgba(70,230,255,.55)" } },
@@ -5369,10 +5443,10 @@
   } catch {
   }
   var skinsEnabled = () => skinsOn;
-  function setSkinsOn(on) {
-    skinsOn = on;
+  function setSkinsOn(on2) {
+    skinsOn = on2;
     try {
-      localStorage.setItem(ON_KEY, on ? "on" : "off");
+      localStorage.setItem(ON_KEY, on2 ? "on" : "off");
     } catch {
     }
   }
@@ -5389,10 +5463,10 @@
   } catch {
   }
   var glowEnabled = () => glow;
-  function setGlow(on) {
-    glow = on;
+  function setGlow(on2) {
+    glow = on2;
     try {
-      localStorage.setItem(GLOW_KEY, on ? "on" : "off");
+      localStorage.setItem(GLOW_KEY, on2 ? "on" : "off");
     } catch {
     }
   }
@@ -5708,7 +5782,7 @@
   var strongest = (axes) => axes.filter((a) => a.score !== null).sort((a, b) => b.score - a.score).slice(0, 3);
 
   // camera/skinscene.ts
-  function drawSkinScene(c, tracerId, pinsId, laneId, clock = 0, ballT = 1) {
+  function drawSkinScene(c, tracerId, pinsId, laneId, clock2 = 0, ballT = 1) {
     const g = c.getContext("2d");
     const w = c.width, h = c.height;
     const lane = LANES[laneId] ?? LANES["lane-house"], pins = PINS[pinsId] ?? PINS["pins-classic"], tr = TRACERS[tracerId] ?? TRACERS["tracer-aurora"];
@@ -5750,9 +5824,9 @@
       g.closePath();
       g.fill();
     }
-    const rows = [[0.5], [0.44, 0.56], [0.38, 0.5, 0.62], [0.32, 0.44, 0.56, 0.68]];
+    const rows2 = [[0.5], [0.44, 0.56], [0.38, 0.5, 0.62], [0.32, 0.44, 0.56, 0.68]];
     let n = 1;
-    rows.forEach(
+    rows2.forEach(
       (row, ri) => row.forEach((u) => {
         const p = P(u, 0.88 + ri * 0.045);
         const down = n === 2 || n === 4 || n === 9;
@@ -5782,7 +5856,7 @@
       const t = i / Math.max(1, pts.length - 1);
       if (!glow2) {
         g.shadowBlur = 0;
-        g.strokeStyle = tr.color(t, 0.5 + 0.5 * t, clock);
+        g.strokeStyle = tr.color(t, 0.5 + 0.5 * t, clock2);
         g.lineWidth = 1.5 + 2.5 * t;
         g.beginPath();
         g.moveTo(pts[i - 1].x, pts[i - 1].y);
@@ -5791,8 +5865,8 @@
         continue;
       }
       g.shadowBlur = tr.glow * 0.5;
-      g.shadowColor = tr.color(t, 1, clock);
-      g.strokeStyle = tr.color(t, 0.2 + 0.8 * t, clock);
+      g.shadowColor = tr.color(t, 1, clock2);
+      g.strokeStyle = tr.color(t, 0.2 + 0.8 * t, clock2);
       g.lineWidth = (2 + 7 * t) * tr.width;
       g.beginPath();
       g.moveTo(pts[i - 1].x, pts[i - 1].y);
@@ -5922,8 +5996,8 @@
     const used = new Set(games.flatMap((g) => g.rolls.map((r) => r.shotId)).filter(Boolean));
     const s = [...S.shots].reverse().find((x) => x.result?.auto && !used.has(x.id));
     if (!s || !s.result) return null;
-    const when2 = Date.now() - new Date(s.at).getTime();
-    if (when2 > 15 * 6e4) return null;
+    const when3 = Date.now() - new Date(s.at).getTime();
+    if (when3 > 15 * 6e4) return null;
     return { shotId: s.id, leave: s.result.pinsDown === 10 ? [] : s.result.leave ?? [] };
   }
   function deckSvg(standing, sel2) {
@@ -6207,13 +6281,13 @@
     }
     return v;
   }
-  function overUpOf(v, hand2) {
-    const hs = hand2 === "R" ? 1 : -1;
+  function overUpOf(v, hand3) {
+    const hs = hand3 === "R" ? 1 : -1;
     const a = Math.asin(clamp2(hs * v[0]));
     const up = Math.asin(clamp2(v[1] / Math.max(1e-9, Math.cos(a))));
     return { over: R * a, up: R * up };
   }
-  function poleFromShot(shot, hand2) {
+  function poleFromShot(shot, hand3) {
     if (shot.ring.length < 4) return { error: "Tap at least 4 points along one flare ring." };
     const pts = shot.ring.map((p) => toSphere(p, shot.circle));
     const m = [0, 0, 0];
@@ -6247,24 +6321,24 @@
     if (rms > 0.3) notes.push(`The points sit ${rms.toFixed(2)}" off a single ring. Some may be on different rings, or off the line.`);
     const edge = (p) => Math.hypot(p.x - shot.circle.x, p.y - shot.circle.y) / shot.circle.r;
     if (shot.ring.some((p) => edge(p) > 0.88)) notes.push("Some points are near the edge of the ball in the picture, where the surface is squeezed. Turn the ball so the ring is nearer the middle.");
-    const ou = overUpOf(g, hand2);
+    const ou = overUpOf(g, hand3);
     return { over: ou.over, up: ou.up, vec: unit2(g), span, rms, notes };
   }
   var textOf = (over, up) => {
     const f = (v) => fractionInches(Math.abs(v)).replace(/"/g, "");
     return `${over < 0 ? "-" : ""}${f(over)} over, ${f(up)} ${up < 0 ? "down" : "up"}`;
   };
-  function papEstimate(shots, hand2) {
+  function papEstimate(shots, hand3) {
     const picks = [];
     for (const s of shots) {
-      const r = poleFromShot(s, hand2);
+      const r = poleFromShot(s, hand3);
       if ("error" in r) return r;
       picks.push(r);
     }
     if (!picks.length) return { error: "No photos yet." };
-    const mean3 = unit2(picks.reduce((a, p) => [a[0] + p.vec[0], a[1] + p.vec[1], a[2] + p.vec[2]], [0, 0, 0]));
-    const ou = overUpOf(mean3, hand2);
-    const spread = picks.length > 1 ? Math.max(...picks.map((p) => surfDist(p.vec, mean3))) : null;
+    const mean9 = unit2(picks.reduce((a, p) => [a[0] + p.vec[0], a[1] + p.vec[1], a[2] + p.vec[2]], [0, 0, 0]));
+    const ou = overUpOf(mean9, hand3);
+    const spread = picks.length > 1 ? Math.max(...picks.map((p) => surfDist(p.vec, mean9))) : null;
     const notes = [];
     if (spread !== null && spread > 0.75) notes.push(`The photos disagree by up to ${spread.toFixed(2)}". Rings can be misread: retake the photo that's furthest from the others, with the grip square to the camera.`);
     if (spread !== null && spread <= 0.4) notes.push("The photos agree closely, which is a good sign.");
@@ -6357,13 +6431,13 @@
     return { g, rgb };
   }
   function begin2(img) {
-    const W = img.width, H2 = img.height;
+    const W2 = img.width, H3 = img.height;
     const { g, rgb } = grayOf(img);
     const noThumb = kind !== "thumb";
-    const rough = { x: W / 2, y: H2 / 2, r: Math.min(W, H2) * 0.48 };
-    const grip = pickGrip(detectHoles(g, W, H2, rough), rough, noThumb);
+    const rough = { x: W2 / 2, y: H3 / 2, r: Math.min(W2, H3) * 0.48 };
+    const grip = pickGrip(detectHoles(g, W2, H3, rough), rough, noThumb);
     let thumb = null;
-    let fa = { x: W * 0.42, y: H2 * 0.36 }, fb = { x: W * 0.58, y: H2 * 0.36 };
+    let fa = { x: W2 * 0.42, y: H3 * 0.36 }, fb = { x: W2 * 0.58, y: H3 * 0.36 };
     let holeR = 0;
     const notes = [];
     if (grip) {
@@ -6374,21 +6448,21 @@
       holeR = (grip.fingers[0].r + grip.fingers[1].r) / 2;
       notes.push("I found the grip holes.");
     } else {
-      thumb = noThumb ? null : { x: W * 0.5, y: H2 * 0.62 };
+      thumb = noThumb ? null : { x: W2 * 0.5, y: H3 * 0.62 };
       notes.push("I couldn't pick out the grip holes: pick Thumb / Finger 1 / Finger 2 below and tap each hole.");
     }
     let outlines = [];
     if (grip) {
       const pts = [fa, fb, ...thumb ? [thumb] : []];
-      const mid = { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length };
-      outlines = findBalls(g, W, H2, mid, Math.max(Math.min(W, H2) * 0.2, Math.min(Math.min(W, H2) * 0.5, holeR * 9.2)), rgb, 3);
+      const mid2 = { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length };
+      outlines = findBalls(g, W2, H3, mid2, Math.max(Math.min(W2, H3) * 0.2, Math.min(Math.min(W2, H3) * 0.5, holeR * 9.2)), rgb, 3);
     }
     if (!outlines.length) {
-      const edge = detectBall(g, W, H2);
+      const edge = detectBall(g, W2, H3);
       if (edge) outlines = [edge];
     }
     notes.push(outlines.length ? "I found the ball's outline." : "I couldn't find the ball's outline: use Ball outline below and tap the ball's center, then adjust the size.");
-    cur = { img, circle: outlines[0] ?? { x: W / 2, y: H2 / 2, r: Math.min(W, H2) * 0.4 }, outlines, outlineIx: 0, thumb, fingerA: fa, fingerB: fb, ring: [], mode: "ring", found: notes.join(" ") };
+    cur = { img, circle: outlines[0] ?? { x: W2 / 2, y: H3 / 2, r: Math.min(W2, H3) * 0.4 }, outlines, outlineIx: 0, thumb, fingerA: fa, fingerB: fb, ring: [], mode: "ring", found: notes.join(" ") };
     edit();
   }
   var MODES = [
@@ -6922,25 +6996,25 @@
   function drawLaneGrid(v) {
     const { ctx: ctx2, P } = v;
     const s = k(v);
-    const L = currentLane();
+    const L2 = currentLane();
     ctx2.save();
     const quad = [P(0, 0), P(LANE_BOARDS, 0), P(LANE_BOARDS, DECK_END_FT), P(0, DECK_END_FT)];
     ctx2.beginPath();
     quad.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
     ctx2.closePath();
-    ctx2.fillStyle = L.fill;
+    ctx2.fillStyle = L2.fill;
     ctx2.fill();
     for (let i = 0; i <= LANE_BOARDS; i++) {
       const fromRight = LANE_BOARDS - i;
       const major = fromRight % 5 === 0;
       const edge = i === 0 || i === LANE_BOARDS;
-      ctx2.strokeStyle = edge ? L.edge : major ? L.major : L.minor;
+      ctx2.strokeStyle = edge ? L2.edge : major ? L2.major : L2.minor;
       ctx2.lineWidth = (edge ? 2.4 : major ? 1.3 : 0.8) * s;
       line(v, P(i, 0), P(i, LANE_LENGTH_FT));
     }
-    ctx2.strokeStyle = L.foul;
+    ctx2.strokeStyle = L2.foul;
     ctx2.lineWidth = 3 * s;
-    ctx2.shadowColor = L.foul;
+    ctx2.shadowColor = L2.foul;
     ctx2.shadowBlur = glowEnabled() ? 10 * s : 0;
     line(v, P(0, 0), P(LANE_BOARDS, 0));
     ctx2.shadowBlur = 0;
@@ -6996,20 +7070,20 @@
     const px = (x) => padX + x / LANE_BOARDS * laneW;
     const py = (ft) => h - bottom - ft / DECK_END_FT * laneH;
     ctx2.clearRect(0, 0, w, h);
-    const L = currentLane();
+    const L2 = currentLane();
     ctx2.save();
-    ctx2.fillStyle = L.fill;
+    ctx2.fillStyle = L2.fill;
     ctx2.fillRect(px(0), py(DECK_END_FT), laneW, laneH);
     ctx2.lineWidth = 1;
     for (let i = 0; i <= LANE_BOARDS; i++) {
       const major = (LANE_BOARDS - i) % 5 === 0;
-      ctx2.strokeStyle = i === 0 || i === LANE_BOARDS ? L.edge : major ? L.major : L.minor;
+      ctx2.strokeStyle = i === 0 || i === LANE_BOARDS ? L2.edge : major ? L2.major : L2.minor;
       ctx2.beginPath();
       ctx2.moveTo(px(i), py(0));
       ctx2.lineTo(px(i), py(LANE_LENGTH_FT));
       ctx2.stroke();
     }
-    ctx2.strokeStyle = L.foul;
+    ctx2.strokeStyle = L2.foul;
     ctx2.lineWidth = 2.5;
     ctx2.beginPath();
     ctx2.moveTo(px(0), py(0));
@@ -7025,7 +7099,7 @@
       ctx2.stroke();
     }
     ctx2.setLineDash([]);
-    ctx2.fillStyle = L.arrow;
+    ctx2.fillStyle = L2.arrow;
     for (let b = 5; b <= 35; b += 5) {
       const tip = 12 + 4 * (1 - Math.abs(b - 20) / 15);
       const cx = px(boardToX(b));
@@ -7912,11 +7986,11 @@ ${url}`);
   // core/src/spin.ts
   function solveOmega(samples, R2) {
     if (samples.length < 12) return null;
-    const rows = samples.map((s) => {
+    const rows2 = samples.map((s) => {
       const Pz = -Math.sqrt(Math.max(1e-6, R2 * R2 - s.x * s.x - s.y * s.y));
       return { Px: s.x, Py: s.y, Pz, vx: s.vx, vy: s.vy };
     });
-    let w = rows.map(() => 1);
+    let w = rows2.map(() => 1);
     let om = { x: 0, y: 0, z: 0 };
     for (let iter = 0; iter < 8; iter++) {
       const A = [
@@ -7925,7 +7999,7 @@ ${url}`);
         [0, 0, 0]
       ];
       const b = [0, 0, 0];
-      rows.forEach((r, i) => {
+      rows2.forEach((r, i) => {
         const ax = [0, r.Pz, -r.Py];
         const ay = [-r.Pz, 0, r.Px];
         for (let p = 0; p < 3; p++) {
@@ -7936,12 +8010,12 @@ ${url}`);
       const sol = solve3(A, b);
       if (!sol) return null;
       om = { x: sol[0], y: sol[1], z: sol[2] };
-      const res2 = rows.map((r) => Math.hypot(om.y * r.Pz - om.z * r.Py - r.vx, om.z * r.Px - om.x * r.Pz - r.vy));
+      const res2 = rows2.map((r) => Math.hypot(om.y * r.Pz - om.z * r.Py - r.vx, om.z * r.Px - om.x * r.Pz - r.vy));
       const mad2 = [...res2].sort((a, b2) => a - b2)[Math.floor(res2.length / 2)] || 1e-6;
       const thr2 = Math.max(0.15, 2.5 * 1.4826 * mad2);
       w = res2.map((e) => e <= thr2 ? 1 : 0.02);
     }
-    const res = rows.map((r) => Math.hypot(om.y * r.Pz - om.z * r.Py - r.vx, om.z * r.Px - om.x * r.Pz - r.vy));
+    const res = rows2.map((r) => Math.hypot(om.y * r.Pz - om.z * r.Py - r.vx, om.z * r.Px - om.x * r.Pz - r.vy));
     const mad = [...res].sort((a, b) => a - b)[Math.floor(res.length / 2)] || 1e-6;
     const thr = Math.max(0.15, 2.5 * 1.4826 * mad);
     const keep = res.filter((e) => e <= thr);
@@ -8031,7 +8105,7 @@ ${url}`);
     for (let i = 1; i < levels && out[i - 1].w >= 32; i++) out.push(downscale(out[i - 1]));
     return out;
   };
-  function spinFromOmega(om, fps, view3, hand2) {
+  function spinFromOmega(om, fps, view3, hand3) {
     const mag = Math.hypot(om.x, om.y, om.z);
     if (mag < 1e-6) return null;
     let f, l, u;
@@ -8041,7 +8115,7 @@ ${url}`);
     const a = { f: f / mag, l: l / mag, u: u / mag };
     const notes = [];
     if (a.l < 0.2) notes.push("The measured spin doesn't look like a forward-rolling ball: check the camera position you chose.");
-    const side = hand2 === "R" ? -a.f : a.f;
+    const side = hand3 === "R" ? -a.f : a.f;
     return {
       rpm: mag * fps * 60 / (2 * Math.PI),
       axisRotation: Math.atan2(side, Math.abs(a.l)) * 180 / Math.PI,
@@ -8109,7 +8183,7 @@ ${url}`);
     return sol && sol.inliers >= 20 ? sol : null;
   }
   var med = (v) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)];
-  function analyzeClip(omegas, fps, view3, hand2, grip) {
+  function analyzeClip(omegas, fps, view3, hand3, grip) {
     const notes = [];
     const n = omegas.length;
     const good = omegas.map((o, i) => o ? i : -1).filter((i) => i >= 0);
@@ -8123,12 +8197,12 @@ ${url}`);
     });
     const series = [];
     smooth.forEach((o, i) => {
-      const s = spinFromOmega(o, fps, view3, hand2);
+      const s = spinFromOmega(o, fps, view3, hand3);
       if (!s) return;
       const lo = Math.max(0, i - half), hi = Math.min(n - 1, i + half);
       const mags = filled.slice(lo, hi + 1).map((q) => Math.hypot(q.x, q.y, q.z));
-      const mean3 = mags.reduce((a, b) => a + b, 0) / mags.length;
-      const spread = mags.length > 1 ? Math.sqrt(mags.reduce((a, m) => a + (m - mean3) ** 2, 0) / (mags.length - 1)) / (mean3 || 1) : 0.3;
+      const mean9 = mags.reduce((a, b) => a + b, 0) / mags.length;
+      const spread = mags.length > 1 ? Math.sqrt(mags.reduce((a, m) => a + (m - mean9) ** 2, 0) / (mags.length - 1)) / (mean9 || 1) : 0.3;
       series.push({ t: (i + 0.5) / fps, rpm: s.rpm, rotation: s.axisRotation, tilt: s.axisTilt, quality: Math.max(0, Math.min(1, s.quality * (1 - spread * 4))) });
     });
     const take = (a) => a.length ? { t: med(a.map((p) => p.t)), rpm: med(a.map((p) => p.rpm)), rotation: med(a.map((p) => p.rotation)), tilt: med(a.map((p) => p.tilt)), quality: med(a.map((p) => p.quality)) } : null;
@@ -8155,11 +8229,11 @@ ${url}`);
       });
       const early = raw.slice(0, Math.max(3, Math.min(8, raw.length)));
       const pv = unit3([med(early.map((p) => p.v[0])), med(early.map((p) => p.v[1])), med(early.map((p) => p.v[2]))]);
-      const ou = overUpOf(pv, hand2);
+      const ou = overUpOf(pv, hand3);
       pap = { over: ou.over, up: ou.up, vec: pv };
       for (const p of raw) {
         const v = unit3(p.v);
-        const o = overUpOf(v, hand2);
+        const o = overUpOf(v, hand3);
         axisTrack.push({ t: p.t, over: o.over, up: o.up, vec: v });
       }
       let travel = 0, far = 0;
@@ -8190,9 +8264,9 @@ ${url}`);
   function laneBasis(cal, vw, vh) {
     if (cal.length !== 4) return null;
     const lane = [{ x: 0, y: 0 }, { x: LANE_BOARDS * BOARD_IN2, y: 0 }, { x: LANE_BOARDS * BOARD_IN2, y: LANE_LENGTH_FT * 12 }, { x: 0, y: LANE_LENGTH_FT * 12 }];
-    const H2 = solveHomography(lane, cal);
+    const H3 = solveHomography(lane, cal);
     const cx = vw / 2, cy = vh / 2;
-    const col = (j) => [H2[j], H2[3 + j], H2[6 + j]];
+    const col = (j) => [H3[j], H3[3 + j], H3[6 + j]];
     const h1 = col(0), h2 = col(1), h3 = col(2);
     const a = (h) => [h[0] - cx * h[2], h[1] - cy * h[2]];
     const a1 = a(h1), a2 = a(h2);
@@ -8409,7 +8483,7 @@ ${url}`);
   var mulM = (a, b) => a.map((row) => [0, 1, 2].map((j) => row[0] * b[0][j] + row[1] * b[1][j] + row[2] * b[2][j]));
   var transpose = (a) => a[0].map((_, j) => a.map((r) => r[j]));
   var SLOW_ADVICE = `Film the release in slow motion (iPhone: Camera, Slo-mo, 240 fps) from behind the bowler with the ball as large as you can get it, then use the Spin lab to measure it.`;
-  async function analyzeClipSpin(frames, fps, rs, basis, hand2, pause = async () => {
+  async function analyzeClipSpin(frames, fps, rs, basis, hand3, pause = async () => {
   }, debug) {
     const pitch = basis ? basis.pitchDeg : null;
     if (frames.length < 5) return none(fps, [`The ball is in only ${frames.length} frame${frames.length === 1 ? "" : "s"} of the clip.`], null, "none", { cameraPitchDeg: pitch });
@@ -8532,7 +8606,7 @@ ${url}`);
     const med3 = (k2) => med2(omegas.filter((o) => !!o).map((o) => o[k2]));
     const om = { x: med3("x"), y: med3("y"), z: med3("z") };
     const lane = basis ? omegaInLane(om, basis) : om;
-    const s = spinFromOmega(lane, fps, "behind", hand2);
+    const s = spinFromOmega(lane, fps, "behind", hand3);
     if (!s) return none(fps, ["The rotation came out as zero."], SLOW_ADVICE, "too-coarse", out);
     const caveats = [...s.notes];
     if (!basis) caveats.push("The lane lock can't say how far the camera tilts down, so axis tilt assumes it looks level down the lane and is off by roughly that tilt.");
@@ -8562,7 +8636,7 @@ ${url}`);
     const to = setTimeout(() => rej(new Error(`The video didn't ${ev}.`)), ms);
     el.addEventListener(ev, () => (clearTimeout(to), res()), { once: true });
   });
-  async function measureShotSpin(shot, clip, hand2, onProgress, debug) {
+  async function measureShotSpin(shot, clip, hand3, onProgress, debug) {
     const fail = (msg) => ({ status: "none", rpm: null, axisRotation: null, axisTilt: null, confidence: 0, fps: 0, texture: null, ballPx: 0, degPerFrame: null, t0: 0, t1: 0, pairsRead: 0, pairsTried: 0, consistency: null, cameraPitchDeg: null, reasons: [msg], advice: null, at: (/* @__PURE__ */ new Date()).toISOString() });
     if (shot.cal.length !== 4 || shot.path.length < 4) return fail("This shot has no lane lock or path saved, so the ball can't be found in its video.");
     const url = URL.createObjectURL(clip);
@@ -8651,7 +8725,7 @@ ${url}`);
       const fps = dts.length ? 1 / dts[Math.floor(dts.length / 2)] : 0;
       if (!frames.length || !fps) return fail("No video frames could be read from this clip.");
       onProgress?.("Measuring the spin\u2026");
-      return await analyzeClipSpin(frames, fps, RS, basis, hand2, () => new Promise((r) => setTimeout(r, 0)), debug);
+      return await analyzeClipSpin(frames, fps, RS, basis, hand3, () => new Promise((r) => setTimeout(r, 0)), debug);
     } catch (e) {
       return fail(e instanceof Error ? e.message : "The video could not be read.");
     } finally {
@@ -8698,8 +8772,8 @@ ${url}`);
           for (let i = 0; opts.busy?.() && i < 120; i++) await sleep(1e3);
           const blob = opts.blob ?? (shot.hasClip ? await loadClip(shot.id) : void 0);
           if (!blob) return resolve(void 0);
-          const hand2 = S.profile?.hand ?? "R";
-          const r = await measureShotSpin(shot, blob, hand2, opts.onProgress);
+          const hand3 = S.profile?.hand ?? "R";
+          const r = await measureShotSpin(shot, blob, hand3, opts.onProgress);
           shot.spin = r;
           await updateShot(shot);
           resolve(r);
@@ -8943,10 +9017,10 @@ ${url}`);
       }
       running = false;
       prog.textContent = "";
-      const hand2 = S_hand();
+      const hand3 = S_hand();
       let pose = null;
       if (fingerA && fingerB && (noThumb || thumb)) pose = scanFrame({ circle: { x: circle.cx, y: circle.cy, r: circle.r }, thumb: noThumb ? null : thumb, fingerA, fingerB });
-      const an = analyzeClip(omegas, fps, view3, hand2, pose);
+      const an = analyzeClip(omegas, fps, view3, hand3, pose);
       if (irregular > omegas.length * 0.3) an.notes.push(`The video's frames don't step evenly at ${fps} fps (${irregular} of ${omegas.length} pairs were off). Check the frames-per-second setting, or export the clip as a true high-frame-rate file.`);
       result2 = { ...an, pairs: omegas.filter(Boolean).length, still };
       show(pose);
@@ -9130,11 +9204,11 @@ ${url}`);
     let paths = [];
     let yaw = PRESETS.Behind.yaw;
     let pitch = PRESETS.Behind.pitch;
-    let dist = PRESETS.Behind.dist;
+    let dist2 = PRESETS.Behind.dist;
     let target = [...PRESETS.Behind.target];
-    let raf2 = 0;
+    let raf3 = 0;
     const markDirty = () => {
-      if (!raf2) raf2 = requestAnimationFrame(draw3);
+      if (!raf3) raf3 = requestAnimationFrame(draw3);
     };
     for (const name of Object.keys(PRESETS)) {
       const b = document.createElement("button");
@@ -9148,14 +9222,14 @@ ${url}`);
       if (!p) return;
       yaw = p.yaw;
       pitch = p.pitch;
-      dist = p.dist;
+      dist2 = p.dist;
       target = [...p.target];
       markDirty();
     }
     function basis(w, h) {
       const th = yaw * Math.PI / 180;
       const ph = Math.min(89.5, Math.max(4, pitch)) * Math.PI / 180;
-      const C2 = [target[0] + dist * Math.sin(th) * Math.cos(ph), target[1] - dist * Math.cos(th) * Math.cos(ph), target[2] + dist * Math.sin(ph)];
+      const C2 = [target[0] + dist2 * Math.sin(th) * Math.cos(ph), target[1] - dist2 * Math.cos(th) * Math.cos(ph), target[2] + dist2 * Math.sin(ph)];
       const F = norm4(sub2(target, C2));
       const R2 = norm4(cross3(F, [0, 0, 1]));
       const U = cross3(R2, F);
@@ -9197,7 +9271,7 @@ ${url}`);
       }
     }
     function draw3() {
-      raf2 = 0;
+      raf3 = 0;
       resize();
       const w = canvas.width;
       const h = canvas.height;
@@ -9301,7 +9375,7 @@ ${url}`);
     const pointers = /* @__PURE__ */ new Map();
     let lastPinch = 0;
     let lastMid = { x: 0, y: 0 };
-    const mid = () => {
+    const mid2 = () => {
       const v = [...pointers.values()];
       return { x: (v[0].x + v[1].x) / 2, y: (v[0].y + v[1].y) / 2 };
     };
@@ -9314,7 +9388,7 @@ ${url}`);
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pointers.size === 2) {
         lastPinch = spread();
-        lastMid = mid();
+        lastMid = mid2();
       }
     });
     canvas.addEventListener("pointermove", (e) => {
@@ -9329,10 +9403,10 @@ ${url}`);
         pitch = Math.min(89.5, Math.max(4, pitch + dy * 0.4));
       } else if (pointers.size === 2) {
         const sp = spread();
-        if (lastPinch > 0) dist = Math.min(1800, Math.max(60, dist * (lastPinch / sp)));
+        if (lastPinch > 0) dist2 = Math.min(1800, Math.max(60, dist2 * (lastPinch / sp)));
         lastPinch = sp;
-        const m = mid();
-        const k2 = dist / 700;
+        const m = mid2();
+        const k2 = dist2 / 700;
         const th = yaw * Math.PI / 180;
         const right = [Math.cos(th), Math.sin(th), 0];
         const fwd = [-Math.sin(th), Math.cos(th), 0];
@@ -9351,7 +9425,7 @@ ${url}`);
       "wheel",
       (e) => {
         e.preventDefault();
-        dist = Math.min(1800, Math.max(60, dist * (1 + e.deltaY * 1e-3)));
+        dist2 = Math.min(1800, Math.max(60, dist2 * (1 + e.deltaY * 1e-3)));
         markDirty();
       },
       { passive: false }
@@ -9368,10 +9442,1864 @@ ${url}`);
       redraw: markDirty,
       destroy() {
         ro.disconnect();
-        cancelAnimationFrame(raf2);
+        cancelAnimationFrame(raf3);
         canvas.remove();
         bar.remove();
         hint.remove();
+      }
+    };
+  }
+
+  // core/src/approach.ts
+  var POST_S = 1;
+  var ON_TIME_S = 0.1;
+  var L = { lSh: 11, rSh: 12, lWr: 15, rWr: 16, lHip: 23, rHip: 24, lAnk: 27, rAnk: 28, lHeel: 29, rHeel: 30, lToe: 31, rToe: 32 };
+  var VIS = 0.4;
+  var median2 = (v) => {
+    if (!v.length) return NaN;
+    const s = [...v].sort((a, b) => a - b);
+    const m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  };
+  var dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  var mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  function rows(frames, o) {
+    const px = (l) => ({ x: l.x * o.vw, y: l.y * o.vh });
+    const seen2 = (f, i) => !!f.lm[i] && f.lm[i].v >= VIS;
+    const footOf = (f, heel, toe, ank) => {
+      if (seen2(f, heel) && seen2(f, toe)) return mid(px(f.lm[heel]), px(f.lm[toe]));
+      if (seen2(f, heel)) return px(f.lm[heel]);
+      if (seen2(f, ank)) return px(f.lm[ank]);
+      return null;
+    };
+    const wi = o.hand === "R" ? L.rWr : L.lWr;
+    return frames.map((f) => {
+      const ok = f.lm.length >= 33 && seen2(f, L.lHip) && seen2(f, L.rHip) && seen2(f, L.lSh) && seen2(f, L.rSh);
+      if (!ok) return { t: f.t, ok, hip: { x: 0, y: 0 }, sh: { x: 0, y: 0 }, lSh: { x: 0, y: 0 }, rSh: { x: 0, y: 0 }, scale: 0, foot: [null, null], wrist: null, wristV: 0 };
+      const hip = mid(px(f.lm[L.lHip]), px(f.lm[L.rHip]));
+      const lSh = px(f.lm[L.lSh]);
+      const rSh = px(f.lm[L.rSh]);
+      const sh = mid(lSh, rSh);
+      return { t: f.t, ok, hip, sh, lSh, rSh, scale: Math.max(1, dist(hip, sh)), foot: [footOf(f, L.lHeel, L.lToe, L.lAnk), footOf(f, L.rHeel, L.rToe, L.rAnk)], wrist: f.lm[wi] ? px(f.lm[wi]) : null, wristV: f.lm[wi]?.v ?? 0 };
+    });
+  }
+  function smoothTrack(p, w = 2) {
+    return p.map((q, i) => {
+      if (!q) return null;
+      const xs = [];
+      const ys = [];
+      for (let k2 = Math.max(0, i - w); k2 <= Math.min(p.length - 1, i + w); k2++)
+        if (p[k2]) {
+          xs.push(p[k2].x);
+          ys.push(p[k2].y);
+        }
+      return { x: median2(xs), y: median2(ys) };
+    });
+  }
+  function smoothNums(v, w = 2) {
+    return v.map((x, i) => {
+      if (!Number.isFinite(x)) return x;
+      const win = v.slice(Math.max(0, i - w), i + w + 1).filter((y) => Number.isFinite(y));
+      return median2(win);
+    });
+  }
+  function footTracks(r) {
+    const A = [];
+    const B = [];
+    const labA = [];
+    let a = null;
+    let b = null;
+    for (const x of r) {
+      const [f0, f12] = x.ok ? x.foot : [null, null];
+      if (f0 && f12) {
+        if (a && b && dist(a, f12) + dist(b, f0) < dist(a, f0) + dist(b, f12)) {
+          [a, b] = [f12, f0];
+          labA.push(1);
+        } else {
+          [a, b] = [f0, f12];
+          labA.push(0);
+        }
+        A.push(a);
+        B.push(b);
+      } else if (f0 || f12) {
+        const f = f0 ?? f12;
+        const lab2 = f0 ? 0 : 1;
+        if (a && (!b || dist(a, f) <= dist(b, f))) {
+          a = f;
+          A.push(a);
+          B.push(null);
+          labA.push(lab2);
+        } else {
+          b = f;
+          A.push(null);
+          B.push(b);
+          labA.push(lab2 === 0 ? 1 : 0);
+        }
+      } else {
+        A.push(null);
+        B.push(null);
+        labA.push(null);
+      }
+    }
+    return { A: smoothTrack(A, 3), B: smoothTrack(B, 3), labA };
+  }
+  function speeds(r, tr, scale2) {
+    return r.map((x, i) => {
+      let j = i;
+      let k2 = i;
+      while (j > 0 && x.t - r[j].t < 0.045) j--;
+      while (k2 < r.length - 1 && r[k2].t - x.t < 0.045) k2++;
+      if (j === k2 || !tr[j] || !tr[k2] || !(scale2[i] > 0)) return NaN;
+      const dt = r[k2].t - r[j].t;
+      return dt > 0 ? dist(tr[k2], tr[j]) / dt / scale2[i] : NaN;
+    });
+  }
+  function plants(r, sp, from, to, still, moving) {
+    const out = [];
+    let mov = false;
+    for (let i = 0; i < r.length; i++) {
+      if (r[i].t < from || r[i].t > to || !Number.isFinite(sp[i])) continue;
+      if (sp[i] > moving) mov = true;
+      else if (sp[i] < still && mov) {
+        out.push(r[i].t);
+        mov = false;
+      }
+    }
+    return out;
+  }
+  var pct = (v, q) => {
+    const s = v.filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
+    return s.length ? s[Math.min(s.length - 1, Math.floor(q * s.length))] : NaN;
+  };
+  function readApproach(frames, oIn) {
+    const notes = [];
+    let o = oIn;
+    const empty = { version: 1, steps: null, tempoS: null, timing: null, startBoard: null, slideBoard: null, driftBoards: null, laydownBoards: null, heldS: null, posted: null, shoulderTiltDeg: null, quality: 0, notes };
+    const r = rows(frames.slice().sort((a, b) => a.t - b.t), o);
+    if (r.filter((x) => x.ok && x.t <= o.releaseT + 0.2).length < 8) {
+      notes.push("The bowler wasn't found clearly enough in the clip before the release.");
+      return empty;
+    }
+    const hipT = smoothTrack(r.map((x) => x.ok ? x.hip : null));
+    const shT = smoothTrack(r.map((x) => x.ok ? x.sh : null));
+    const scale2 = smoothNums(r.map((x) => x.ok ? x.scale : NaN), 3);
+    const { A: tA, B: tB, labA } = footTracks(r);
+    const spA = smoothNums(speeds(r, tA, scale2), 1);
+    const spB = smoothNums(speeds(r, tB, scale2), 1);
+    const spHip = smoothNums(speeds(r, hipT, scale2), 2);
+    const hOf = (i) => r[i].wrist && hipT[i] && shT[i] ? (hipT[i].y - r[i].wrist.y) / Math.max(1, hipT[i].y - shT[i].y) : NaN;
+    const near = r.map((x, i) => i).filter((i) => r[i].ok && r[i].wristV >= 0.3 && r[i].t >= o.releaseT - 0.6 && r[i].t <= o.releaseT + 0.1 && Number.isFinite(hOf(i)));
+    if (near.length >= 3) {
+      const bottom = near.reduce((a, b) => hOf(b) < hOf(a) ? b : a);
+      if (hOf(bottom) < 0.1) o = { ...o, releaseT: r[bottom].t };
+    }
+    const before = r.map((x, i) => i).filter((i) => r[i].t < o.releaseT - 0.6);
+    const hipNoise = pct(before.map((i) => spHip[i]), 0.25);
+    const footNoise = pct(before.flatMap((i) => [spA[i], spB[i]]), 0.25);
+    const HIP_STILL = Math.max(0.35, (Number.isFinite(hipNoise) ? hipNoise : 0.1) * 3);
+    const STILL = Math.min(1.6, Math.max(0.45, (Number.isFinite(footNoise) ? footNoise : 0.15) * 3));
+    const MOVING = Math.max(1.6, STILL * 2);
+    let tStart = null;
+    let run = 0;
+    for (let i = r.length - 1; i > 0; i--) {
+      if (r[i].t > o.releaseT - 0.4) continue;
+      const still = Number.isFinite(spHip[i]) && spHip[i] < HIP_STILL;
+      run = still ? run + (r[i].t - r[i - 1].t) : 0;
+      if (run >= 0.3) {
+        let j = i;
+        while (j < r.length - 1 && Number.isFinite(spHip[j + 1]) && spHip[j + 1] < HIP_STILL && r[j + 1].t <= o.releaseT - 0.4) j++;
+        tStart = r[j].t;
+        break;
+      }
+    }
+    if (tStart === null) {
+      tStart = r.find((x) => x.ok).t;
+      notes.push("The stance wasn't in the clip, so the approach is measured from the first frame.");
+    }
+    const inApproach = r.filter((x) => x.t >= tStart && x.t <= o.releaseT + 0.2);
+    const quality = inApproach.length ? inApproach.filter((x, k2) => x.ok && x.foot[0] && x.foot[1] && k2 >= 0).length / inApproach.length : 0;
+    const slideLab = o.hand === "R" ? 0 : 1;
+    const votes = r.map((x, i) => i).filter((i) => r[i].t >= o.releaseT - 0.6 && r[i].t <= o.releaseT + 0.3 && labA[i] !== null);
+    const useA = votes.filter((i) => labA[i] === slideLab).length >= votes.length / 2;
+    const slideT = useA ? tA : tB;
+    const spSlide = useA ? spA : spB;
+    const slidePlants = plants(r, spSlide, tStart, o.releaseT + 0.5, STILL, MOVING);
+    const slideEnd = slidePlants.length ? slidePlants[slidePlants.length - 1] : null;
+    let slideStart = null;
+    if (slideEnd !== null) {
+      const win = r.map((x, i) => ({ t: x.t, s: spSlide[i] })).filter((x) => x.t >= tStart && x.t <= slideEnd && Number.isFinite(x.s));
+      const peak = Math.max(0, ...win.map((x) => x.s));
+      for (let i = win.length - 1; i >= 0; i--)
+        if (win[i].s >= peak * 0.5) {
+          slideStart = win[i].t;
+          break;
+        }
+    }
+    const endT = slideEnd ?? o.releaseT + 0.3;
+    const allPlants = [...plants(r, spA, tStart, endT + 0.05, STILL, MOVING), ...plants(r, spB, tStart, endT + 0.05, STILL, MOVING)].sort((a, b) => a - b);
+    const steps = allPlants.length >= 3 && allPlants.length <= 7 ? allPlants.length : null;
+    if (steps === null) notes.push("The steps couldn't be counted reliably from this clip.");
+    const tempoS = o.releaseT - tStart > 0.6 && o.releaseT - tStart < 6 ? o.releaseT - tStart : null;
+    let timing = null;
+    let topT = null;
+    if (slideStart !== null) {
+      const sw = r.map((x, i) => ({ x, i })).filter(({ x, i }) => x.ok && x.wrist && x.wristV >= 0.15 && hipT[i] && shT[i] && x.t >= o.releaseT - 1 && x.t <= o.releaseT - 0.08);
+      if (sw.length >= 5) {
+        const h = ({ x, i }) => (hipT[i].y - x.wrist.y) / Math.max(1, hipT[i].y - shT[i].y);
+        const top = sw.reduce((a, b) => h(b) > h(a) ? b : a);
+        topT = top.x.t;
+        const offsetS = top.x.t - slideStart;
+        timing = { offsetS, label: Math.abs(offsetS) <= ON_TIME_S ? "on time" : offsetS > 0 ? "late" : "early" };
+      } else notes.push("The bowling arm was hidden behind the body, so timing wasn't read.");
+    }
+    const boardAt = (from, to) => {
+      const v = [];
+      r.forEach((x, i) => {
+        if (x.t < from || x.t > to || !slideT[i]) return;
+        const p = o.toLane(slideT[i]);
+        if (p && p.y < 2 && p.y > -22 && p.x > -6 && p.x < 45) v.push(boardFromRight(p.x));
+      });
+      return v.length ? median2(v) : null;
+    };
+    const startBoard = boardAt(tStart - 0.4, tStart);
+    const slideBoard = slideEnd !== null ? boardAt(slideEnd, slideEnd + 0.3) : null;
+    const driftBoards = startBoard !== null && slideBoard !== null ? slideBoard - startBoard : null;
+    const laydownBoards = slideBoard !== null && o.releaseBoard !== null && o.releaseBoard !== void 0 ? o.hand === "R" ? slideBoard - o.releaseBoard : o.releaseBoard - slideBoard : null;
+    if (startBoard === null || slideBoard === null) notes.push("The feet couldn't be placed on boards (the lane lock doesn't reach the approach clearly).");
+    let heldS = null;
+    if (slideEnd !== null) {
+      const after = r.map((x, i) => ({ t: x.t, i })).filter(({ t, i }) => t >= slideEnd && hipT[i]);
+      const settle = after.find(({ t, i }) => t <= slideEnd + 1 && after.filter((y) => y.t >= t && y.t <= t + 0.15).every((y) => Number.isFinite(spHip[y.i]) && spHip[y.i] < HIP_STILL * 1.5));
+      if (settle) {
+        const ref = hipT[settle.i];
+        const footRef = slideT[settle.i];
+        let last = settle.t;
+        for (const { t, i } of after) {
+          if (t < settle.t) continue;
+          const sc = Math.max(1, scale2[i]);
+          if (dist(hipT[i], ref) / sc > 0.45 || footRef && slideT[i] && dist(slideT[i], footRef) / sc > 0.6) break;
+          last = t;
+        }
+        heldS = last - slideEnd;
+        const clipEnd = after[after.length - 1].t;
+        if (clipEnd - slideEnd < POST_S && heldS >= clipEnd - slideEnd - 0.06) notes.push("The clip ends before a full second at the line, so the hold is a minimum.");
+      }
+    }
+    const atRel = r.filter((x) => x.ok).reduce((a, b) => !a || Math.abs(b.t - o.releaseT) < Math.abs(a.t - o.releaseT) ? b : a, null);
+    let shoulderTiltDeg = null;
+    if (atRel && Math.abs(atRel.t - o.releaseT) < 0.15) {
+      const deg2 = Math.atan2(atRel.rSh.y - atRel.lSh.y, atRel.rSh.x - atRel.lSh.x) * 180 / Math.PI;
+      shoulderTiltDeg = o.hand === "R" ? deg2 : -deg2;
+    }
+    return { version: 1, steps, tempoS, timing, startBoard, slideBoard, driftBoards, laydownBoards, heldS, posted: heldS === null ? null : heldS >= POST_S, shoulderTiltDeg, quality, notes, marks: { start: tStart, slideStart, slideEnd, top: topT, release: o.releaseT } };
+  }
+  function describeBody(b, hand3) {
+    const out = [];
+    const side = (d) => d > 0 ? "left (toward board 39)" : "right (toward board 1)";
+    if (b.steps !== null) out.push(`${b.steps}-step approach${b.tempoS !== null ? `, ${b.tempoS.toFixed(1)} s from first step to release` : ""}.`);
+    if (b.timing) out.push(b.timing.label === "on time" ? "Timing on time: the ball was at the top of the swing as the slide began." : b.timing.label === "early" ? `Early timing: the ball reached the top ${Math.abs(b.timing.offsetS).toFixed(2)} s before the slide began (the ball is ahead of your feet).` : `Late timing: the ball reached the top ${b.timing.offsetS.toFixed(2)} s after the slide began (your feet are ahead of the ball).`);
+    if (b.startBoard !== null && b.slideBoard !== null && b.driftBoards !== null) out.push(`Slide foot started on board ${b.startBoard.toFixed(0)} and finished on ${b.slideBoard.toFixed(0)}: ${Math.abs(b.driftBoards) < 1 ? "walked straight" : `drifted ${Math.abs(b.driftBoards).toFixed(1)} boards ${side(b.driftBoards)}`}.`);
+    if (b.laydownBoards !== null) out.push(`Ball laid down ${Math.abs(b.laydownBoards).toFixed(0)} boards ${b.laydownBoards >= 0 ? `${hand3 === "R" ? "right" : "left"} of` : `${hand3 === "R" ? "left" : "right"} of (inside)`} your slide foot.`);
+    if (b.heldS !== null) out.push(b.posted ? `Posted the shot: balanced at the line for ${b.heldS.toFixed(1)} s.` : `Came out of the finish after ${b.heldS.toFixed(1)} s. Hold it at least ${POST_S.toFixed(0)} s.`);
+    return out;
+  }
+
+  // core/src/execution.ts
+  var MARK_TOL = 1;
+  var BREAK_TOL = 2;
+  function gradeShot(s, plan) {
+    if (!plan) return null;
+    const markOff = s.m.arrowsBoard === null ? null : s.m.arrowsBoard - plan.arrows;
+    const breakOff = plan.breakpoint === void 0 || s.m.breakpointBoard === null ? null : s.m.breakpointBoard - plan.breakpoint;
+    return { hitMark: markOff === null ? null : Math.abs(markOff) <= MARK_TOL, markOff, hitBreak: breakOff === null ? null : Math.abs(breakOff) <= BREAK_TOL, breakOff };
+  }
+  var MIN_GRADED = 6;
+  var mean3 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var pct2 = (r) => r.rate === null ? "n/a" : `${Math.round(r.rate * 100)}% (${r.made} of ${r.attempts})`;
+  function executionReport(shots) {
+    const rows2 = shots.map((s) => ({ s, g: gradeShot(s, s.plan) })).filter((r) => !!r.g && r.g.hitMark !== null);
+    const hit = rows2.filter((r) => r.g.hitMark);
+    const missed = rows2.filter((r) => !r.g.hitMark);
+    const seen2 = (list) => list.filter((r) => r.s.m.pocketMiss !== null);
+    const inPocket = (list) => rate(seen2(list).filter((r) => Math.abs(r.s.m.pocketMiss) <= 1).length, seen2(list).length);
+    const withRes = (list) => list.filter((r) => r.s.result);
+    const strikes = (list) => rate(withRes(list).filter((r) => isStrike(r.s)).length, withRes(list).length);
+    const bp = rows2.filter((r) => r.g.hitBreak !== null);
+    const hitSeen = seen2(hit);
+    const lineBias = hitSeen.length >= 4 ? mean3(hitSeen.map((r) => r.s.m.pocketMiss)) : null;
+    const report = {
+      verdict: "insufficient",
+      graded: rows2.length,
+      mark: rate(hit.length, rows2.length),
+      breakpoint: bp.length ? rate(bp.filter((r) => r.g.hitBreak).length, bp.length) : null,
+      pocketWhenHit: inPocket(hit),
+      pocketWhenMissed: inPocket(missed),
+      strikeWhenHit: strikes(hit),
+      strikeWhenMissed: strikes(missed),
+      lineBias,
+      headline: "",
+      points: [],
+      next: ""
+    };
+    if (rows2.length < MIN_GRADED) {
+      report.headline = `Set a target and bowl ${MIN_GRADED - rows2.length} more shot${MIN_GRADED - rows2.length === 1 ? "" : "s"}`;
+      report.points.push("Tap Target on the Live screen, say where you stand and which board you aim at the arrows, and every shot is graded against it.");
+      report.next = "Pick your normal line and set it as the target before you bowl.";
+      return report;
+    }
+    const markRate = report.mark.rate ?? 0;
+    report.points.push(`You hit your mark (within ${MARK_TOL} board at the arrows) on ${pct2(report.mark)} of planned shots.`);
+    if (report.breakpoint) report.points.push(`The ball broke within ${BREAK_TOL} boards of where you wanted on ${pct2(report.breakpoint)}.`);
+    if (report.pocketWhenHit.attempts && report.pocketWhenMissed.attempts) report.points.push(`In the pocket: ${pct2(report.pocketWhenHit)} when you hit your mark, ${pct2(report.pocketWhenMissed)} when you missed it.`);
+    if (report.strikeWhenHit.attempts >= 4 && report.strikeWhenMissed.attempts >= 4) report.points.push(`Strikes: ${pct2(report.strikeWhenHit)} on the mark, ${pct2(report.strikeWhenMissed)} off it.`);
+    const offs = missed.map((r) => r.g.markOff).filter((x) => Number.isFinite(x));
+    if (offs.length >= 3) {
+      const left = offs.filter((x) => x > 0).length / offs.length;
+      if (left >= 0.7 || left <= 0.3) report.points.push(`When you miss the mark it's mostly ${left >= 0.7 ? "left of it (toward board 39)" : "right of it (toward board 1)"}: a pattern, not random. Check your shoulders are square to your target and your swing goes straight at it.`);
+    }
+    const biasWord = (b) => b > 0 ? "high" : "light";
+    if (markRate < 0.6) {
+      report.verdict = "execution";
+      report.headline = "Execution first: you're missing your mark";
+      report.next = "Don't move yet. Throw at the same target until you hit it 7 of 10 times; until then a move just chases misses. The Arrow Sniper drill trains exactly this.";
+    } else if (lineBias !== null && Math.abs(lineBias) > 1.2) {
+      report.verdict = "line";
+      report.headline = `Your aim is good; your line is ${biasWord(lineBias)}`;
+      report.points.push(`On the shots that hit your mark, the ball still met the pins ${Math.abs(lineBias).toFixed(1)} boards ${biasWord(lineBias)} on average. That's the line, not you.`);
+      report.next = "Make a move (see Move Advisor) and keep throwing the same shot.";
+    } else if (report.pocketWhenHit.rate !== null && report.pocketWhenHit.rate >= 0.5) {
+      report.verdict = "good";
+      report.headline = "On your mark, it works";
+      report.next = "Keep this line. Your job is repeating it: the misses come from shots off the mark.";
+    } else {
+      report.verdict = "mixed";
+      report.headline = "Hitting the mark, but the pocket comes and goes";
+      report.next = "The line looks right on average, so the spread comes from something else: speed or release. Miss Finder ranks which.";
+    }
+    return report;
+  }
+
+  // camera/pose.ts
+  var VER = "0.10.14";
+  var CDN = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VER}`;
+  var MODEL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+  var AUTO_KEY = "laneiq.bodyAuto";
+  var bodyAutoOn = () => {
+    try {
+      return localStorage.getItem(AUTO_KEY) === "1";
+    } catch {
+      return false;
+    }
+  };
+  var setBodyAuto = (v) => {
+    try {
+      localStorage.setItem(AUTO_KEY, v ? "1" : "0");
+    } catch {
+    }
+  };
+  var landmarker = null;
+  function getLandmarker() {
+    if (!landmarker)
+      landmarker = (async () => {
+        const url = `${CDN}/vision_bundle.mjs`;
+        const mod = await import(
+          /* @vite-ignore */
+          url
+        );
+        const files = await mod.FilesetResolver.forVisionTasks(`${CDN}/wasm`);
+        const make = (delegate) => mod.PoseLandmarker.createFromOptions(files, { baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: "VIDEO", numPoses: 3, minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5 });
+        try {
+          return await make("GPU");
+        } catch {
+          return await make("CPU");
+        }
+      })().catch((e) => {
+        landmarker = null;
+        throw e;
+      });
+    return landmarker;
+  }
+  var clock = 0;
+  var lastFrames = [];
+  var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
+  var seekTo = (v, t) => new Promise((res) => {
+    let done2 = false;
+    const f = () => {
+      if (done2) return;
+      done2 = true;
+      v.removeEventListener("seeked", f);
+      res();
+    };
+    v.addEventListener("seeked", f);
+    v.currentTime = t;
+    setTimeout(f, 800);
+  });
+  function pickBowler(people, s) {
+    if (!people.length) return [];
+    const fl = s.cal.length === 4 ? [s.cal[0].x / s.vw, s.cal[1].x / s.vw] : [0, 1];
+    const lo = Math.min(...fl) - 0.25;
+    const hi = Math.max(...fl) + 0.25;
+    const scored = people.map((p) => {
+      const hipX = (p[23].x + p[24].x) / 2;
+      const size = Math.hypot((p[11].x + p[12].x) / 2 - hipX, (p[11].y + p[12].y) / 2 - (p[23].y + p[24].y) / 2);
+      return { p, ok: hipX >= lo && hipX <= hi, size };
+    }).sort((a, b) => Number(b.ok) - Number(a.ok) || b.size - a.size);
+    return scored[0].p.map((l) => ({ x: l.x, y: l.y, v: l.visibility ?? 1 }));
+  }
+  async function measureBody(s, blob, onProgress) {
+    onProgress?.("Loading the pose model (first time only, a few MB)\u2026");
+    const lm = await getLandmarker();
+    const v = document.createElement("video");
+    v.muted = true;
+    v.playsInline = true;
+    const url = URL.createObjectURL(blob.type ? blob : new Blob([blob], { type: "video/mp4" }));
+    v.src = url;
+    try {
+      await new Promise((res, rej) => {
+        v.onloadedmetadata = () => res();
+        v.onerror = () => rej(new Error("the clip would not open"));
+        setTimeout(() => rej(new Error("the clip took too long to open")), 8e3);
+      });
+      const firstFt = Math.max(0, s.path[0]?.y ?? s.a.release?.ft ?? 0);
+      const ftPerS = Math.max(8, (s.a.speedMph || 17) * (5280 / 3600));
+      const releaseT = -s.recStartT - Math.min(0.5, firstFt / ftPerS);
+      const dur = Number.isFinite(v.duration) ? v.duration : releaseT + 3;
+      const t0 = Math.max(0, releaseT - 5);
+      const t1 = Math.min(dur - 0.05, releaseT + 2);
+      const frames = [];
+      for (let t = t0; t <= t1; t += t >= releaseT - 2.5 ? 1 / 30 : 1 / 10) {
+        await seekTo(v, t);
+        const res = lm.detectForVideo(v, clock += 50);
+        frames.push({ t, lm: pickBowler(res.landmarks ?? [], s) });
+        if (frames.length % 10 === 0) {
+          onProgress?.(`Reading the approach\u2026 ${Math.round((t - t0) / Math.max(0.1, t1 - t0) * 100)}%`);
+          await sleep2(0);
+        }
+      }
+      let toLane = () => null;
+      if (s.cal.length === 4) {
+        const H3 = solveHomography(s.cal, [{ x: 0, y: 0 }, { x: LANE_BOARDS, y: 0 }, { x: LANE_BOARDS, y: LANE_LENGTH_FT }, { x: 0, y: LANE_LENGTH_FT }]);
+        toLane = (p) => {
+          const q = applyHomography(H3, p);
+          return Number.isFinite(q.x) && Number.isFinite(q.y) ? q : null;
+        };
+      }
+      lastFrames = frames;
+      const body = readApproach(frames, { vw: s.vw, vh: s.vh, toLane, hand: S.profile?.hand ?? "R", releaseT, releaseBoard: s.a.release?.board ?? null });
+      logTrack("body read", { frames: frames.length, found: frames.filter((f) => f.lm.length).length, steps: body.steps, timing: body.timing?.label ?? null, drift: body.driftBoards, quality: +body.quality.toFixed(2) });
+      return body;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+  var waiting2 = /* @__PURE__ */ new Map();
+  var chain2 = Promise.resolve();
+  function queueBody(shot, opts = {}) {
+    if (opts.auto && !bodyAutoOn()) return Promise.resolve(void 0);
+    if (!opts.force && shot.body) return Promise.resolve(shot.body);
+    const have = waiting2.get(shot.id);
+    if (have) return have;
+    const job = new Promise((resolve) => {
+      chain2 = chain2.then(async () => {
+        try {
+          for (let i = 0; opts.busy?.() && i < 120; i++) await sleep2(1e3);
+          const blob = opts.blob ?? (shot.hasClip ? await loadClip(shot.id) : void 0);
+          if (!blob) return resolve(void 0);
+          const b = await measureBody(shot, blob, opts.onProgress);
+          shot.body = b;
+          await updateShot(shot);
+          resolve(b);
+        } catch (e) {
+          logTrack("body read failed", { error: String(e) });
+          opts.onProgress?.(`Couldn't read the approach: ${e instanceof Error ? e.message : String(e)}`);
+          resolve(void 0);
+        } finally {
+          waiting2.delete(shot.id);
+        }
+      });
+    });
+    waiting2.set(shot.id, job);
+    return job;
+  }
+  var bodyPending = (id) => waiting2.has(id);
+
+  // camera/sharefiles.ts
+  function offerShare(box, files, opts = {}) {
+    box.innerHTML = "";
+    const row = document.createElement("div");
+    row.className = "chips";
+    const nav = navigator;
+    const note = document.createElement("div");
+    note.className = "note";
+    const data = { files, title: opts.title, text: opts.text };
+    if (nav.share && (!nav.canShare || nav.canShare({ files }))) {
+      const b = document.createElement("button");
+      b.className = "btn";
+      b.textContent = opts.label ?? "Share";
+      b.onclick = () => {
+        nav.share(data).then(() => note.textContent = "Shared.").catch((e) => {
+          if (e.name !== "AbortError") note.textContent = `Couldn't open the share sheet (${e.message}). Use Save instead.`;
+        });
+      };
+      row.append(b);
+    }
+    const save = document.createElement("button");
+    save.className = "btn ghost";
+    save.textContent = files.length > 1 ? "Save the files" : "Save";
+    save.onclick = () => {
+      const all = opts.text ? [...files, new File([opts.text], "laneiq-notes.txt", { type: "text/plain" })] : files;
+      for (const f of all) {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(f);
+        a.download = f.name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 8e3);
+      }
+      note.textContent = "Saved.";
+    };
+    row.append(save);
+    box.append(row, note);
+  }
+
+  // camera/compare.ts
+  var raf2 = 0;
+  var sides = [];
+  var tool = "line";
+  var rate2 = 0.5;
+  var lead = 2.5;
+  var when = (iso) => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  var ballName = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
+  function bestShotFor(s) {
+    const pool = S.shots.filter((x) => x.id !== s.id && x.hasClip && (!s.ballId || x.ballId === s.ballId));
+    const scored = pool.filter((x) => x.m.pocketMiss !== null).sort((a, b) => Number(b.result?.pinsDown === 10) - Number(a.result?.pinsDown === 10) || Math.abs(a.m.pocketMiss) - Math.abs(b.m.pocketMiss));
+    return scored[0] ?? pool[pool.length - 1] ?? null;
+  }
+  function close6() {
+    cancelAnimationFrame(raf2);
+    for (const s of sides) if (s.url) URL.revokeObjectURL(s.url);
+    sides = [];
+    $("compare").classList.remove("on");
+    $("compare").innerHTML = "";
+  }
+  async function sideFor(shot) {
+    const stored = shot.hasClip ? await loadClip(shot.id) : void 0;
+    const clip = stored ? stored.type ? stored : new Blob([stored], { type: "video/mp4" }) : null;
+    return { shot, clip, url: clip ? URL.createObjectURL(clip) : null, v: null, ov: null, draw: null, shapes: [], rel: -shot.recStartT };
+  }
+  function angleAt(a, b, c, w, h) {
+    const v1 = { x: (a.x - b.x) * w, y: (a.y - b.y) * h };
+    const v2 = { x: (c.x - b.x) * w, y: (c.y - b.y) * h };
+    const d = Math.acos(Math.max(-1, Math.min(1, (v1.x * v2.x + v1.y * v2.y) / (Math.hypot(v1.x, v1.y) * Math.hypot(v2.x, v2.y) || 1))));
+    return d * 180 / Math.PI;
+  }
+  function paintShapes(cv, shapes, pending2) {
+    const r = cv.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    if (cv.width !== Math.round(r.width * dpr)) {
+      cv.width = Math.round(r.width * dpr);
+      cv.height = Math.round(r.height * dpr);
+    }
+    const g = cv.getContext("2d");
+    g.clearRect(0, 0, cv.width, cv.height);
+    const W2 = cv.width;
+    const H3 = cv.height;
+    const P = (p) => ({ x: p.x * W2, y: p.y * H3 });
+    g.lineWidth = 3 * dpr;
+    g.strokeStyle = "#ffd25a";
+    g.fillStyle = "#ffd25a";
+    g.font = `800 ${14 * dpr}px system-ui`;
+    for (const s of pending2 ? [...shapes, pending2] : shapes) {
+      const p = s.pts.map(P);
+      g.beginPath();
+      if (s.tool === "circle" && p.length >= 2) g.arc(p[0].x, p[0].y, Math.hypot(p[1].x - p[0].x, p[1].y - p[0].y), 0, Math.PI * 2);
+      else p.forEach((q, i) => i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y));
+      g.stroke();
+      for (const q of s.tool === "free" ? [] : p) {
+        g.beginPath();
+        g.arc(q.x, q.y, 4 * dpr, 0, Math.PI * 2);
+        g.fill();
+      }
+      if (s.tool === "angle" && s.pts.length === 3) {
+        const deg2 = angleAt(s.pts[0], s.pts[1], s.pts[2], W2, H3);
+        g.fillText(`${deg2.toFixed(0)}\xB0`, p[1].x + 8 * dpr, p[1].y - 8 * dpr);
+      }
+    }
+  }
+  function wireDraw(side) {
+    const cv = side.draw;
+    let cur2 = null;
+    const at3 = (e) => {
+      const r = cv.getBoundingClientRect();
+      return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+    };
+    cv.onpointerdown = (e) => {
+      e.preventDefault();
+      cv.setPointerCapture(e.pointerId);
+      const p = at3(e);
+      if (tool === "angle" && cur2?.tool === "angle" && cur2.pts.length === 2) {
+        cur2.pts.push(p);
+        side.shapes.push(cur2);
+        cur2 = null;
+        return paintShapes(cv, side.shapes);
+      }
+      cur2 = { tool, pts: tool === "free" ? [p] : [p, p] };
+    };
+    cv.onpointermove = (e) => {
+      if (!cur2) return;
+      const p = at3(e);
+      if (cur2.tool === "free") cur2.pts.push(p);
+      else cur2.pts[cur2.pts.length - 1] = p;
+      paintShapes(cv, side.shapes, cur2);
+    };
+    cv.onpointerup = () => {
+      if (!cur2) return;
+      if (cur2.tool === "angle" && cur2.pts.length === 2) return paintShapes(cv, side.shapes, cur2);
+      side.shapes.push(cur2);
+      cur2 = null;
+      paintShapes(cv, side.shapes);
+    };
+  }
+  function trailLoop() {
+    for (const s of sides) {
+      if (!s.v || !s.ov || s.shot.cal.length !== 4) continue;
+      const g = s.ov.getContext("2d");
+      g.clearRect(0, 0, s.ov.width, s.ov.height);
+      const Hinv2 = solveHomography([{ x: 0, y: 0 }, { x: LANE_BOARDS, y: 0 }, { x: LANE_BOARDS, y: LANE_LENGTH_FT }, { x: 0, y: LANE_LENGTH_FT }], s.shot.cal);
+      const P = (x, y) => applyHomography(Hinv2, { x, y });
+      const view3 = { ctx: g, width: s.shot.vw, P };
+      const t = s.v.currentTime + s.shot.recStartT;
+      const last = s.shot.path[s.shot.path.length - 1]?.t ?? 0;
+      strokeTrail(view3, s.shot.path.filter((p) => p.t <= t).map((p) => P(p.x, p.y)), 1, t < last);
+    }
+    const [a, b] = sides;
+    if (a?.v && b?.v && !a.v.paused) {
+      const want = b.rel + (a.v.currentTime - a.rel);
+      if (want >= 0 && Math.abs(b.v.currentTime - want) > 0.08) b.v.currentTime = want;
+      if (b.v.paused && want >= 0 && want < (b.v.duration || 99)) void b.v.play().catch(() => {
+      });
+    }
+    const slider = document.getElementById("cp-scrub");
+    if (slider && a?.v && document.activeElement !== slider) slider.value = String(a.v.currentTime - a.rel);
+    raf2 = requestAnimationFrame(trailLoop);
+  }
+  function seekAll(rel) {
+    for (const s of sides) if (s.v) s.v.currentTime = Math.max(0, s.rel + rel);
+  }
+  async function playAll() {
+    seekAll(-lead);
+    await new Promise((r) => setTimeout(r, 150));
+    for (const s of sides)
+      if (s.v) {
+        s.v.playbackRate = rate2;
+        void s.v.play().catch(() => {
+        });
+      }
+  }
+  function stepAll(dt) {
+    for (const s of sides)
+      if (s.v) {
+        s.v.pause();
+        s.v.currentTime = Math.max(0, s.v.currentTime + dt);
+      }
+  }
+  async function snapshot(side) {
+    if (!side.v || !side.v.videoWidth) return null;
+    const c = document.createElement("canvas");
+    c.width = side.v.videoWidth;
+    c.height = side.v.videoHeight;
+    const g = c.getContext("2d");
+    g.drawImage(side.v, 0, 0, c.width, c.height);
+    if (side.ov) g.drawImage(side.ov, 0, 0, c.width, c.height);
+    if (side.draw) g.drawImage(side.draw, 0, 0, c.width, c.height);
+    return new Promise((r) => c.toBlob((b) => r(b), "image/jpeg", 0.9));
+  }
+  function summaryText() {
+    const hand3 = S.profile?.hand ?? "R";
+    const lines = [`LaneIQ shot comparison${S.profile ? ` for ${S.profile.name}` : ""}`];
+    sides.forEach((s, i) => {
+      const m = s.shot.m;
+      lines.push("", `${i ? "B" : "A"}: ${when(s.shot.at)}, ${ballName(s.shot.ballId)}${s.shot.result ? `, ${s.shot.result.pinsDown === 10 ? "strike" : `${s.shot.result.pinsDown} pins`}` : ""}`);
+      for (const f of FEATURES) {
+        const v = m[f.key];
+        if (typeof v === "number") lines.push(`  ${f.label}: ${v.toFixed(1)} ${f.unit}`.trimEnd());
+      }
+      const g = gradeShot(s.shot, s.shot.plan);
+      if (g && g.markOff !== null) lines.push(`  Target: aimed at ${s.shot.plan.arrows}, ${g.hitMark ? "hit it" : `missed by ${Math.abs(g.markOff).toFixed(1)} ${g.markOff > 0 ? "left" : "right"}`}`);
+      if (s.shot.body) for (const d of describeBody(s.shot.body, hand3)) lines.push(`  ${d}`);
+    });
+    lines.push("", "Boards are counted from the right gutter. Measured from one phone camera; treat as estimates.");
+    return lines.join("\n");
+  }
+  async function sharePacket() {
+    const box = $("cp-share-note");
+    box.textContent = "Getting the pictures ready\u2026";
+    const files = [];
+    for (const [i, s] of sides.entries()) {
+      const snap = await snapshot(s);
+      if (snap) files.push(new File([snap], `laneiq-shot-${i ? "B" : "A"}.jpg`, { type: "image/jpeg" }));
+      if (s.clip) files.push(new File([s.clip], `laneiq-shot-${i ? "B" : "A"}.${/mp4/.test(s.clip.type) ? "mp4" : "webm"}`, { type: s.clip.type || "video/mp4" }));
+    }
+    offerShare(box, files, { text: summaryText(), title: "LaneIQ shots", label: "Share with my coach" });
+  }
+  async function openCompare2(a, b) {
+    close6();
+    const el = $("compare");
+    el.classList.add("on");
+    const other = b ?? bestShotFor(a);
+    sides = [await sideFor(a), ...other ? [await sideFor(other)] : []];
+    const pickList = S.shots.filter((x) => x.id !== a.id && x.hasClip).slice(-60).reverse();
+    const head = (s, i) => `<div class="note"><b style="color:${i ? "var(--mg)" : "var(--cy)"}">${i ? "B" : "A"}</b> ${esc(when(s.shot.at))} \xB7 ${esc(ballName(s.shot.ballId))} \xB7 ${s.shot.a.speedMph.toFixed(1)} mph${s.shot.result ? ` \xB7 ${s.shot.result.pinsDown === 10 ? "strike" : s.shot.result.pinsDown + " pins"}` : ""}</div>`;
+    const stage = (s, i) => s.url ? `<div style="flex:1;min-width:0">${head(s, i)}<div class="stagebox" style="margin:4px 0"><video id="cp-v${i}" src="${s.url}" playsinline muted preload="auto"></video><canvas class="ov" id="cp-o${i}" width="${s.shot.vw}" height="${s.shot.vh}"></canvas><canvas class="ov" id="cp-d${i}" style="touch-action:none"></canvas></div></div>` : `<div style="flex:1;min-width:0">${head(s, i)}<div class="note">No video for this shot.</div></div>`;
+    const rows2 = FEATURES.filter((f) => sides.some((s) => typeof s.shot.m[f.key] === "number"));
+    el.innerHTML = `<div class="row"><h2>Side by side</h2><button class="btn ghost" id="cp-close">Close</button></div>
+    <div class="note">Both clips are lined up at the moment the ball leaves the hand. Draw on either picture to mark it up.</div>
+    <div class="field"><label>Compare with</label><select id="cp-pick">${other ? "" : `<option value="">choose a shot\u2026</option>`}${pickList.map((x) => `<option value="${x.id}" ${other?.id === x.id ? "selected" : ""}>${esc(when(x.at))} \xB7 ${esc(ballName(x.ballId))} \xB7 ${x.a.speedMph.toFixed(1)} mph${x.result?.pinsDown === 10 ? " \xB7 strike" : ""}${x.id === bestShotFor(a)?.id ? " (your best)" : ""}</option>`).join("")}</select></div>
+    <div style="display:flex;gap:8px">${sides.map(stage).join("")}</div>
+    <div class="field"><label>From release (s)</label><input id="cp-scrub" type="range" min="-3" max="3" step="0.02" value="-${lead}"></div>
+    <div class="chips"><button class="btn" id="cp-play">Play both</button><button class="chip" id="cp-back">\u25C0 frame</button><button class="chip" id="cp-fwd">frame \u25B6</button>${[0.25, 0.5, 1].map((r) => `<button class="chip ${r === rate2 ? "sel" : ""}" data-rate="${r}">${r}\xD7</button>`).join("")}</div>
+    <div class="chips">${["line", "angle", "circle", "free"].map((t) => `<button class="chip ${t === tool ? "sel" : ""}" data-tool="${t}">${t === "line" ? "Line" : t === "angle" ? "Angle" : t === "circle" ? "Circle" : "Draw"}</button>`).join("")}<button class="chip danger" id="cp-clear">Clear marks</button></div>
+    <div class="note">Angle: drag the first arm, then tap where the second arm ends. The degrees show at the corner.</div>
+    <h3>Both paths from above</h3>
+    <div class="card"><canvas id="cp-top" width="360" height="600" style="width:100%;height:auto;aspect-ratio:360/600"></canvas><div class="note"><b style="color:var(--cy)">A</b> cyan, <b style="color:var(--mg)">B</b> magenta. The dashed green line is the pocket.</div></div>
+    <h3>Numbers</h3>
+    <div class="card"><table><tr><th>Metric</th><th class="n">A</th><th class="n">B</th></tr>${rows2.map((f) => `<tr><td>${esc(f.label)}</td>${sides.map((s) => `<td class="n">${typeof s.shot.m[f.key] === "number" ? s.shot.m[f.key].toFixed(1) : "\u2013"}</td>`).join("")}${sides.length < 2 ? "<td></td>" : ""}</tr>`).join("")}</table></div>
+    ${sides.some((s) => s.shot.body) ? `<h3>Body and approach</h3><div class="card">${sides.map((s, i) => `<div><b>${i ? "B" : "A"}</b><ul>${s.shot.body ? describeBody(s.shot.body, S.profile?.hand ?? "R").map((d) => `<li>${esc(d)}</li>`).join("") : "<li>Not read yet: open the shot and tap Read my approach.</li>"}</ul></div>`).join("")}</div>` : ""}
+    <h3>Send to a coach</h3>
+    <div class="card"><div class="u">Shares both clips, a picture of each as it's shown now (with your marks) and the numbers, through your phone's share sheet. Nothing goes anywhere until you pick who to send it to.</div><div class="chips"><button class="btn ghost" id="cp-share">Get the packet ready</button></div><div id="cp-share-note"></div></div>`;
+    sides.forEach((s, i) => {
+      s.v = document.getElementById(`cp-v${i}`);
+      s.ov = document.getElementById(`cp-o${i}`);
+      s.draw = document.getElementById(`cp-d${i}`);
+      if (s.draw) wireDraw(s);
+      s.v?.addEventListener("loadedmetadata", () => s.v.currentTime = Math.max(0, s.rel - lead), { once: true });
+    });
+    drawTopDown($("cp-top").getContext("2d"), 360, 600, sides.map((s, i) => ({ path: s.shot.path, color: i ? "#ff4fd8" : "#46e6ff", width: 3.2 })), { board: S.profile?.hand === "L" ? 22.5 : 17.5 });
+    $("cp-close").onclick = close6;
+    $("cp-play").onclick = () => void playAll();
+    $("cp-back").onclick = () => stepAll(-1 / 30);
+    $("cp-fwd").onclick = () => stepAll(1 / 30);
+    $("cp-scrub").oninput = (e) => {
+      for (const s of sides) s.v?.pause();
+      seekAll(Number(e.target.value));
+    };
+    el.querySelectorAll("[data-rate]").forEach(
+      (b2) => b2.onclick = () => {
+        rate2 = Number(b2.dataset.rate);
+        for (const s of sides) if (s.v) s.v.playbackRate = rate2;
+        el.querySelectorAll("[data-rate]").forEach((x) => x.classList.toggle("sel", x === b2));
+      }
+    );
+    el.querySelectorAll("[data-tool]").forEach(
+      (b2) => b2.onclick = () => {
+        tool = b2.dataset.tool;
+        el.querySelectorAll("[data-tool]").forEach((x) => x.classList.toggle("sel", x === b2));
+      }
+    );
+    $("cp-clear").onclick = () => sides.forEach((s) => (s.shapes = [], s.draw && paintShapes(s.draw, [])));
+    $("cp-pick").onchange = (e) => {
+      const id = e.target.value;
+      const pick = S.shots.find((x) => x.id === id);
+      if (pick) void openCompare2(a, pick);
+    };
+    $("cp-share").onclick = () => void sharePacket();
+    trailLoop();
+  }
+
+  // core/src/missfinder.ts
+  var MIN_FINDER = 12;
+  var CAUSES = [
+    { id: "speed", label: "Ball speed", unit: "mph", digits: 1, get: (s) => s.m.launchSpeed ?? s.a.speedMph ?? null, fixDir: (h, lo, hi) => `Your better shots come at ${h ? hi : lo} mph. Throw 10 at that speed (the Speed Lock drill) and keep the line.`, fixCons: (c) => `Your speed is fine on average (${c} mph); it's the spread. Same pushaway, same number of steps, same tempo every time. Speed Lock trains it.` },
+    { id: "arrows", label: "Board at the arrows", unit: "", digits: 1, get: (s) => s.m.arrowsBoard, fixDir: (h, lo, hi) => `Your better shots cross the arrows on ${h ? hi : lo}. Set that as your target and hit it.`, fixCons: (c) => `You aim around board ${c}, but the ball wanders off it. Arrow Sniper trains hitting the same board.` },
+    { id: "mark", label: "Missing your target", unit: "boards", digits: 1, get: (s) => s.plan && s.m.arrowsBoard !== null ? s.m.arrowsBoard - s.plan.arrows : null, fixDir: (h) => `Your misses follow your aim: when the ball crosses ${h ? "left" : "right"} of your target it goes the matching way at the pins. Square your shoulders to the target and swing straight at it.`, fixCons: () => "When you hit your target the pocket follows; when you miss it, so do the pins. Accuracy is the job: Arrow Sniper." },
+    { id: "laydown", label: "Where the ball lands", unit: "", digits: 1, get: (s) => s.m.startBoard, fixDir: (h, lo, hi) => `Your better shots land on the lane around board ${h ? hi : lo}. Watch the laydown point as well as the arrows.`, fixCons: (c) => `The ball lands around board ${c}, but not consistently. Keep the swing close to the body and the release the same.` },
+    { id: "launch", label: "Launch angle", unit: "\xB0", digits: 1, get: (s) => s.m.launchAngle, fixDir: (h, lo, hi) => `Your better shots leave the hand at ${h ? hi : lo}\xB0. Feel the line from your release point through your target.`, fixCons: () => "The angle the ball leaves your hand changes shot to shot. A straight swing and a still head at release keep it the same." },
+    { id: "breakpoint", label: "Where it starts to hook", unit: "ft", digits: 0, get: (s) => s.m.breakpointFt, fixDir: (h) => h ? "When the ball hooks later it does better: a smoother ball, more speed or a little less rotation pushes the breakpoint down-lane." : "When the ball hooks sooner it does better: a stronger ball, less speed or moving in a little brings it back.", fixCons: () => "The hook point jumps around. That is usually the hand at release: same wrist, same rotation, every time." },
+    { id: "drift", label: "Drift in the approach", unit: "boards", digits: 1, get: (s) => s.body?.driftBoards ?? null, fixDir: (h) => `Your misses go with your walk: drifting ${h ? "left" : "right"} goes with the better shots, the other way with the worse ones. Walk at your target.`, fixCons: () => "Your walk isn't the same every time. Tape your start board and check where you slide: walk straight at your target." },
+    { id: "timing", label: "Timing", unit: "s", digits: 2, get: (s) => s.body?.timing?.offsetS ?? null, fixDir: (h) => h ? "Your better shots have the ball a touch later relative to your slide. Don't rush the pushaway." : "Your better shots have the ball a touch earlier relative to your slide. Start the pushaway with your first step.", fixCons: () => "Your timing changes shot to shot. Count your steps and start the pushaway on the same step every time." },
+    { id: "hold", label: "Holding your finish", unit: "s", digits: 1, get: (s) => s.body?.heldS ?? null, fixDir: (h) => h ? "Your better shots are the ones you hold at the line. Post every shot until the ball reaches the pins." : "Shots you hold longest aren't helping here, so check something else first.", fixCons: () => "Some shots you post, some you fall out of. Hold the finish every time." },
+    { id: "fatigue", label: "Shots into the session", unit: "shots", digits: 0, get: (s, ctx2) => ctx2.order.get(s.id) ?? null, fixDir: (h) => h ? "You get better as the session goes on: warm up longer before it counts." : "You fade as the session goes on: keep your legs under you, slow down between shots and stay with the same tempo.", fixCons: () => "Your misses get wider at one end of the session." }
+  ];
+  var mean4 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var sdOf2 = (v) => {
+    if (v.length < 2) return 0;
+    const m = mean4(v);
+    return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (v.length - 1));
+  };
+  var median3 = (v) => {
+    const s = [...v].sort((a, b) => a - b);
+    const m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  };
+  function pearson(x, y) {
+    if (x.length < 3) return 0;
+    const mx = mean4(x);
+    const my = mean4(y);
+    let sxy = 0, sxx = 0, syy = 0;
+    for (let i = 0; i < x.length; i++) {
+      sxy += (x[i] - mx) * (y[i] - my);
+      sxx += (x[i] - mx) ** 2;
+      syy += (y[i] - my) ** 2;
+    }
+    return sxx === 0 || syy === 0 ? 0 : sxy / Math.sqrt(sxx * syy);
+  }
+  var tOf = (r, n) => Math.abs(r) >= 0.9999 ? 99 : Math.abs(r) * Math.sqrt(n - 2) / Math.sqrt(1 - r * r);
+  var missWord = (m) => Math.abs(m) <= 1 ? "in the pocket" : m > 0 ? `${m.toFixed(1)} boards high` : `${Math.abs(m).toFixed(1)} boards light`;
+  function findMisses(shots) {
+    const used = shots.filter((s) => s.m.pocketMiss !== null && Number.isFinite(s.m.pocketMiss));
+    const order = /* @__PURE__ */ new Map();
+    const bySession = /* @__PURE__ */ new Map();
+    for (const s of shots) bySession.set(s.sessionId, [...bySession.get(s.sessionId) ?? [], s]);
+    for (const list of bySession.values()) list.sort((a, b) => a.at.localeCompare(b.at)).forEach((s, i) => order.set(s.id, i + 1));
+    const miss = used.map((s) => s.m.pocketMiss);
+    const out = { status: "insufficient", shotsUsed: used.length, needed: MIN_FINDER, bias: miss.length ? mean4(miss) : null, spread: miss.length >= 2 ? sdOf2(miss) : null, factors: [], headline: "", summary: "" };
+    if (used.length < MIN_FINDER) {
+      out.headline = `Miss Finder needs ${MIN_FINDER - used.length} more shot${MIN_FINDER - used.length === 1 ? "" : "s"} seen to the pins`;
+      out.summary = "It ranks what goes with your misses: speed, aim, where the ball lands, your walk and timing, the time into the session. It needs shots the camera saw reach the pins.";
+      return out;
+    }
+    out.status = "ok";
+    const factors = [];
+    const values = /* @__PURE__ */ new Map();
+    for (const c of CAUSES) {
+      const rows2 = used.map((s) => ({ x: c.get(s, { order }), y: s.m.pocketMiss })).filter((r) => typeof r.x === "number" && Number.isFinite(r.x));
+      if (rows2.length < MIN_FINDER - 2) continue;
+      const xs = rows2.map((r) => r.x);
+      if (sdOf2(xs) < 1e-6) continue;
+      const ys = rows2.map((r) => r.y);
+      const fmt4 = (v) => v.toFixed(c.digits);
+      const u = c.unit && c.unit !== "\xB0" ? ` ${c.unit}` : c.unit;
+      const rd = pearson(xs, ys);
+      const cx = median3(xs);
+      const rc = pearson(xs.map((x) => Math.abs(x - cx)), ys.map((y) => Math.abs(y)));
+      const sorted2 = rows2.slice().sort((a, b) => a.x - b.x);
+      const third = Math.max(3, Math.floor(sorted2.length / 3));
+      const lo = sorted2.slice(0, third);
+      const hi = sorted2.slice(-third);
+      const range = (g) => `${fmt4(g[0].x)}\u2013${fmt4(g[g.length - 1].x)}${u}`;
+      values.set(c.id, new Map(used.map((s) => [s.id, c.get(s, { order })])));
+      if (rd * rd >= rc * rc || rc <= 0) {
+        if (tOf(rd, rows2.length) < 2 || rd * rd < 0.08) continue;
+        const mLo = mean4(lo.map((r) => r.y));
+        const mHi = mean4(hi.map((r) => r.y));
+        const betterHigh = Math.abs(mHi) < Math.abs(mLo);
+        factors.push({ id: c.id, label: c.label, unit: c.unit, kind: "direction", explained: rd * rd, n: rows2.length, text: `At ${range(lo)} you meet the pins ${missWord(mLo)} on average; at ${range(hi)}, ${missWord(mHi)}.`, fix: c.fixDir(betterHigh, range(lo), range(hi)) });
+      } else {
+        if (rc <= 0 || tOf(rc, rows2.length) < 2 || rc * rc < 0.08) continue;
+        const devs = rows2.map((r) => ({ d: Math.abs(r.x - cx), y: Math.abs(r.y) })).sort((a, b) => a.d - b.d);
+        const near = devs.slice(0, Math.floor(devs.length / 2));
+        const far = devs.slice(Math.floor(devs.length / 2));
+        const cut = far[0].d;
+        factors.push({ id: c.id, label: c.label, unit: c.unit, kind: "consistency", explained: rc * rc, n: rows2.length, text: `Your usual is ${fmt4(cx)}${u}. Within ${fmt4(cut)}${u} of it you miss the pocket by ${mean4(near.map((r) => r.y)).toFixed(1)} boards on average; further off, by ${mean4(far.map((r) => r.y)).toFixed(1)}.`, fix: c.fixCons(fmt4(cx)) });
+      }
+    }
+    factors.sort((a, b) => b.explained - a.explained);
+    const together = (a, b) => {
+      const va = values.get(a);
+      const vb = values.get(b);
+      const ids = [...va.keys()].filter((k2) => typeof va.get(k2) === "number" && typeof vb.get(k2) === "number");
+      return ids.length >= 6 && Math.abs(pearson(ids.map((k2) => va.get(k2)), ids.map((k2) => vb.get(k2)))) >= 0.85;
+    };
+    const kept = [];
+    for (const f of factors) if (kept.every((k2) => !together(k2.id, f.id))) kept.push(f);
+    out.factors = kept.slice(0, 4);
+    const bias = out.bias;
+    const spread = out.spread;
+    const top = out.factors[0];
+    const lineNote = Math.abs(bias) > 1.2 && spread < 2.2 ? ` On average you're ${missWord(bias)}, and fairly tight about it: that part is your line, so a move fixes it (see Move Advisor).` : "";
+    out.headline = top ? `${top.label} goes with your misses most` : Math.abs(bias) > 1.2 ? `Your misses are mostly one way: ${bias > 0 ? "high" : "light"}` : "No single thing explains your misses yet";
+    out.summary = top ? `It accounts for about ${Math.round(top.explained * 100)}% of where your ball meets the pins over ${top.n} shots. ${top.text}${lineNote}` : `${used.length} shots: you meet the pins ${missWord(bias)} on average, give or take ${spread.toFixed(1)} boards.${lineNote || " Nothing measured stands out yet, so keep the same line and let more shots build up."}`;
+    return out;
+  }
+
+  // core/src/moves.ts
+  var MOVE_MIN = 3;
+  var mean5 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var sdOf3 = (v) => {
+    if (v.length < 2) return 0;
+    const m = mean5(v);
+    return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (v.length - 1));
+  };
+  var median4 = (v) => {
+    const s = [...v].sort((a, b) => a - b);
+    const m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  };
+  var dirWord = (b) => b > 0 ? "left" : "right";
+  function adviseMove(recent, hand3, plan, lane) {
+    const last = recent[recent.length - 1];
+    const sameBall = last?.ballId ? recent.filter((s) => s.ballId === last.ballId) : recent;
+    const window2 = sameBall.slice(-6);
+    const base = { kind: "insufficient", headline: "", feet: 0, eyes: 0, from: { stand: null, arrows: null }, to: { stand: null, arrows: null }, why: [], shotsUsed: 0 };
+    const stands = window2.map((s) => s.plan?.stand ?? s.body?.startBoard ?? null).filter((x) => x !== null);
+    const aims = window2.map((s) => s.plan?.arrows ?? s.m.arrowsBoard).filter((x) => x !== null);
+    base.from = { stand: plan?.stand ?? (stands.length ? Math.round(median4(stands)) : null), arrows: plan?.arrows ?? (aims.length ? Math.round(median4(aims)) : null) };
+    const graded = window2.map((s) => ({ s, g: gradeShot(s, s.plan) }));
+    const planned = graded.filter((r) => r.g && r.g.hitMark !== null);
+    const onMark = planned.length >= 3 ? planned.filter((r) => r.g.hitMark).map((r) => r.s) : window2;
+    if (planned.length >= 4 && planned.filter((r) => r.g.hitMark).length / planned.length < 0.5) {
+      return { ...base, kind: "fix-aim", headline: "Don't move yet: you're missing your target", why: [`You hit your target on ${planned.filter((r) => r.g.hitMark).length} of the last ${planned.length} planned shots.`, "A move only helps when the ball goes where you aim. Hit the mark first, then judge the line."], shotsUsed: planned.length };
+    }
+    const seen2 = onMark.filter((s) => s.m.pocketMiss !== null);
+    base.shotsUsed = seen2.length;
+    if (seen2.length < MOVE_MIN) {
+      return { ...base, headline: `Bowl ${MOVE_MIN - seen2.length} more shot${MOVE_MIN - seen2.length === 1 ? "" : "s"} with this ball`, why: ["The advisor needs a few shots with the same ball that the camera saw reach the pins."] };
+    }
+    const misses = seen2.map((s) => s.m.pocketMiss);
+    const bias = mean5(misses);
+    const spread = sdOf3(misses);
+    const highs = misses.filter((m) => m > 1).length;
+    const lights = misses.filter((m) => m < -1).length;
+    const why = [`Last ${seen2.length} shots with this ball: ${misses.map((m) => Math.abs(m) <= 1 ? "pocket" : m > 0 ? `+${m.toFixed(1)}` : m.toFixed(1)).join(", ")} (boards from the pocket, + high).`];
+    if (Math.abs(bias) <= 1) return { ...base, kind: "stay", headline: "Stay where you are", why: [...why, "On average the ball is meeting the pocket. Keep the line and repeat the shot."] };
+    if (highs && lights && Math.min(highs, lights) / seen2.length >= 0.3) return { ...base, kind: "stay", headline: "Don't move: the misses go both ways", why: [...why, "Some high and some light is repeatability, not the line. A move would chase it. Look at Miss Finder for what changes between them."] };
+    if (spread > 3) return { ...base, kind: "stay", headline: "Too scattered to call a move", why: [...why, `The misses spread \xB1${spread.toFixed(1)} boards. Tighten up the shot first.`] };
+    const pocket = POCKET_BOARD[hand3];
+    const entries = seen2.map((s) => s.m.entryBoard).filter((x) => x !== null);
+    const side = entries.length ? Math.sign(mean5(entries) - pocket) : hand3 === "R" ? Math.sign(bias) : -Math.sign(bias);
+    const size = Math.abs(bias);
+    const high = bias > 0;
+    if (lane?.status === "ok" && /earlier/.test(lane.headline) && high) why.push("The lane read agrees: the ball is reading the lane earlier as the oil dries up.");
+    if (lane?.status === "ok" && /skidding farther/.test(lane.headline) && !high) why.push("The lane read agrees: oil is carrying down and the ball is skidding farther.");
+    if (size > 4.5) {
+      return { ...base, kind: "ball", ball: high ? "cleaner" : "stronger", headline: `Change balls: ${size.toFixed(1)} boards ${high ? "high" : "light"} is more than a move should fix`, why: [...why, high ? "A cleaner, later-reading ball lets you stay on a line you can repeat." : "A stronger, earlier-reading ball gets back the hook you're missing."], feet: 0, eyes: 0 };
+    }
+    const feet = side * (size > 2.5 ? 4 : 2);
+    const eyes = side * (size > 2.5 ? 2 : 1);
+    const to = { stand: base.from.stand !== null ? base.from.stand + feet : null, arrows: base.from.arrows !== null ? base.from.arrows + eyes : null };
+    why.push(`Averaging ${size.toFixed(1)} boards ${high ? "high" : "light"}: move toward the miss, feet ${Math.abs(feet)} boards and eyes ${Math.abs(eyes)} ${dirWord(feet)} (the ${Math.abs(feet)}-and-${Math.abs(eyes)} move).`);
+    why.push("Judge two shots after the move before changing anything else.");
+    return {
+      ...base,
+      kind: "move",
+      feet,
+      eyes,
+      to,
+      headline: `Move ${Math.abs(feet)} and ${Math.abs(eyes)} ${dirWord(feet)}${to.stand !== null && to.arrows !== null ? `: stand on ${to.stand}, aim at ${to.arrows}` : ""}`,
+      why
+    };
+  }
+
+  // core/src/balladvisor.ts
+  var BALL_MIN_SHOTS = 10;
+  var STEP = 0.4;
+  var mean6 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  var nums2 = (v) => v.filter((x) => typeof x === "number" && Number.isFinite(x));
+  function ballStats(shots) {
+    const seen2 = shots.filter((s) => s.m.pocketMiss !== null);
+    const miss = seen2.map((s) => s.m.pocketMiss);
+    const res = shots.filter((s) => s.result);
+    return {
+      shots: shots.length,
+      seen: seen2.length,
+      pocketPct: seen2.length ? miss.filter((m) => Math.abs(m) <= 1).length / seen2.length * 100 : null,
+      highPct: seen2.length ? miss.filter((m) => m > 1).length / seen2.length * 100 : null,
+      lightPct: seen2.length ? miss.filter((m) => m < -1).length / seen2.length * 100 : null,
+      meanMiss: mean6(miss),
+      entryAngle: mean6(nums2(shots.map((s) => s.m.entryAngle))),
+      breakpointFt: mean6(nums2(shots.map((s) => s.m.breakpointFt))),
+      strikePct: res.length >= 8 ? res.filter(isStrike).length / res.length * 100 : null,
+      speed: mean6(nums2(shots.map((s) => s.m.launchSpeed)))
+    };
+  }
+  function judgeBall(st2) {
+    const why = [];
+    if (st2.shots < BALL_MIN_SHOTS || st2.seen < 6) return { verdict: "need-shots", why: [`${st2.shots} shot${st2.shots === 1 ? "" : "s"} so far; the advisor judges a ball from ${BALL_MIN_SHOTS} (with at least 6 seen to the pins).`], delta: 0 };
+    const high = (st2.highPct ?? 0) >= 55 && (st2.meanMiss ?? 0) > 1;
+    const light = (st2.lightPct ?? 0) >= 55 && (st2.meanMiss ?? 0) < -1;
+    const early = st2.breakpointFt !== null && st2.breakpointFt < 37 || st2.entryAngle !== null && st2.entryAngle > 7;
+    const late = st2.breakpointFt !== null && st2.breakpointFt > 46 || st2.entryAngle !== null && st2.entryAngle < 3.5;
+    const veryEarly = st2.entryAngle !== null && st2.entryAngle > 8 || st2.breakpointFt !== null && st2.breakpointFt < 33;
+    const veryLate = st2.entryAngle !== null && st2.entryAngle < 2.5 || st2.breakpointFt !== null && st2.breakpointFt > 50;
+    const shape = `breakpoint ${st2.breakpointFt !== null ? `at ${st2.breakpointFt.toFixed(0)} ft` : "not measured"}, entry angle ${st2.entryAngle !== null ? `${st2.entryAngle.toFixed(1)}\xB0` : "not measured"}`;
+    if (high && early || veryEarly) {
+      why.push(`It meets the pins high on ${Math.round(st2.highPct ?? 0)}% of shots${high ? "" : " some of the time"}, with an early, strong shape (${shape}).`);
+      why.push("That's a ball reading the lane before you want it to. Moving left buys some room, but a cleaner, later-reading ball lets you stay on a line you can repeat.");
+      return { verdict: "too-strong", why, delta: veryEarly && high ? -STEP * 1.5 : -STEP };
+    }
+    if (light && late || veryLate) {
+      why.push(`It meets the pins light on ${Math.round(st2.lightPct ?? 0)}% of shots${light ? "" : " some of the time"}, with a late, flat shape (${shape}).`);
+      why.push("That's a ball that isn't reading the lane enough for you. A stronger, earlier-reading ball gets back the angle that carries.");
+      return { verdict: "too-weak", why, delta: veryLate && light ? STEP * 1.5 : STEP };
+    }
+    if ((st2.pocketPct ?? 0) >= 45) {
+      why.push(`In the pocket on ${Math.round(st2.pocketPct)}% of shots seen to the pins (${shape}). This ball fits how you throw it.`);
+      return { verdict: "good", why, delta: 0 };
+    }
+    why.push(high || light ? `It misses ${high ? "high" : "light"} mostly, but its shape (${shape}) doesn't say the ball is the problem: try a move before a new ball.` : `The misses go both ways (${shape}): that is repeatability, not the ball.`);
+    return { verdict: "unclear", why, delta: 0 };
+  }
+  function adviseBalls(owned, shots, catalog, ownedKeys, filter) {
+    const caveats = [
+      "Judged from your own shots with each ball on the lanes you bowled. A different pattern can change the answer.",
+      "The wanted ball is placed on the app's motion index, built from published specs (RG, differential, cover). Have a pro shop confirm the surface and layout before you buy."
+    ];
+    const reads = owned.map((b) => {
+      const mine = shots.filter((s) => s.ballId === b.id);
+      const st2 = ballStats(mine);
+      const index = b.specs ? motionIndex(b.specs) : null;
+      const j = judgeBall(st2);
+      const read2 = { ballId: b.id, name: b.name, index, stats: st2, verdict: j.verdict, headline: "", why: j.why, want: null, owned: null, buys: [] };
+      if (j.verdict === "too-strong" || j.verdict === "too-weak") {
+        if (index === null) {
+          read2.verdict = "no-specs";
+          read2.headline = `${b.name}: ${j.verdict === "too-strong" ? "reads the lane too early for you" : "doesn't read the lane enough for you"}`;
+          read2.why.push("It has no RG and differential on file, so there's nothing to measure a replacement against. Pick it from the catalog or enter its specs in Arsenal.");
+          return read2;
+        }
+        const want = index + j.delta;
+        read2.want = want;
+        const near = owned.filter((o) => o.id !== b.id && o.specs).map((o) => ({ o, m: motionIndex(o.specs) })).filter((x) => x.m !== null && Math.abs(x.m - want) <= 0.2).sort((a, c) => Math.abs(a.m - want) - Math.abs(c.m - want))[0];
+        read2.owned = near?.o ?? null;
+        read2.buys = rankCatalog(catalog, ownedKeys, want, 4, 1, filter);
+        read2.headline = `${b.name} is ${j.verdict === "too-strong" ? "too strong" : "too weak"} for how you're using it`;
+      } else if (j.verdict === "good") read2.headline = `${b.name} fits you`;
+      else if (j.verdict === "need-shots") read2.headline = `${b.name}: bowl more shots with it`;
+      else read2.headline = `${b.name}: no clear call yet`;
+      return read2;
+    });
+    const judged = reads.filter((r) => r.stats.seen >= 6);
+    const best = judged.filter((r) => r.stats.pocketPct !== null).sort((a, c) => (c.stats.strikePct ?? c.stats.pocketPct) - (a.stats.strikePct ?? a.stats.pocketPct))[0] ?? null;
+    const change = reads.find((r) => r.verdict === "too-strong" || r.verdict === "too-weak");
+    let headline;
+    if (!owned.length) headline = "Add the balls you throw (Arsenal) and bowl with them: the advisor learns how each one works for you.";
+    else if (!judged.length) headline = `Bowl ${BALL_MIN_SHOTS} shots with a ball and the advisor will say how it fits you.`;
+    else if (change) headline = change.owned ? `Try your ${change.owned.name} where you'd throw the ${change.name}` : change.buys.length ? `Your next ball: ${change.verdict === "too-strong" ? "a cleaner" : "a stronger"} one than the ${change.name}, like the ${change.buys[0].ball.manufacturer} ${change.buys[0].ball.name}` : change.headline;
+    else headline = best ? `Your best ball right now is the ${best.name}` : "Nothing in your bag needs replacing on this evidence.";
+    return { balls: reads, headline, best, caveats };
+  }
+
+  // core/src/carry.ts
+  var BANDS = [
+    [0, 3, "under 3\xB0"],
+    [3, 4.5, "3\u20134.5\xB0"],
+    [4.5, 6, "4.5\u20136\xB0"],
+    [6, 99, "6\xB0 and up"]
+  ];
+  var CARRY_MIN = 12;
+  function entryCarry(shots) {
+    const pocket = shots.filter((s) => s.result && s.m.entryAngle !== null && s.m.pocketMiss !== null && Math.abs(s.m.pocketMiss) <= 1.5);
+    const angles = shots.map((s) => s.m.entryAngle).filter((x) => x !== null);
+    const meanAngle = angles.length ? angles.reduce((a, b) => a + b, 0) / angles.length : null;
+    const bands = BANDS.map(([lo, hi, label2]) => {
+      const g = pocket.filter((s) => s.m.entryAngle >= lo && s.m.entryAngle < hi);
+      return { lo, hi, label: label2, strikes: rate(g.filter(isStrike).length, g.length) };
+    });
+    const out = { status: "insufficient", pocketShots: pocket.length, bands, meanAngle, headline: "", points: [] };
+    if (pocket.length < CARRY_MIN) {
+      out.headline = `Carry needs ${CARRY_MIN - pocket.length} more pocket hit${CARRY_MIN - pocket.length === 1 ? "" : "s"} with a pin count`;
+      out.points.push(meanAngle !== null ? `Your entry angle averages ${meanAngle.toFixed(1)}\xB0 so far.` : "Entry angle is measured when the camera sees the last stretch to the pins.");
+      return out;
+    }
+    out.status = "ok";
+    const usable = bands.filter((b) => b.strikes.attempts >= 4);
+    const best = usable.slice().sort((a, b) => (b.strikes.rate ?? 0) - (a.strikes.rate ?? 0))[0];
+    const worst = usable.slice().sort((a, b) => (a.strikes.rate ?? 0) - (b.strikes.rate ?? 0))[0];
+    for (const b of usable) out.points.push(`Pocket hits at ${b.label}: ${Math.round((b.strikes.rate ?? 0) * 100)}% strikes (${b.strikes.made} of ${b.strikes.attempts}).`);
+    if (best && worst && best !== worst && (best.strikes.rate ?? 0) - (worst.strikes.rate ?? 0) >= 0.2) {
+      out.headline = `You carry best at ${best.label}`;
+      out.points.push(best.lo >= worst.lo ? "More angle is helping you carry. More hook (a stronger ball, a deeper line or a touch less speed) gets more shots there." : "Your carry drops at the steepest angles: the ball may be hooking too hard into the pins. A smoother ball or a little more speed evens it out.");
+    } else out.headline = "Your carry doesn't change much with entry angle yet";
+    out.points.push("USBC's ball motion research put the best pocket hit at the 17.5 board with about 6\xB0 of entry angle.");
+    return out;
+  }
+  var mean7 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  function fatigue(shots) {
+    const bySession = /* @__PURE__ */ new Map();
+    for (const s of shots) bySession.set(s.sessionId, [...bySession.get(s.sessionId) ?? [], s]);
+    const sp = [];
+    const pk = [];
+    let sessions = 0;
+    for (const list of bySession.values()) {
+      if (list.length < 9) continue;
+      const o = list.slice().sort((a2, b2) => a2.at.localeCompare(b2.at));
+      const k2 = Math.floor(o.length / 3);
+      const first = o.slice(0, k2);
+      const lastT = o.slice(-k2);
+      const speed = (g) => g.map((s) => s.m.launchSpeed).filter((x) => x !== null);
+      const pocket = (g) => {
+        const seen2 = g.filter((s) => s.m.pocketMiss !== null);
+        return seen2.length >= 3 ? seen2.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / seen2.length * 100 : null;
+      };
+      const a = speed(first);
+      const b = speed(lastT);
+      if (a.length >= 3 && b.length >= 3) sp.push(mean7(b) - mean7(a));
+      const pa = pocket(first);
+      const pb = pocket(lastT);
+      if (pa !== null && pb !== null) pk.push(pb - pa);
+      sessions++;
+    }
+    const out = { status: sessions ? "ok" : "insufficient", sessions, speedChange: sp.length ? mean7(sp) : null, pocketChange: pk.length ? mean7(pk) : null, headline: "", points: [] };
+    if (!sessions) {
+      out.headline = "Fatigue needs a session of 9 or more shots";
+      return out;
+    }
+    if (out.speedChange !== null) out.points.push(`Speed from the first third of a session to the last: ${out.speedChange >= 0 ? "+" : ""}${out.speedChange.toFixed(1)} mph (${sessions} session${sessions === 1 ? "" : "s"}).`);
+    if (out.pocketChange !== null) out.points.push(`In the pocket: ${out.pocketChange >= 0 ? "+" : ""}${Math.round(out.pocketChange)} points from the first third to the last.`);
+    const tired = out.speedChange !== null && out.speedChange <= -0.5 || out.pocketChange !== null && out.pocketChange <= -15;
+    const warm = out.pocketChange !== null && out.pocketChange >= 15 || out.speedChange !== null && out.speedChange >= 0.5;
+    out.headline = tired ? "You fade late in a session" : warm ? "You start slow and get better" : "You hold steady through a session";
+    if (tired) out.points.push("Slow down between shots, keep your legs under you and keep the same tempo. Speed that drops late usually means the legs, not the arm.");
+    if (warm) out.points.push("Your first shots are your weakest: warm up properly before the ones that count.");
+    return out;
+  }
+
+  // core/src/drills.ts
+  var DRILLS2 = [
+    { id: "arrow-sniper", name: "Arrow Sniper", blurb: "Hit your board at the arrows, within 1 board, 10 times.", shots: 10, needs: ["board"] },
+    { id: "speed-lock", name: "Speed Lock", blurb: "Throw the same speed, within 0.5 mph, 10 times.", shots: 10, needs: ["mph"] },
+    { id: "pocket-hunter", name: "Pocket Hunter", blurb: "Meet the pocket within a board, 10 times.", shots: 10, needs: [] },
+    { id: "speed-ladder", name: "Speed Ladder", blurb: "Slow, normal, fast on call: 1.5 mph either side of your speed, within 0.6 mph. 9 shots.", shots: 9, needs: ["mph"] },
+    { id: "corner-pins", name: "Corner Pins", blurb: "Spare practice: alternate the 10 pin and the 7 pin. A ball that reaches the pins close enough to take the pin counts. 10 shots.", shots: 10, needs: [] }
+  ];
+  var pinBoard = (pin) => (LANE_BOARDS + 1) / 2 - PIN_XY[pin].x / (41.5 / LANE_BOARDS);
+  var PIN_REACH = 5;
+  function drillTarget(run, i = run.results.filter((r) => r.ok !== null).length) {
+    switch (run.id) {
+      case "arrow-sniper":
+        return { kind: "arrows", target: run.board ?? 10, label: `board ${run.board ?? 10} at the arrows` };
+      case "speed-lock":
+        return { kind: "mph", target: run.mph ?? 17, label: `${(run.mph ?? 17).toFixed(1)} mph` };
+      case "pocket-hunter":
+        return { kind: "pocket", target: 0, label: "the pocket" };
+      case "speed-ladder": {
+        const step = [-1.5, 0, 1.5][i % 3];
+        const t = (run.mph ?? 17) + step;
+        return { kind: "mph", target: t, label: `${step < 0 ? "slow" : step > 0 ? "fast" : "normal"}: ${t.toFixed(1)} mph` };
+      }
+      case "corner-pins": {
+        const pin = i % 2 === 0 ? run.hand === "R" ? 10 : 7 : run.hand === "R" ? 7 : 10;
+        return { kind: "pin", target: pin, label: `the ${pin} pin` };
+      }
+    }
+  }
+  function scoreDrillShot(run, s) {
+    const t = drillTarget(run);
+    const base = { shotId: s.id, target: t.target };
+    if (t.kind === "arrows") {
+      const v = s.m.arrowsBoard;
+      return { ...base, value: v, ok: v === null ? null : Math.abs(v - t.target) <= 1, note: v === null ? "arrows board not measured" : `board ${v.toFixed(1)}` };
+    }
+    if (t.kind === "mph") {
+      const v = s.m.launchSpeed ?? s.a.speedMph;
+      const tol = run.id === "speed-ladder" ? 0.6 : 0.5;
+      return { ...base, value: v, ok: Math.abs(v - t.target) <= tol, note: `${v.toFixed(1)} mph` };
+    }
+    if (t.kind === "pocket") {
+      const v = s.m.pocketMiss;
+      return { ...base, value: v, ok: v === null ? null : Math.abs(v) <= 1, note: v === null ? "not seen to the pins" : Math.abs(v) <= 1 ? "pocket" : `${Math.abs(v).toFixed(1)} ${v > 0 ? "high" : "light"}` };
+    }
+    const atPins = s.a.entryMeasured ? s.a.entryBoard : s.a.lastSeen && s.a.lastSeen.ft >= 52 ? s.a.lastSeen.board : null;
+    const pb = pinBoard(t.target);
+    return { ...base, value: atPins, ok: atPins === null ? null : Math.abs(atPins - pb) <= PIN_REACH, note: atPins === null ? "not seen near the pins" : `board ${atPins.toFixed(0)} at the pins (the ${t.target} is on ${pb.toFixed(0)})` };
+  }
+  function summarize2(run) {
+    const def = DRILLS2.find((d) => d.id === run.id);
+    const scored = run.results.filter((r) => r.ok !== null);
+    const made = scored.filter((r) => r.ok).length;
+    let streak = 0, cur2 = 0;
+    for (const r of scored) {
+      cur2 = r.ok ? cur2 + 1 : 0;
+      streak = Math.max(streak, cur2);
+    }
+    const done2 = scored.length >= def.shots;
+    return { made, scored: scored.length, total: def.shots, done: done2, streak, text: `${made} of ${scored.length}${done2 ? "" : ` (${def.shots - scored.length} to go)`}${streak >= 3 ? ` \xB7 best streak ${streak}` : ""}` };
+  }
+  function addDrillShot(run, s) {
+    if (summarize2(run).done) return run;
+    const r = scoreDrillShot(run, s);
+    const next = { ...run, results: [...run.results, r] };
+    if (summarize2(next).done) next.finishedAt = s.at;
+    return next;
+  }
+  function personalBest(history2, id) {
+    const done2 = history2.filter((h) => h.id === id && h.finishedAt).map((h) => ({ s: summarize2(h), at: h.finishedAt }));
+    if (!done2.length) return null;
+    const best = done2.sort((a, b) => b.s.made - a.s.made || a.at.localeCompare(b.at))[0];
+    return { made: best.s.made, of: best.s.scored, at: best.at };
+  }
+
+  // core/src/lanememory.ts
+  function pairOf(lane) {
+    const n = parseInt(lane, 10);
+    if (!Number.isFinite(n) || String(n) !== lane.trim()) return lane.trim();
+    const lo = n % 2 ? n : n - 1;
+    return `${lo}-${lo + 1}`;
+  }
+  var placeKey = (center, lane) => `${center.trim().toLowerCase()}|${pairOf(lane)}`;
+  var median5 = (v) => {
+    if (!v.length) return null;
+    const s = [...v].sort((a, b) => a - b);
+    const m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  };
+  function summarizeSession(list) {
+    const seen2 = list.filter((s) => s.m.pocketMiss !== null);
+    const res = list.filter((s) => s.result);
+    const nums3 = (v) => v.filter((x) => typeof x === "number");
+    const sp = nums3(list.map((s) => s.m.launchSpeed));
+    return {
+      sessionId: list[0].sessionId,
+      date: list[0].at,
+      shots: list.length,
+      ballIds: [...new Set(list.map((s) => s.ballId).filter(Boolean))],
+      stand: median5(nums3(list.map((s) => s.plan?.stand ?? s.body?.startBoard))),
+      arrows: median5(nums3(list.map((s) => s.m.arrowsBoard))),
+      pocketPct: seen2.length >= 3 ? seen2.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / seen2.length * 100 : null,
+      strikePct: res.length >= 5 ? res.filter(isStrike).length / res.length * 100 : null,
+      speed: sp.length ? sp.reduce((a, b) => a + b, 0) / sp.length : null
+    };
+  }
+  function laneMemories(shots, excludeSession) {
+    const groups = /* @__PURE__ */ new Map();
+    for (const s of shots) {
+      if (!s.center || !s.lane || s.sessionId === excludeSession) continue;
+      const k2 = placeKey(s.center, s.lane);
+      const g = groups.get(k2) ?? { center: s.center.trim(), pair: pairOf(s.lane), bySession: /* @__PURE__ */ new Map() };
+      g.bySession.set(s.sessionId, [...g.bySession.get(s.sessionId) ?? [], s]);
+      groups.set(k2, g);
+    }
+    return [...groups.values()].map((g) => {
+      const sessions = [...g.bySession.values()].map((l) => summarizeSession(l.sort((a, b) => a.at.localeCompare(b.at)))).sort((a, b) => b.date.localeCompare(a.date));
+      const best = sessions.filter((s) => s.pocketPct !== null && s.shots >= 6).sort((a, b) => b.pocketPct - a.pocketPct)[0] ?? null;
+      return { center: g.center, pair: g.pair, sessions, best };
+    }).sort((a, b) => b.sessions[0].date.localeCompare(a.sessions[0].date));
+  }
+  function memoryFor(shots, center, lane, excludeSession) {
+    const k2 = placeKey(center, lane);
+    return laneMemories(shots, excludeSession).find((m) => placeKey(m.center, m.pair) === k2 || placeKey(m.center, m.pair.split("-")[0]) === k2) ?? null;
+  }
+
+  // core/src/dna.ts
+  function revBand(rpm) {
+    return rpm < 300 ? "Stroker (under 300 RPM)" : rpm <= 400 ? "Tweener (300\u2013400 RPM)" : "Cranker (over 400 RPM)";
+  }
+  var median6 = (v) => {
+    const s = [...v].sort((a, b) => a - b);
+    const m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  };
+  function bowlerDna(name, bowler, shots, extra = {}) {
+    const p = computeProfile(shots);
+    const rows2 = [];
+    const st2 = (k2) => p.stats[k2];
+    const sp = st2("launchSpeed");
+    if (sp && sp.n >= 5) rows2.push({ label: "Ball speed", value: `${sp.mean.toFixed(1)} mph \xB1${sp.sd.toFixed(1)}`, source: "measured" });
+    if (bowler.revRpm) rows2.push({ label: "Rev rate", value: `${Math.round(bowler.revRpm)} RPM`, source: bowler.revSource === "measured" ? "measured" : bowler.revSource === "entered" ? "entered" : "estimated" });
+    if (bowler.axisRotation !== void 0) rows2.push({ label: "Axis rotation", value: `${Math.round(bowler.axisRotation)}\xB0`, source: extra.spinSource ?? "entered" });
+    if (bowler.axisTilt !== void 0) rows2.push({ label: "Axis tilt", value: `${Math.round(bowler.axisTilt)}\xB0`, source: extra.spinSource ?? "entered" });
+    if (extra.pap) rows2.push({ label: "PAP", value: extra.pap, source: "entered" });
+    const ea = st2("entryAngle");
+    if (ea && ea.n >= 5) rows2.push({ label: "Entry angle", value: `${ea.mean.toFixed(1)}\xB0`, source: "measured" });
+    const bp = st2("breakpointFt");
+    if (bp && bp.n >= 5) rows2.push({ label: "Breakpoint", value: `${bp.mean.toFixed(0)} ft${st2("breakpointBoard") ? `, board ${st2("breakpointBoard").mean.toFixed(0)}` : ""}`, source: "measured" });
+    const seen2 = shots.filter((s) => s.m.pocketMiss !== null);
+    if (seen2.length >= 5) rows2.push({ label: "In the pocket", value: `${Math.round(seen2.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / seen2.length * 100)}%`, source: "measured" });
+    if (p.strike.rate !== null && p.strike.attempts >= 8) rows2.push({ label: "Strike rate", value: `${Math.round(p.strike.rate * 100)}%`, source: "measured" });
+    const graded = shots.map((s) => gradeShot(s, s.plan)).filter((g) => g && g.hitMark !== null);
+    if (graded.length >= 5) rows2.push({ label: "Hits the mark", value: `${Math.round(graded.filter((g) => g.hitMark).length / graded.length * 100)}%`, source: "measured" });
+    const bodies = shots.map((s) => s.body).filter((b) => !!b);
+    const steps = bodies.map((b) => b.steps).filter((x) => x !== null);
+    if (steps.length >= 3) rows2.push({ label: "Approach", value: `${median6(steps)} steps`, source: "measured" });
+    const drift = bodies.map((b) => b.driftBoards).filter((x) => x !== null);
+    if (drift.length >= 3) {
+      const d = median6(drift);
+      rows2.push({ label: "Drift", value: Math.abs(d) < 1 ? "straight" : `${Math.abs(d).toFixed(1)} boards ${d > 0 ? "left" : "right"}`, source: "measured" });
+    }
+    if (extra.bestBall) rows2.push({ label: "Best ball", value: extra.bestBall, source: "measured" });
+    return { name, hand: bowler.hand, revBand: bowler.revRpm ? revBand(bowler.revRpm) : null, rows: rows2, shots: shots.length };
+  }
+
+  // camera/voice.ts
+  var KEY4 = "laneiq.voice";
+  var on = (() => {
+    try {
+      return localStorage.getItem(KEY4) === "1";
+    } catch {
+      return false;
+    }
+  })();
+  var voiceOn = () => on && "speechSynthesis" in window;
+  function setVoice(v) {
+    on = v;
+    try {
+      localStorage.setItem(KEY4, v ? "1" : "0");
+    } catch {
+    }
+    if (v) say("Voice caddie on.");
+    else if ("speechSynthesis" in window) speechSynthesis.cancel();
+  }
+  function say(text) {
+    if (!("speechSynthesis" in window) || !text) return;
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1.05;
+      u.lang = navigator.language || "en-US";
+      speechSynthesis.speak(u);
+    } catch {
+    }
+  }
+  var spokenNumber = (n, digits = 1) => {
+    const s = n.toFixed(digits);
+    return s.endsWith(".0") ? s.slice(0, -2) : s.replace(".", " point ");
+  };
+
+  // camera/coachlive.ts
+  var hand2 = () => S.profile?.hand ?? "R";
+  var ballName2 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "unknown ball";
+  var day = (iso) => new Date(iso).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  function moveNow() {
+    const shots = sessionShots();
+    return adviseMove(shots, hand2(), S.target, readLane(shots.map((x) => ({ a: x.a, ballId: x.ballId }))));
+  }
+  function openTarget(prefill) {
+    const el = $("target");
+    el.classList.add("on");
+    const t = { ...S.target ?? { arrows: 10, at: "" }, ...prefill ?? {} };
+    const field = (id, label2, v, hint) => `<div class="field"><label>${label2}</label><div class="chips" style="margin:0;align-items:center"><button class="chip" data-step="${id}" data-d="-1">\u2212</button><input id="${id}" inputmode="decimal" value="${v ?? ""}" placeholder="${hint}" style="width:80px;text-align:center"><button class="chip" data-step="${id}" data-d="1">+</button></div></div>`;
+    el.innerHTML = `<div class="row"><h2>My target</h2><button class="btn ghost" id="tg-close">Close</button></div>
+    <div class="note">Boards are counted from the right gutter, as everywhere in LaneIQ (board 1 on the right, 39 on the left; the arrows are on boards 5, 10, 15, 20, 25, 30, 35). Every shot from now on is graded against this, so the app can tell a bad line from a missed shot.</div>
+    <div class="card">
+      ${field("tg-stand", "Where my slide foot starts (board)", t.stand, "e.g. 25")}
+      ${field("tg-arrows", "Board I aim at, at the arrows", t.arrows, "e.g. 10")}
+      ${field("tg-bp", "Where I want it to break (board, optional)", t.breakpoint, "e.g. 7")}
+    </div>
+    <div class="card"><div class="k">Where I'm bowling</div>
+      <div class="two"><div class="field"><label>Centre</label><input id="tg-center" value="${esc(S.where.center)}" placeholder="Centre name" autocomplete="off"></div><div class="field"><label>Lane</label><input id="tg-lane" inputmode="numeric" value="${esc(S.where.lane)}" placeholder="e.g. 17"></div></div>
+      <div class="note">Used to remember how each pair played for you. It stays on this phone.</div></div>
+    <div class="chips"><button class="btn" id="tg-save">Save target</button>${S.target ? `<button class="btn ghost" id="tg-clear">No target</button>` : ""}</div>`;
+    const num3 = (id) => {
+      const v = parseFloat($(id).value);
+      return Number.isFinite(v) ? Math.max(1, Math.min(39, v)) : void 0;
+    };
+    el.querySelectorAll("[data-step]").forEach(
+      (b) => b.onclick = () => {
+        const i = $(b.dataset.step);
+        const v = parseFloat(i.value);
+        i.value = String(Math.max(1, Math.min(39, (Number.isFinite(v) ? v : b.dataset.step === "tg-stand" ? 25 : 10) + Number(b.dataset.d))));
+      }
+    );
+    $("tg-close").onclick = () => el.classList.remove("on");
+    $("tg-clear")?.addEventListener("click", async () => {
+      S.target = null;
+      await saveCoach();
+      el.classList.remove("on");
+      renderTonight();
+    });
+    $("tg-save").onclick = async () => {
+      const arrows = num3("tg-arrows");
+      if (arrows === void 0) return void $("tg-arrows").focus();
+      S.target = { arrows, stand: num3("tg-stand"), breakpoint: num3("tg-bp"), at: (/* @__PURE__ */ new Date()).toISOString() };
+      S.where = { center: $("tg-center").value.trim(), lane: $("tg-lane").value.trim() };
+      await saveCoach();
+      el.classList.remove("on");
+      renderTonight();
+      renderMove();
+    };
+  }
+  function paintDrill() {
+    const chip = $("drill-chip");
+    if (!chip) return;
+    const run = S.drill;
+    chip.classList.toggle("hide", !run);
+    if (!run) return;
+    const def = DRILLS2.find((d) => d.id === run.id);
+    const s = summarize2(run);
+    chip.textContent = `${def.name}: ${s.made}/${s.scored} \xB7 next ${drillTarget(run).label}`;
+  }
+  function openDrillStatus() {
+    const run = S.drill;
+    if (!run) return;
+    const el = $("target");
+    el.classList.add("on");
+    const def = DRILLS2.find((d) => d.id === run.id);
+    const s = summarize2(run);
+    el.innerHTML = `<div class="row"><h2>${esc(def.name)}</h2><button class="btn ghost" id="dr-close">Close</button></div>
+    <div class="card"><div class="u">${esc(def.blurb)}</div><div class="lr-head" style="margin-top:8px">${esc(s.text)}</div><div class="u">Next: ${esc(drillTarget(run).label)}</div>
+    <table>${run.results.map((r, i) => `<tr><td>${i + 1}</td><td>${r.ok === null ? "not judged" : r.ok ? "\u2713 made" : "\u2717 missed"}</td><td class="n">${esc(r.note)}</td></tr>`).join("")}</table></div>
+    <div class="chips"><button class="btn ghost danger" id="dr-stop">Stop this drill</button></div>`;
+    $("dr-close").onclick = () => el.classList.remove("on");
+    $("dr-stop").onclick = async () => {
+      if (S.drill && S.drill.results.length) S.drills = [...S.drills, { ...S.drill, finishedAt: S.drill.finishedAt ?? (/* @__PURE__ */ new Date()).toISOString() }].slice(-200);
+      S.drill = null;
+      await saveCoach();
+      el.classList.remove("on");
+      paintDrill();
+    };
+  }
+  function renderTonight() {
+    const el = document.getElementById("tonight");
+    if (!el) return;
+    const t = S.target;
+    const mem = S.where.center && S.where.lane ? memoryFor(S.shots, S.where.center, S.where.lane, S.sessionId) : null;
+    const last = mem?.sessions[0];
+    const best = mem?.best;
+    const lineOf = (x) => [x.stand !== null ? `stood on ${x.stand.toFixed(0)}` : "", x.arrows !== null ? `crossed the arrows on ${x.arrows.toFixed(0)}` : ""].filter(Boolean).join(", ");
+    el.innerHTML = `<div class="card"><div class="row"><div><div class="k">My target</div><div class="lr-head" style="font-size:16px">${t ? `${t.stand !== void 0 ? `Stand ${t.stand} \xB7 ` : ""}aim ${t.arrows} at the arrows${t.breakpoint !== void 0 ? ` \xB7 break at ${t.breakpoint}` : ""}` : "No target set"}</div></div><button class="chip" id="tn-edit">${t ? "Change" : "Set target"}</button></div>
+    ${S.where.center ? `<div class="note">${esc(S.where.center)}${S.where.lane ? ` \xB7 lanes ${esc(pairOf(S.where.lane))}` : ""}</div>` : `<div class="note">Set a target to have every shot graded against it, and your centre and lane so the app remembers how each pair played.</div>`}
+    ${last ? `<div class="lr-next"><b>Last time on this pair</b> (${esc(day(last.date))}): ${esc(lineOf(last) || "no line recorded")}${last.ballIds.length ? ` with the ${esc(last.ballIds.map(ballName2).join(", "))}` : ""}${last.pocketPct !== null ? `, ${Math.round(last.pocketPct)}% in the pocket` : ""}${last.strikePct !== null ? `, ${Math.round(last.strikePct)}% strikes` : ""}.${best && best !== last ? `<div class="u">Best here: ${esc(day(best.date))}, ${esc(lineOf(best))}, ${Math.round(best.pocketPct)}% in the pocket.</div>` : ""}${(best ?? last).arrows !== null ? `<div class="chips"><button class="chip" id="tn-use">Start on that line</button></div>` : ""}</div>` : ""}</div>`;
+    $("tn-edit").onclick = () => openTarget();
+    $("tn-use")?.addEventListener("click", () => {
+      const src = best ?? last;
+      openTarget({ stand: src.stand !== null ? Math.round(src.stand) : void 0, arrows: Math.round(src.arrows) });
+    });
+  }
+  function renderMove() {
+    const el = document.getElementById("move-card");
+    if (!el) return;
+    const m = moveNow();
+    el.innerHTML = `<div class="lr-head">${esc(m.headline)}</div><span class="badge ${m.kind === "move" ? "good" : m.kind === "insufficient" ? "low" : "moderate"}">${m.kind === "move" ? "move" : m.kind === "fix-aim" ? "aim first" : m.kind === "ball" ? "ball change" : m.kind === "stay" ? "stay" : "waiting"} \xB7 ${m.shotsUsed} shot${m.shotsUsed === 1 ? "" : "s"}</span><ul>${m.why.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>${m.kind === "move" && m.to.arrows !== null ? `<div class="chips"><button class="chip sel" id="mv-take">Make this my target</button></div>` : ""}`;
+    $("mv-take")?.addEventListener("click", async () => {
+      S.target = { arrows: m.to.arrows, stand: m.to.stand ?? S.target?.stand, breakpoint: S.target?.breakpoint, at: (/* @__PURE__ */ new Date()).toISOString() };
+      await saveCoach();
+      renderTonight();
+      renderMove();
+      if (voiceOn()) say(`Target set. ${m.to.stand !== null ? `Stand on ${m.to.stand}, ` : ""}aim at ${m.to.arrows}.`);
+    });
+  }
+  function caddieLine(s, move) {
+    const bits = [spokenNumber(s.a.speedMph)];
+    if (s.m.arrowsBoard !== null) bits.push(`board ${Math.round(s.m.arrowsBoard)} at the arrows`);
+    if (s.m.breakpointBoard !== null) bits.push(`breakpoint ${Math.round(s.m.breakpointBoard)}`);
+    if (s.m.pocketMiss !== null) bits.push(Math.abs(s.m.pocketMiss) <= 1 ? "pocket" : `${spokenNumber(Math.abs(s.m.pocketMiss))} ${s.m.pocketMiss > 0 ? "high" : "light"}`);
+    const g = gradeShot(s, s.plan);
+    if (g?.hitMark === true) bits.push("on your mark");
+    else if (g?.hitMark === false && g.markOff !== null) bits.push(`missed your mark ${Math.abs(g.markOff).toFixed(0)} ${g.markOff > 0 ? "left" : "right"}`);
+    if (s.drill) {
+      const run = S.drill ?? S.drills[S.drills.length - 1];
+      const def = DRILLS2.find((d) => d.id === s.drill.id);
+      if (run && def) bits.push(`${def.name}: ${s.drill.ok === null ? "not judged" : s.drill.ok ? "made it" : "missed"}, ${summarize2(run).made} of ${summarize2(run).scored}`);
+    }
+    if (move.kind === "move") bits.push(`try ${Math.abs(move.feet)} and ${Math.abs(move.eyes)} ${move.feet > 0 ? "left" : "right"}`);
+    else if (move.kind === "fix-aim") bits.push("hit your target before you move");
+    return bits.join(". ") + ".";
+  }
+  function paintVoice() {
+    const b = document.getElementById("voice-btn");
+    if (b) {
+      b.textContent = voiceOn() ? "Voice: on" : "Voice: off";
+      b.classList.toggle("sel", voiceOn());
+    }
+  }
+  function initCoachLive() {
+    onBeforeSave((s) => {
+      if (S.target) s.plan = { ...S.target };
+      if (S.where.center) s.center = S.where.center;
+      if (S.where.lane && !s.lane) s.lane = S.where.lane;
+      if (S.drill) {
+        const run = addDrillShot(S.drill, s);
+        const r = run.results[run.results.length - 1];
+        s.drill = { id: run.id, ok: r?.ok ?? null };
+        if (run.finishedAt) {
+          S.drills = [...S.drills, run].slice(-200);
+          S.drill = null;
+        } else S.drill = run;
+        void saveCoach();
+      }
+    });
+    onAfterShot((s) => {
+      renderTonight();
+      const m = moveNow();
+      renderMove();
+      paintDrill();
+      if (voiceOn()) say(caddieLine(s, m));
+    });
+    document.getElementById("target-btn")?.addEventListener("click", () => openTarget());
+    document.getElementById("voice-btn")?.addEventListener("click", () => {
+      setVoice(!voiceOn());
+      paintVoice();
+    });
+    document.getElementById("drill-chip")?.addEventListener("click", () => openDrillStatus());
+    onChange(() => {
+      paintDrill();
+      if (document.getElementById("tab-live")?.classList.contains("on")) renderTonight();
+    });
+    paintVoice();
+    paintDrill();
+    renderTonight();
+    renderMove();
+  }
+
+  // camera/reel.ts
+  var W = 720;
+  var H = 1280;
+  var PRE = 1.2;
+  var POST = 3.2;
+  function pickMime() {
+    const MR = window.MediaRecorder;
+    if (!MR) return void 0;
+    return ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find((m) => MR.isTypeSupported?.(m));
+  }
+  function reelPicks(sess, max = 6) {
+    const withClip = sess.filter((s) => s.hasClip);
+    const rank = (s) => (s.result?.pinsDown === 10 ? 0 : 1) * 100 + (s.m.pocketMiss === null ? 50 : Math.abs(s.m.pocketMiss));
+    return withClip.slice().sort((a, b) => rank(a) - rank(b)).slice(0, max).sort((a, b) => a.at.localeCompare(b.at));
+  }
+  var frame = () => new Promise((r) => requestAnimationFrame(r));
+  async function makeReel(sess, progress2) {
+    const picks = reelPicks(sess);
+    if (!picks.length) return "No clips in this session.";
+    const mime = pickMime();
+    const c = document.createElement("canvas");
+    c.width = W;
+    c.height = H;
+    const g = c.getContext("2d");
+    const cs = c.captureStream;
+    if (!window.MediaRecorder || !cs) return "This browser can't record video from the page.";
+    const stream2 = cs.call(c, 30);
+    const rec2 = new MediaRecorder(stream2, mime ? { mimeType: mime, videoBitsPerSecond: 6e6 } : void 0);
+    const chunks = [];
+    rec2.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    const stopped = new Promise((r) => rec2.onstop = () => r());
+    rec2.start(250);
+    const brand = () => {
+      g.font = "900 34px system-ui";
+      g.textAlign = "left";
+      g.fillStyle = "#fff";
+      g.fillText("Lane", 36, 70);
+      const w = g.measureText("Lane").width;
+      g.fillStyle = "#46e6ff";
+      g.fillText("IQ", 36 + w, 70);
+    };
+    const card = async (lines, secs) => {
+      const t0 = performance.now();
+      while (performance.now() - t0 < secs * 1e3) {
+        const bg = g.createLinearGradient(0, 0, W, H);
+        bg.addColorStop(0, "#070b18");
+        bg.addColorStop(1, "#1a0b2a");
+        g.fillStyle = bg;
+        g.fillRect(0, 0, W, H);
+        brand();
+        g.textAlign = "center";
+        lines.forEach(([s, size, color], i) => {
+          g.font = `900 ${size}px system-ui`;
+          g.fillStyle = color;
+          g.fillText(s, W / 2, H / 2 - 40 + i * (size + 22));
+        });
+        await frame();
+      }
+    };
+    const host2 = document.createElement("div");
+    host2.style.cssText = "position:fixed;inset:0;z-index:60;background:#000;display:flex;align-items:center;justify-content:center";
+    const label2 = document.createElement("div");
+    label2.style.cssText = "position:absolute;left:0;right:0;bottom:calc(16px + env(safe-area-inset-bottom));text-align:center;color:#c9d4ee;font:700 14px system-ui;z-index:3";
+    label2.textContent = "Recording your highlight reel\u2026";
+    c.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:2;background:#000";
+    host2.append(c, label2);
+    document.body.append(host2);
+    try {
+      const date = new Date(picks[0].at).toLocaleDateString([], { month: "long", day: "numeric" });
+      await card([[S.profile?.name ?? "Highlights", 64, "#fff"], [date, 36, "#c9d4ee"]], 1.2);
+      for (const [i, s] of picks.entries()) {
+        progress2(`Recording shot ${i + 1} of ${picks.length}\u2026`);
+        const stored = await loadClip(s.id);
+        if (!stored) continue;
+        const blob = stored.type ? stored : new Blob([stored], { type: "video/mp4" });
+        const url = URL.createObjectURL(blob);
+        const v = document.createElement("video");
+        v.muted = true;
+        v.playsInline = true;
+        v.src = url;
+        v.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1";
+        host2.append(v);
+        try {
+          await new Promise((res, rej) => {
+            v.onloadedmetadata = () => res();
+            v.onerror = () => rej(new Error("clip"));
+          });
+          const rel = -s.recStartT;
+          v.currentTime = Math.max(0, rel - PRE);
+          await new Promise((r) => {
+            v.onseeked = r;
+            setTimeout(r, 1500);
+          });
+          await v.play().catch(() => {
+          });
+          const vw = v.videoWidth || s.vw;
+          const vh = v.videoHeight || s.vh;
+          const sc = Math.max(W / vw, H / vh);
+          const ox = (W - vw * sc) / 2;
+          const oy = (H - vh * sc) / 2;
+          const k2 = vw / s.vw;
+          const Hinv2 = s.cal.length === 4 ? solveHomography([{ x: 0, y: 0 }, { x: LANE_BOARDS, y: 0 }, { x: LANE_BOARDS, y: LANE_LENGTH_FT }, { x: 0, y: LANE_LENGTH_FT }], s.cal) : null;
+          const P = (x, y) => {
+            const p = applyHomography(Hinv2, { x, y });
+            return { x: ox + p.x * k2 * sc, y: oy + p.y * k2 * sc };
+          };
+          const view3 = { ctx: g, width: 1900, P };
+          const last = s.path[s.path.length - 1]?.t ?? 0;
+          const began = performance.now();
+          const limit = (PRE + POST + 4) * 1e3;
+          while (!v.ended && v.currentTime < rel + POST && performance.now() - began < limit) {
+            g.fillStyle = "#000";
+            g.fillRect(0, 0, W, H);
+            g.drawImage(v, ox, oy, vw * sc, vh * sc);
+            const t = v.currentTime + s.recStartT;
+            if (Hinv2) strokeTrail(view3, s.path.filter((p) => p.t <= t).map((p) => P(p.x, p.y)), 1, t < last);
+            const grad = g.createLinearGradient(0, H - 260, 0, H);
+            grad.addColorStop(0, "rgba(0,0,0,0)");
+            grad.addColorStop(1, "rgba(0,0,0,.8)");
+            g.fillStyle = grad;
+            g.fillRect(0, H - 260, W, 260);
+            brand();
+            g.textAlign = "left";
+            g.font = "900 72px system-ui";
+            g.fillStyle = "#fff";
+            g.fillText(`${s.a.speedMph.toFixed(1)} mph`, 36, H - 110);
+            g.font = "800 34px system-ui";
+            g.fillStyle = s.result?.pinsDown === 10 ? "#5affb0" : "#ffd25a";
+            const tag = s.result?.pinsDown === 10 ? "STRIKE" : s.m.pocketMiss !== null && Math.abs(s.m.pocketMiss) <= 1 ? "IN THE POCKET" : s.result ? `${s.result.pinsDown} PINS` : "";
+            g.fillText(`${tag}${s.m.entryAngle !== null ? `${tag ? " \xB7 " : ""}${s.m.entryAngle.toFixed(1)}\xB0 ENTRY` : ""}`, 36, H - 56);
+            await frame();
+          }
+          v.pause();
+        } catch {
+        } finally {
+          v.remove();
+          URL.revokeObjectURL(url);
+        }
+      }
+      await card([["Every shot, measured.", 50, "#fff"], ["LaneIQ", 44, "#46e6ff"]], 1.6);
+    } finally {
+      rec2.stop();
+      await stopped;
+      host2.remove();
+    }
+    const type = rec2.mimeType || mime || "video/webm";
+    const out = new Blob(chunks, { type });
+    const name = `laneiq-highlights.${/mp4/.test(type) ? "mp4" : "webm"}`;
+    return new File([out], name, { type });
+  }
+
+  // camera/dnacard.ts
+  function rounded(g, x, y, w, h, r) {
+    g.beginPath();
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r);
+    g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r);
+    g.arcTo(x, y, x + w, y, r);
+    g.closePath();
+  }
+  function drawDnaCard(d) {
+    const W2 = 1080;
+    const H3 = 1350;
+    const c = document.createElement("canvas");
+    c.width = W2;
+    c.height = H3;
+    const g = c.getContext("2d");
+    const bg = g.createLinearGradient(0, 0, W2, H3);
+    bg.addColorStop(0, "#070b18");
+    bg.addColorStop(1, "#1a0b2a");
+    g.fillStyle = bg;
+    g.fillRect(0, 0, W2, H3);
+    g.strokeStyle = "rgba(255,255,255,.05)";
+    for (let x = 0; x < W2; x += 54) {
+      g.beginPath();
+      g.moveTo(x, 0);
+      g.lineTo(x, H3);
+      g.stroke();
+    }
+    const text = (s, x, y, size, color, weight = 800, align = "left") => {
+      g.font = `${weight} ${size}px system-ui, -apple-system, sans-serif`;
+      g.fillStyle = color;
+      g.textAlign = align;
+      g.fillText(s, x, y);
+    };
+    g.font = "900 64px system-ui";
+    const w1 = g.measureText("Lane").width;
+    text("Lane", 80, 130, 64, "#fff", 900);
+    const gr = g.createLinearGradient(80 + w1, 60, 80 + w1 + 90, 130);
+    gr.addColorStop(0, "#46e6ff");
+    gr.addColorStop(1, "#ff4fd8");
+    g.font = "900 64px system-ui";
+    g.fillStyle = gr;
+    g.fillText("IQ", 80 + w1, 130);
+    text("BOWLER DNA", W2 - 80, 128, 34, "#ffd25a", 900, "right");
+    text(d.name, 80, 240, 76, "#fff", 900);
+    text(`${d.hand === "R" ? "Right" : "Left"}-handed${d.revBand ? ` \xB7 ${d.revBand}` : ""}`, 80, 300, 34, "#c9d4ee", 600);
+    const rows2 = d.rows.slice(0, 12);
+    const top = 370;
+    const rowH = Math.min(78, (H3 - top - 150) / Math.max(1, rows2.length));
+    rows2.forEach((r, i) => {
+      const y = top + i * rowH;
+      g.fillStyle = i % 2 ? "rgba(255,255,255,.035)" : "rgba(255,255,255,.07)";
+      rounded(g, 60, y, W2 - 120, rowH - 10, 18);
+      g.fill();
+      text(r.label, 90, y + rowH / 2 + 8, 34, "#c9d4ee", 700);
+      text(r.value, W2 - 250, y + rowH / 2 + 10, 40, "#fff", 900, "right");
+      text(r.source, W2 - 90, y + rowH / 2 + 8, 22, r.source === "measured" ? "#5affb0" : r.source === "entered" ? "#46e6ff" : "#ffd25a", 800, "right");
+    });
+    text(`${d.shots} tracked shots \xB7 measured with one phone camera, so treat as estimates`, W2 / 2, H3 - 70, 24, "#8a97b2", 600, "center");
+    return c;
+  }
+  async function dnaCardFile(d) {
+    if (!d.rows.length) return "Bowl a few tracked shots first: the card is built from your own numbers.";
+    const blob = await new Promise((r) => drawDnaCard(d).toBlob((b) => r(b), "image/png"));
+    return blob ? new File([blob], "laneiq-bowler-dna.png", { type: "image/png" }) : "Couldn't draw the card.";
+  }
+
+  // camera/coachhub.ts
+  var median7 = (v) => {
+    const s = [...v].sort((a, b) => a - b);
+    const m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  };
+  var mean8 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var day2 = (iso) => new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
+  var ballName3 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "unknown ball";
+  var specLine2 = (b) => [b.rg && `RG ${b.rg.value}`, b.differential && `diff ${b.differential.value}`, b.coverstock?.value ?? b.coverstockType?.value, b.core?.value].filter(Boolean).join(" \xB7 ");
+  var badge = (ok, text, warn = false) => `<span class="badge ${ok ? "good" : warn ? "low" : "moderate"}">${esc(text)}</span>`;
+  function lastSession(shots) {
+    const last = shots[shots.length - 1];
+    return last ? shots.filter((s) => s.sessionId === last.sessionId) : [];
+  }
+  function bodySummary(shots) {
+    const bodies = shots.map((s) => s.body).filter((b) => !!b);
+    const withClip = shots.filter((s) => s.hasClip && !s.body).slice(-10);
+    const steps = bodies.map((b) => b.steps).filter((x) => x !== null);
+    const drift = bodies.map((b) => b.driftBoards).filter((x) => x !== null);
+    const timing = bodies.map((b) => b.timing?.label).filter(Boolean);
+    const held = bodies.map((b) => b.posted).filter((x) => x !== null);
+    const lay = bodies.map((b) => b.laydownBoards).filter((x) => x !== null);
+    const pts = [];
+    if (steps.length) pts.push(`Steps: ${median7(steps)} (over ${steps.length} shots${new Set(steps).size > 1 ? `; it varies from ${Math.min(...steps)} to ${Math.max(...steps)}` : ""}).`);
+    if (drift.length) {
+      const m = mean8(drift);
+      const sd3 = drift.length > 1 ? Math.sqrt(drift.reduce((a, b) => a + (b - m) ** 2, 0) / (drift.length - 1)) : 0;
+      pts.push(`Drift: ${Math.abs(m) < 1 ? "you walk straight on average" : `${Math.abs(m).toFixed(1)} boards ${m > 0 ? "left" : "right"} on average`}, give or take ${sd3.toFixed(1)}.${Math.abs(m) >= 2 ? " Some drift is fine if it's the same every time; start that much to the other side, or walk at your target." : ""}`);
+    }
+    if (timing.length) {
+      const c = (l) => timing.filter((t) => t === l).length;
+      pts.push(`Timing: on time ${c("on time")}, early ${c("early")}, late ${c("late")} of ${timing.length}.`);
+    }
+    if (held.length) pts.push(`Held the finish on ${held.filter(Boolean).length} of ${held.length} shots.`);
+    if (lay.length) pts.push(`Ball lands about ${median7(lay).toFixed(0)} boards from your slide foot.`);
+    return `<div class="card"><div class="lr-head" style="font-size:17px">${bodies.length ? `${bodies.length} approach${bodies.length === 1 ? "" : "es"} read` : "Your approach, read from your clips"}</div>
+    ${pts.length ? `<ul>${pts.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : `<div class="u">A pose model on your phone reads the steps, timing, drift, laydown and finish from each shot's clip (filmed from behind). The first time, it downloads the model (a few MB); the clips never leave the phone.</div>`}
+    <div class="chips"><button class="chip ${bodyAutoOn() ? "sel" : ""}" id="co-bodyauto">Read every new shot: ${bodyAutoOn() ? "on" : "off"}</button>${withClip.length ? `<button class="chip" id="co-bodyrun">Read my last ${withClip.length} clip${withClip.length === 1 ? "" : "s"}</button>` : ""}</div><div class="note" id="co-bodyprog"></div></div>`;
+  }
+  function drillsHtml(shots) {
+    const run = S.drill;
+    const speeds2 = shots.map((s) => s.m.launchSpeed).filter((x) => x !== null);
+    const mph = speeds2.length ? Math.round(median7(speeds2) * 10) / 10 : 17;
+    const arrows = shots.map((s) => s.m.arrowsBoard).filter((x) => x !== null);
+    const board = S.target?.arrows ?? (arrows.length ? Math.round(median7(arrows)) : 10);
+    return `${run ? `<div class="card"><div class="row"><div class="lr-head" style="font-size:16px">${esc(DRILLS2.find((d) => d.id === run.id).name)} under way</div>${badge(true, summarize2(run).text)}</div><div class="chips"><button class="chip" id="co-drillopen">Open</button></div></div>` : ""}
+    ${DRILLS2.map((d) => {
+      const pb = personalBest(S.drills, d.id);
+      return `<div class="card"><div class="row"><div class="lr-head" style="font-size:16px">${esc(d.name)}</div>${pb ? badge(true, `best ${pb.made}/${pb.of}`) : ""}</div><div class="u">${esc(d.blurb)}</div>
+        <div class="chips" style="align-items:center">${d.needs.includes("board") ? `<label class="note">Board <input data-board="${d.id}" inputmode="numeric" value="${board}" style="width:56px"></label>` : ""}${d.needs.includes("mph") ? `<label class="note">mph <input data-mph="${d.id}" inputmode="decimal" value="${mph}" style="width:62px"></label>` : ""}<button class="chip" data-start="${d.id}" ${run ? "disabled" : ""}>Start</button></div></div>`;
+    }).join("")}
+    <div class="note">Start a drill, then bowl with the camera running: every shot is scored by itself and the Live screen shows your count.</div>`;
+  }
+  function renderCoach(el, seg, wireSeg2) {
+    const shots = insightShots();
+    const hand3 = S.profile?.hand ?? "R";
+    const miss = findMisses(shots);
+    const exec = executionReport(shots);
+    const sess = lastSession(shots);
+    const move = adviseMove(sess, hand3, S.target, readLane(sess.map((x) => ({ a: x.a, ballId: x.ballId }))));
+    const ownedKeys = new Set(S.arsenal.map((b) => b.catalogKey).filter(Boolean));
+    const balls = adviseBalls(ownedBalls(), shots, S.catalog, ownedKeys);
+    const carry = entryCarry(shots);
+    const tired = fatigue(shots);
+    const mems = laneMemories(S.shots);
+    const one = exec.verdict === "execution" ? { title: exec.headline, body: exec.next } : miss.status === "ok" && miss.factors[0] ? { title: miss.headline, body: miss.factors[0].fix } : exec.verdict === "line" || move.kind === "move" ? { title: move.kind === "move" ? move.headline : exec.headline, body: move.kind === "move" ? move.why.slice(-2).join(" ") : exec.next } : null;
+    el.innerHTML = `${seg}<h2>Coach</h2>
+    <div class="note">Everything here comes from your own shots${S.insightsSince ? " since you reset Insights" : ""}: ${shots.length} tracked. Each card says what it's based on.</div>
+    ${one ? `<div class="card" style="border-color:var(--cy)"><div class="k">Your one thing right now</div><div class="lr-head">${esc(one.title)}</div><div class="lr-next">${esc(one.body)}</div></div>` : ""}
+
+    <h3>Miss Finder</h3>
+    <div class="card"><div class="lr-head" style="font-size:17px">${esc(miss.headline)}</div>${miss.status === "ok" ? badge(true, `${miss.shotsUsed} shots seen to the pins`) : badge(false, `${miss.shotsUsed}/${miss.needed} shots`, true)}
+      <div class="u" style="margin-top:6px">${esc(miss.summary)}</div>
+      ${miss.factors.length ? `<table style="margin-top:8px">${miss.factors.map((f) => `<tr><td><b>${esc(f.label)}</b><div class="note">${esc(f.text)}</div><div class="u" style="margin-top:4px">${esc(f.fix)}</div></td><td class="n">${Math.round(f.explained * 100)}%</td></tr>`).join("")}</table><div class="note">The percentage is how much of the spread in where your ball meets the pins goes with that one thing. It goes with your misses; it doesn't prove it causes them, so treat the fix as a test.</div>` : ""}</div>
+
+    <h3>Plan vs execution</h3>
+    <div class="card"><div class="lr-head" style="font-size:17px">${esc(exec.headline)}</div>${exec.verdict === "insufficient" ? badge(false, `${exec.graded} planned shots`, true) : badge(exec.verdict === "good", exec.verdict === "execution" ? "aim" : exec.verdict === "line" ? "line" : exec.verdict === "good" ? "on track" : "mixed")}
+      <ul>${exec.points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul><div class="lr-next">${esc(exec.next)}</div>
+      <div class="chips"><button class="chip" id="co-target">${S.target ? `Target: aim ${S.target.arrows}${S.target.stand !== void 0 ? ` from ${S.target.stand}` : ""}` : "Set my target"}</button></div></div>
+
+    <h3>Move advisor</h3>
+    <div class="card"><div class="lr-head" style="font-size:17px">${esc(move.headline)}</div><div class="note">${sess.length ? `From your latest session (${day2(sess[0].at)}, ${sess.length} shots).` : "Bowl a session first."}</div><ul>${move.why.map((w) => `<li>${esc(w)}</li>`).join("")}</ul></div>
+
+    <h3>Ball advisor</h3>
+    <div class="card"><div class="lr-head" style="font-size:17px">${esc(balls.headline)}</div>
+      ${balls.balls.map((b) => `<div style="padding:10px 0;border-top:1px solid var(--line)"><div class="row"><b>${esc(b.name)}</b>${badge(b.verdict === "good", b.verdict === "too-strong" ? "too strong" : b.verdict === "too-weak" ? "too weak" : b.verdict === "good" ? "fits you" : b.verdict === "need-shots" ? `${b.stats.shots} shots` : b.verdict === "no-specs" ? "no specs" : "no call yet", b.verdict === "need-shots")}</div>
+        <div class="note">${b.stats.seen ? `${b.stats.seen} shots seen to the pins \xB7 ${b.stats.pocketPct !== null ? `${Math.round(b.stats.pocketPct)}% pocket` : ""}${b.stats.highPct !== null ? ` \xB7 ${Math.round(b.stats.highPct)}% high \xB7 ${Math.round(b.stats.lightPct)}% light` : ""}${b.stats.strikePct !== null ? ` \xB7 ${Math.round(b.stats.strikePct)}% strikes` : ""}` : ""}</div>
+        <ul>${b.why.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>
+        ${b.owned ? `<div class="lr-next">You already own a ball close to what's wanted: try your <b>${esc(b.owned.name)}</b> first.</div>` : ""}
+        ${b.buys.length ? `<div class="k" style="margin-top:6px">${b.verdict === "too-strong" ? "Cleaner" : "Stronger"} balls to look at</div>${b.buys.map((c) => `<div style="display:flex;gap:10px;margin-top:8px">${ballThumb(c.ball, 56)}<div style="flex:1;min-width:0"><b>${esc(c.ball.manufacturer)} ${esc(c.ball.name)}</b><div class="note">${esc(specLine2(c.ball))}${c.ball.releaseYear ? ` \xB7 ${c.ball.releaseYear.value}` : ""} \xB7 motion ${c.index.toFixed(2)} (want ${b.want.toFixed(2)})</div>${c.ball.rg ? `<div class="note">Specs: <a style="color:var(--cy)" href="${esc(c.ball.rg.source.url)}" target="_blank" rel="noopener">source</a>, ${esc(c.ball.rg.source.retrievedOn)}</div>` : ""}</div></div>`).join("")}` : ""}</div>`).join("") || `<div class="u">Add your balls in Arsenal and pick which one each shot was.</div>`}
+      <div class="note">${balls.caveats.map(esc).join(" ")} Only current, USBC-approved balls from the last two years are suggested.</div></div>
+
+    <h3>Body and approach</h3>
+    ${bodySummary(shots)}
+
+    <h3>Drills</h3>
+    ${drillsHtml(shots)}
+
+    <h3>Entry angle and carry</h3>
+    <div class="card"><div class="lr-head" style="font-size:17px">${esc(carry.headline)}</div><ul>${carry.points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul></div>
+
+    <h3>Through a session</h3>
+    <div class="card"><div class="lr-head" style="font-size:17px">${esc(tired.headline)}</div><ul>${tired.points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul></div>
+
+    <h3>Lane-pair memory</h3>
+    <div class="card">${mems.length ? mems.slice(0, 8).map((m) => `<div style="padding:8px 0;border-top:1px solid var(--line)"><b>${esc(m.center)} \xB7 lanes ${esc(m.pair)}</b><div class="note">${m.sessions.length} session${m.sessions.length === 1 ? "" : "s"}, last ${esc(day2(m.sessions[0].date))}${m.best ? ` \xB7 best: ${m.best.stand !== null ? `stood ${m.best.stand.toFixed(0)}, ` : ""}${m.best.arrows !== null ? `arrows ${m.best.arrows.toFixed(0)}, ` : ""}${Math.round(m.best.pocketPct)}% pocket with the ${esc(m.best.ballIds.map(ballName3).join(", ") || "unknown ball")}` : ""}</div></div>`).join("") : `<div class="u">Type your centre and lane under Target on the Live screen. Next time you're on that pair, the app shows where you stood, what you aimed at and how it went.</div>`}</div>
+
+    <h3>Share</h3>
+    <div class="card"><div class="k">Bowler DNA card</div><div class="u">Your speed, rev rate, axis, PAP, entry angle, pocket and strike rate on one picture, each marked measured or entered. For your coach, your pro shop or your friends.</div><div class="chips"><button class="btn" id="co-dna">Make my card</button></div><div class="note" id="co-dna-note"></div></div>
+    <div class="card"><div class="k">Highlight reel</div><div class="u">Your best shots from the latest session (strikes first, then pocket hits), each with its ball path, cut into one short vertical video you can share.</div><div class="chips"><button class="btn" id="co-reel" ${sess.some((s) => s.hasClip) ? "" : "disabled"}>Make my highlight reel</button></div><div class="note" id="co-reel-note">${sess.some((s) => s.hasClip) ? "" : "The latest session has no clips."}</div></div>`;
+    wireSeg2();
+    $("co-target").onclick = () => openTarget();
+    $("co-bodyauto").onclick = () => {
+      setBodyAuto(!bodyAutoOn());
+      renderCoach(el, seg, wireSeg2);
+    };
+    document.getElementById("co-bodyrun")?.addEventListener("click", async () => {
+      const list = shots.filter((s) => s.hasClip && !s.body && !bodyPending(s.id)).slice(-10);
+      const note = $("co-bodyprog");
+      let done2 = 0;
+      for (const s of list) {
+        await queueBody(s, { onProgress: (m) => note.textContent = `Clip ${done2 + 1} of ${list.length}: ${m}` });
+        done2++;
+      }
+      renderCoach(el, seg, wireSeg2);
+    });
+    document.getElementById("co-drillopen")?.addEventListener("click", () => openDrillStatus());
+    el.querySelectorAll("[data-start]").forEach(
+      (b) => b.onclick = async () => {
+        const id = b.dataset.start;
+        const boardIn = el.querySelector(`[data-board="${id}"]`);
+        const mphIn = el.querySelector(`[data-mph="${id}"]`);
+        const board = boardIn ? parseFloat(boardIn.value) : void 0;
+        const mph = mphIn ? parseFloat(mphIn.value) : void 0;
+        S.drill = { id, startedAt: (/* @__PURE__ */ new Date()).toISOString(), hand: hand3, board: Number.isFinite(board) ? board : void 0, mph: Number.isFinite(mph) ? mph : void 0, results: [] };
+        await saveCoach();
+        renderCoach(el, seg, wireSeg2);
+      }
+    );
+    $("co-dna").onclick = async () => {
+      const best = balls.best;
+      const sp = S.profile?.spin;
+      const dna = bowlerDna(S.profile?.name ?? "Bowler", bowlerProfile(), shots, { pap: sp?.pap, bestBall: best ? best.name : void 0, spinSource: sp?.source === "video" ? "measured" : "entered" });
+      const r = await dnaCardFile(dna);
+      const box = $("co-dna-note");
+      if (typeof r === "string") return void (box.textContent = r);
+      const url = URL.createObjectURL(r);
+      box.innerHTML = `<img src="${url}" alt="Your bowler DNA card" style="width:100%;max-width:360px;border-radius:14px;margin-top:10px;display:block"><div id="co-dna-share"></div>`;
+      offerShare($("co-dna-share"), [r], { title: "My LaneIQ bowler DNA" });
+    };
+    $("co-reel").onclick = async () => {
+      const btn = $("co-reel");
+      const box = $("co-reel-note");
+      btn.disabled = true;
+      try {
+        const r = await makeReel(sess, (m) => box.textContent = m);
+        if (typeof r === "string") return void (box.textContent = r);
+        box.innerHTML = `<video src="${URL.createObjectURL(r)}" controls playsinline muted style="width:100%;max-width:300px;border-radius:14px;margin-top:10px;display:block"></video><div class="note">${(r.size / 1e6).toFixed(1)} MB</div><div id="co-reel-share"></div>`;
+        offerShare($("co-reel-share"), [r], { title: "My LaneIQ highlights" });
+      } finally {
+        btn.disabled = false;
       }
     };
   }
@@ -9436,15 +11364,15 @@ ${url}`);
     else if (current3 === "learn") renderLearn();
     else if (current3 === "me") renderMe();
   }
-  var ballName = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
-  var when = (iso) => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  var ballName4 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
+  var when2 = (iso) => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   var ZONE = ZONE_LABEL;
-  var pct = (n) => `${Math.round(n)}%`;
+  var pct3 = (n) => `${Math.round(n)}%`;
   function renderShots() {
     const el = $("shots-page");
     const list = [...S.shots].reverse().slice(0, 200);
     el.innerHTML = `<h2>Shots</h2><div class="chips"><button class="btn ghost" id="sh-share">Share a session</button><button class="btn ghost" id="sh-compare">Compare with a friend</button></div><div class="note">Every tracked shot is saved on this phone with its raw footage. Tap one to replay it, flip between the lane view and the raw video, and fix its ball or result.</div>` + (list.length ? "" : `<div class="card"><div class="u">No shots yet. Start the camera on the Live tab and bowl.</div></div>`) + list.map(
-      (s) => `<div class="card shot" data-id="${s.id}"><div class="big">${s.a.speedMph.toFixed(1)}<small style="font-size:12px;color:var(--dim)"> mph</small></div><div style="flex:1"><div>${esc(when(s.at))} \xB7 ${esc(ballName(s.ballId))}</div><div>${s.m.zone ? `<span class="tag ${s.m.zone}">${ZONE[s.m.zone]}</span>` : ""}${s.result ? `<span class="tag ${s.result.pinsDown === 10 ? "strike" : ""}">${s.result.pinsDown === 10 ? "Strike" : s.result.pinsDown + " pins"}</span>` : `<span class="tag">no result</span>`}${s.hasClip ? `<span class="tag">video</span>` : ""}<span class="tag">entry ${f1(s.a.entryBoard)}</span></div></div></div>`
+      (s) => `<div class="card shot" data-id="${s.id}"><div class="big">${s.a.speedMph.toFixed(1)}<small style="font-size:12px;color:var(--dim)"> mph</small></div><div style="flex:1"><div>${esc(when2(s.at))} \xB7 ${esc(ballName4(s.ballId))}</div><div>${s.m.zone ? `<span class="tag ${s.m.zone}">${ZONE[s.m.zone]}</span>` : ""}${s.result ? `<span class="tag ${s.result.pinsDown === 10 ? "strike" : ""}">${s.result.pinsDown === 10 ? "Strike" : s.result.pinsDown + " pins"}</span>` : `<span class="tag">no result</span>`}${s.hasClip ? `<span class="tag">video</span>` : ""}<span class="tag">entry ${f1(s.a.entryBoard)}</span></div></div></div>`
     ).join("");
     $("sh-share").onclick = openShareSession;
     $("sh-compare").onclick = () => openCompare();
@@ -9475,8 +11403,8 @@ ${url}`);
     const canOverlay = s.cal.length === 4;
     let modeSel = clip && canOverlay ? "lane" : "top";
     el.innerHTML = `
-    <div class="row"><h2>${esc(when(s.at))}</h2><button class="btn ghost" id="rv-close">Close</button></div>
-    <div class="note">${esc(ballName(s.ballId))} \xB7 ${s.a.speedMph.toFixed(1)} mph \xB7 ${s.a.entryMeasured ? `entry board ${f1(s.a.entryBoard)}` : s.a.lastSeen ? `last seen on board ${f1(s.a.lastSeen.board)}, ${s.a.lastSeen.ft.toFixed(0)} ft down` : "entry board not seen"}${s.m.zone ? ` \xB7 ${esc(zoneText(s.m.zone, s.m.pocketMiss, s.m.hand))}` : " \xB7 hit not judged (the ball was not seen reaching the pins)"} \xB7 ${s.m.hand === "L" ? "left-handed: pocket 1-2" : "right-handed: pocket 1-3"} <a href="#" data-learn="${s.m.zone ? ZONE_LABEL[s.m.zone] : "Pocket"}">what is this?</a></div>
+    <div class="row"><h2>${esc(when2(s.at))}</h2><button class="btn ghost" id="rv-close">Close</button></div>
+    <div class="note">${esc(ballName4(s.ballId))} \xB7 ${s.a.speedMph.toFixed(1)} mph \xB7 ${s.a.entryMeasured ? `entry board ${f1(s.a.entryBoard)}` : s.a.lastSeen ? `last seen on board ${f1(s.a.lastSeen.board)}, ${s.a.lastSeen.ft.toFixed(0)} ft down` : "entry board not seen"}${s.m.zone ? ` \xB7 ${esc(zoneText(s.m.zone, s.m.pocketMiss, s.m.hand))}` : " \xB7 hit not judged (the ball was not seen reaching the pins)"} \xB7 ${s.m.hand === "L" ? "left-handed: pocket 1-2" : "right-handed: pocket 1-3"} <a href="#" data-learn="${s.m.zone ? ZONE_LABEL[s.m.zone] : "Pocket"}">what is this?</a></div>
     <div class="chips" id="rv-modes">
       ${clip && canOverlay ? `<button class="chip ${modeSel === "lane" ? "sel" : ""}" data-m="lane">Lane view</button>` : ""}
       ${clip ? `<button class="chip ${modeSel === "raw" ? "sel" : ""}" data-m="raw">Raw footage</button>` : ""}
@@ -9488,6 +11416,13 @@ ${url}`);
     <div id="rv-3d" style="display:none"><div class="stagebox"><div id="rv-3d-host" style="position:relative;width:100%;aspect-ratio:4/3"></div></div><div class="chips"><button class="chip" id="rv-replay">Replay shot in 3D</button></div></div>
     <h3>Metrics</h3>
     <div class="card"><table>${FEATURES.map((f) => ({ f, v: s.m[f.key] })).filter((x) => typeof x.v === "number").map(({ f, v }) => `<tr><td>${esc(f.label)}</td><td class="n">${v.toFixed(f.unit === "\xB0" || f.unit === "mph" || f.unit === "ft" ? 1 : 1)} ${esc(f.unit)}</td></tr>`).join("")}</table></div>
+    ${clip ? `<div class="chips"><button class="btn ghost" id="rv-compare">Side by side with another shot</button></div>` : ""}
+    ${s.plan ? `<h3>Target</h3><div class="card"><div class="u">${(() => {
+      const g = gradeShot(s, s.plan);
+      return `Aimed at board ${s.plan.arrows} at the arrows${s.plan.stand !== void 0 ? ` from ${s.plan.stand}` : ""}: ${!g || g.markOff === null ? "the arrows board wasn't measured" : g.hitMark ? "hit the mark" : `missed by ${Math.abs(g.markOff).toFixed(1)} boards ${g.markOff > 0 ? "left" : "right"}`}${g?.breakOff !== null && g?.breakOff !== void 0 ? `; broke ${Math.abs(g.breakOff).toFixed(1)} boards ${g.breakOff > 0 ? "left" : "right"} of where you wanted` : ""}.`;
+    })()}</div></div>` : ""}
+    <h3>Body and approach</h3>
+    <div id="rv-body"></div>
     <h3>Spin</h3>
     <div id="rv-spin"></div>
     <h3>Result</h3>
@@ -9517,7 +11452,23 @@ ${url}`);
         if (el2 && reviewShotId === s.id) el2.textContent = m;
       } }).then(() => paintSpin("idle"));
     };
+    const paintBody = (running, msg = "") => {
+      const box = document.getElementById("rv-body");
+      if (!box || reviewShotId !== s.id) return;
+      const lines = s.body ? describeBody(s.body, S.profile?.hand ?? "R") : [];
+      box.innerHTML = `<div class="card">${s.body ? (lines.length ? `<ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : `<div class="u">The bowler wasn't followed clearly enough in this clip.</div>`) + (s.body.notes.length ? `<div class="note">${esc(s.body.notes.join(" "))}</div>` : "") + `<div class="note">Seen clearly in ${Math.round(s.body.quality * 100)}% of the approach. From behind, forward lean and loft can't be seen, so they aren't measured.</div>` : `<div class="u">${clip ? "Steps, timing, drift, where the ball lands next to your slide foot, and whether you held your finish, read from this clip by a pose model that runs on your phone. The first time, the model (a few MB) is downloaded; the clip never leaves the phone." : "This shot has no clip to read."}</div>`}
+      ${clip ? `<div class="chips"><button class="btn ${s.body ? "ghost" : ""}" id="rv-readbody" ${running ? "disabled" : ""}>${running ? "Reading\u2026" : s.body ? "Read it again" : "Read my approach"}</button></div>` : ""}<div class="note" id="rv-bodyprog">${esc(msg)}</div></div>`;
+      document.getElementById("rv-readbody")?.addEventListener("click", () => {
+        paintBody(true);
+        void queueBody(s, { force: !!s.body, onProgress: (m) => {
+          const p = document.getElementById("rv-bodyprog");
+          if (p && reviewShotId === s.id) p.textContent = m;
+        } }).then((b) => paintBody(false, b ? "" : "Couldn't read this clip."));
+      });
+    };
     reviewShotId = s.id;
+    paintBody(bodyPending(s.id));
+    document.getElementById("rv-compare")?.addEventListener("click", () => void openCompare2(s));
     const player = document.getElementById("rv-v");
     if (player) {
       player.addEventListener("error", () => {
@@ -9617,8 +11568,22 @@ ${url}`);
       await resetInsights();
     });
   }
+  var insView = "coach";
+  var segHtml = () => `<div class="chips" id="ins-seg" style="margin:0 0 4px"><button class="chip ${insView === "coach" ? "sel" : ""}" data-v="coach">Coach</button><button class="chip ${insView === "stats" ? "sel" : ""}" data-v="stats">My numbers</button></div>`;
+  function wireSeg() {
+    $("insights-page").querySelectorAll("#ins-seg [data-v]").forEach(
+      (b) => b.onclick = () => {
+        insView = b.dataset.v;
+        renderInsights();
+        window.scrollTo(0, 0);
+      }
+    );
+  }
   function renderInsights() {
+    if (insView === "coach") return renderCoach($("insights-page"), segHtml(), wireSeg);
     renderInsightsBody();
+    $("insights-page").insertAdjacentHTML("afterbegin", segHtml());
+    wireSeg();
     void mountSkills($("insights-page"));
   }
   function renderInsightsBody() {
@@ -9626,7 +11591,7 @@ ${url}`);
     const mine = insightShots();
     const shots = mine;
     if (!shots.length) {
-      el.innerHTML = `<h2>Insights</h2><div class="card"><div class="u">${S.insightsSince ? `Insights were reset on ${esc(when(S.insightsSince))}. They start again from the next shot you bowl. Your earlier shots and their videos are still in the Shots tab.` : "Bowl a few shots first. Your averages, common errors and improvement plan build up here, and everything stays on this phone."}</div>${S.insightsSince ? `<div class="chips"><button class="btn ghost" id="ins-restore">Count my earlier shots again</button></div>` : ""}</div>${resetCardHtml()}`;
+      el.innerHTML = `<h2>My numbers</h2><div class="card"><div class="u">${S.insightsSince ? `Insights were reset on ${esc(when2(S.insightsSince))}. They start again from the next shot you bowl. Your earlier shots and their videos are still in the Shots tab.` : "Bowl a few shots first. Your averages, common errors and improvement plan build up here, and everything stays on this phone."}</div>${S.insightsSince ? `<div class="chips"><button class="btn ghost" id="ins-restore">Count my earlier shots again</button></div>` : ""}</div>${resetCardHtml()}`;
       $("ins-restore")?.addEventListener("click", () => void restoreInsights());
       wireReset();
       return;
@@ -9640,23 +11605,23 @@ ${url}`);
       const g = mine.filter((s) => s.sessionId === id);
       const pp = computeProfile(g);
       const inPocket = g.filter((s) => s.m.pocketMiss !== null && Math.abs(s.m.pocketMiss) <= 1).length / (g.filter((s) => s.m.pocketMiss !== null).length || 1);
-      return `<tr><td>${esc(when(g[0].at))}</td><td class="n">${g.length}</td><td class="n">${pp.stats.launchSpeed ? pp.stats.launchSpeed.mean.toFixed(1) : "-"}</td><td class="n">${pct(inPocket * 100)}</td><td class="n">${pp.strike.rate === null ? "-" : pct(pp.strike.rate * 100)}</td></tr>`;
+      return `<tr><td>${esc(when2(g[0].at))}</td><td class="n">${g.length}</td><td class="n">${pp.stats.launchSpeed ? pp.stats.launchSpeed.mean.toFixed(1) : "-"}</td><td class="n">${pct3(inPocket * 100)}</td><td class="n">${pp.strike.rate === null ? "-" : pct3(pp.strike.rate * 100)}</td></tr>`;
     }).reverse().join("");
     const ballIds = [...new Set(mine.map((s) => s.ballId).filter(Boolean))];
     const ballRows = ballIds.map((id) => {
       const g = mine.filter((s) => s.ballId === id);
       const pp = computeProfile(g);
-      return `<tr><td>${esc(ballName(id))}</td><td class="n">${g.length}</td><td class="n">${pp.stats.launchSpeed ? pp.stats.launchSpeed.mean.toFixed(1) : "-"}</td><td class="n">${pp.stats.entryAngle ? pp.stats.entryAngle.mean.toFixed(1) + "\xB0" : "-"}</td><td class="n">${pp.strike.rate === null ? "-" : pct(pp.strike.rate * 100)}</td></tr>`;
+      return `<tr><td>${esc(ballName4(id))}</td><td class="n">${g.length}</td><td class="n">${pp.stats.launchSpeed ? pp.stats.launchSpeed.mean.toFixed(1) : "-"}</td><td class="n">${pp.stats.entryAngle ? pp.stats.entryAngle.mean.toFixed(1) + "\xB0" : "-"}</td><td class="n">${pp.strike.rate === null ? "-" : pct3(pp.strike.rate * 100)}</td></tr>`;
     }).join("");
     const needMore = Math.max(0, MIN_OUTCOMES - p.withResults);
     el.innerHTML = `
-    <h2>Insights</h2>
+    <h2>My numbers</h2>
     <div class="grid">
       <div class="card"><div class="k">Shots tracked</div><div class="v">${p.shots}</div><div class="u">${sessions.length} session${sessions.length === 1 ? "" : "s"}</div></div>
-      <div class="card"><div class="k">Strike rate</div><div class="v">${p.strike.rate === null ? "--" : pct(p.strike.rate * 100)}</div><div class="u">${p.strike.attempts} shots with results${p.strike.attempts && !p.strike.sufficient ? ", low sample" : ""}</div></div>
+      <div class="card"><div class="k">Strike rate</div><div class="v">${p.strike.rate === null ? "--" : pct3(p.strike.rate * 100)}</div><div class="u">${p.strike.attempts} shots with results${p.strike.attempts && !p.strike.sufficient ? ", low sample" : ""}</div></div>
       <div class="card"><div class="k">In the pocket</div><div class="v">${(() => {
       const m = mine.filter((s) => s.m.pocketMiss !== null);
-      return m.length ? pct(m.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / m.length * 100) : "--";
+      return m.length ? pct3(m.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / m.length * 100) : "--";
     })()}</div><div class="u">within 1 board</div></div>
     </div>
 
@@ -9667,7 +11632,7 @@ ${url}`);
     <div id="plan-box"></div>
 
     <h3>Where you enter the pocket</h3>
-    <div class="card"><div class="bar">${Object.entries(p.zones).map(([z, n]) => `<i style="width:${n / zoneTotal * 100}%;background:${zoneColor[z]}" title="${z}"></i>`).join("")}</div><div class="chips">${Object.entries(p.zones).map(([z, n]) => `<span class="tag ${z}">${ZONE[z]} ${pct(n / zoneTotal * 100)}</span>`).join("")}</div></div>
+    <div class="card"><div class="bar">${Object.entries(p.zones).map(([z, n]) => `<i style="width:${n / zoneTotal * 100}%;background:${zoneColor[z]}" title="${z}"></i>`).join("")}</div><div class="chips">${Object.entries(p.zones).map(([z, n]) => `<span class="tag ${z}">${ZONE[z]} ${pct3(n / zoneTotal * 100)}</span>`).join("")}</div></div>
 
     <h3>Shot map</h3>
     <div class="card"><canvas id="ins-map" width="360" height="600" style="width:100%;height:auto;aspect-ratio:360/600"></canvas><div class="note">Green lines are strikes, red lines are shots that left pins, white lines have no result yet. The dashed green line is the pocket.</div></div>
@@ -9695,7 +11660,7 @@ ${url}`);
     }
     const after = mine.filter((s) => s.at > plan.createdAt).slice(-STATE_PLAN_RECENT);
     const prog = planProgress(plan, after);
-    box.innerHTML = `<div class="note">Plan made ${esc(when(plan.createdAt))} from ${plan.basedOnShots} shots. Progress uses your shots since then (needs 5 or more).</div>` + prog.map(
+    box.innerHTML = `<div class="note">Plan made ${esc(when2(plan.createdAt))} from ${plan.basedOnShots} shots. Progress uses your shots since then (needs 5 or more).</div>` + prog.map(
       ({ item, current: current4, progress: progress2, met }) => `<div class="card"><div class="row"><div class="lr-head" style="font-size:16px">${esc(item.title)}</div><span class="badge ${met ? "good" : "moderate"}">${met ? "target met" : "in progress"}</span></div>
       <div class="u">Baseline ${item.baseline} \u2192 target ${item.target} ${esc(item.unit)} \xB7 now ${current4 === null ? "need 5+ new shots" : current4}</div>
       <div class="prog"><i style="width:${Math.round((progress2 ?? 0) * 100)}%"></i></div>
@@ -9832,7 +11797,7 @@ ${url}`);
       ${r.profile.length ? `<div class="k" style="margin-top:10px">What your numbers say</div><ul>${r.profile.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}</div>
     <div class="card"><div class="k">Conditions and the ball that covers each</div><table>${r.scenarios.map((s) => `<tr><td>${esc(s.name)}<div class="note">${esc(s.blurb)}</div></td><td>${s.best ? esc(s.best.ball.name) : "nothing yet"}</td><td class="n">${mark(s.status)}</td></tr>`).join("")}</table></div>
     ${r.overlaps.length ? `<div class="card"><div class="k">Overlap</div><ul>${r.overlaps.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
-    ${r.buys.length ? `<div class="card"><div class="k">Best next balls</div>${r.buys.map((b) => `<div style="padding:8px 0;border-top:1px solid var(--line)"><b>Fills: ${esc(b.fixes.join(", "))}</b><div class="u">You're missing a ${b.direction} ball (motion index near ${b.target.toFixed(2)}).</div>${b.picks.map((c) => `<div style="margin-top:8px;display:flex;gap:12px">${ballThumb(c.ball, 64)}<div style="flex:1;min-width:0"><b>${esc(c.ball.manufacturer)} ${esc(c.ball.name)}</b> <span class="note">${esc(specLine2(c.ball))}</span>${layoutHtml(c.ball, bowler, b.direction === "stronger" ? "carry" : "early")}</div></div>`).join("")}</div>`).join("")}</div>` : r.score !== null ? `<div class="card"><div class="u">Your arsenal covers every condition I check. Nothing to add right now.</div></div>` : ""}
+    ${r.buys.length ? `<div class="card"><div class="k">Best next balls</div>${r.buys.map((b) => `<div style="padding:8px 0;border-top:1px solid var(--line)"><b>Fills: ${esc(b.fixes.join(", "))}</b><div class="u">You're missing a ${b.direction} ball (motion index near ${b.target.toFixed(2)}).</div>${b.picks.map((c) => `<div style="margin-top:8px;display:flex;gap:12px">${ballThumb(c.ball, 64)}<div style="flex:1;min-width:0"><b>${esc(c.ball.manufacturer)} ${esc(c.ball.name)}</b> <span class="note">${esc(specLine3(c.ball))}</span>${layoutHtml(c.ball, bowler, b.direction === "stronger" ? "carry" : "early")}</div></div>`).join("")}</div>`).join("")}</div>` : r.score !== null ? `<div class="card"><div class="u">Your arsenal covers every condition I check. Nothing to add right now.</div></div>` : ""}
     ${r.spare.has ? "" : `<div class="card"><div class="k">No spare ball</div><div class="u">A plastic spare ball keeps your strike balls from hooking on spares.${r.spare.picks.length ? ` From the catalog: ${r.spare.picks.map((c) => esc(`${c.manufacturer} ${c.name}`)).join(", ")}.` : ""}</div></div>`}
     <div class="card"><div class="k">Read this first</div><ul>${r.notes.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
     el.append(box);
@@ -9842,10 +11807,10 @@ ${url}`);
     const targets = [{ target: lineup.target, label: `tonight's pattern (${pat.name})` }, ...opt.scenarios.filter((s) => s.status !== "covered").map((s) => ({ target: s.target, label: `a gap in your arsenal: ${s.name.toLowerCase()}` }))];
     const picks = upcomingForBowler(S.catalog, ownedKeys, targets, 6);
     const box = document.createElement("div");
-    const when2 = (d) => d ? (/* @__PURE__ */ new Date(d + "T12:00:00")).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" }) : "date not announced";
+    const when3 = (d) => d ? (/* @__PURE__ */ new Date(d + "T12:00:00")).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" }) : "date not announced";
     box.innerHTML = `<h3>New balls coming out you might be interested in</h3>
-    <div class="card">${picks.length ? picks.map((p) => `<div style="padding:8px 0;border-top:1px solid var(--line);display:flex;gap:12px">${ballThumb(p.ball)}<div style="flex:1;min-width:0"><div class="row"><b>${esc(p.ball.manufacturer)} ${esc(p.ball.name)}</b><span class="badge ${p.index !== null ? "good" : "tentative"}">${esc(p.ball.availableOn ? "out " + when2(p.ball.availableOn.value) : "date not announced")}</span></div>
-        <div class="u">${p.index !== null ? esc(specLine2(p.ball)) : "Specs not published yet"}</div><div class="u">${esc(p.why)}</div>
+    <div class="card">${picks.length ? picks.map((p) => `<div style="padding:8px 0;border-top:1px solid var(--line);display:flex;gap:12px">${ballThumb(p.ball)}<div style="flex:1;min-width:0"><div class="row"><b>${esc(p.ball.manufacturer)} ${esc(p.ball.name)}</b><span class="badge ${p.index !== null ? "good" : "tentative"}">${esc(p.ball.availableOn ? "out " + when3(p.ball.availableOn.value) : "date not announced")}</span></div>
+        <div class="u">${p.index !== null ? esc(specLine3(p.ball)) : "Specs not published yet"}</div><div class="u">${esc(p.why)}</div>
         <div class="note">Source: <a style="color:var(--cy)" href="${esc((p.ball.rg ?? p.ball.status).source.url)}" target="_blank" rel="noopener">${esc(srcWord((p.ball.rg ?? p.ball.status).source.kind))}</a>, ${esc((p.ball.rg ?? p.ball.status).source.retrievedOn)}</div></div></div>`).join("") : `<div class="u">Nothing announced that fits yet. This list fills in when manufacturers announce new balls and the catalog is refreshed.</div>`}
       <div class="note">Release dates and specs come from the manufacturers' announcements and can change before a ball ships.</div></div>`;
     el.append(box);
@@ -9911,7 +11876,7 @@ ${url}`);
   var nextRole = "start";
   var ROLE_OFFSET = { start: 0, early: -0.35, carry: 0.35 };
   var ROLE_LABEL = { start: "Start ball", early: "When it hooks early", carry: "When it skids or carries down" };
-  var specLine2 = (b) => [b.rg && `RG ${b.rg.value}`, b.differential && `diff ${b.differential.value}`, b.coverstock?.value, b.core?.value, b.coreSymmetry?.value, b.specWeightLb && `${b.specWeightLb.value} lb specs`, b.weightSpecs && b.weightSpecs.value.length > 1 && `specs for ${b.weightSpecs.value.map((w) => w.lb).join("/")} lb in the Layout Lab`].filter(Boolean).join(" \xB7 ");
+  var specLine3 = (b) => [b.rg && `RG ${b.rg.value}`, b.differential && `diff ${b.differential.value}`, b.coverstock?.value, b.core?.value, b.coreSymmetry?.value, b.specWeightLb && `${b.specWeightLb.value} lb specs`, b.weightSpecs && b.weightSpecs.value.length > 1 && `specs for ${b.weightSpecs.value.map((w) => w.lb).join("/")} lb in the Layout Lab`].filter(Boolean).join(" \xB7 ");
   function layoutHtml(ball, bowler, role) {
     const adv = suggestLayouts(ball, bowler, role);
     return `<details style="margin-top:6px"><summary class="u" style="cursor:pointer;color:var(--cy)">Suggested layout</summary>
@@ -9926,7 +11891,7 @@ ${url}`);
     <div class="card"><div class="u">Catalog balls whose published specs best match what this role wants for ${esc(pat.name)}, excluding balls you already own and at most two per brand. ${showOlder ? "Older and retired balls are included (for shopping used)." : "Only balls the manufacturer still sells that came out last year or this year are suggested."} ${S.catalog.length} balls in the catalog.</div>
       <div class="chips"><button class="chip ${showOlder ? "sel" : ""}" id="older-toggle">${showOlder ? "Showing older balls too" : "Include older or retired balls"}</button></div>
       <div class="chips">${Object.keys(ROLE_LABEL).map((r) => `<button class="chip ${r === nextRole ? "sel" : ""}" data-role="${r}">${ROLE_LABEL[r]}</button>`).join("")}</div>
-      ${cands.length ? cands.map((c, i) => `<div style="padding:10px 0;border-top:1px solid var(--line);display:flex;gap:12px">${ballThumb(c.ball)}<div style="flex:1;min-width:0"><div class="row"><b>${i + 1}. ${esc(c.ball.manufacturer)} ${esc(c.ball.name)}</b><span class="badge ${c.off <= 0.15 ? "good" : "moderate"}">motion ${c.index.toFixed(2)}</span></div><div class="u">${esc(specLine2(c.ball))}${c.ball.releaseYear ? ` \xB7 ${c.ball.releaseYear.value}` : ""}</div><div class="note">Source: <a style="color:var(--cy)" href="${esc(c.ball.rg.source.url)}" target="_blank" rel="noopener">${esc(srcWord(c.ball.rg.source.kind))}</a>, ${esc(c.ball.rg.source.retrievedOn)}${c.ball.releaseYear ? ` \xB7 ${esc(String(c.ball.availableOn ? c.ball.availableOn.value : c.ball.releaseYear.value))}` : ""}</div>${layoutHtml(c.ball, bowler, nextRole)}<div class="chips"><button class="chip" data-lab="${esc(c.ball.key)}">Preview a layout on this ball</button></div></div></div>`).join("") : `<div class="u">No catalog balls with RG and differential to rank.</div>`}
+      ${cands.length ? cands.map((c, i) => `<div style="padding:10px 0;border-top:1px solid var(--line);display:flex;gap:12px">${ballThumb(c.ball)}<div style="flex:1;min-width:0"><div class="row"><b>${i + 1}. ${esc(c.ball.manufacturer)} ${esc(c.ball.name)}</b><span class="badge ${c.off <= 0.15 ? "good" : "moderate"}">motion ${c.index.toFixed(2)}</span></div><div class="u">${esc(specLine3(c.ball))}${c.ball.releaseYear ? ` \xB7 ${c.ball.releaseYear.value}` : ""}</div><div class="note">Source: <a style="color:var(--cy)" href="${esc(c.ball.rg.source.url)}" target="_blank" rel="noopener">${esc(srcWord(c.ball.rg.source.kind))}</a>, ${esc(c.ball.rg.source.retrievedOn)}${c.ball.releaseYear ? ` \xB7 ${esc(String(c.ball.availableOn ? c.ball.availableOn.value : c.ball.releaseYear.value))}` : ""}</div>${layoutHtml(c.ball, bowler, nextRole)}<div class="chips"><button class="chip" data-lab="${esc(c.ball.key)}">Preview a layout on this ball</button></div></div></div>`).join("") : `<div class="u">No catalog balls with RG and differential to rank.</div>`}
       <div class="note">Spec-based ranking. Confirm on the lanes: drill and test before buying.</div></div>
     <div class="chips"><button class="btn ghost" id="to-proshop">Pro shop tools: layouts, fitting report, playbook</button></div>`;
     el.append(box);
@@ -9962,7 +11927,7 @@ ${url}`);
     <div class="card"><div class="k">Pattern</div><b>${esc(pat.name)}</b><div class="u">${pat.lengthFt} ft${pat.volumeMl !== void 0 ? ` \xB7 ${pat.volumeMl} mL` : ""}${pat.ratio !== void 0 ? ` \xB7 ${pat.ratio}:1` : ""} (${pat.source.kind === "user" ? "entered by the bowler" : "source: " + esc(pat.source.url)})</div></div>
     <div class="card"><div class="k">Recommended lineup from the arsenal</div>${lineup.slots.length ? `<ul>${lineup.slots.map((s) => `<li><b>${esc(s.role)}:</b> ${s.ball ? esc(s.ball.name) : "no suitable ball"}. ${esc(s.why)}</li>`).join("")}</ul>` : `<div class="u">No arsenal specs on file.</div>`}
       <ul>${dem(pat, bowler)}</ul></div>
-    <div class="card"><div class="k">Suggested additions from the catalog</div>${picks.map(({ r, c }) => `<div style="margin:8px 0"><b>${ROLE_LABEL[r]}</b><ul>${c.map((x) => `<li>${esc(x.ball.manufacturer)} ${esc(x.ball.name)} (${esc(specLine2(x.ball))})<br><span class="u">Layout: ${esc(suggestLayouts(x.ball, bowler, r).layouts[0].name)}, ${esc(suggestLayouts(x.ball, bowler, r).layouts[0].notation)}</span></li>`).join("") || "<li>none found</li>"}</ul></div>`).join("")}</div>
+    <div class="card"><div class="k">Suggested additions from the catalog</div>${picks.map(({ r, c }) => `<div style="margin:8px 0"><b>${ROLE_LABEL[r]}</b><ul>${c.map((x) => `<li>${esc(x.ball.manufacturer)} ${esc(x.ball.name)} (${esc(specLine3(x.ball))})<br><span class="u">Layout: ${esc(suggestLayouts(x.ball, bowler, r).layouts[0].name)}, ${esc(suggestLayouts(x.ball, bowler, r).layouts[0].notation)}</span></li>`).join("") || "<li>none found</li>"}</ul></div>`).join("")}</div>
     <div class="card"><div class="k">Read this first</div><ul>${lineup.caveats.map((c) => `<li>${esc(c)}</li>`).join("")}<li>Camera measurements carry uncertainty. Specs are the manufacturers' published numbers, not a measure of how a ball behaves for this bowler. Confirm with test shots before drilling.</li></ul></div>`;
     $("rp-close").onclick = () => (el.classList.remove("on"), el.innerHTML = "");
   }
@@ -9976,7 +11941,7 @@ ${url}`);
     <div class="card"><div class="k">Rewards</div><div class="note">Unlock ball tracers, pin looks and lane looks by playing and by improving.</div><div class="chips"><button class="btn" id="me-rewards">Skins and rewards</button><button class="chip ${glowEnabled() ? "sel" : ""}" id="me-glow">Glow: ${glowEnabled() ? "on" : "off"}</button></div><div class="note">Glow off gives crisp lines with no halos, for reading shots exactly.</div></div>
     ${p?.quiz ? `<div class="card"><div class="k">Your bowler profile</div><ul>${summarize(p.quiz).map((l) => `<li>${esc(l)}</li>`).join("")}</ul><div class="note">${esc(styleNotes(p.quiz.style).join(" "))}</div><div class="chips"><button class="btn ghost" id="me-quiz">Retake the quiz</button></div></div>` : p ? `<div class="card"><div class="u">Take the short bowler quiz so the app knows how you bowl.</div><div class="chips"><button class="btn" id="me-quiz">Take the quiz</button></div></div>` : ""}
     ${p ? `<div class="card"><div class="k">Ball motion (pro shop)</div>
-      <div class="note">The live camera can't measure these. Enter numbers from a pro-shop tool, or measure them from a slow-motion release video.${p.spin ? ` Last set ${esc(when(p.spin.at))} (${p.spin.source === "video" ? "from video" : "entered"}).` : ""}</div>
+      <div class="note">The live camera can't measure these. Enter numbers from a pro-shop tool, or measure them from a slow-motion release video.${p.spin ? ` Last set ${esc(when2(p.spin.at))} (${p.spin.source === "video" ? "from video" : "entered"}).` : ""}</div>
       <div class="two"><div class="field"><label>Rev rate (RPM)</label><input id="sp-rpm" inputmode="numeric" value="${p.spin?.rpm ?? ""}"></div><div class="field"><label>Axis rotation (\xB0)</label><input id="sp-rot" inputmode="decimal" value="${p.spin?.axisRotation ?? ""}"></div></div>
       <div class="two"><div class="field"><label>Axis tilt (\xB0)</label><input id="sp-tilt" inputmode="decimal" value="${p.spin?.axisTilt ?? ""}"></div><div class="field"><label>PAP (e.g. 4 1/4 over, 1/2 up)</label><input id="sp-pap" value="${esc(p.spin?.pap ?? "")}"></div></div>
       <div class="chips"><button class="btn ghost" id="sp-save">Save</button><button class="btn ghost" id="sp-lab">Measure from a release video</button><button class="btn ghost" id="sp-pap">Estimate PAP from photos of the flare rings</button></div>${p.spin?.papFrom ? `<div class="note">Your PAP was ${p.spin.papFrom === "photo" ? "estimated from photos of the flare rings" : "measured from your release video"}.</div>` : ""}</div>` : ""}
@@ -10002,9 +11967,9 @@ ${url}`);
     $("me-save")?.addEventListener("click", () => {
       const rev = parseInt($("me-rev").value, 10);
       const name = $("me-name").value.trim() || p.name;
-      const hand2 = $("me-hand").value;
+      const hand3 = $("me-hand").value;
       const revRpm = Number.isFinite(rev) ? rev : void 0;
-      updateProfile({ name, hand: hand2, revRpm, quiz: p.quiz ? { ...p.quiz, name, hand: hand2, revRpm } : void 0 });
+      updateProfile({ name, hand: hand3, revRpm, quiz: p.quiz ? { ...p.quiz, name, hand: hand3, revRpm } : void 0 });
     });
     el.querySelectorAll("[data-sw]").forEach((b) => b.onclick = () => (setCurrentProfile(b.dataset.sw), location.reload()));
     el.querySelectorAll("[data-rm]").forEach(
@@ -10066,7 +12031,7 @@ ${url}`);
     { tab: "live", sel: "#result-card", title: "Pins are read from the camera", text: "The pins that fell are read from the deck. If it ever gets one wrong, tap the right number and the app learns from it." },
     { tab: "shots", sel: ".tb[data-tab='shots']", title: "Shots", text: "Every shot is saved with its video, from the bowler's approach until the rack is full again. Open one to replay it with the ball's path drawn on the lane, switch to the raw video, a top-down map, or 3D." },
     { tab: "score", sel: ".tb[data-tab='score']", title: "Score", text: "A scorecard that scores itself from the camera, with a spare coach that suggests where to throw your second ball." },
-    { tab: "insights", sel: ".tb[data-tab='insights']", title: "Insights", text: "Trends over your sessions and a skills chart that shows your strengths and weaknesses, so you know what to work on." },
+    { tab: "insights", sel: ".tb[data-tab='insights']", title: "Coach", text: "Your one thing to work on, what goes with your misses (Miss Finder), whether it's your aim or your line, the move to make, which ball to throw or buy next, your approach read from your clips, and drills that score themselves. My numbers has your averages and skills chart." },
     { tab: "arsenal", sel: ".tb[data-tab='arsenal']", title: "Arsenal", text: "Your bowling balls. Photograph a ball to add it, estimate its PAP from three photos of the flare rings, and use the Spin lab on slow-motion video for rev rate, axis rotation and tilt." },
     { tab: "proshop", sel: ".tb[data-tab='proshop']", title: "Pro shop", text: "Layouts, drilling and surface advice built around how you throw and the balls you own." },
     { tab: "learn", sel: ".tb[data-tab='learn']", title: "Learn", text: 'Every bowling word the app uses, and exactly what it means in the app: pocket, breakpoint, high hit, Brooklyn, PAP and more. Search a word, or tap "what is this?" on a shot to jump straight to it.' },
@@ -10159,11 +12124,11 @@ ${url}`);
       tmp[r + w - 1] = (src[r + w - 2] + src[r + w - 1] * 2) / 3;
     }
     for (let y = 0; y < h; y++) {
-      const up = (y > 0 ? y - 1 : 0) * w, mid = y * w, dn = (y < h - 1 ? y + 1 : h - 1) * w;
+      const up = (y > 0 ? y - 1 : 0) * w, mid2 = y * w, dn = (y < h - 1 ? y + 1 : h - 1) * w;
       for (let x = 0; x < w; x++) {
-        const blur = (tmp[up + x] + tmp[mid + x] + tmp[dn + x]) / 3;
-        const v = src[mid + x] + amount * (src[mid + x] - blur);
-        out[mid + x] = v < 0 ? 0 : v > 255 ? 255 : v;
+        const blur = (tmp[up + x] + tmp[mid2 + x] + tmp[dn + x]) / 3;
+        const v = src[mid2 + x] + amount * (src[mid2 + x] - blur);
+        out[mid2 + x] = v < 0 ? 0 : v > 255 ? 255 : v;
       }
     }
     return out;
@@ -10188,18 +12153,18 @@ ${url}`);
     if (x1 - x0 < 8) return none2;
     const reach = 0.14 * len;
     const y0 = Math.max(0, Math.round(farY - dir * reach - (dir > 0 ? 0 : 0)));
-    const rows = [];
+    const rows2 = [];
     for (let k2 = -Math.round(reach); k2 <= Math.round(reach); k2++) {
       const y = Math.round(farY - dir * k2);
       if (y < 0 || y >= h) continue;
       let n = 0;
       for (let x = x0; x <= x1; x++) if (white(rgba, (y * w + x) * 4)) n++;
-      rows.push({ y, f: n / (x1 - x0 + 1) });
+      rows2.push({ y, f: n / (x1 - x0 + 1) });
     }
     void y0;
-    if (rows.length < 10) return none2;
-    rows.sort((a, b) => dir > 0 ? a.y - b.y : b.y - a.y);
-    const f = rows.map((r, i2) => (rows[Math.max(0, i2 - 1)].f + r.f + rows[Math.min(rows.length - 1, i2 + 1)].f) / 3);
+    if (rows2.length < 10) return none2;
+    rows2.sort((a, b) => dir > 0 ? a.y - b.y : b.y - a.y);
+    const f = rows2.map((r, i2) => (rows2[Math.max(0, i2 - 1)].f + r.f + rows2[Math.min(rows2.length - 1, i2 + 1)].f) / 3);
     let i = 0;
     while (i < f.length && f[i] < 0.55) i++;
     if (i >= f.length) return none2;
@@ -10209,7 +12174,7 @@ ${url}`);
       j++;
     }
     if (j >= f.length) return none2;
-    const baseY = rows[j - 1].y;
+    const baseY = rows2[j - 1].y;
     const moved = (baseY - farY) * dir * -1;
     if (Math.abs(baseY - farY) > reach) return none2;
     const slide = (near, far) => {
@@ -10258,20 +12223,20 @@ ${url}`);
       }
     }
     if (!best) return null;
-    const chain2 = [];
+    const chain3 = [];
     let cur2 = [best.f, best.c];
     while (cur2) {
       const [f, c] = cur2;
-      chain2.push({ t: frames[f].t, lx: frames[f].cands[c].lx, ly: frames[f].cands[c].ly, q: frames[f].cands[c].q });
+      chain3.push({ t: frames[f].t, lx: frames[f].cands[c].lx, ly: frames[f].cands[c].ly, q: frames[f].cands[c].q });
       cur2 = nodes[f][c].prev;
     }
-    chain2.reverse();
-    if (chain2.length < 8) return null;
-    const span = chain2[chain2.length - 1].ly - chain2[0].ly;
-    const mph = span / Math.max(1e-6, chain2[chain2.length - 1].t - chain2[0].t) * (3600 / 5280);
+    chain3.reverse();
+    if (chain3.length < 8) return null;
+    const span = chain3[chain3.length - 1].ly - chain3[0].ly;
+    const mph = span / Math.max(1e-6, chain3[chain3.length - 1].t - chain3[0].t) * (3600 / 5280);
     if (span < 12 || mph < 6 || mph > 40) return null;
-    if (chain2.reduce((s, p) => s + p.q, 0) / chain2.length > 1) return null;
-    return chain2.map((p) => ({ t: p.t, x: p.lx, y: p.ly }));
+    if (chain3.reduce((s, p) => s + p.q, 0) / chain3.length > 1) return null;
+    return chain3.map((p) => ({ t: p.t, x: p.lx, y: p.ly }));
   }
 
   // core/src/stabilize.ts
@@ -10318,11 +12283,11 @@ ${url}`);
       this.edges(gray, r);
       let sum = 0, n = 0;
       for (let y = r.y0; y < r.y1; y += 2) for (let x = r.x0; x < r.x1; x += 2) sum += this.edge[y * w + x], n++;
-      const mean3 = n ? sum / n : 0;
+      const mean9 = n ? sum / n : 0;
       const cand = [];
       for (let y = r.y0; y < r.y1; y += 2) for (let x = r.x0; x < r.x1; x += 2) {
         const v = this.edge[y * w + x];
-        if (v > 2.2 * mean3) cand.push({ i: y * w + x, v });
+        if (v > 2.2 * mean9) cand.push({ i: y * w + x, v });
       }
       cand.sort((a, b) => b.v - a.v);
       const take = cand.slice(0, POINTS);
@@ -10457,14 +12422,14 @@ ${url}`);
     const yB = Math.round(h * 0.9);
     const span = yB - yA;
     const yMin = seed ? 2 : Math.round(h * 0.1);
-    const STEP = Math.max(1, Math.round(w / 320));
+    const STEP2 = Math.max(1, Math.round(w / 320));
     const PHI_MAX = 68 * Math.PI / 180;
     const DPHI = 0.4 * Math.PI / 180;
     const WIN = 15 * Math.PI / 180;
     const NPHI = Math.floor(2 * PHI_MAX / DPHI) + 1;
     const tanTab = Float32Array.from({ length: NPHI }, (_, k2) => Math.tan(-PHI_MAX + k2 * DPHI));
     const lo = -w * 1.5;
-    const NX = Math.ceil(w * 4 / STEP);
+    const NX = Math.ceil(w * 4 / STEP2);
     const accL = new Float32Array(seed ? 0 : NPHI * NX);
     const accR = new Float32Array(seed ? 0 : NPHI * NX);
     const agrees = (i, slope, sign) => (gx[i] - gy[i] * slope) / Math.sqrt(1 + slope * slope) / mag[i] * sign > 0.93;
@@ -10482,7 +12447,7 @@ ${url}`);
         const k0 = Math.max(0, Math.ceil((phiE - WIN + PHI_MAX) / DPHI));
         const k1 = Math.min(NPHI - 1, Math.floor((phiE + WIN + PHI_MAX) / DPHI));
         for (let k2 = k0; k2 <= k1; k2++) {
-          const xi = Math.round((x - tanTab[k2] * (y - yA) - lo) / STEP);
+          const xi = Math.round((x - tanTab[k2] * (y - yA) - lo) / STEP2);
           if (xi >= 0 && xi < NX) acc[k2 * NX + xi]++;
         }
       }
@@ -10494,26 +12459,26 @@ ${url}`);
     }
     const xAt = (l, y) => l.xa + (l.xb - l.xa) * (y - yA) / span;
     const supportOf = (xa, xb, sign) => {
-      const rows = new Uint8Array(h);
+      const rows2 = new Uint8Array(h);
       const slope = (xb - xa) / span;
       for (const i of edges) {
         if (gx[i] * sign <= 0 || !agrees(i, slope, sign)) continue;
         const y = Math.floor(i / w);
-        if (Math.abs(i % w - (xa + (xb - xa) * (y - yA) / span)) <= 2.5 * STEP * Math.sqrt(1 + slope * slope)) rows[y] = 1;
+        if (Math.abs(i % w - (xa + (xb - xa) * (y - yA) / span)) <= 2.5 * STEP2 * Math.sqrt(1 + slope * slope)) rows2[y] = 1;
       }
       let top = -1;
       let bot = -1;
       for (let y = 0; y < h - 8; y++) {
         let c = 0;
-        for (let k2 = 0; k2 < 8; k2++) c += rows[y + k2];
+        for (let k2 = 0; k2 < 8; k2++) c += rows2[y + k2];
         if (c >= 6) {
           if (top < 0) top = y;
           bot = y + 7;
         }
       }
-      return { top, bot, rows };
+      return { top, bot, rows: rows2 };
     };
-    const refine = (xa, xb, sign, top, bot, tol = 2.5 * STEP) => {
+    const refine = (xa, xb, sign, top, bot, tol = 2.5 * STEP2) => {
       for (let it = 0; it < 3; it++) {
         let sw = 0, sy = 0, sx = 0, syy = 0, sxy = 0;
         const cur2 = (xb - xa) / span;
@@ -10550,9 +12515,9 @@ ${url}`);
       const out = [];
       const taken = [];
       for (const c of cells.slice(0, 8e3)) {
-        const xa = lo + c % NX * STEP;
+        const xa = lo + c % NX * STEP2;
         const xb = xa + tanTab[Math.floor(c / NX)] * span;
-        if (taken.some((p) => Math.abs(p.a - xa) <= 6 * STEP && Math.abs(p.b - xb) <= 8 * STEP)) continue;
+        if (taken.some((p) => Math.abs(p.a - xa) <= 6 * STEP2 && Math.abs(p.b - xb) <= 8 * STEP2)) continue;
         taken.push({ a: xa, b: xb });
         let s = supportOf(xa, xb, sign);
         if (s.top < 0 || s.bot - s.top < h * 0.06) continue;
@@ -10638,9 +12603,9 @@ ${url}`);
       const ys = inl.map((p) => p.y);
       const top = Math.min(...ys);
       const bot = Math.max(...ys);
-      const rows = new Uint8Array(h);
-      for (const p of inl) for (let k2 = -2; k2 <= 2; k2++) if (p.y + k2 >= 0 && p.y + k2 < h) rows[p.y + k2] = 1;
-      return [{ xa: a + b * yA, xb: a + b * yB, votes: inl.length, top, bot, rows }];
+      const rows2 = new Uint8Array(h);
+      for (const p of inl) for (let k2 = -2; k2 <= 2; k2++) if (p.y + k2 >= 0 && p.y + k2 < h) rows2[p.y + k2] = 1;
+      return [{ xa: a + b * yA, xb: a + b * yB, votes: inl.length, top, bot, rows: rows2 }];
     };
     const Ls = seed ? seededLines(1) : linesOf(accL, 1, 16);
     const Rs = seed ? seededLines(-1) : linesOf(accR, -1, 16);
@@ -10668,16 +12633,16 @@ ${url}`);
     const cands = [];
     const maxV = Math.max(Ls[0].votes, Rs[0].votes);
     let why = { range: 0, shape: 0, contrast: 0 };
-    for (const L of Ls)
+    for (const L2 of Ls)
       for (const R2 of Rs) {
-        const t = Math.max(L.top, R2.top);
-        const b = Math.min(L.bot, R2.bot);
+        const t = Math.max(L2.top, R2.top);
+        const b = Math.min(L2.bot, R2.bot);
         if (b - t < h * 0.06) {
           why.range++;
           continue;
         }
-        const wt = xAt(R2, t) - xAt(L, t);
-        const wb = xAt(R2, b) - xAt(L, b);
+        const wt = xAt(R2, t) - xAt(L2, t);
+        const wb = xAt(R2, b) - xAt(L2, b);
         if (wt < 2 || wb < wt * 1.02 || wb > w * 1.05) {
           why.shape++;
           continue;
@@ -10686,7 +12651,7 @@ ${url}`);
         let rowsN = 0;
         let strengthSum = 0;
         for (let y = t + 2; y <= b - 2; y += 3) {
-          const xl = xAt(L, y);
+          const xl = xAt(L2, y);
           const xr = xAt(R2, y);
           const wid = xr - xl;
           if (wid < 3) continue;
@@ -10703,11 +12668,11 @@ ${url}`);
           continue;
         }
         const contrast = good / rowsN;
-        const votes = (L.votes + R2.votes) / (2 * maxV);
-        const cb = (xAt(L, b) + xAt(R2, b)) / 2;
+        const votes = (L2.votes + R2.votes) / (2 * maxV);
+        const cb = (xAt(L2, b) + xAt(R2, b)) / 2;
         const centered = 1 - 0.12 * Math.min(1, Math.abs(cb - w / 2) / (w * 0.5));
         const lenScore = Math.min(1, (b - t) / (h * 0.25));
-        cands.push({ L, R: R2, t, b, base: (votes + contrast + 0.5 * lenScore + 1.2 * (strengthSum / rowsN / 100)) * centered });
+        cands.push({ L: L2, R: R2, t, b, base: (votes + contrast + 0.5 * lenScore + 1.2 * (strengthSum / rowsN / 100)) * centered });
       }
     dbg(`pairs ${cands.length}; rejected ${JSON.stringify(why)}`);
     if (diag2) {
@@ -10742,20 +12707,20 @@ ${url}`);
     if (diag2 && sorted2.length) diag2.hint = "";
     return sorted2;
     function geometry(c) {
-      let { L, R: R2 } = c;
+      let { L: L2, R: R2 } = c;
       const { t, b } = c;
       const notes = [];
-      const sL = (L.xb - L.xa) / span;
+      const sL = (L2.xb - L2.xa) / span;
       const sR = (R2.xb - R2.xa) / span;
       if (Math.abs(sL - sR) < 1e-6) return dbg("reject: parallel lines"), null;
-      const yv = yA + (R2.xa - L.xa) / (sL - sR);
+      const yv = yA + (R2.xa - L2.xa) / (sL - sR);
       if (!Number.isFinite(yv) || yv > t - 3) return dbg(`reject: vanishing row ${yv.toFixed(1)} vs top ${t}`), null;
       const prof = new Float32Array(h);
       const up = new Float32Array(h);
       const yStart = Math.max(3, Math.ceil(yv) + 3);
       for (let y = yStart; y < h - 3; y++) {
-        const cl = xAt(L, y) + 2 * STEP;
-        const cr = xAt(R2, y) - 2 * STEP;
+        const cl = xAt(L2, y) + 2 * STEP2;
+        const cr = xAt(R2, y) - 2 * STEP2;
         if (cr - cl < 4) continue;
         let cnt = 0;
         let s = 0;
@@ -10783,9 +12748,9 @@ ${url}`);
       const plow = new Float32Array(h).fill(NaN);
       const phigh = new Float32Array(h).fill(NaN);
       for (let y = yStart; y < h - 3; y++) {
-        const wid = xAt(R2, y) - xAt(L, y);
+        const wid = xAt(R2, y) - xAt(L2, y);
         if (wid < 6) continue;
-        const a = Math.max(2, Math.ceil(xAt(L, y) + 0.2 * wid));
+        const a = Math.max(2, Math.ceil(xAt(L2, y) + 0.2 * wid));
         const b2 = Math.min(w - 3, Math.floor(xAt(R2, y) - 0.2 * wid));
         if (b2 - a < 3) continue;
         const vals = [];
@@ -10828,15 +12793,15 @@ ${url}`);
         for (const y of peaks(stp, 6, 6, Math.floor(t - pitBefore), Math.floor(t + pitAfter))) if (!pitCands.some((c2) => Math.abs(c2 - y) <= 2)) pitCands.push(y);
         for (const y of peaks(stp, 4, 4, Math.floor(b - 0.05 * h), Math.floor(b + 0.05 * h))) if (!foulCands.some((c2) => Math.abs(c2 - y) <= 2)) foulCands.push(y);
       }
-      const supported = (y) => (L.rows[y] || L.rows[y - 1] || L.rows[y + 1] || L.rows[y - 2] || L.rows[y + 2]) && (R2.rows[y] || R2.rows[y - 1] || R2.rows[y + 1] || R2.rows[y - 2] || R2.rows[y + 2]);
+      const supported = (y) => (L2.rows[y] || L2.rows[y - 1] || L2.rows[y + 1] || L2.rows[y - 2] || L2.rows[y + 2]) && (R2.rows[y] || R2.rows[y - 1] || R2.rows[y + 1] || R2.rows[y - 2] || R2.rows[y + 2]);
       const bandMean = (ya, yb, y) => {
         let s = 0, n = 0;
         for (let k2 = ya; k2 <= yb; k2++) {
           const yy = Math.round(y + k2);
           if (yy < 2 || yy >= h - 2) return NaN;
-          const wid = xAt(R2, yy) - xAt(L, yy);
+          const wid = xAt(R2, yy) - xAt(L2, yy);
           if (wid < 3) return NaN;
-          const m = rowMean(yy, xAt(L, yy) + 0.2 * wid, xAt(R2, yy) - 0.2 * wid);
+          const m = rowMean(yy, xAt(L2, yy) + 0.2 * wid, xAt(R2, yy) - 0.2 * wid);
           if (Number.isFinite(m)) {
             s += m;
             n++;
@@ -10847,10 +12812,10 @@ ${url}`);
       const isThinLine = (f) => {
         const above = pAvg(-9, -4, f);
         const below = pAvg(4, 9, f);
-        const mid = pAvg(-1, 1, f);
-        if (![above, below, mid].every(Number.isFinite)) return false;
+        const mid2 = pAvg(-1, 1, f);
+        if (![above, below, mid2].every(Number.isFinite)) return false;
         const margin = Math.max(2.5, (above + below) / 2 * 0.03);
-        return mid < Math.min(above, below) - margin || mid > Math.max(above, below) + margin;
+        return mid2 < Math.min(above, below) - margin || mid2 > Math.max(above, below) + margin;
       };
       const isLaneToApproach = (f) => {
         const a = pAvg(-9, -4, f);
@@ -10896,7 +12861,7 @@ ${url}`);
           if (!white2(y) || white2(y - 1)) continue;
           let e = y;
           while (e < h - 3 && white2(e + 1)) e++;
-          const wid = xAt(R2, y) - xAt(L, y);
+          const wid = xAt(R2, y) - xAt(L2, y);
           const pinH = wid * (15 / 41.5) * 0.95;
           if (e - y + 1 >= 0.55 * pinH && e - y + 1 <= 2.8 * pinH + 1) {
             pinPit = y + 0.85 * pinH;
@@ -10911,7 +12876,7 @@ ${url}`);
           if (!bright(y) || bright(y - 1)) continue;
           let e = y;
           while (e < h - 3 && bright(e + 1)) e++;
-          const wid = xAt(R2, y) - xAt(L, y);
+          const wid = xAt(R2, y) - xAt(L2, y);
           const pinH = wid * (15 / 41.5) * 0.95;
           if (e - y + 1 >= 0.45 * pinH && e - y + 1 <= 1.6 * pinH + 1) {
             pinPit = y + pinH;
@@ -10947,7 +12912,7 @@ ${url}`);
             const pitLow = Math.max(0, Math.min(1, (p - (t - pitBefore)) / (pitBefore + pitAfter)));
             const belowP = pAvg(4, 10, p, plow);
             const laneMatch = Number.isFinite(laneLevel) && Number.isFinite(belowP) ? 1 - Math.min(1, Math.abs(belowP - laneLevel) / Math.max(20, laneLevel * 0.35)) : 0;
-            const wF = Math.max(1, xAt(R2, f) - xAt(L, f));
+            const wF = Math.max(1, xAt(R2, f) - xAt(L2, f));
             const dRows = LANE_END_FT * rho / (1 - rho);
             const fovDeg = 2 * Math.atan(Math.max(w, h) / 2 * (41.5 / 12) / (wF * dRows)) * 180 / Math.PI;
             const fovFit = h > w ? Math.exp(-0.5 * ((fovDeg - 58) / 28) ** 2) : Math.exp(-0.5 * ((fovDeg - 66) / 22) ** 2);
@@ -10956,7 +12921,7 @@ ${url}`);
           }
         }
       if (!best && diag2 && !diag2.hint) diag2.hint = "I found both lane edges but not the foul line and the end of the lane together. Tilt the phone so the foul line, the arrows and the pins are all in view.";
-      if (!best) return fallback(L, R2, t, b, yv, up, notes) ?? (dbg(`reject: no foul/pit pair foul ${foulCands.join(",")} pit ${pitCands.join(",")} yv ${yv.toFixed(1)} t ${t} b ${b} | ${tried.slice(0, 8).join(" ")} | L(${L.xa.toFixed(0)},${L.xb.toFixed(0)}) R(${R2.xa.toFixed(0)},${R2.xb.toFixed(0)})`), null);
+      if (!best) return fallback(L2, R2, t, b, yv, up, notes) ?? (dbg(`reject: no foul/pit pair foul ${foulCands.join(",")} pit ${pitCands.join(",")} yv ${yv.toFixed(1)} t ${t} b ${b} | ${tried.slice(0, 8).join(" ")} | L(${L2.xa.toFixed(0)},${L2.xb.toFixed(0)}) R(${R2.xa.toFixed(0)},${R2.xb.toFixed(0)})`), null);
       const centroid = (arr, y, r, base) => {
         let sw = 0;
         let sy = 0;
@@ -10972,12 +12937,12 @@ ${url}`);
         const A = pAvg(-10, -4, p, plow);
         const B = pAvg(4, 10, p, plow);
         if (!Number.isFinite(A) || !Number.isFinite(B) || Math.abs(A - B) < 6) return NaN;
-        const mid = (A + B) / 2;
+        const mid2 = (A + B) / 2;
         const rising = B > A;
         for (let y = p - 5; y <= p + 5; y++) {
           const a = plow[y], c2 = plow[y + 1];
           if (!Number.isFinite(a) || !Number.isFinite(c2)) continue;
-          if (rising ? a < mid && c2 >= mid : a > mid && c2 <= mid) return y + (mid - a) / (c2 - a || 1) + 0.5;
+          if (rising ? a < mid2 && c2 >= mid2 : a > mid2 && c2 <= mid2) return y + (mid2 - a) / (c2 - a || 1) + 0.5;
         }
         return NaN;
       };
@@ -10989,16 +12954,16 @@ ${url}`);
       }
       const foulOk = true;
       const pitOk = true;
-      const LR = refine(L.xa, L.xb, 1, Math.ceil(pit) + 4, Math.floor(foul) - 3, 2 * STEP);
-      const RR = refine(R2.xa, R2.xb, -1, Math.ceil(pit) + 4, Math.floor(foul) - 3, 2 * STEP);
-      L = { ...L, xa: LR.xa, xb: LR.xb };
+      const LR = refine(L2.xa, L2.xb, 1, Math.ceil(pit) + 4, Math.floor(foul) - 3, 2 * STEP2);
+      const RR = refine(R2.xa, R2.xb, -1, Math.ceil(pit) + 4, Math.floor(foul) - 3, 2 * STEP2);
+      L2 = { ...L2, xa: LR.xa, xb: LR.xb };
       R2 = { ...R2, xa: RR.xa, xb: RR.xb };
       const sideRow = (guess, side, kind2) => {
         let sw = 0;
         let sy = 0;
         for (let y = Math.round(guess) - 7; y <= Math.round(guess) + 7; y++) {
           if (y < 3 || y >= h - 3) continue;
-          const xl = xAt(L, y);
+          const xl = xAt(L2, y);
           const xr = xAt(R2, y);
           const wid = xr - xl;
           if (wid < 6) continue;
@@ -11042,10 +13007,10 @@ ${url}`);
       const fy = (fyL + fyR) / 2;
       const row60 = (r60L + r60R) / 2;
       const corners2 = [
-        { x: xAt(L, fyL), y: fyL },
+        { x: xAt(L2, fyL), y: fyL },
         { x: xAt(R2, fyR), y: fyR },
         { x: xAt(R2, r60R), y: r60R },
-        { x: xAt(L, r60L), y: r60L }
+        { x: xAt(L2, r60L), y: r60L }
       ];
       const wFoul = corners2[1].x - corners2[0].x;
       const fPx = Math.max(w, h) / 2 / Math.tan(ASSUMED_HFOV_DEG * Math.PI / 360);
@@ -11061,13 +13026,13 @@ ${url}`);
       const confidence = Math.max(0, Math.min(1, 0.35 * Math.min(1, c.base / 1.6) + 0.25 * (foulOk ? 1 : 0.2) + 0.3 * (pitOk ? 1 : 0) + 0.1 * Math.min(1, (fy - row60) / (h * 0.15))));
       return { corners: corners2, confidence, notes, rows: { foul: foulOk ? foul : null, pit: pitOk ? pit : null, vanishing: yv } };
     }
-    function fallback(L, R2, t, b, yv, up, notes) {
+    function fallback(L2, R2, t, b, yv, up, notes) {
       let pit = t;
       let pv = 0;
       for (let y = Math.max(3, Math.floor(t - 12)); y <= Math.min(h - 4, Math.floor(t + 16)); y++) if (up[y] > pv) pv = up[y], pit = y;
       const stepFound = pv > 0.2;
       if (!stepFound) pit = t;
-      const wPit = xAt(R2, pit) - xAt(L, pit);
+      const wPit = xAt(R2, pit) - xAt(L2, pit);
       if (wPit < 4) return null;
       const fPx = w / 2 / Math.tan(ASSUMED_HFOV_DEG * Math.PI / 360);
       const zPit = fPx * (41.5 / 12) / wPit;
@@ -11078,10 +13043,10 @@ ${url}`);
       const fy = rowAt(0);
       const r60 = rowAt(LANE_LEN);
       const corners2 = [
-        { x: xAt(L, fy), y: fy },
+        { x: xAt(L2, fy), y: fy },
         { x: xAt(R2, fy), y: fy },
         { x: xAt(R2, r60), y: r60 },
-        { x: xAt(L, r60), y: r60 }
+        { x: xAt(L2, r60), y: r60 }
       ];
       notes.push("foul line not visible: distances come from the lane's width and a typical phone field of view, so they are approximate");
       if (!stepFound) notes.push("end of lane not clearly visible");
@@ -11090,7 +13055,7 @@ ${url}`);
   }
   var isSolid = (d) => d.confidence >= 0.85 && d.rows.foul !== null && d.rows.pit !== null;
   function oneOfEach(list, w) {
-    const mid = (d) => (d.corners[0].x + d.corners[1].x) / 2;
+    const mid2 = (d) => (d.corners[0].x + d.corners[1].x) / 2;
     const wid = (d) => Math.abs(d.corners[1].x - d.corners[0].x);
     const out = [];
     for (const d of [...list].sort((a, b) => b.confidence - a.confidence)) {
@@ -11098,7 +13063,7 @@ ${url}`);
         const r = wid(o) / Math.max(1, wid(d));
         return (r > 1.15 && r < 2.4 || r < 1 / 1.15 && r > 1 / 2.4) && (Math.abs(o.corners[0].x - d.corners[0].x) < 0.03 * w || Math.abs(o.corners[1].x - d.corners[1].x) < 0.03 * w);
       };
-      const i = out.findIndex((o) => Math.abs(mid(o) - mid(d)) < 0.05 * w && wid(o) / Math.max(1, wid(d)) > 0.6 && wid(o) / Math.max(1, wid(d)) < 1.7 || sharesEdge(o));
+      const i = out.findIndex((o) => Math.abs(mid2(o) - mid2(d)) < 0.05 * w && wid(o) / Math.max(1, wid(d)) > 0.6 && wid(o) / Math.max(1, wid(d)) < 1.7 || sharesEdge(o));
       if (i < 0) out.push(d);
       else if (wid(d) < 0.85 * wid(out[i])) out[i] = d;
     }
@@ -11295,12 +13260,12 @@ ${url}`);
       for (let i = 1; i < h.pts.length; i++) if (h.pts[i].ly > h.pts[i - 1].ly + 0.05) fwd++;
       const st2 = [];
       for (let i = 1; i < h.pts.length; i++) st2.push({ x: h.pts[i].x - h.pts[i - 1].x, y: h.pts[i].y - h.pts[i - 1].y });
-      const mean3 = st2.length ? st2.reduce((acc, v) => acc + Math.hypot(v.x, v.y), 0) / st2.length : 0;
+      const mean9 = st2.length ? st2.reduce((acc, v) => acc + Math.hypot(v.x, v.y), 0) / st2.length : 0;
       let jerk = 0;
       for (let i = 1; i < st2.length; i++) jerk += Math.hypot(st2[i].x - st2[i - 1].x, st2[i].y - st2[i - 1].y);
-      jerk = st2.length > 1 ? jerk / (st2.length - 1) / Math.max(3, mean3) : 0;
+      jerk = st2.length > 1 ? jerk / (st2.length - 1) / Math.max(3, mean9) : 0;
       const maxStep = st2.reduce((acc, v) => Math.max(acc, Math.hypot(v.x, v.y)), 0);
-      return { mph, fwd: h.pts.length > 1 ? fwd / (h.pts.length - 1) : 0, span: b.ly - a.ly, jerk, jumpy: maxStep > 3 * mean3 + 8 };
+      return { mph, fwd: h.pts.length > 1 ? fwd / (h.pts.length - 1) : 0, span: b.ly - a.ly, jerk, jumpy: maxStep > 3 * mean9 + 8 };
     }
     /** Feed one frame (grayscale, grid size, and optionally red-minus-blue). `t` is the frame's time in seconds. */
     step(gray, t, chroma) {
@@ -11468,30 +13433,30 @@ ${url}`);
           this.hyps = [pick];
         }
       }
-      let lead = null;
-      if (this.confirmed) lead = this.hyps[0] ?? this.lead;
-      else lead = this.hyps.filter((x) => x.miss === 0 && x.pts.length >= 1).sort((a, b) => b.pts.length - 3 * (b.qsum / b.pts.length) - 2 * this.motion(b).jerk - (a.pts.length - 3 * (a.qsum / a.pts.length) - 2 * this.motion(a).jerk))[0] ?? null;
-      this.lead = lead;
+      let lead2 = null;
+      if (this.confirmed) lead2 = this.hyps[0] ?? this.lead;
+      else lead2 = this.hyps.filter((x) => x.miss === 0 && x.pts.length >= 1).sort((a, b) => b.pts.length - 3 * (b.qsum / b.pts.length) - 2 * this.motion(b).jerk - (a.pts.length - 3 * (a.qsum / a.pts.length) - 2 * this.motion(a).jerk))[0] ?? null;
+      this.lead = lead2;
       if (this.debug) this.dbg = { cands: cands.map((c) => ({ x: c.x, y: c.y, q: c.q, er: c.er, lx: c.lx, ly: c.ly, area: c.area })), hyps: this.hyps.map((x) => {
         const p = x.pts[x.pts.length - 1];
         return { id: x.id, n: x.pts.length, x: p.x, y: p.y, vx: x.vx, vy: x.vy, conf: x.confirmed, miss: x.miss };
-      }), lead: lead ? lead.id : null, fgBox: null };
-      if (lead) {
-        const n = lead.pts.length;
-        const pt2 = lead.pts[n - 1];
-        const matched = lead.miss === 0;
-        this.last = { x: pt2.x + (matched ? 0 : lead.vx * lead.miss), y: pt2.y + (matched ? 0 : lead.vy * lead.miss), vx: lead.vx, vy: lead.vy };
-        this.lost = lead.miss;
+      }), lead: lead2 ? lead2.id : null, fgBox: null };
+      if (lead2) {
+        const n = lead2.pts.length;
+        const pt2 = lead2.pts[n - 1];
+        const matched = lead2.miss === 0;
+        this.last = { x: pt2.x + (matched ? 0 : lead2.vx * lead2.miss), y: pt2.y + (matched ? 0 : lead2.vy * lead2.miss), vx: lead2.vx, vy: lead2.vy };
+        this.lost = lead2.miss;
         this.lastR = pt2.er;
-        this.lanePrev = Math.max(...lead.pts.map((p) => p.ly));
-        if (this.leadSeen !== lead.id) {
-          this.leadSeen = lead.id;
+        this.lanePrev = Math.max(...lead2.pts.map((p) => p.ly));
+        if (this.leadSeen !== lead2.id) {
+          this.leadSeen = lead2.id;
           this.recent = [];
         }
         this.lastLane = { x: pt2.lx, y: pt2.ly, t: pt2.t };
-        this.t0 = lead.pts[0].t;
-        this.path = lead.pts.map((p) => ({ t: p.t - this.t0, x: p.lx, y: p.ly }));
-        this.trail = lead.pts.map((p) => ({ x: p.x * this.s.scale, y: (p.by ?? p.y) * this.s.scale }));
+        this.t0 = lead2.pts[0].t;
+        this.path = lead2.pts.map((p) => ({ t: p.t - this.t0, x: p.lx, y: p.ly }));
+        this.trail = lead2.pts.map((p) => ({ x: p.x * this.s.scale, y: (p.by ?? p.y) * this.s.scale }));
         if (matched) {
           for (let i = 0; i < bg.length; i++) if (!fg[i]) bg[i] += (gray[i] - off - bg[i]) * 0.01;
           if (bgC && chroma) {
@@ -11603,7 +13568,7 @@ ${url}`);
     };
   }
   function samplePins(gray, w, h, boxes, ox = 0, oy = 0) {
-    const mean3 = (x0, y0, x1, y1) => {
+    const mean9 = (x0, y0, x1, y1) => {
       const a = Math.max(0, Math.floor(x0 - ox));
       const b = Math.min(w - 1, Math.ceil(x1 - ox) - 1);
       const c = Math.max(0, Math.floor(y0 - oy));
@@ -11619,14 +13584,14 @@ ${url}`);
     const cx1 = Math.max(...boxes.map((b) => b.x1));
     const cy0 = Math.min(...boxes.map((b) => b.y0));
     const cy1 = Math.max(...boxes.map((b) => b.y1));
-    const left = mean3(cx0 - wide * 2.4, cy0, cx0 - wide * 0.5, cy1);
-    const right = mean3(cx1 + wide * 0.5, cy0, cx1 + wide * 2.4, cy1);
+    const left = mean9(cx0 - wide * 2.4, cy0, cx0 - wide * 0.5, cy1);
+    const right = mean9(cx1 + wide * 0.5, cy0, cx1 + wide * 2.4, cy1);
     const ref = Number.isFinite(left) && Number.isFinite(right) ? (left + right) / 2 : Number.isFinite(left) ? left : right;
     return boxes.map((bx) => {
       const bw = bx.x1 - bx.x0;
       const bh = bx.y1 - bx.y0;
       const cells = [];
-      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) cells.push(mean3(bx.x0 + bw * c / COLS, bx.y0 + bh * r / ROWS, bx.x0 + bw * (c + 1) / COLS, bx.y0 + bh * (r + 1) / ROWS));
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) cells.push(mean9(bx.x0 + bw * c / COLS, bx.y0 + bh * r / ROWS, bx.x0 + bw * (c + 1) / COLS, bx.y0 + bh * (r + 1) / ROWS));
       const m = cells.reduce((s, v) => s + v, 0) / cells.length;
       return { id: bx.id, cells, mean: m, ref, ok: cells.every(Number.isFinite) && Number.isFinite(ref) };
     });
@@ -11673,7 +13638,7 @@ ${url}`);
   ];
   var stream = null;
   var corners = [];
-  var H = null;
+  var H2 = null;
   var Hinv = null;
   var trail = [];
   var lastShot = null;
@@ -11820,7 +13785,7 @@ ${url}`);
     driftRef = null;
     driftBad = 0;
     lastDriftCheck = performance.now();
-    H = solveHomography(corners, LANE_CORNERS);
+    H2 = solveHomography(corners, LANE_CORNERS);
     Hinv = solveHomography(LANE_CORNERS, corners);
     buildMask();
     stab = new Stabilizer(GW, GH);
@@ -11858,7 +13823,7 @@ ${url}`);
     const px = dctx.getImageData(0, 0, dcanvas.width, dcanvas.height).data;
     const g = new Uint8ClampedArray(dcanvas.width * dcanvas.height);
     for (let i = 0; i < g.length; i++) g[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
-    if (prevGray && prevGray.length === g.length && !H) {
+    if (prevGray && prevGray.length === g.length && !H2) {
       let d = 0, c = 0;
       for (let i = 0; i < g.length; i += 31) {
         d += Math.abs(g[i] - prevGray[i]);
@@ -11873,9 +13838,9 @@ ${url}`);
       sq += g[i] * g[i];
       n++;
     }
-    const mean3 = sum / n;
-    const sd3 = Math.sqrt(Math.max(0, sq / n - mean3 * mean3));
-    frameHint = mean3 < 38 ? "It's too dark to see the lane. Add light or move the phone toward the lights." : mean3 > 232 ? "The picture is washed out by glare. Angle the phone away from the bright reflections." : sd3 < 14 ? "The picture looks flat or out of focus. Wipe the lens and check the phone is focused on the lane." : "";
+    const mean9 = sum / n;
+    const sd3 = Math.sqrt(Math.max(0, sq / n - mean9 * mean9));
+    frameHint = mean9 < 38 ? "It's too dark to see the lane. Add light or move the phone toward the lights." : mean9 > 232 ? "The picture is washed out by glare. Angle the phone away from the bright reflections." : sd3 < 14 ? "The picture looks flat or out of focus. Wipe the lens and check the phone is focused on the lane." : "";
     return { g, w: dcanvas.width, h: dcanvas.height, k: video.videoWidth / dcanvas.width, px };
   }
   function chromaChannels(px, n) {
@@ -11952,10 +13917,10 @@ ${url}`);
   }
   function renderScan(hint = "") {
     const el = $("scan");
-    const show = document.body.classList.contains("live") && !H && mode !== "manual";
+    const show = document.body.classList.contains("live") && !H2 && mode !== "manual";
     el.classList.toggle("hide", !show);
     $("tracebtn").classList.toggle("hide", !(document.body.classList.contains("live") && mode !== "manual"));
-    $("tracebtn").textContent = H ? "Fix my lane" : "Trace my lane";
+    $("tracebtn").textContent = H2 ? "Fix my lane" : "Trace my lane";
     $("snapbtn").classList.toggle("hide", !(show && adjusted && pending));
     if (!show) return;
     if (mode === "choose") {
@@ -11979,7 +13944,7 @@ ${url}`);
   }
   function drawScanner(now) {
     const s = overlay.width / 1280;
-    const W = overlay.width;
+    const W2 = overlay.width;
     const Hh = overlay.height;
     ctx.save();
     const y = now / 2200 % 1 * Hh;
@@ -11987,17 +13952,17 @@ ${url}`);
     grad.addColorStop(0, "rgba(70,230,255,0)");
     grad.addColorStop(1, "rgba(70,230,255,.28)");
     ctx.fillStyle = grad;
-    ctx.fillRect(0, y - 60 * s, W, 66 * s);
+    ctx.fillRect(0, y - 60 * s, W2, 66 * s);
     ctx.fillStyle = "rgba(160,245,255,.9)";
     ctx.shadowColor = "rgba(70,230,255,.9)";
     ctx.shadowBlur = 14 * s;
-    ctx.fillRect(0, y, W, 2.5 * s);
+    ctx.fillRect(0, y, W2, 2.5 * s);
     ctx.shadowBlur = 0;
     const pad = 22 * s;
     const len = 48 * s;
     ctx.strokeStyle = `rgba(70,230,255,${0.55 + 0.4 * Math.sin(now / 350)})`;
     ctx.lineWidth = 4 * s;
-    for (const [cx, cy, dx, dy] of [[pad, pad, 1, 1], [W - pad, pad, -1, 1], [pad, Hh - pad, 1, -1], [W - pad, Hh - pad, -1, -1]]) {
+    for (const [cx, cy, dx, dy] of [[pad, pad, 1, 1], [W2 - pad, pad, -1, 1], [pad, Hh - pad, 1, -1], [W2 - pad, Hh - pad, -1, -1]]) {
       ctx.beginPath();
       ctx.moveTo(cx, cy + dy * len);
       ctx.lineTo(cx, cy);
@@ -12226,7 +14191,7 @@ ${url}`);
     return tot > 0 && hit / tot >= 0.5;
   }
   function driftCheck(now) {
-    if (!H || mode !== "auto" || path.length || now < cooldownUntil || now - lastDriftCheck < 2500) return;
+    if (!H2 || mode !== "auto" || path.length || now < cooldownUntil || now - lastDriftCheck < 2500) return;
     lastDriftCheck = now;
     const cur2 = edgeMap(gridGray(), GW, GH);
     if (!driftRef) {
@@ -12244,7 +14209,7 @@ ${url}`);
     if (moved) {
       const k2 = video.videoWidth / GW;
       corners = corners.map((p) => ({ x: p.x + m.dx * k2, y: p.y + m.dy * k2 }));
-      H = solveHomography(corners, LANE_CORNERS);
+      H2 = solveHomography(corners, LANE_CORNERS);
       Hinv = solveHomography(LANE_CORNERS, corners);
       buildMask();
       tracker = null;
@@ -12265,7 +14230,7 @@ ${url}`);
   var arrowTries = 0;
   var lastArrowAt = 0;
   function arrowTick(now) {
-    if (arrowTries >= 10 || !H || !armed || path.length || now < cooldownUntil || now - lastArrowAt < 1500) return;
+    if (arrowTries >= 10 || !H2 || !armed || path.length || now < cooldownUntil || now - lastArrowAt < 1500) return;
     lastArrowAt = now;
     arrowTries++;
     const w = Math.min(MAX_DW, video.videoWidth);
@@ -12324,7 +14289,7 @@ ${url}`);
   var pinRefDone = false;
   var lastPinRefAt = 0;
   function pinRefineTick(now) {
-    if (pinRefDone || !H || !armed || path.length || now < cooldownUntil || now - lastPinRefAt < 1200) return;
+    if (pinRefDone || !H2 || !armed || path.length || now < cooldownUntil || now - lastPinRefAt < 1200) return;
     if (!/^(automatic|you picked it|your saved setup)/.test(lastLockHow)) return void (pinRefDone = true);
     lastPinRefAt = now;
     const w = Math.min(MAX_DW, video.videoWidth);
@@ -12369,7 +14334,7 @@ ${url}`);
   overlay.addEventListener("pointerup", endDrag);
   overlay.addEventListener("pointercancel", endDrag);
   overlay.addEventListener("pointerdown", (e) => {
-    if (H) return;
+    if (H2) return;
     if (pending && (mode === "auto" || mode === "tap")) {
       const p = overlayPt(e);
       const reach = 56 * (overlay.width / Math.max(1, overlay.getBoundingClientRect().width));
@@ -12470,18 +14435,18 @@ ${url}`);
   $("manualbtn").onclick = () => openTrace();
   $("tracebtn").onclick = () => openTrace();
   function openTrace(from) {
-    const W = video.videoWidth;
+    const W2 = video.videoWidth;
     const Hh = video.videoHeight;
-    if (!W || tracing) return;
-    const frame = document.createElement("canvas");
-    frame.width = W;
-    frame.height = Hh;
-    frame.getContext("2d").drawImage(video, 0, 0);
-    const start = from ?? (H && corners.length === 4 ? corners.map((p) => ({ ...p })) : null) ?? lastCandidates[0]?.corners ?? [
-      { x: W * 0.22, y: Hh * 0.92 },
-      { x: W * 0.78, y: Hh * 0.92 },
-      { x: W * 0.55, y: Hh * 0.36 },
-      { x: W * 0.45, y: Hh * 0.36 }
+    if (!W2 || tracing) return;
+    const frame2 = document.createElement("canvas");
+    frame2.width = W2;
+    frame2.height = Hh;
+    frame2.getContext("2d").drawImage(video, 0, 0);
+    const start = from ?? (H2 && corners.length === 4 ? corners.map((p) => ({ ...p })) : null) ?? lastCandidates[0]?.corners ?? [
+      { x: W2 * 0.22, y: Hh * 0.92 },
+      { x: W2 * 0.78, y: Hh * 0.92 },
+      { x: W2 * 0.55, y: Hh * 0.36 },
+      { x: W2 * 0.45, y: Hh * 0.36 }
     ];
     tracing = true;
     chooseList = [];
@@ -12494,23 +14459,23 @@ ${url}`);
     $("confirm").classList.add("hide");
     $("manualbtn").classList.add("hide");
     openLaneTrace({
-      frame,
+      frame: frame2,
       start,
       snap: (c) => {
-        const k2 = Math.min(1, 640 / Math.max(W, Hh));
+        const k2 = Math.min(1, 640 / Math.max(W2, Hh));
         const tmp = document.createElement("canvas");
-        tmp.width = Math.round(W * k2);
+        tmp.width = Math.round(W2 * k2);
         tmp.height = Math.round(Hh * k2);
         const tctx = tmp.getContext("2d", { willReadFrequently: true });
-        tctx.drawImage(frame, 0, 0, tmp.width, tmp.height);
+        tctx.drawImage(frame2, 0, 0, tmp.width, tmp.height);
         const px = tctx.getImageData(0, 0, tmp.width, tmp.height).data;
         const gr = new Uint8ClampedArray(tmp.width * tmp.height);
         for (let i = 0; i < gr.length; i++) gr[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
-        const mid = { x: (c[0].x + c[1].x + c[2].x + c[3].x) / 4, y: (c[0].y + c[1].y + c[2].y + c[3].y) / 4 };
-        let d = detectLaneAt(gr, tmp.width, tmp.height, mid.x * k2, mid.y * k2);
+        const mid2 = { x: (c[0].x + c[1].x + c[2].x + c[3].x) / 4, y: (c[0].y + c[1].y + c[2].y + c[3].y) / 4 };
+        let d = detectLaneAt(gr, tmp.width, tmp.height, mid2.x * k2, mid2.y * k2);
         if (!d) {
           const alts = detectLanes(gr, tmp.width, tmp.height, 4);
-          d = alts.sort((a, b) => Math.hypot(centerOf(a.corners).x - mid.x * k2, centerOf(a.corners).y - mid.y * k2) - Math.hypot(centerOf(b.corners).x - mid.x * k2, centerOf(b.corners).y - mid.y * k2))[0] ?? null;
+          d = alts.sort((a, b) => Math.hypot(centerOf(a.corners).x - mid2.x * k2, centerOf(a.corners).y - mid2.y * k2) - Math.hypot(centerOf(b.corners).x - mid2.x * k2, centerOf(b.corners).y - mid2.y * k2))[0] ?? null;
         }
         return d ? d.corners.map((p) => ({ x: p.x / k2, y: p.y / k2 })) : null;
       },
@@ -12520,7 +14485,7 @@ ${url}`);
       },
       onCancel: () => {
         tracing = false;
-        status.textContent = H ? "Kept your lane lock." : "Looking for the lane again\u2026";
+        status.textContent = H2 ? "Kept your lane lock." : "Looking for the lane again\u2026";
         renderScan();
       }
     });
@@ -12529,11 +14494,11 @@ ${url}`);
     if (!pending) return;
     const f = grabGray();
     const c = pending.corners;
-    const mid = { x: (c[0].x + c[1].x + c[2].x + c[3].x) / 4, y: (c[0].y + c[1].y + c[2].y + c[3].y) / 4 };
-    let d = detectLaneAt(f.g, f.w, f.h, mid.x / f.k, mid.y / f.k);
+    const mid2 = { x: (c[0].x + c[1].x + c[2].x + c[3].x) / 4, y: (c[0].y + c[1].y + c[2].y + c[3].y) / 4 };
+    let d = detectLaneAt(f.g, f.w, f.h, mid2.x / f.k, mid2.y / f.k);
     if (!d) {
       const alts = detectLanes(f.g, f.w, f.h, 4).map((x) => scaled(x, f.k));
-      const near = alts.sort((a, b) => Math.hypot(centerOf(a.corners).x - mid.x, centerOf(a.corners).y - mid.y) - Math.hypot(centerOf(b.corners).x - mid.x, centerOf(b.corners).y - mid.y))[0];
+      const near = alts.sort((a, b) => Math.hypot(centerOf(a.corners).x - mid2.x, centerOf(a.corners).y - mid2.y) - Math.hypot(centerOf(b.corners).x - mid2.x, centerOf(b.corners).y - mid2.y))[0];
       if (near) d = { ...near, corners: near.corners.map((p) => ({ x: p.x / f.k, y: p.y / f.k })) };
     }
     if (!d) {
@@ -12559,7 +14524,7 @@ ${url}`);
       setTimeout(() => URL.revokeObjectURL(a.href), 4e3);
     };
     const dets = detectLanes(f.g, f.w, f.h, 3).map((d) => scaled(d, f.k));
-    dl(new Blob([JSON.stringify({ video: { w: video.videoWidth, h: video.videoHeight }, lockedCorners: H ? corners : null, candidates: dets.map((d) => ({ corners: d.corners, confidence: d.confidence, rows: d.rows, notes: d.notes })), at: (/* @__PURE__ */ new Date()).toISOString() }, null, 2)], { type: "application/json" }), `laneiq-frame-${stamp}.json`);
+    dl(new Blob([JSON.stringify({ video: { w: video.videoWidth, h: video.videoHeight }, lockedCorners: H2 ? corners : null, candidates: dets.map((d) => ({ corners: d.corners, confidence: d.confidence, rows: d.rows, notes: d.notes })), at: (/* @__PURE__ */ new Date()).toISOString() }, null, 2)], { type: "application/json" }), `laneiq-frame-${stamp}.json`);
     await new Promise((r) => setTimeout(r, 500));
     full.toBlob((b) => b && dl(b, `laneiq-frame-${stamp}.jpg`), "image/jpeg", 0.92);
     status.textContent = "Saved the frame and the detector's results to your downloads.";
@@ -12585,7 +14550,7 @@ ${url}`);
     pending = null;
     adjusted = false;
     corners = [];
-    H = null;
+    H2 = null;
     Hinv = null;
     lastShot = null;
     trail = [];
@@ -12648,10 +14613,10 @@ ${url}`);
   }
   function applyView() {
     const stage = $("stage");
-    const W = stage.clientWidth;
+    const W2 = stage.clientWidth;
     const Hh = stage.clientHeight;
     const z = zoomCaps ? 1 : zoomNow;
-    const mx = (z - 1) * W / 2;
+    const mx = (z - 1) * W2 / 2;
     const my = (z - 1) * Hh / 2;
     panX = Math.max(-mx, Math.min(mx, panX));
     panY = Math.max(-my, Math.min(my, panY));
@@ -12672,7 +14637,7 @@ ${url}`);
         status.textContent = "This phone would not change the camera zoom.";
       }
       applyView();
-      if (dropLock && (H || pending)) {
+      if (dropLock && (H2 || pending)) {
         relock(false);
         status.textContent = `Zoom ${zoomNow.toFixed(1)}\xD7: looking for the lane again at this zoom\u2026`;
       }
@@ -12743,7 +14708,7 @@ ${url}`);
           localStorage.setItem(ZOOM_KEY, String(zoomNow));
         } catch {
         }
-        if (zoomCaps && (H || pending)) {
+        if (zoomCaps && (H2 || pending)) {
           clearTimeout(relockTimer);
           relockTimer = setTimeout(() => {
             relock(false);
@@ -12762,7 +14727,7 @@ ${url}`);
       e.preventDefault();
       const z = zoomNow * Math.exp(-e.deltaY * 15e-4);
       void setZoom(z, false).then(() => {
-        if (zoomCaps && (H || pending)) {
+        if (zoomCaps && (H2 || pending)) {
           clearTimeout(relockTimer);
           relockTimer = setTimeout(() => relock(false), 700);
         }
@@ -12771,8 +14736,8 @@ ${url}`);
     { passive: false }
   );
   $("expandbtn").onclick = () => {
-    const on = document.body.classList.toggle("expanded");
-    $("expandbtn").textContent = on ? "Close" : "Expand";
+    const on2 = document.body.classList.toggle("expanded");
+    $("expandbtn").textContent = on2 ? "Close" : "Expand";
     window.scrollTo(0, 0);
     applyView();
   };
@@ -12878,14 +14843,14 @@ ${url}`);
     renderBall(S.shots.at(-1));
   }
   var rec = null;
-  function pickMime() {
+  function pickMime2() {
     for (const m of ["video/mp4", "video/webm;codecs=vp9", "video/webm"]) if (window.MediaRecorder?.isTypeSupported?.(m)) return m;
     return void 0;
   }
   function startRecording(startT) {
     if (!stream || !window.MediaRecorder || S.demo) return;
     try {
-      const mime = pickMime();
+      const mime = pickMime2();
       const mr = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 6e6 } : void 0);
       const chunks = [];
       mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
@@ -12909,14 +14874,14 @@ ${url}`);
   function drawOverlay(now) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, overlay.width, overlay.height);
-    if (H && armed && stab?.ready && viewMode === "lane") ctx.translate(shakeVX, shakeVY);
+    if (H2 && armed && stab?.ready && viewMode === "lane") ctx.translate(shakeVX, shakeVY);
     if (viewMode === "3d") return sync3D();
     if (enrolling) return;
-    if (!H) drawScanner(now);
+    if (!H2) drawScanner(now);
     if (viewMode !== "lane") return;
     const v = view2();
     drawCorners(v, corners);
-    if (!H && candidate) {
+    if (!H2 && candidate) {
       const s = overlay.width / 1280;
       ctx.save();
       ctx.setLineDash([10 * s, 8 * s]);
@@ -12928,7 +14893,7 @@ ${url}`);
       ctx.stroke();
       ctx.restore();
     }
-    if (!H || !Hinv) return;
+    if (!H2 || !Hinv) return;
     drawLaneGrid(v);
     for (const a of arrowsRead) {
       const s = overlay.width / 1280;
@@ -12976,7 +14941,7 @@ ${url}`);
     const el = document.getElementById("diag");
     const ts = tracker?.stats;
     const lockPct = laneMask ? Math.round(laneMask.reduce((a, m) => a + m, 0) / laneMask.length * 100) : 0;
-    if (el) el.textContent = `Camera ${cameraFps || "?"} fps${cameraFps && cameraFps < 50 ? capFps >= 50 ? " (the phone can do " + Math.round(capFps) + " but gave this: try more light)" : " (all this phone gave the browser)" : ""}${deliv.fps ? ` \xB7 arriving ${deliv.fps}/s` : ""} \xB7 analysing ${diag.perSec}/s \xB7 ball ${diag.ballSeen ? "seen" : "not seen"} \xB7 lane lock ${H ? armed ? `on, covers ${lockPct}% of the picture` : "paused" : "searching"}${ts && H && armed ? ` \xB7 moving pixels ${ts.fg}, blobs ${ts.blobs}, ball-like ${ts.cands} (dropped: wrong size ${ts.size}, wrong shape ${ts.shape}, off the lane ${ts.offLane})` : ""}`;
+    if (el) el.textContent = `Camera ${cameraFps || "?"} fps${cameraFps && cameraFps < 50 ? capFps >= 50 ? " (the phone can do " + Math.round(capFps) + " but gave this: try more light)" : " (all this phone gave the browser)" : ""}${deliv.fps ? ` \xB7 arriving ${deliv.fps}/s` : ""} \xB7 analysing ${diag.perSec}/s \xB7 ball ${diag.ballSeen ? "seen" : "not seen"} \xB7 lane lock ${H2 ? armed ? `on, covers ${lockPct}% of the picture` : "paused" : "searching"}${ts && H2 && armed ? ` \xB7 moving pixels ${ts.fg}, blobs ${ts.blobs}, ball-like ${ts.cands} (dropped: wrong size ${ts.size}, wrong shape ${ts.shape}, off the lane ${ts.offLane})` : ""}`;
   }
   var shotsOn = true;
   var oneShot = false;
@@ -12993,23 +14958,23 @@ ${url}`);
     o.textContent = `One shot at a time: ${oneShot ? "on" : "off"}`;
     o.classList.toggle("sel", oneShot);
     const el = $("ready");
-    if (H && armed && !shotsOn) {
+    if (H2 && armed && !shotsOn) {
       el.textContent = "STOPPED";
       el.classList.remove("go", "scan");
       el.classList.add("ask");
     } else if (el.textContent === "STOPPED") {
-      setReady(!!(H && armed));
+      setReady(!!(H2 && armed));
       el.classList.remove("ask");
     }
   }
-  function setShotsOn(on, msg, keepClip = false) {
-    if (on === shotsOn) return paintStartStop();
-    shotsOn = on;
-    logTrack(on ? "started" : "stopped", { oneShot });
+  function setShotsOn(on2, msg, keepClip = false) {
+    if (on2 === shotsOn) return paintStartStop();
+    shotsOn = on2;
+    logTrack(on2 ? "started" : "stopped", { oneShot });
     resetTrack();
     candHist.length = 0;
     histActive = false;
-    if (!on) {
+    if (!on2) {
       if (pendingClip && !keepClip) void attachClip();
       else if (recActive && !pendingClip) discardRecording();
       status.textContent = msg ?? (oneShot ? "Stopped. Tap Start when it is your turn." : "Stopped: no shots are being recorded. Tap Start to record again.");
@@ -13046,7 +15011,7 @@ ${url}`);
     recActive = true;
     recBeganAt = performance.now();
     startRecording(media);
-    logTrack("recording started", { recorder: !!rec, mime: pickMime() ?? "default", hasMediaRecorder: !!window.MediaRecorder });
+    logTrack("recording started", { recorder: !!rec, mime: pickMime2() ?? "default", hasMediaRecorder: !!window.MediaRecorder });
   }
   function discardRecording() {
     recActive = false;
@@ -13071,6 +15036,7 @@ ${url}`);
     }
     await updateShot(p.shot);
     if (p.shot.hasClip) void queueSpin(p.shot, { blob: clip.blob, busy: () => recActive || !!pendingClip });
+    if (p.shot.hasClip) void queueBody(p.shot, { blob: clip.blob, busy: () => recActive || !!pendingClip, auto: true });
   }
   function approachWatch(g, media, now) {
     const sm = new Float32Array(Math.ceil(g.length / MOTION_STEP));
@@ -13141,12 +15107,12 @@ ${url}`);
     }
     if (tracing) return;
     const now = performance.now();
-    diagTick(now, !!(H && laneMask && armed && !enrolling), !!lastBlob);
+    diagTick(now, !!(H2 && laneMask && armed && !enrolling), !!lastBlob);
     drawOverlay(now);
     enrollTick(now);
-    if (!H) autoDetectTick(now);
+    if (!H2) autoDetectTick(now);
     else if (armed) driftCheck(now), pinWatch(now), pinRefineTick(now), arrowTick(now), resetWatch(now);
-    if (!H || !laneMask || !armed || enrolling) return;
+    if (!H2 || !laneMask || !armed || enrolling) return;
     if (!shotsOn) return;
     if (cameraFps > 90 && ++skipCount % Math.round(cameraFps / 60) !== 0) return;
     wctx.drawImage(video, 0, 0, GW, GH);
@@ -13174,7 +15140,7 @@ ${url}`);
         status.textContent = "The picture is moving too much for me to follow. Hold the phone steadier, or tap Re-lock.";
       }
     }
-    if (!tracker) tracker = new BallTracker({ w: GW, h: GH, mask: laneMask, H, Hinv, scale: video.videoWidth / GW });
+    if (!tracker) tracker = new BallTracker({ w: GW, h: GH, mask: laneMask, H: H2, Hinv, scale: video.videoWidth / GW });
     const ft = frameClock(meta, now);
     if (!tracker.confirmed && !pendingClip) approachWatch(g2, ft, now);
     if (recActive && !pendingClip && !tracker.confirmed && now - recBeganAt > 3e4) {
@@ -13292,25 +15258,25 @@ ${url}`);
     });
     if (fresh2) {
       const top = Math.min(...boxes.map((b) => b.y0)) - 34 * s;
-      const mid = (Math.min(...boxes.map((b) => b.x0)) + Math.max(...boxes.map((b) => b.x1))) / 2;
+      const mid2 = (Math.min(...boxes.map((b) => b.x0)) + Math.max(...boxes.map((b) => b.x1))) / 2;
       const text = fresh2.down === 10 ? "STRIKE" : `${fresh2.down} DOWN`;
       ctx.font = `800 ${16 * s}px system-ui`;
       ctx.textAlign = "center";
       ctx.lineWidth = 4 * s;
       ctx.strokeStyle = "rgba(0,0,0,.85)";
-      ctx.strokeText(text, mid, top);
+      ctx.strokeText(text, mid2, top);
       ctx.fillStyle = fresh2.down === 10 ? "#5affb0" : "#ffd25a";
-      ctx.fillText(text, mid, top);
+      ctx.fillText(text, mid2, top);
     }
     ctx.restore();
   }
-  var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
+  var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
   async function readPinfall(shot, start, full) {
     if (!start && !full) return;
     const counts = [];
     const stands = [];
     for (const wait of [900, 400, 400, 400, 400, 400]) {
-      await sleep2(wait);
+      await sleep3(wait);
       const cur2 = lookAtPins();
       const r = cur2 ? pinfallNow(start, full, cur2) : null;
       counts.push(r ? r.down : null);
@@ -13402,12 +15368,12 @@ ${url}`);
   $("start").onclick = () => Promise.resolve().then(() => startCamera()).catch((e) => status.textContent = `Camera error: ${e.message}. Camera needs an https:// address.`);
   function synthPath(startX, bp, entryX, speedFtS) {
     const out = [];
-    const mid = startX + 3;
+    const mid2 = startX + 3;
     for (let i = 0; i < 400; i++) {
       const t = i / 60;
       const y = speedFtS * t;
       if (y > 59) break;
-      const x = y <= bp ? startX + (mid - startX) * Math.sin(Math.PI / 2 * (y / bp)) : mid + (entryX - mid) * ((y - bp) / (59.5 - bp)) ** 2;
+      const x = y <= bp ? startX + (mid2 - startX) * Math.sin(Math.PI / 2 * (y / bp)) : mid2 + (entryX - mid2) * ((y - bp) / (59.5 - bp)) ** 2;
       out.push({ t, x, y });
     }
     return out;
@@ -13449,7 +15415,7 @@ ${url}`);
     overlay.height = 720;
     $("stage").style.background = "linear-gradient(#1a1410, #3a2a1c 55%, #8a6a44)";
     corners = [{ x: 330, y: 640 }, { x: 950, y: 640 }, { x: 700, y: 200 }, { x: 580, y: 200 }];
-    H = solveHomography(corners, LANE_CORNERS);
+    H2 = solveHomography(corners, LANE_CORNERS);
     Hinv = solveHomography(LANE_CORNERS, corners);
     setStep(4);
     setReady(true);
@@ -13495,6 +15461,7 @@ ${url}`);
   (async () => {
     captureIncomingHash();
     initTabs();
+    initCoachLive();
     await loadReference();
     const dl = document.getElementById("catalog-list");
     const fill = () => dl && (dl.innerHTML = S.catalog.map((b) => `<option value="${(b.manufacturer + " " + b.name).replace(/"/g, "&quot;")}">`).join(""));
