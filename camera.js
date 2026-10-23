@@ -53,6 +53,19 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-25-crews",
+      date: "2026-10-25",
+      title: "Crews: bowl with friends anywhere",
+      items: [
+        "Crews: start a crew and send the link to friends in any state. A crew shares challenges, bowl nights and cheers, nothing else.",
+        "Challenges: pins over your own average (the default, so a beginner and a 220 bowler can both win), best game, most strikes, most days bowled, or a practice drill. Your result goes up on its own from your finished games.",
+        "Crew against crew: challenge another crew with a link. They accept it for one of their crews, and each crew is scored by the average of the bowlers who took part, so size doesn't decide it.",
+        "Bowl nights: plan a night, say I'm in, and see who is coming. The easiest way to get everyone out.",
+        "Cheers: a short set of kind messages (Nice one, Strike, Great improvement, Let's bowl, You've got this, New personal best). There is no chat and no comments.",
+        "No server: every phone keeps its own copy and an update link merges into everyone else's, whoever sends it and in whatever order. Not available on a junior profile."
+      ]
+    },
+    {
       id: "2026-10-24-league-juniors",
       date: "2026-10-24",
       title: "League night, and a place for juniors, parents and coaches",
@@ -436,6 +449,8 @@
     { term: "Handicap", cat: "Scoring", def: "Pins a league adds to a bowler's score so bowlers of different skill can compete. Usually a percent of the gap between a base score (often 200 to 220) and the bowler's average, rounded down: (210 \u2212 150) \xD7 90% = 54 pins a game. Each league sets its own base and percent.", app: "League night uses the league's own base, percent and cap, and the average from before each week." },
     { term: "Entering average", cat: "Scoring", aka: ["book average"], def: "A bowler's average coming into a league season, used for handicap until they have bowled enough games for their real average to count." },
     { term: "Pins over average", cat: "Scoring", def: "How many pins a bowler bowled above the average they came in with that week. It rewards beating your own number, whatever it is.", app: "One of the three ways League night ranks, next to handicap and scratch. Junior progress cards use the same idea: growth against your own earlier weeks." },
+    { term: "Crew", cat: "LaneIQ", def: "Friends anywhere who bowl together without being in the same place. A crew runs challenges (inside the crew, or against another crew), plans bowl nights, and sends each other cheers. There is no chat and no comments, so it stays friendly.", app: "Crews are shared by link: nothing is uploaded, and an update merges into every member's copy. Not available on a junior profile." },
+    { term: "Crew challenge", cat: "LaneIQ", def: "A short contest for a crew, usually a week: pins over your own average (the default, so every bowler can win), best game, most strikes, most days bowled, or a practice drill. Against another crew, each crew scores the average of the bowlers who took part, so a bigger crew has no advantage.", app: "Your result goes up from your own finished games. It runs on the honour system, which is right for friends." },
     { term: "Progress card", cat: "LaneIQ", def: "A short summary of a young bowler's last month, sent to a parent or coach: average, high game, spares, pocket hits and what improved, always against the bowler's own earlier weeks, never other children. It holds no video, location or full name." },
     { term: "Bowler DNA", cat: "LaneIQ", def: "A shareable card with your speed, rev rate, axis, PAP, entry angle, pocket and strike rate, each marked measured or entered." }
   ];
@@ -848,23 +863,23 @@
   var isFriendCode = (s) => /^[2-9A-HJKMNP-Z]{8}$/.test(s);
   var cleanUsername = (s) => s.trim().replace(/^@/, "").toLowerCase();
   var isUsername = (s) => /^[a-z0-9_]{3,20}$/.test(s);
-  var friendTag = (username, code) => `${username}#${code}`;
+  var friendTag = (username, code2) => `${username}#${code2}`;
   function parseFriendTag(s) {
     const m = /^@?([A-Za-z0-9_]{3,20})\s*#\s*([A-Za-z0-9]{8})$/.exec(s.trim());
     if (!m) return null;
-    const code = m[2].toUpperCase();
-    return isFriendCode(code) ? { username: m[1].toLowerCase(), code } : null;
+    const code2 = m[2].toUpperCase();
+    return isFriendCode(code2) ? { username: m[1].toLowerCase(), code: code2 } : null;
   }
-  function encodeInvite(name, code, username) {
-    return `${b64urlEncode(name.slice(0, 40))}.${code}${username && isUsername(username) ? "." + username : ""}`;
+  function encodeInvite(name, code2, username) {
+    return `${b64urlEncode(name.slice(0, 40))}.${code2}${username && isUsername(username) ? "." + username : ""}`;
   }
   function decodeInvite(s) {
-    const [n, code, u] = s.split(".");
-    if (!n || !code || !isFriendCode(code)) return null;
+    const [n, code2, u] = s.split(".");
+    if (!n || !code2 || !isFriendCode(code2)) return null;
     try {
       const name = b64urlDecode(n).trim();
       if (!name) return null;
-      return u && isUsername(u) ? { name, code, username: u } : { name, code };
+      return u && isUsername(u) ? { name, code: code2, username: u } : { name, code: code2 };
     } catch {
       return null;
     }
@@ -1491,6 +1506,8 @@
     leagues: [],
     boards: {},
     cards: [],
+    /** crews of friends (see core/src/crew.ts): this phone's copy of each */
+    crews: [],
     /** the practice drill under way, and every finished one */
     drill: null,
     drills: []
@@ -1517,6 +1534,7 @@
     S.leagues = await dbGet(id, "meta", "leagues").catch(() => null) ?? [];
     S.boards = await dbGet(id, "meta", "boards").catch(() => null) ?? {};
     S.cards = await dbGet(id, "meta", "cards").catch(() => null) ?? [];
+    S.crews = await dbGet(id, "meta", "crews").catch(() => null) ?? [];
     S.drill = await dbGet(id, "meta", "drill").catch(() => null) ?? null;
     S.drills = await dbGet(id, "meta", "drills").catch(() => null) ?? [];
     if (p && !p.friendCode) {
@@ -1644,6 +1662,8 @@
       await dbPut(S.profile.id, "meta", S.boards, "boards").catch(() => {
       });
       await dbPut(S.profile.id, "meta", S.cards, "cards").catch(() => {
+      });
+      await dbPut(S.profile.id, "meta", S.crews, "crews").catch(() => {
       });
     }
     changed();
@@ -1929,10 +1949,10 @@
     const fresh2 = seen() !== LATEST_NOTE_ID;
     box.innerHTML = `<button class="chip" id="notes-open">${fresh2 ? "NEW \xB7 " : ""}What's new</button>`;
     document.getElementById("notes-open").onclick = () => {
-      const sheet9 = document.getElementById("notes");
-      sheet9.classList.add("on");
-      sheet9.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc(n.title)} <span class="note">${esc(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}`;
-      document.getElementById("notes-close").onclick = () => (sheet9.classList.remove("on"), sheet9.innerHTML = "");
+      const sheet10 = document.getElementById("notes");
+      sheet10.classList.add("on");
+      sheet10.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc(n.title)} <span class="note">${esc(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}`;
+      document.getElementById("notes-close").onclick = () => (sheet10.classList.remove("on"), sheet10.innerHTML = "");
       markSeen();
       document.getElementById("notes-open").textContent = "What's new";
     };
@@ -2364,12 +2384,12 @@
     };
     cv.addEventListener("pointerup", up);
     cv.addEventListener("pointercancel", up);
-    const close10 = () => {
+    const close11 = () => {
       cancelAnimationFrame(raf3);
       window.removeEventListener("resize", onResize);
       root.remove();
     };
-    root.querySelector("#tl-cancel").onclick = () => (close10(), o.onCancel());
+    root.querySelector("#tl-cancel").onclick = () => (close11(), o.onCancel());
     root.querySelectorAll(".tl-mode").forEach((b) => b.onclick = () => setMode2(b.dataset.mode));
     root.querySelector("#tl-reset").onclick = () => (c = initial.map((p) => ({ ...p })), anchors = makeAnchors(), touched = false, setMode2("lane"));
     root.querySelector("#tl-snap").onclick = () => {
@@ -2386,7 +2406,7 @@
       const area2 = Math.abs(c.reduce((a, p, i) => a + (p.x * c[(i + 1) % 4].y - c[(i + 1) % 4].x * p.y), 0)) / 2;
       if (area2 < cv.width * cv.height * 0.01) return void (hint.textContent = "The lane outline is too small. Drag the dots out onto the lane.");
       const out = c.map((p) => ({ x: p.x / k0, y: p.y / k0 }));
-      close10();
+      close11();
       o.onConfirm(out);
     };
   }
@@ -3396,8 +3416,8 @@
         const inner = (at3(x - ux * 2, y - uy * 2) + at3(x - ux * 3, y - uy * 3)) / 2, outer2 = (at3(x + ux * 2, y + uy * 2) + at3(x + ux * 3, y + uy * 3)) / 2;
         row[ri] = Math.abs(outer2 - inner);
         if (fgScore) {
-          const fin = (fgAt(x - ux * 3, y - uy * 3) + fgAt(x - ux * 5, y - uy * 5)) / 2, fout = (fgAt(x + ux * 3, y + uy * 3) + fgAt(x + ux * 5, y + uy * 5)) / 2;
-          row[ri] = 0.35 * row[ri] + 0.65 * Math.max(0, fin - fout);
+          const fin2 = (fgAt(x - ux * 3, y - uy * 3) + fgAt(x - ux * 5, y - uy * 5)) / 2, fout = (fgAt(x + ux * 3, y + uy * 3) + fgAt(x + ux * 5, y + uy * 5)) / 2;
+          row[ri] = 0.35 * row[ri] + 0.65 * Math.max(0, fin2 - fout);
         }
       }
       edge.push(row);
@@ -3491,7 +3511,7 @@
       }
       return I;
     });
-    const mean10 = (j, x, y) => {
+    const mean11 = (j, x, y) => {
       const x0 = Math.max(0, x - rad2), x1 = Math.min(sw, x + rad2 + 1), y0 = Math.max(0, y - rad2), y1 = Math.min(sh, y + rad2 + 1);
       const I = integ[j];
       return (I[y1 * (sw + 1) + x1] - I[y0 * (sw + 1) + x1] - I[y1 * (sw + 1) + x0] + I[y0 * (sw + 1) + x0]) / ((x1 - x0) * (y1 - y0));
@@ -3505,7 +3525,7 @@
       for (let x = 0; x < sw; x++) {
         if (Math.hypot(x - c.x, y - c.y) > c.r * 0.9 || nearAvoid(x, y)) continue;
         const i = y * sw + x;
-        const d = Math.hypot(ch[0][i] - mean10(0, x, y), ch[1][i] - mean10(1, x, y), ch[2][i] - mean10(2, x, y));
+        const d = Math.hypot(ch[0][i] - mean11(0, x, y), ch[1][i] - mean11(1, x, y), ch[2][i] - mean11(2, x, y));
         dist2[i] = d;
         const mx = Math.max(ch[0][i], ch[1][i], ch[2][i]), mn = Math.min(ch[0][i], ch[1][i], ch[2][i]);
         sat[i] = mx ? (mx - mn) / mx : 0;
@@ -4488,7 +4508,7 @@
     const l = lab;
     $("lb-close").onclick = () => (lab = null, close2());
     $("lb-scan").onclick = () => (lab = null, close2(), openBallScan());
-    const refresh = () => {
+    const refresh2 = () => {
       readFields();
       readHand();
       recompute();
@@ -4496,7 +4516,7 @@
     };
     sheet2().querySelectorAll("input, select, textarea").forEach((e) => {
       if (e.id === "lb-search" || e.id === "lb-mine") return;
-      e.addEventListener("change", refresh);
+      e.addEventListener("change", refresh2);
     });
     $("lb-mine")?.addEventListener("change", (e) => {
       const key2 = e.target.value;
@@ -6397,9 +6417,9 @@
       picks.push(r);
     }
     if (!picks.length) return { error: "No photos yet." };
-    const mean10 = unit2(picks.reduce((a, p) => [a[0] + p.vec[0], a[1] + p.vec[1], a[2] + p.vec[2]], [0, 0, 0]));
-    const ou = overUpOf(mean10, hand3);
-    const spread = picks.length > 1 ? Math.max(...picks.map((p) => surfDist(p.vec, mean10))) : null;
+    const mean11 = unit2(picks.reduce((a, p) => [a[0] + p.vec[0], a[1] + p.vec[1], a[2] + p.vec[2]], [0, 0, 0]));
+    const ou = overUpOf(mean11, hand3);
+    const spread = picks.length > 1 ? Math.max(...picks.map((p) => surfDist(p.vec, mean11))) : null;
     const notes = [];
     if (spread !== null && spread > 0.75) notes.push(`The photos disagree by up to ${spread.toFixed(2)}". Rings can be misread: retake the photo that's furthest from the others, with the grip square to the camera.`);
     if (spread !== null && spread <= 0.4) notes.push("The photos agree closely, which is a good sign.");
@@ -7522,9 +7542,9 @@
     $("lv-host").onclick = host;
     $("lv-join").onclick = async () => {
       const raw = $("lv-link").value.trim();
-      const code = /#live=(.+)$/.exec(raw)?.[1] ?? raw;
-      if (!code) return void ($("lv-msg").textContent = "Paste the link your friend sent.");
-      await joinFrom(code);
+      const code2 = /#live=(.+)$/.exec(raw)?.[1] ?? raw;
+      if (!code2) return void ($("lv-msg").textContent = "Paste the link your friend sent.");
+      await joinFrom(code2);
     };
   }
   async function host() {
@@ -7543,8 +7563,8 @@
     $("lv-close").onclick = () => (live?.pc.close(), live = null, close4());
     $("lv-send").onclick = async () => ($("lv-sent").textContent = await shareLink("Bowl with me on LaneIQ", `${me().name} wants to sync shots live on LaneIQ. Open this to join.`, link), void 0);
     $("lv-connect").onclick = async () => {
-      const code = $("lv-reply").value.trim().replace(/^LIVE-/, "");
-      const json = code ? await unpackText(code) : null;
+      const code2 = $("lv-reply").value.trim().replace(/^LIVE-/, "");
+      const json = code2 ? await unpackText(code2) : null;
       let ans = null;
       try {
         ans = json ? JSON.parse(json) : null;
@@ -7559,8 +7579,8 @@
       }
     };
   }
-  async function joinFrom(code) {
-    const json = await unpackText(code);
+  async function joinFrom(code2) {
+    const json = await unpackText(code2);
     let offer = null;
     try {
       offer = json ? JSON.parse(json) : null;
@@ -7908,8 +7928,8 @@
     const days = inp.days ?? 28;
     const from = now - days * DAY;
     const prevFrom = from - days * DAY;
-    const inP = (iso, a, b) => {
-      const t = Date.parse(iso);
+    const inP = (iso2, a, b) => {
+      const t = Date.parse(iso2);
       return t >= a && t < b;
     };
     const games2 = inp.games.filter((g) => replay(g.rolls).complete && inP(g.at, from, now + DAY));
@@ -8075,10 +8095,10 @@
       };
       row.append(b);
     }
-    const save = document.createElement("button");
-    save.className = "btn ghost";
-    save.textContent = files.length > 1 ? "Save the files" : "Save";
-    save.onclick = () => {
+    const save2 = document.createElement("button");
+    save2.className = "btn ghost";
+    save2.textContent = files.length > 1 ? "Save the files" : "Save";
+    save2.onclick = () => {
       const all = opts.text ? [...files, new File([opts.text], "laneiq-notes.txt", { type: "text/plain" })] : files;
       for (const f of all) {
         const a = document.createElement("a");
@@ -8089,7 +8109,7 @@
       }
       note.textContent = "Saved.";
     };
-    row.append(save);
+    row.append(save2);
     box.append(row, note);
   }
 
@@ -8376,7 +8396,7 @@ Games: ${p.games.join(", ")}`)) return;
   // camera/juniorui.ts
   var sheet6 = () => $("junior");
   var close6 = () => (sheet6().classList.remove("on"), sheet6().innerHTML = "");
-  var dayText = (iso) => iso ? (/* @__PURE__ */ new Date(iso + "T12:00:00")).toLocaleDateString([], { month: "short", day: "numeric" }) : "never";
+  var dayText = (iso2) => iso2 ? (/* @__PURE__ */ new Date(iso2 + "T12:00:00")).toLocaleDateString([], { month: "short", day: "numeric" }) : "never";
   async function myCard() {
     const j = S.profile?.junior;
     return buildProgress(j?.display ?? juniorDisplayName(S.profile?.name ?? ""), j?.band ?? "13to17", { shots: S.shots, games: await myGames(), drills: S.drills });
@@ -8513,6 +8533,578 @@ Friends, live sharing and sharing data are switched off, and anything shared sho
     });
     t("Growth against their own earlier weeks. No video, location or full name on this card.", W2 / 2, H3 - 60, 24, "#8a97b2", 600, "center");
     return new Promise((r) => cv.toBlob((x) => r(x), "image/png"));
+  }
+
+  // core/src/crew.ts
+  var CHEERS = { nice: "Nice one!", strike: "Strike!", better: "Great improvement", lets: "Let's bowl!", yougot: "You've got this", pb: "New personal best!" };
+  var KIND_INFO = {
+    improve: { title: "Most pins over your own average", unit: "pins a game over your average", how: "Your average game in the window, against your own average from the weeks before. It rewards beating your own number, whatever it is." },
+    "high-game": { title: "Best game", unit: "pins", how: "Your highest finished game in the window." },
+    strikes: { title: "Most strikes", unit: "strikes", how: "Strikes in your finished games in the window." },
+    days: { title: "Get out and bowl", unit: "days", how: "The number of different days you bowled or practised in the window." },
+    drill: { title: "Practice drill", unit: "made", how: "Your best score in the drill in the window." }
+  };
+  var LIMITS = { members: 30, challenges: 12, entries: 400, cheers: 60, events: 12, rsvps: 200 };
+  var DAY2 = 864e5;
+  var isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  var dayOf = (iso2) => isoDay(new Date(iso2));
+  var isActive = (c, today2 = isoDay(/* @__PURE__ */ new Date())) => c.start <= today2 && today2 <= c.end;
+  var hasEnded = (c, today2 = isoDay(/* @__PURE__ */ new Date())) => c.end < today2;
+  var daysLeft = (c, today2 = isoDay(/* @__PURE__ */ new Date())) => Math.max(0, Math.round((Date.parse(c.end + "T12:00:00") - Date.parse(today2 + "T12:00:00")) / DAY2));
+  var challengeTitle = (c) => c.kind === "drill" ? `Drill: ${c.drill ?? "practice"}` : KIND_INFO[c.kind].title;
+  var mean4 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var inWindow = (iso2, c) => {
+    const d = dayOf(iso2);
+    return d >= c.start && d <= c.end;
+  };
+  function baselineAverage(c, games2, typed) {
+    const startMs = Date.parse(c.start + "T00:00:00");
+    const before = games2.filter((g) => replay(g.rolls).complete && Date.parse(g.at) < startMs && Date.parse(g.at) >= startMs - 56 * DAY2).map((g) => scoreGame(g.rolls).total);
+    if (before.length >= 3) return mean4(before);
+    return typed !== void 0 && typed > 0 ? typed : null;
+  }
+  function myValue(c, d, typedAverage) {
+    const games2 = d.games.filter((g) => replay(g.rolls).complete && inWindow(g.at, c));
+    if (c.kind === "days") {
+      const days = new Set([...d.games.map((g) => g.at), ...d.shots.map((s) => s.at)].filter((t) => inWindow(t, c)).map(dayOf));
+      return days.size ? { value: days.size, n: days.size } : null;
+    }
+    if (c.kind === "drill") {
+      const runs = d.drills.filter((r) => r.id === c.drill && r.finishedAt && inWindow(r.finishedAt, c));
+      if (!runs.length) return null;
+      const made = runs.map((r) => r.results.filter((x) => x.ok).length);
+      return { value: Math.max(...made), n: runs.length };
+    }
+    if (!games2.length) return null;
+    const totals = games2.map((g) => scoreGame(g.rolls).total);
+    if (c.kind === "high-game") return { value: Math.max(...totals), n: games2.length };
+    if (c.kind === "strikes") return { value: games2.reduce((a, g) => a + scoreGame(g.rolls).frames.reduce((b, f) => b + f.marks.filter((m) => m === "X").length, 0), 0), n: games2.length };
+    const base = baselineAverage(c, d.games, typedAverage);
+    if (base === null) return null;
+    return { value: Math.round((mean4(totals) - base) * 10) / 10, n: games2.length };
+  }
+  var needsBaseline = (c, games2, typed) => c.kind === "improve" && baselineAverage(c, games2, typed) === null;
+  var latestPerBowler = (entries, challengeId) => {
+    const m = /* @__PURE__ */ new Map();
+    for (const e of entries) if (e.challengeId === challengeId && (!m.has(e.code) || e.at > m.get(e.code).at)) m.set(e.code, e);
+    return [...m.values()];
+  };
+  function leaderboard(crew, c) {
+    const rows2 = latestPerBowler(crew.entries, c.id).map((e) => ({ code: e.code, name: e.name, crewId: e.crewId, value: e.value, n: e.n, rank: 0, at: e.at })).sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
+    rows2.forEach((r, i) => r.rank = i > 0 && rows2[i - 1].value === r.value ? rows2[i - 1].rank : i + 1);
+    return rows2;
+  }
+  function sides(crew, c) {
+    if (!c.vs) return null;
+    const rows2 = leaderboard(crew, c);
+    const make = (crewId, name) => {
+      const r = rows2.filter((x) => x.crewId === crewId);
+      return { crewId, name, score: r.length ? Math.round(r.reduce((s, x) => s + x.value, 0) / r.length * 10) / 10 : null, entrants: r.length };
+    };
+    const a = make(c.crewId, c.crewName);
+    const b = make(c.vs.crewId ?? "pending", c.vs.name);
+    const leader = a.score === null || b.score === null ? null : a.score === b.score ? "tie" : a.score > b.score ? "a" : "b";
+    return { a, b, leader };
+  }
+  var participation = (crew, c) => ({ reported: leaderboard(crew, c).filter((r) => r.crewId === crew.id).length, members: crew.members.length });
+  function friendlyStatus(crew, c, today2 = isoDay(/* @__PURE__ */ new Date())) {
+    const p = participation(crew, c);
+    const left = daysLeft(c, today2);
+    const s = sides(crew, c);
+    if (hasEnded(c, today2)) return s?.leader === "tie" ? "Finished: a tie, which means everyone wins." : `Finished. ${p.reported} of ${p.members} in the crew took part.`;
+    if (!p.reported) return `${left} day${left === 1 ? "" : "s"} left. Be the first to put a score up.`;
+    return `${p.reported} of ${p.members} in so far. ${left} day${left === 1 ? "" : "s"} left.`;
+  }
+  var rid = (rand = Math.random) => Array.from({ length: 10 }, () => "abcdefghjkmnpqrstuvwxyz23456789"[Math.floor(rand() * 31)]).join("");
+  function newCrew(name, me3, now = /* @__PURE__ */ new Date()) {
+    return { id: rid(), name: cleanName(name, 30) || "My crew", members: [{ ...me3, seen: now.toISOString() }], challenges: [], entries: [], cheers: [], events: [], rsvps: [], createdAt: now.toISOString() };
+  }
+  function newChallenge(crew, me3, kind2, opts = {}) {
+    const start = opts.start ?? /* @__PURE__ */ new Date();
+    const end = new Date(start.getTime() + ((opts.days ?? 7) - 1) * DAY2);
+    return { id: rid(), crewId: crew.id, crewName: crew.name, kind: kind2, drill: kind2 === "drill" ? opts.drill : void 0, start: isoDay(start), end: isoDay(end), by: me3, vs: opts.vsName ? { name: cleanName(opts.vsName, 30) } : void 0, at: (/* @__PURE__ */ new Date()).toISOString() };
+  }
+  var cleanName = (s, max) => s.replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+  function packetFor(crew, me3, now = /* @__PURE__ */ new Date()) {
+    const cutoff = isoDay(new Date(now.getTime() - 14 * DAY2));
+    const challenges = crew.challenges.filter((c) => c.end >= cutoff).slice(-LIMITS.challenges);
+    const ids = new Set(challenges.map((c) => c.id));
+    const events = crew.events.filter((e) => e.when >= isoDay(new Date(now.getTime() - 2 * DAY2))).slice(-LIMITS.events);
+    const eids = new Set(events.map((e) => e.id));
+    return {
+      v: 1,
+      t: "crew",
+      from: me3,
+      at: now.toISOString(),
+      crew: { id: crew.id, name: crew.name, members: crew.members.map(({ code: code2, name }) => ({ code: code2, name })) },
+      challenges,
+      entries: crew.entries.filter((e) => ids.has(e.challengeId)).slice(-LIMITS.entries),
+      cheers: crew.cheers.filter((c) => c.at.slice(0, 10) >= cutoff).slice(-LIMITS.cheers),
+      events,
+      rsvps: crew.rsvps.filter((r) => eids.has(r.eventId)).slice(-LIMITS.rsvps)
+    };
+  }
+  var str3 = (v, max) => cleanName(typeof v === "string" ? v : "", max);
+  var code = (v) => typeof v === "string" && /^[2-9A-HJKMNP-Z]{8}$/.test(v) ? v : "";
+  var iso = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?$/.test(v) ? v : "";
+  var dateOnly = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : "";
+  var fin = (v, lo, hi) => typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi;
+  var kinds = ["improve", "high-game", "strikes", "days", "drill"];
+  var DRILLS_OK = ["arrow-sniper", "speed-lock", "pocket-hunter", "speed-ladder", "corner-pins"];
+  var VALUE_RANGE = { improve: [-300, 300], "high-game": [0, 300], strikes: [0, 400], days: [0, 62], drill: [0, 10] };
+  function parseCrewPacket(json) {
+    let o;
+    try {
+      o = JSON.parse(json);
+    } catch {
+      return null;
+    }
+    if (!o || o.v !== 1 || o.t !== "crew") return null;
+    const from = o.from;
+    const cr = o.crew;
+    if (!from || !cr || !code(from.code) || !str3(from.name, 24) || !str3(cr.id, 12) || !str3(cr.name, 30)) return null;
+    const who = (x) => {
+      const w = x;
+      return w && code(w.code) && str3(w.name, 24) ? { code: code(w.code), name: str3(w.name, 24) } : null;
+    };
+    const members = (Array.isArray(cr.members) ? cr.members : []).slice(0, LIMITS.members).map(who).filter((x) => !!x);
+    const challenges = [];
+    for (const x of (Array.isArray(o.challenges) ? o.challenges : []).slice(0, LIMITS.challenges)) {
+      const c = x;
+      const by = who(c.by);
+      const kind2 = kinds.find((k2) => k2 === c.kind);
+      if (!by || !kind2 || !str3(c.id, 12) || !str3(c.crewId, 12) || !dateOnly(c.start) || !dateOnly(c.end) || c.end < c.start) continue;
+      if (Date.parse(c.end) - Date.parse(c.start) > 62 * DAY2) continue;
+      const vs = c.vs;
+      challenges.push({ id: str3(c.id, 12), crewId: str3(c.crewId, 12), crewName: str3(c.crewName, 30) || "A crew", kind: kind2, drill: kind2 === "drill" ? DRILLS_OK.find((d) => d === c.drill) : void 0, start: c.start, end: c.end, by, vs: vs && str3(vs.name, 30) ? { crewId: str3(vs.crewId, 12) || void 0, name: str3(vs.name, 30) } : void 0, at: iso(c.at) || (/* @__PURE__ */ new Date()).toISOString() });
+    }
+    const kindOf = new Map(challenges.map((c) => [c.id, c.kind]));
+    const entries = [];
+    for (const x of (Array.isArray(o.entries) ? o.entries : []).slice(0, LIMITS.entries)) {
+      const e = x;
+      const k2 = kindOf.get(str3(e.challengeId, 12));
+      if (!k2 || !code(e.code) || !str3(e.name, 24) || !str3(e.crewId, 12) || !fin(e.value, VALUE_RANGE[k2][0], VALUE_RANGE[k2][1]) || !fin(e.n, 0, 5e3)) continue;
+      entries.push({ challengeId: str3(e.challengeId, 12), crewId: str3(e.crewId, 12), code: code(e.code), name: str3(e.name, 24), value: e.value, n: Math.round(e.n), at: iso(e.at) || (/* @__PURE__ */ new Date()).toISOString() });
+    }
+    const cheers = [];
+    for (const x of (Array.isArray(o.cheers) ? o.cheers : []).slice(0, LIMITS.cheers)) {
+      const c = x;
+      const fr2 = who(c.from);
+      const kind2 = Object.keys(CHEERS).find((k2) => k2 === c.kind);
+      if (!fr2 || !kind2 || !code(c.to) || !str3(c.id, 12)) continue;
+      cheers.push({ id: str3(c.id, 12), from: fr2, to: code(c.to), kind: kind2, challengeId: str3(c.challengeId, 12) || void 0, at: iso(c.at) || (/* @__PURE__ */ new Date()).toISOString() });
+    }
+    const events = [];
+    for (const x of (Array.isArray(o.events) ? o.events : []).slice(0, LIMITS.events)) {
+      const e = x;
+      const by = who(e.by);
+      if (!by || !str3(e.id, 12) || !dateOnly(e.when)) continue;
+      const t = typeof e.time === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(e.time) ? e.time : void 0;
+      events.push({ id: str3(e.id, 12), by, when: e.when, time: t, place: str3(e.place, 40), at: iso(e.at) || (/* @__PURE__ */ new Date()).toISOString() });
+    }
+    const eids = new Set(events.map((e) => e.id));
+    const rsvps = [];
+    for (const x of (Array.isArray(o.rsvps) ? o.rsvps : []).slice(0, LIMITS.rsvps)) {
+      const r = x;
+      if (!eids.has(str3(r.eventId, 12)) || !code(r.code) || !str3(r.name, 24) || typeof r.going !== "boolean") continue;
+      rsvps.push({ eventId: str3(r.eventId, 12), code: code(r.code), name: str3(r.name, 24), going: r.going, at: iso(r.at) || (/* @__PURE__ */ new Date()).toISOString() });
+    }
+    return { v: 1, t: "crew", from: { code: code(from.code), name: str3(from.name, 24) }, at: iso(o.at) || (/* @__PURE__ */ new Date()).toISOString(), crew: { id: str3(cr.id, 12), name: str3(cr.name, 30), members }, challenges, entries, cheers, events, rsvps };
+  }
+  var byKey = (items, key2, newer) => {
+    const m = /* @__PURE__ */ new Map();
+    for (const it of items) m.set(key2(it), m.has(key2(it)) ? newer(m.get(key2(it)), it) : it);
+    return [...m.values()];
+  };
+  var later = (a, b) => b.at > a.at ? b : a;
+  function mergeInto(crew, p, now = /* @__PURE__ */ new Date()) {
+    const seen2 = (p.at > now.toISOString() ? now.toISOString() : p.at) || now.toISOString();
+    const memberMap = new Map(crew.members.map((m) => [m.code, m]));
+    const incoming = p.crew.id === crew.id ? [...p.crew.members, p.from] : [];
+    for (const w of incoming) {
+      const have = memberMap.get(w.code);
+      if (!have) memberMap.set(w.code, { ...w, seen: w.code === p.from.code ? seen2 : "" });
+      else if (w.code === p.from.code) memberMap.set(w.code, { ...have, name: w.name, seen: seen2 });
+    }
+    const members = [...memberMap.values()].slice(0, LIMITS.members);
+    const mine = (c) => c.crewId === crew.id || c.vs?.crewId === crew.id;
+    const theirs = p.challenges.filter((c) => p.crew.id === crew.id ? true : mine(c));
+    const challenges = byKey([...crew.challenges, ...theirs], (c) => c.id, (a, b) => ({ ...b.at > a.at ? b : a, vs: a.vs?.crewId ? a.vs : b.vs?.crewId ? b.vs : (b.at > a.at ? b : a).vs })).slice(-LIMITS.challenges);
+    const cids = new Set(challenges.map((c) => c.id));
+    const entries = byKey([...crew.entries, ...p.entries.filter((e) => cids.has(e.challengeId))], (e) => `${e.challengeId}|${e.code}`, later).slice(-LIMITS.entries);
+    const cheers = byKey([...crew.cheers, ...p.crew.id === crew.id ? p.cheers : []], (c) => c.id, later).sort((a, b) => a.at.localeCompare(b.at)).slice(-LIMITS.cheers);
+    const events = byKey([...crew.events, ...p.crew.id === crew.id ? p.events : []], (e) => e.id, later).sort((a, b) => a.when.localeCompare(b.when)).slice(-LIMITS.events);
+    const eids = new Set(events.map((e) => e.id));
+    const rsvps = byKey([...crew.rsvps, ...p.crew.id === crew.id ? p.rsvps : []].filter((r) => eids.has(r.eventId)), (r) => `${r.eventId}|${r.code}`, later).slice(-LIMITS.rsvps);
+    return { ...crew, name: p.crew.id === crew.id && p.at > crew.createdAt && p.from.code === crew.members[0]?.code ? p.crew.name : crew.name, members, challenges, entries, cheers, events, rsvps };
+  }
+  function routePacket(crews, p) {
+    const known = crews.find((c) => c.id === p.crew.id);
+    if (known) return { kind: "known", crewId: known.id };
+    const versus = crews.find((c) => p.challenges.some((ch) => ch.vs?.crewId === c.id || ch.crewId === c.id && ch.vs?.crewId === p.crew.id));
+    if (versus) return { kind: "versus", crewId: versus.id };
+    const open2 = p.challenges.find((ch) => ch.vs && !ch.vs.crewId && ch.end >= isoDay(/* @__PURE__ */ new Date()));
+    if (open2) return { kind: "challenge-invite", challenge: open2 };
+    return { kind: "new" };
+  }
+  function crewFromPacket(p, me3, now = /* @__PURE__ */ new Date()) {
+    const base = { id: p.crew.id, name: p.crew.name, members: p.crew.members.map((m) => ({ ...m, seen: "" })), challenges: [], entries: [], cheers: [], events: [], rsvps: [], createdAt: now.toISOString() };
+    const merged = mergeInto(base, p, now);
+    if (!merged.members.some((m) => m.code === me3.code)) merged.members.push({ ...me3, seen: now.toISOString() });
+    return merged;
+  }
+  function acceptChallenge(mine, p, challengeId, now = /* @__PURE__ */ new Date()) {
+    const ch = p.challenges.find((c) => c.id === challengeId);
+    if (!ch || !ch.vs) return null;
+    const accepted = { ...ch, vs: { crewId: mine.id, name: mine.name }, at: now.toISOString() };
+    const inChallenge = p.entries.filter((e) => e.challengeId === challengeId);
+    return mergeInto(mine, { ...p, crew: { ...p.crew, id: "other" }, challenges: [accepted], entries: inChallenge, cheers: [], events: [], rsvps: [] }, now);
+  }
+  function reportMine(crew, me3, d, typedAvg2 = {}, now = /* @__PURE__ */ new Date()) {
+    const today2 = isoDay(now);
+    const reported = [];
+    const needBaseline = [];
+    let entries = crew.entries;
+    for (const c of crew.challenges) {
+      if (c.start > today2) continue;
+      const typed = typedAvg2[c.id];
+      if (needsBaseline(c, d.games, typed)) {
+        needBaseline.push(c);
+        continue;
+      }
+      const v = myValue(c, d, typed);
+      if (!v) continue;
+      const e = { challengeId: c.id, crewId: crew.id, code: me3.code, name: me3.name, value: v.value, n: v.n, at: now.toISOString() };
+      const have = entries.find((x) => x.challengeId === c.id && x.code === me3.code);
+      if (have && have.value === e.value && have.n === e.n) continue;
+      entries = byKey([...entries, e], (x) => `${x.challengeId}|${x.code}`, later);
+      reported.push({ challenge: c, value: v.value, n: v.n });
+    }
+    return { crew: { ...crew, entries }, reported, needBaseline };
+  }
+  function addCheer(crew, from, to, kind2, challengeId, now = /* @__PURE__ */ new Date()) {
+    const c = { id: rid(), from, to, kind: kind2, challengeId, at: now.toISOString() };
+    return { ...crew, cheers: [...crew.cheers, c].slice(-LIMITS.cheers) };
+  }
+  function addEvent(crew, by, when3, time, place, now = /* @__PURE__ */ new Date()) {
+    const e = { id: rid(), by, when: when3, time, place: cleanName(place, 40), at: now.toISOString() };
+    return { ...crew, events: [...crew.events, e].sort((a, b) => a.when.localeCompare(b.when)).slice(-LIMITS.events) };
+  }
+  function setRsvp(crew, me3, eventId, going, now = /* @__PURE__ */ new Date()) {
+    const r = { eventId, code: me3.code, name: me3.name, going, at: now.toISOString() };
+    return { ...crew, rsvps: byKey([...crew.rsvps, r], (x) => `${x.eventId}|${x.code}`, later) };
+  }
+  var cheersFor = (crew, myCode2) => crew.cheers.filter((c) => c.to === myCode2).sort((a, b) => b.at.localeCompare(a.at));
+  var goingTo = (crew, e) => crew.rsvps.filter((r) => r.eventId === e.id && r.going);
+  function suggestNext(now = /* @__PURE__ */ new Date()) {
+    const wk = Math.floor(now.getTime() / (7 * DAY2));
+    return ["improve", "days", "strikes", "improve", "high-game"][wk % 5];
+  }
+
+  // core/src/drills.ts
+  var DRILLS2 = [
+    { id: "arrow-sniper", name: "Arrow Sniper", blurb: "Hit your board at the arrows, within 1 board, 10 times.", shots: 10, needs: ["board"] },
+    { id: "speed-lock", name: "Speed Lock", blurb: "Throw the same speed, within 0.5 mph, 10 times.", shots: 10, needs: ["mph"] },
+    { id: "pocket-hunter", name: "Pocket Hunter", blurb: "Meet the pocket within a board, 10 times.", shots: 10, needs: [] },
+    { id: "speed-ladder", name: "Speed Ladder", blurb: "Slow, normal, fast on call: 1.5 mph either side of your speed, within 0.6 mph. 9 shots.", shots: 9, needs: ["mph"] },
+    { id: "corner-pins", name: "Corner Pins", blurb: "Spare practice: alternate the 10 pin and the 7 pin. A ball that reaches the pins close enough to take the pin counts. 10 shots.", shots: 10, needs: [] }
+  ];
+  var pinBoard = (pin) => (LANE_BOARDS + 1) / 2 - PIN_XY[pin].x / (41.5 / LANE_BOARDS);
+  var PIN_REACH = 5;
+  function drillTarget(run, i = run.results.filter((r) => r.ok !== null).length) {
+    switch (run.id) {
+      case "arrow-sniper":
+        return { kind: "arrows", target: run.board ?? 10, label: `board ${run.board ?? 10} at the arrows` };
+      case "speed-lock":
+        return { kind: "mph", target: run.mph ?? 17, label: `${(run.mph ?? 17).toFixed(1)} mph` };
+      case "pocket-hunter":
+        return { kind: "pocket", target: 0, label: "the pocket" };
+      case "speed-ladder": {
+        const step = [-1.5, 0, 1.5][i % 3];
+        const t = (run.mph ?? 17) + step;
+        return { kind: "mph", target: t, label: `${step < 0 ? "slow" : step > 0 ? "fast" : "normal"}: ${t.toFixed(1)} mph` };
+      }
+      case "corner-pins": {
+        const pin = i % 2 === 0 ? run.hand === "R" ? 10 : 7 : run.hand === "R" ? 7 : 10;
+        return { kind: "pin", target: pin, label: `the ${pin} pin` };
+      }
+    }
+  }
+  function scoreDrillShot(run, s) {
+    const t = drillTarget(run);
+    const base = { shotId: s.id, target: t.target };
+    if (t.kind === "arrows") {
+      const v = s.m.arrowsBoard;
+      return { ...base, value: v, ok: v === null ? null : Math.abs(v - t.target) <= 1, note: v === null ? "arrows board not measured" : `board ${v.toFixed(1)}` };
+    }
+    if (t.kind === "mph") {
+      const v = s.m.launchSpeed ?? s.a.speedMph;
+      const tol = run.id === "speed-ladder" ? 0.6 : 0.5;
+      return { ...base, value: v, ok: Math.abs(v - t.target) <= tol, note: `${v.toFixed(1)} mph` };
+    }
+    if (t.kind === "pocket") {
+      const v = s.m.pocketMiss;
+      return { ...base, value: v, ok: v === null ? null : Math.abs(v) <= 1, note: v === null ? "not seen to the pins" : Math.abs(v) <= 1 ? "pocket" : `${Math.abs(v).toFixed(1)} ${v > 0 ? "high" : "light"}` };
+    }
+    const atPins = s.a.entryMeasured ? s.a.entryBoard : s.a.lastSeen && s.a.lastSeen.ft >= 52 ? s.a.lastSeen.board : null;
+    const pb = pinBoard(t.target);
+    return { ...base, value: atPins, ok: atPins === null ? null : Math.abs(atPins - pb) <= PIN_REACH, note: atPins === null ? "not seen near the pins" : `board ${atPins.toFixed(0)} at the pins (the ${t.target} is on ${pb.toFixed(0)})` };
+  }
+  function summarize2(run) {
+    const def = DRILLS2.find((d) => d.id === run.id);
+    const scored = run.results.filter((r) => r.ok !== null);
+    const made = scored.filter((r) => r.ok).length;
+    let streak = 0, cur2 = 0;
+    for (const r of scored) {
+      cur2 = r.ok ? cur2 + 1 : 0;
+      streak = Math.max(streak, cur2);
+    }
+    const done2 = scored.length >= def.shots;
+    return { made, scored: scored.length, total: def.shots, done: done2, streak, text: `${made} of ${scored.length}${done2 ? "" : ` (${def.shots - scored.length} to go)`}${streak >= 3 ? ` \xB7 best streak ${streak}` : ""}` };
+  }
+  function addDrillShot(run, s) {
+    if (summarize2(run).done) return run;
+    const r = scoreDrillShot(run, s);
+    const next = { ...run, results: [...run.results, r] };
+    if (summarize2(next).done) next.finishedAt = s.at;
+    return next;
+  }
+  function personalBest(history2, id) {
+    const done2 = history2.filter((h) => h.id === id && h.finishedAt).map((h) => ({ s: summarize2(h), at: h.finishedAt }));
+    if (!done2.length) return null;
+    const best = done2.sort((a, b) => b.s.made - a.s.made || a.at.localeCompare(b.at))[0];
+    return { made: best.s.made, of: best.s.scored, at: best.at };
+  }
+
+  // camera/crewui.ts
+  var sheet7 = () => $("crews");
+  var close7 = () => (sheet7().classList.remove("on"), sheet7().innerHTML = "");
+  var crewsAllowed = () => !S.profile?.junior;
+  function me2() {
+    if (S.profile && !S.profile.friendCode) updateProfile({ friendCode: newFriendCode() });
+    const name = cleanName(S.profile?.username || S.profile?.name || "A bowler", 24);
+    return { code: S.profile?.friendCode ?? "", name: name || "A bowler" };
+  }
+  var avgKey = (id) => `laneiq.crewAvg.${id}`;
+  var typedAvg = (id) => {
+    try {
+      const v = Number(localStorage.getItem(avgKey(id)));
+      return v > 0 ? v : void 0;
+    } catch {
+      return void 0;
+    }
+  };
+  var setTypedAvg = (id, v) => {
+    try {
+      localStorage.setItem(avgKey(id), String(v));
+    } catch {
+    }
+  };
+  async function save(c) {
+    S.crews = S.crews.some((x) => x.id === c.id) ? S.crews.map((x) => x.id === c.id ? c : x) : [...S.crews, c];
+    await saveCoach();
+  }
+  async function linkFor2(p) {
+    return `${appLink()}/#crew=${await packText(JSON.stringify(p))}`;
+  }
+  var fmtValue = (kind2, v) => kind2 === "improve" ? `${v >= 0 ? "+" : ""}${v}` : String(v);
+  var dayText2 = (iso2) => (/* @__PURE__ */ new Date(iso2 + "T12:00:00")).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  async function refresh(c) {
+    const typed = {};
+    for (const ch of c.challenges) {
+      const t = typedAvg(ch.id);
+      if (t) typed[ch.id] = t;
+    }
+    const r = reportMine(c, me2(), { games: await myGames(), drills: S.drills, shots: S.shots }, typed);
+    if (r.reported.length) await save(r.crew);
+    const text = r.reported.length ? `Your results are up: ${r.reported.map((x) => `${challengeTitle(x.challenge)} ${fmtValue(x.challenge.kind, x.value)}`).join(", ")}.` : "";
+    return { crew: r.crew, text };
+  }
+  async function handleCrewLink(value) {
+    if (!crewsAllowed()) return void alert("Crews are switched off on a junior profile. A parent can still send a progress card.");
+    const json = await unpackText(value);
+    const p = json ? parseCrewPacket(json) : null;
+    if (!p) return void alert("That crew link is damaged or isn't from LaneIQ.");
+    const route = routePacket(S.crews, p);
+    if (route.kind === "known" || route.kind === "versus") {
+      const have = S.crews.find((c) => c.id === route.crewId);
+      const merged = mergeInto(have, p);
+      const gained = { results: merged.entries.length - have.entries.length, cheers: cheersFor(merged, me2().code).length - cheersFor(have, me2().code).length, people: merged.members.length - have.members.length };
+      await save(merged);
+      return void openCrew(merged.id, `From ${p.from.name}: ${gained.results > 0 ? `${gained.results} new result${gained.results === 1 ? "" : "s"}` : "you're up to date"}${gained.cheers > 0 ? `, ${gained.cheers} cheer${gained.cheers === 1 ? "" : "s"} for you` : ""}${gained.people > 0 ? `, ${gained.people} new crew member${gained.people === 1 ? "" : "s"}` : ""}.`);
+    }
+    if (route.kind === "challenge-invite") {
+      const ch = route.challenge;
+      const mine = S.crews.filter((c) => c.id !== p.crew.id);
+      const el = sheet7();
+      el.classList.add("on");
+      el.innerHTML = `<div class="row"><h2>A challenge for your crew</h2><button class="btn ghost" id="cw-close">Not now</button></div>
+      <div class="card"><div class="lr-head">${esc(p.crew.name)} challenges ${esc(ch.vs.name)}</div><div class="u">${esc(challengeTitle(ch))} \xB7 ${esc(dayText2(ch.start))} to ${esc(dayText2(ch.end))}</div><div class="note">${esc(KIND_INFO[ch.kind].how)} Each crew scores the average of the bowlers who take part, so crew size doesn't decide it.</div></div>
+      <div class="card"><div class="field"><label>Which of your crews takes it on?</label><select id="cw-pick">${mine.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}<option value="">A new crew\u2026</option></select></div><div class="field" id="cw-newwrap" style="display:${mine.length ? "none" : "grid"}"><label>New crew name</label><input id="cw-newname" value="${esc(ch.vs.name)}"></div><div class="chips"><button class="btn" id="cw-accept">Accept the challenge</button></div></div>`;
+      const sel2 = $("cw-pick");
+      sel2.onchange = () => $("cw-newwrap").style.display = sel2.value ? "none" : "grid";
+      $("cw-close").onclick = close7;
+      $("cw-accept").onclick = async () => {
+        let crew2 = S.crews.find((c) => c.id === sel2.value);
+        if (!crew2) crew2 = newCrew($("cw-newname").value, me2());
+        const next = acceptChallenge(crew2, p, ch.id);
+        if (!next) return void alert("That challenge couldn't be accepted.");
+        await save(next);
+        openCrew(next.id, `Challenge accepted for ${next.name}. Send an update so ${p.crew.name} sees you're in.`);
+      };
+      return;
+    }
+    if (!confirm(`Join the crew "${p.crew.name}"?
+
+${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.crew.members.map((m) => m.name).join(", ")}. A crew shares scores from your own games and kind cheers, nothing else.`)) return;
+    const crew = crewFromPacket(p, me2());
+    await save(crew);
+    openCrew(crew.id, "You're in. Send an update so the crew sees you've joined.");
+  }
+  function openCrews() {
+    const el = sheet7();
+    el.classList.add("on");
+    if (!crewsAllowed()) {
+      el.innerHTML = `<div class="row"><h2>Crews</h2><button class="btn ghost" id="cw-close">Close</button></div><div class="card"><div class="u">Crews are switched off on a junior profile, to keep young bowlers' details private. A parent or the bowler can still send a progress card from Juniors, parents and coaches.</div></div>`;
+      $("cw-close").onclick = close7;
+      return;
+    }
+    el.innerHTML = `<div class="row"><h2>Crews</h2><button class="btn ghost" id="cw-close">Close</button></div>
+    <div class="note">A crew is friends anywhere who bowl together without being in the same place: challenges, bowl nights and cheers. Challenges default to pins over your own average, so every bowler has a shot at winning. There's no chat and no comments, only cheers, so it stays friendly. Everything is shared by link, from your phone, and only when you send it.</div>
+    <div class="chips"><button class="btn" id="cw-new">Start a crew</button></div>
+    ${S.crews.length ? "" : `<div class="card"><div class="u">No crews yet. Start one and send the link to your friends, or open a link a friend sent you.</div></div>`}
+    ${S.crews.map((c) => {
+      const act = c.challenges.filter((x) => isActive(x)).length;
+      const ev = c.events.find((e) => e.when >= isoDay(/* @__PURE__ */ new Date()));
+      const ch = cheersFor(c, me2().code).length;
+      return `<div class="card"><div class="row"><div><b>${esc(c.name)}</b><div class="note">${c.members.length} bowler${c.members.length === 1 ? "" : "s"} \xB7 ${act} challenge${act === 1 ? "" : "s"} on${ev ? ` \xB7 bowl night ${esc(dayText2(ev.when))}` : ""}${ch ? ` \xB7 ${ch} cheer${ch === 1 ? "" : "s"} for you` : ""}</div></div><button class="chip sel" data-open="${c.id}">Open</button></div></div>`;
+    }).join("")}
+    <h3>Opened a link that didn't work?</h3>
+    <div class="card"><div class="field"><label>Paste the crew link here</label><input id="cw-paste" placeholder="https://\u2026/#crew=\u2026" autocomplete="off"></div><div class="chips"><button class="chip" id="cw-go">Open it</button></div></div>`;
+    $("cw-close").onclick = close7;
+    $("cw-new").onclick = () => {
+      const name = prompt("What's your crew called?", "");
+      if (!name || !cleanName(name, 30)) return;
+      const c = newCrew(name, me2());
+      void save(c).then(() => openCrew(c.id, "Crew started. Add a challenge or a bowl night, then send the link to your friends."));
+    };
+    el.querySelectorAll("[data-open]").forEach((b) => b.onclick = () => openCrew(b.dataset.open));
+    $("cw-go").onclick = () => {
+      const m = /#crew=([^\s]+)/.exec($("cw-paste").value);
+      if (m) void handleCrewLink(m[1]);
+      else alert("That doesn't look like a crew link.");
+    };
+  }
+  async function openCrew(id, banner = "") {
+    let crew = S.crews.find((c) => c.id === id);
+    if (!crew) return openCrews();
+    const refreshed = await refresh(crew);
+    crew = refreshed.crew;
+    const text = banner || refreshed.text;
+    const el = sheet7();
+    el.classList.add("on");
+    const today2 = isoDay(/* @__PURE__ */ new Date());
+    const meW = me2();
+    const active = crew.challenges.filter((c) => !hasEnded(c, today2)).sort((a, b) => a.end.localeCompare(b.end));
+    const done2 = crew.challenges.filter((c) => hasEnded(c, today2)).slice(-3).reverse();
+    const games2 = await myGames();
+    const needs = crew.challenges.filter((c) => !hasEnded(c, today2) && c.start <= today2 && needsBaseline(c, games2, typedAvg(c.id)));
+    const upcoming = crew.events.filter((e) => e.when >= today2);
+    const mine = cheersFor(crew, meW.code).slice(0, 5);
+    const board = (c) => {
+      const rows2 = leaderboard(crew, c);
+      const s = sides(crew, c);
+      return `<div class="card"><div class="row"><div><b>${esc(challengeTitle(c))}${c.vs ? ` \xB7 ${esc(c.crewName)} vs ${esc(c.vs.name)}` : ""}</b><div class="note">${esc(dayText2(c.start))} to ${esc(dayText2(c.end))} \xB7 ${esc(friendlyStatus(crew, c, today2))}</div></div></div>
+      <div class="note">${esc(KIND_INFO[c.kind].how)}</div>
+      ${s ? `<div class="row" style="padding:8px 0"><div style="text-align:center;flex:1"><div class="note">${esc(s.a.name)}</div><div class="lr-head">${s.a.score === null ? "\u2013" : fmtValue(c.kind, s.a.score)}</div><div class="note">${s.a.entrants} in</div></div><div class="note">vs</div><div style="text-align:center;flex:1"><div class="note">${esc(s.b.name)}</div><div class="lr-head">${s.b.score === null ? "\u2013" : fmtValue(c.kind, s.b.score)}</div><div class="note">${s.b.entrants} in</div></div></div><div class="note">Each crew scores the average of the bowlers who took part.</div>` : ""}
+      ${rows2.length ? `<table>${rows2.map((r) => `<tr><td>${r.rank}</td><td>${esc(r.name)}${r.code === meW.code ? ` <span class="note">(you)</span>` : ""}${c.vs ? `<div class="note">${r.crewId === c.crewId ? esc(c.crewName) : esc(c.vs.name)}</div>` : ""}</td><td class="n"><b>${fmtValue(c.kind, r.value)}</b><div class="note">${r.n} ${c.kind === "days" ? r.n === 1 ? "day" : "days" : c.kind === "drill" ? r.n === 1 ? "run" : "runs" : r.n === 1 ? "game" : "games"}</div></td><td class="n">${r.code !== meW.code && r.crewId === crew.id ? `<button class="chip" data-cheer="${r.code}" data-ch="${c.id}">Cheer</button>` : ""}</td></tr>`).join("")}</table>` : `<div class="u" style="margin-top:6px">No scores yet. Bowl a finished game in the Score tab and yours goes up on its own.</div>`}</div>`;
+    };
+    el.innerHTML = `<div class="row"><div><h2 style="margin:0">${esc(crew.name)}</h2><div class="note">${crew.members.map((m) => esc(m.name)).join(", ")}</div></div><button class="btn ghost" id="cw-close">Close</button></div>
+    ${text ? `<div class="card" style="border-color:var(--mint)"><div class="u">${esc(text)}</div></div>` : ""}
+    <div class="chips"><button class="chip" id="cw-all">All crews</button><button class="btn" id="cw-send">Send an update (link)</button></div>
+    <div id="cw-share"></div><div class="note" id="cw-msg"></div>
+    <div class="note">An update carries the crew's members, challenges, results, cheers and bowl nights. Anyone who opens it joins or catches up, and a friend's update merges into yours, so it doesn't matter who sends it or in what order. Results come from each bowler's own games and run on the honour system, which is right for friends.</div>
+    ${needs.length ? `<div class="card"><div class="k">One quick thing</div><div class="u">For "pins over your own average", the app needs your usual average and doesn't have enough of your games yet.</div><div class="two"><div class="field"><label>Your usual average</label><input id="cw-avg" inputmode="numeric" placeholder="e.g. 150"></div><div class="field"><label>&nbsp;</label><button class="btn" id="cw-avgsave">Use it</button></div></div></div>` : ""}
+    ${mine.length ? `<h3>Cheers for you</h3><div class="card">${mine.map((c) => `<div class="row" style="padding:4px 0"><div><b>${esc(CHEERS[c.kind])}</b> <span class="note">from ${esc(c.from.name)}</span></div><div class="note">${esc(dayText2(c.at.slice(0, 10)))}</div></div>`).join("")}</div>` : ""}
+    <h3>Challenges</h3>
+    ${active.length ? active.map(board).join("") : `<div class="card"><div class="u">Nothing on right now. A challenge gets the crew bowling: pick one below.</div></div>`}
+    <div class="card"><div class="k">New challenge</div>
+      <div class="field"><label>What kind?</label><select id="cw-kind">${Object.keys(KIND_INFO).map((k2) => `<option value="${k2}" ${k2 === suggestNext() ? "selected" : ""}>${esc(KIND_INFO[k2].title)}${k2 === suggestNext() ? " (suggested this week)" : ""}</option>`).join("")}</select></div>
+      <div class="field" id="cw-drillwrap" style="display:none"><label>Which drill?</label><select id="cw-drill">${DRILLS2.map((d) => `<option value="${d.id}">${esc(d.name)}</option>`).join("")}</select></div>
+      <div class="two"><div class="field"><label>How long</label><select id="cw-days"><option value="3">3 days</option><option value="7" selected>A week</option><option value="14">Two weeks</option></select></div><div class="field"><label>Against another crew? Their name</label><input id="cw-vs" maxlength="30" placeholder="optional"></div></div>
+      <div class="chips"><button class="btn" id="cw-make">Start it</button></div>
+      <div class="note">Against another crew: you get a link to send them. They accept it for one of their crews, and each crew is scored by the average of the bowlers who take part.</div></div>
+    ${done2.length ? `<h3>Recently finished</h3>${done2.map(board).join("")}` : ""}
+    <h3>Bowl nights</h3>
+    ${upcoming.length ? upcoming.map((e) => {
+      const going = goingTo(crew, e);
+      const my = crew.rsvps.find((r) => r.eventId === e.id && r.code === meW.code);
+      return `<div class="card"><div class="row"><div><b>${esc(dayText2(e.when))}${e.time ? ` \xB7 ${esc(e.time)}` : ""}</b><div class="note">${esc(e.place || "Place to be decided")} \xB7 planned by ${esc(e.by.name)}</div></div></div><div class="u">${going.length ? `${going.map((g) => esc(g.name)).join(", ")} ${going.length === 1 ? "is" : "are"} in.` : "No one has said yet."}</div><div class="chips"><button class="chip ${my?.going ? "sel" : ""}" data-rsvp="${e.id}" data-go="1">I'm in</button><button class="chip ${my && !my.going ? "sel" : ""}" data-rsvp="${e.id}" data-go="0">Can't make it</button></div></div>`;
+    }).join("") : `<div class="card"><div class="u">No bowl night planned. Pick a day: it's the easiest way to get everyone out.</div></div>`}
+    <div class="card"><div class="k">Plan a bowl night</div><div class="two"><div class="field"><label>Day</label><input id="cw-when" type="date" min="${today2}" value="${isoDay(new Date(Date.now() + 3 * 864e5))}"></div><div class="field"><label>Time (optional)</label><input id="cw-time" type="time"></div></div><div class="field"><label>Where (optional)</label><input id="cw-place" maxlength="40" placeholder="e.g. Main Street Lanes"></div><div class="chips"><button class="btn" id="cw-event">Plan it</button></div></div>
+    <div class="chips"><button class="btn ghost danger" id="cw-leave">Leave this crew</button></div>`;
+    $("cw-close").onclick = close7;
+    $("cw-all").onclick = openCrews;
+    const msg = $("cw-msg");
+    $("cw-send").onclick = async () => {
+      const url = await linkFor2(packetFor(crew, meW));
+      msg.textContent = await shareLink(`${crew.name} on LaneIQ`, `${crew.name}: crew update from ${meW.name}. Open it in LaneIQ to join or catch up.`, url);
+    };
+    $("cw-avgsave")?.addEventListener("click", async () => {
+      const v = parseFloat($("cw-avg").value);
+      if (!(v > 0 && v <= 300)) return void (msg.textContent = "Enter an average between 1 and 300.");
+      for (const c of needs) setTypedAvg(c.id, v);
+      void openCrew(crew.id, "Thanks. Your results are going up from your own games.");
+    });
+    const kindSel = $("cw-kind");
+    const showDrill = () => $("cw-drillwrap").style.display = kindSel.value === "drill" ? "grid" : "none";
+    kindSel.onchange = showDrill;
+    showDrill();
+    $("cw-make").onclick = async () => {
+      if (crew.challenges.filter((c2) => !hasEnded(c2, today2)).length >= LIMITS.challenges - 2) return void (msg.textContent = "That's plenty on at once. Let one finish first.");
+      const vs = $("cw-vs").value.trim();
+      const c = newChallenge(crew, meW, kindSel.value, { days: Number($("cw-days").value), drill: $("cw-drill").value, vsName: vs || void 0 });
+      const next = { ...crew, challenges: [...crew.challenges, c] };
+      await save(next);
+      void openCrew(next.id, vs ? `Challenge started against ${cleanName(vs, 30)}. Send the update link to them and to your crew.` : "Challenge started. Send the update link to your crew so they can join in.");
+    };
+    el.querySelectorAll("[data-cheer]").forEach((b) => b.onclick = () => openCheers(crew, b.dataset.cheer, b.dataset.ch));
+    el.querySelectorAll("[data-rsvp]").forEach(
+      (b) => b.onclick = async () => {
+        await save(setRsvp(crew, meW, b.dataset.rsvp, b.dataset.go === "1"));
+        void openCrew(crew.id, "Got it. Send an update so the crew sees your answer.");
+      }
+    );
+    $("cw-event").onclick = async () => {
+      const when3 = $("cw-when").value;
+      if (!when3) return void (msg.textContent = "Pick a day.");
+      const time = $("cw-time").value || void 0;
+      const before = new Set(crew.events.map((e) => e.id));
+      const withEvent = addEvent(crew, meW, when3, time, $("cw-place").value);
+      const ev = withEvent.events.find((e) => !before.has(e.id));
+      await save(setRsvp(withEvent, meW, ev.id, true));
+      void openCrew(crew.id, "Bowl night planned and you're in. Send an update to tell the crew.");
+    };
+    $("cw-leave").onclick = async () => {
+      if (!confirm(`Leave ${crew.name}? It's removed from this phone. The others keep their copies.`)) return;
+      S.crews = S.crews.filter((c) => c.id !== crew.id);
+      await saveCoach();
+      openCrews();
+    };
+  }
+  function openCheers(crew, toCode, challengeId) {
+    const to = crew.members.find((m) => m.code === toCode);
+    const el = sheet7();
+    el.innerHTML = `<div class="row"><h2>Cheer ${esc(to?.name ?? "a friend")} on</h2><button class="btn ghost" id="ch-back">Back</button></div>
+    <div class="note">Only these: there's no typing and no comments, so a cheer is always kind.</div>
+    <div class="chips" style="gap:10px">${Object.keys(CHEERS).map((k2) => `<button class="btn" data-k="${k2}" style="padding:12px 16px">${esc(CHEERS[k2])}</button>`).join("")}</div>`;
+    $("ch-back").onclick = () => void openCrew(crew.id);
+    el.querySelectorAll("[data-k]").forEach(
+      (b) => b.onclick = async () => {
+        await save(addCheer(crew, me2(), toCode, b.dataset.k, challengeId));
+        void openCrew(crew.id, `Cheer ready for ${to?.name ?? "your friend"}. Send an update to deliver it.`);
+      }
+    );
   }
 
   // camera/pending.ts
@@ -8676,8 +9268,8 @@ ${url}`);
     const json = await unpackText(payload);
     return json === null ? null : decodeSession(b64urlEncode(json));
   }
-  var sheet7 = () => $("friends");
-  var close7 = () => (sheet7().classList.remove("on"), sheet7().innerHTML = "");
+  var sheet8 = () => $("friends");
+  var close8 = () => (sheet8().classList.remove("on"), sheet8().innerHTML = "");
   var myName2 = () => S.profile?.name ?? "A bowler";
   var myUser = () => S.profile?.username ?? "";
   var myCode = () => {
@@ -8685,12 +9277,12 @@ ${url}`);
     return S.profile?.friendCode ?? "";
   };
   function askForUsername(then) {
-    const el = sheet7();
+    const el = sheet8();
     el.classList.add("on");
     el.innerHTML = `<div class="row"><h2>Choose an account name</h2><button class="btn ghost" id="fr-close">Close</button></div>
     <div class="note">Friends add you by account name plus your friend code. Pick one (3 to 20 letters, numbers or underscores).</div>
     <div class="card"><div class="field"><label>Account name</label><input id="fr-user" placeholder="e.g. strikeking22" autocomplete="off" autocapitalize="none" spellcheck="false"></div><div class="chips"><button class="btn" id="fr-usersave">Save</button></div><div class="note" id="fr-usermsg"></div></div>`;
-    $("fr-close").onclick = close7;
+    $("fr-close").onclick = close8;
     $("fr-usersave").onclick = () => {
       const u = cleanUsername($("fr-user").value);
       if (!isUsername(u)) return void ($("fr-usermsg").textContent = "Use 3 to 20 letters, numbers or underscores, no spaces.");
@@ -8702,7 +9294,7 @@ ${url}`);
     if (!myUser()) return askForUsername(openInvite);
     const link = `${appLink()}/#invite=${encodeInvite(myName2(), myCode(), myUser())}`;
     const warn = isPrivateHost(appLink());
-    const el = sheet7();
+    const el = sheet8();
     el.classList.add("on");
     el.innerHTML = `
     <div class="row"><h2>Invite a player</h2><button class="btn ghost" id="fr-close">Close</button></div>
@@ -8713,7 +9305,7 @@ ${url}`);
       <div class="chips"><button class="chip" id="fr-copytag2">Copy tag</button><button class="chip" id="fr-copylink">Copy link</button></div></div>
     <div class="card"><div class="k">Your invite link</div><div class="u" style="word-break:break-all;user-select:all">${esc(link)}</div>
       <div class="chips"><button class="btn" id="fr-send">Send invite / friend request</button></div><div class="note" id="fr-msg"></div></div>`;
-    $("fr-close").onclick = close7;
+    $("fr-close").onclick = close8;
     const tag = friendTag(myUser(), myCode());
     $("fr-send").onclick = async () => ($("fr-msg").textContent = await shareLink("Join me on LaneIQ", `${myName2()} invited you to LaneIQ, a free bowling coach that uses your phone's camera, and wants to be friends. Open the link, then add it to your Home Screen. If I don't show up as a friend, add me with my tag: ${tag}`, link), void 0);
     const copy = (id, text, label2) => $(id).onclick = async () => {
@@ -8728,7 +9320,7 @@ ${url}`);
     copy("fr-copylink", link, "Your invite link:");
   }
   function openFriendRequest(from, kind2) {
-    const el = sheet7();
+    const el = sheet8();
     el.classList.add("on");
     const already = S.friends.some((f) => f.code === from.code);
     const self = from.code === myCode();
@@ -8736,16 +9328,16 @@ ${url}`);
     <div class="row"><h2>${kind2 === "invite" ? "Friend request" : "Friend request accepted"}</h2><button class="btn ghost" id="fr-close">Close</button></div>
     ${self ? `<div class="card"><div class="u">That's your own link.</div></div>` : `<div class="card"><div class="lr-head">${esc(from.name)}${from.username ? ` <span class="note">@${esc(from.username)}</span>` : ""}</div><div class="u">${kind2 === "invite" ? "wants to be friends so you can compare shots on the same lane." : "added you. Add them back to finish connecting."}</div><div class="u">Friend code ${esc(from.code)}</div>
     <div class="chips">${already ? `<span class="tag">Already friends</span>` : `<button class="btn" id="fr-accept">${kind2 === "invite" ? `Add ${esc(from.name)} and let them know` : `Add ${esc(from.name)} as a friend`}</button>`}<button class="chip" id="fr-no">Not now</button></div><div class="note" id="fr-msg"></div></div>`}`;
-    $("fr-close").onclick = close7;
+    $("fr-close").onclick = close8;
     $("fr-no")?.addEventListener("click", () => {
       if (!self && !already) deferInvite(from);
-      close7();
+      close8();
     });
     $("fr-accept")?.addEventListener("click", async () => {
       S.friends.push({ code: from.code, name: from.name, username: from.username, addedAt: (/* @__PURE__ */ new Date()).toISOString() });
       dropDeferred(from.code);
       await saveSocial();
-      if (kind2 === "reply") return close7();
+      if (kind2 === "reply") return close8();
       $("fr-msg").innerHTML = `Added ${esc(from.name)}. Send the confirmation so they can add you back.`;
       const send2 = async () => $("fr-msg").textContent = await shareLink("Friend request accepted", `${myName2()} accepted your friend request on LaneIQ. Tap to add them back.`, `${appLink()}/#reply=${encodeInvite(myName2(), myCode(), myUser())}`);
       void send2();
@@ -8787,7 +9379,7 @@ ${url}`);
     });
   };
   function openShareSession() {
-    const el = sheet7();
+    const el = sheet8();
     el.classList.add("on");
     const list = sessionsOf().reverse();
     const warn = isPrivateHost(appLink());
@@ -8799,7 +9391,7 @@ ${url}`);
     <div class="field"><label>Where was it? (center and lane, e.g. AMF 14)</label><input id="fr-lane" placeholder="Center and lane"></div>
     ${list.map((s) => `<div class="card"><div class="row"><div><b>${esc(s.date)}</b> <span class="note">${s.n} shots</span></div><button class="chip" data-id="${s.id}">Share</button></div></div>`).join("")}
     <div class="note" id="fr-msg"></div>`;
-    $("fr-close").onclick = close7;
+    $("fr-close").onclick = close8;
     el.querySelectorAll("[data-id]").forEach(
       (b) => b.onclick = async () => {
         const lane = $("fr-lane").value.trim();
@@ -8813,7 +9405,7 @@ ${url}`);
     );
   }
   function openReceivedSession(sess) {
-    const el = sheet7();
+    const el = sheet8();
     el.classList.add("on");
     const known = S.friends.some((f) => f.code === sess.from.code);
     el.innerHTML = `
@@ -8821,22 +9413,22 @@ ${url}`);
     <div class="card"><div class="lr-head">${esc(sess.from.name)}</div><div class="u">${esc(sess.lane)} \xB7 ${esc(sess.date)} \xB7 ${sess.shots.length} shots${sess.pattern ? ` \xB7 ${esc(sess.pattern)}` : ""}</div>
       <div class="note">${known ? "A friend of yours." : "Not in your friends yet. Saving this does not add them."}</div>
       <div class="chips"><button class="btn" id="fr-save">Save to compare</button><button class="chip" id="fr-no">Not now</button></div></div>`;
-    $("fr-close").onclick = close7;
-    $("fr-no").onclick = close7;
+    $("fr-close").onclick = close8;
+    $("fr-no").onclick = close8;
     $("fr-save").onclick = async () => {
       S.shared = [...S.shared.filter((x) => !(x.from.code === sess.from.code && x.date === sess.date && x.lane === sess.lane)), sess];
       await saveSocial();
-      close7();
+      close8();
       openCompare(sess);
     };
   }
   function openCompare(theirs) {
-    const el = sheet7();
+    const el = sheet8();
     el.classList.add("on");
     const mine = sessionsOf().reverse();
     if (!S.shared.length || !mine.length) {
       el.innerHTML = `<div class="row"><h2>Compare</h2><button class="btn ghost" id="fr-close">Close</button></div><div class="card"><div class="u">${!S.shared.length ? "No friend sessions yet. When a friend shares a session with you and you save it, it shows up here." : "Bowl some shots first so there is something to compare."}</div></div>`;
-      $("fr-close").onclick = close7;
+      $("fr-close").onclick = close8;
       return;
     }
     let pickTheirs = theirs ?? S.shared[S.shared.length - 1];
@@ -8854,7 +9446,7 @@ ${url}`);
         <div class="note"><span style="color:#46e6ff">Cyan: you</span> \xB7 <span style="color:#ffd25a">Gold: ${esc(pickTheirs.from.name)}</span></div></div>
       <div class="card"><table><tr><th></th><th class="n">You</th><th class="n">${esc(pickTheirs.from.name)}</th></tr>${cmp.rows.map((r) => `<tr><td>${esc(r.label)}</td><td class="n">${fmt4(r.mine, r.unit)}</td><td class="n">${fmt4(r.theirs, r.unit)}</td></tr>`).join("")}</table></div>
       <div class="card"><ul>${cmp.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>`;
-      $("fr-close").onclick = close7;
+      $("fr-close").onclick = close8;
       $("cp-theirs").onchange = (e) => (pickTheirs = S.shared[Number(e.target.value)], draw3());
       $("cp-mine").onchange = (e) => (pickMine = e.target.value, draw3());
       $("cp-lane").onchange = async (e) => {
@@ -8871,7 +9463,7 @@ ${url}`);
     draw3();
   }
   function captureIncomingHash() {
-    if (/^#(invite|reply|session|live|league|progress)=/.test(location.hash)) {
+    if (/^#(invite|reply|session|live|league|progress|crew)=/.test(location.hash)) {
       const h = location.hash;
       writePendingHash(h);
       installManifestFor(h);
@@ -8883,10 +9475,11 @@ ${url}`);
     const h = readPendingHash();
     if (!h || !S.profile) return;
     clearPendingHash();
-    const [, kind2, value] = /^#(invite|reply|session|live|league|progress)=(.+)$/.exec(h) ?? [];
+    const [, kind2, value] = /^#(invite|reply|session|live|league|progress|crew)=(.+)$/.exec(h) ?? [];
     if (!kind2) return;
     if (kind2 === "league") return void handleLeagueLink(value);
     if (kind2 === "progress") return void handleProgressLink(value);
+    if (kind2 === "crew") return void handleCrewLink(value);
     if (S.profile?.junior) return void alert("Friend, session and live links are switched off on a junior profile.");
     if (kind2 === "live") return void joinFrom(value);
     if (kind2 === "session") {
@@ -8914,8 +9507,8 @@ ${url}`);
   function deferInvite(from) {
     if (!deferred().some((d) => d.code === from.code)) setDeferred([...deferred(), from]);
   }
-  function dropDeferred(code) {
-    setDeferred(deferred().filter((d) => d.code !== code));
+  function dropDeferred(code2) {
+    setDeferred(deferred().filter((d) => d.code !== code2));
   }
   async function addPendingTag() {
     const raw = readPendingTag();
@@ -8940,7 +9533,7 @@ ${url}`);
     ${isPrivateHost(link) ? `<div class="note" style="color:var(--gold)">That address only works on your own network or Tailscale. Friends need a public address; set it here once the app is hosted for everyone.</div>` : ""}</div>`;
   }
   function wireFriendsCard(rerender) {
-    $("fr-setuser")?.addEventListener("click", () => askForUsername(() => (close7(), rerender())));
+    $("fr-setuser")?.addEventListener("click", () => askForUsername(() => (close8(), rerender())));
     $("fr-copytag")?.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(friendTag(myUser(), myCode()));
@@ -9354,8 +9947,8 @@ ${url}`);
       if (!s) return;
       const lo = Math.max(0, i - half), hi = Math.min(n - 1, i + half);
       const mags = filled.slice(lo, hi + 1).map((q) => Math.hypot(q.x, q.y, q.z));
-      const mean10 = mags.reduce((a, b) => a + b, 0) / mags.length;
-      const spread = mags.length > 1 ? Math.sqrt(mags.reduce((a, m) => a + (m - mean10) ** 2, 0) / (mags.length - 1)) / (mean10 || 1) : 0.3;
+      const mean11 = mags.reduce((a, b) => a + b, 0) / mags.length;
+      const spread = mags.length > 1 ? Math.sqrt(mags.reduce((a, m) => a + (m - mean11) ** 2, 0) / (mags.length - 1)) / (mean11 || 1) : 0.3;
       series.push({ t: (i + 0.5) / fps, rpm: s.rpm, rotation: s.axisRotation, tilt: s.axisTilt, quality: Math.max(0, Math.min(1, s.quality * (1 - spread * 4))) });
     });
     const take = (a) => a.length ? { t: med(a.map((p) => p.t)), rpm: med(a.map((p) => p.rpm)), rotation: med(a.map((p) => p.rotation)), tilt: med(a.map((p) => p.tilt)), quality: med(a.map((p) => p.quality)) } : null;
@@ -10867,7 +11460,7 @@ ${url}`);
     return { hitMark: markOff === null ? null : Math.abs(markOff) <= MARK_TOL, markOff, hitBreak: breakOff === null ? null : Math.abs(breakOff) <= BREAK_TOL, breakOff };
   }
   var MIN_GRADED = 6;
-  var mean4 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var mean5 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
   var pct2 = (r) => r.rate === null ? "n/a" : `${Math.round(r.rate * 100)}% (${r.made} of ${r.attempts})`;
   function executionReport(shots) {
     const rows2 = shots.map((s) => ({ s, g: gradeShot(s, s.plan) })).filter((r) => !!r.g && r.g.hitMark !== null);
@@ -10879,7 +11472,7 @@ ${url}`);
     const strikes = (list) => rate(withRes(list).filter((r) => isStrike(r.s)).length, withRes(list).length);
     const bp = rows2.filter((r) => r.g.hitBreak !== null);
     const hitSeen = seen2(hit);
-    const lineBias = hitSeen.length >= 4 ? mean4(hitSeen.map((r) => r.s.m.pocketMiss)) : null;
+    const lineBias = hitSeen.length >= 4 ? mean5(hitSeen.map((r) => r.s.m.pocketMiss)) : null;
     const report = {
       verdict: "insufficient",
       graded: rows2.length,
@@ -11078,21 +11671,21 @@ ${url}`);
 
   // camera/compare.ts
   var raf2 = 0;
-  var sides = [];
+  var sides2 = [];
   var tool = "line";
   var rate2 = 0.5;
   var lead = 2.5;
-  var when = (iso) => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  var when = (iso2) => new Date(iso2).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   var ballName = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
   function bestShotFor(s) {
     const pool = S.shots.filter((x) => x.id !== s.id && x.hasClip && (!s.ballId || x.ballId === s.ballId));
     const scored = pool.filter((x) => x.m.pocketMiss !== null).sort((a, b) => Number(b.result?.pinsDown === 10) - Number(a.result?.pinsDown === 10) || Math.abs(a.m.pocketMiss) - Math.abs(b.m.pocketMiss));
     return scored[0] ?? pool[pool.length - 1] ?? null;
   }
-  function close8() {
+  function close9() {
     cancelAnimationFrame(raf2);
-    for (const s of sides) if (s.url) URL.revokeObjectURL(s.url);
-    sides = [];
+    for (const s of sides2) if (s.url) URL.revokeObjectURL(s.url);
+    sides2 = [];
     $("compare").classList.remove("on");
     $("compare").innerHTML = "";
   }
@@ -11175,7 +11768,7 @@ ${url}`);
     };
   }
   function trailLoop() {
-    for (const s of sides) {
+    for (const s of sides2) {
       if (!s.v || !s.ov || s.shot.cal.length !== 4) continue;
       const g = s.ov.getContext("2d");
       g.clearRect(0, 0, s.ov.width, s.ov.height);
@@ -11186,7 +11779,7 @@ ${url}`);
       const last = s.shot.path[s.shot.path.length - 1]?.t ?? 0;
       strokeTrail(view3, s.shot.path.filter((p) => p.t <= t).map((p) => P(p.x, p.y)), 1, t < last);
     }
-    const [a, b] = sides;
+    const [a, b] = sides2;
     if (a?.v && b?.v && !a.v.paused) {
       const want = b.rel + (a.v.currentTime - a.rel);
       if (want >= 0 && Math.abs(b.v.currentTime - want) > 0.08) b.v.currentTime = want;
@@ -11198,12 +11791,12 @@ ${url}`);
     raf2 = requestAnimationFrame(trailLoop);
   }
   function seekAll(rel) {
-    for (const s of sides) if (s.v) s.v.currentTime = Math.max(0, s.rel + rel);
+    for (const s of sides2) if (s.v) s.v.currentTime = Math.max(0, s.rel + rel);
   }
   async function playAll() {
     seekAll(-lead);
     await new Promise((r) => setTimeout(r, 150));
-    for (const s of sides)
+    for (const s of sides2)
       if (s.v) {
         s.v.playbackRate = rate2;
         void s.v.play().catch(() => {
@@ -11211,7 +11804,7 @@ ${url}`);
       }
   }
   function stepAll(dt) {
-    for (const s of sides)
+    for (const s of sides2)
       if (s.v) {
         s.v.pause();
         s.v.currentTime = Math.max(0, s.v.currentTime + dt);
@@ -11231,7 +11824,7 @@ ${url}`);
   function summaryText() {
     const hand3 = S.profile?.hand ?? "R";
     const lines = [`LaneIQ shot comparison${S.profile ? ` for ${S.profile.name}` : ""}`];
-    sides.forEach((s, i) => {
+    sides2.forEach((s, i) => {
       const m = s.shot.m;
       lines.push("", `${i ? "B" : "A"}: ${when(s.shot.at)}, ${ballName(s.shot.ballId)}${s.shot.result ? `, ${s.shot.result.pinsDown === 10 ? "strike" : `${s.shot.result.pinsDown} pins`}` : ""}`);
       for (const f of FEATURES) {
@@ -11249,7 +11842,7 @@ ${url}`);
     const box = $("cp-share-note");
     box.textContent = "Getting the pictures ready\u2026";
     const files = [];
-    for (const [i, s] of sides.entries()) {
+    for (const [i, s] of sides2.entries()) {
       const snap = await snapshot(s);
       if (snap) files.push(new File([snap], `laneiq-shot-${i ? "B" : "A"}.jpg`, { type: "image/jpeg" }));
       if (s.clip) files.push(new File([s.clip], `laneiq-shot-${i ? "B" : "A"}.${/mp4/.test(s.clip.type) ? "mp4" : "webm"}`, { type: s.clip.type || "video/mp4" }));
@@ -11257,19 +11850,19 @@ ${url}`);
     offerShare(box, files, { text: summaryText(), title: "LaneIQ shots", label: "Share with my coach" });
   }
   async function openCompare2(a, b) {
-    close8();
+    close9();
     const el = $("compare");
     el.classList.add("on");
     const other = b ?? bestShotFor(a);
-    sides = [await sideFor(a), ...other ? [await sideFor(other)] : []];
+    sides2 = [await sideFor(a), ...other ? [await sideFor(other)] : []];
     const pickList = S.shots.filter((x) => x.id !== a.id && x.hasClip).slice(-60).reverse();
     const head = (s, i) => `<div class="note"><b style="color:${i ? "var(--mg)" : "var(--cy)"}">${i ? "B" : "A"}</b> ${esc(when(s.shot.at))} \xB7 ${esc(ballName(s.shot.ballId))} \xB7 ${s.shot.a.speedMph.toFixed(1)} mph${s.shot.result ? ` \xB7 ${s.shot.result.pinsDown === 10 ? "strike" : s.shot.result.pinsDown + " pins"}` : ""}</div>`;
     const stage = (s, i) => s.url ? `<div style="flex:1;min-width:0">${head(s, i)}<div class="stagebox" style="margin:4px 0"><video id="cp-v${i}" src="${s.url}" playsinline muted preload="auto"></video><canvas class="ov" id="cp-o${i}" width="${s.shot.vw}" height="${s.shot.vh}"></canvas><canvas class="ov" id="cp-d${i}" style="touch-action:none;pointer-events:auto"></canvas></div></div>` : `<div style="flex:1;min-width:0">${head(s, i)}<div class="note">No video for this shot.</div></div>`;
-    const rows2 = FEATURES.filter((f) => sides.some((s) => typeof s.shot.m[f.key] === "number"));
+    const rows2 = FEATURES.filter((f) => sides2.some((s) => typeof s.shot.m[f.key] === "number"));
     el.innerHTML = `<div class="row"><h2>Side by side</h2><button class="btn ghost" id="cp-close">Close</button></div>
     <div class="note">Both clips are lined up at the moment the ball leaves the hand. Draw on either picture to mark it up.</div>
     <div class="field"><label>Compare with</label><select id="cp-pick">${other ? "" : `<option value="">choose a shot\u2026</option>`}${pickList.map((x) => `<option value="${x.id}" ${other?.id === x.id ? "selected" : ""}>${esc(when(x.at))} \xB7 ${esc(ballName(x.ballId))} \xB7 ${x.a.speedMph.toFixed(1)} mph${x.result?.pinsDown === 10 ? " \xB7 strike" : ""}${x.id === bestShotFor(a)?.id ? " (your best)" : ""}</option>`).join("")}</select></div>
-    <div style="display:flex;gap:8px">${sides.map(stage).join("")}</div>
+    <div style="display:flex;gap:8px">${sides2.map(stage).join("")}</div>
     <div class="field"><label>From release (s)</label><input id="cp-scrub" type="range" min="-3" max="3" step="0.02" value="-${lead}"></div>
     <div class="chips"><button class="btn" id="cp-play">Play both</button><button class="chip" id="cp-back">\u25C0 frame</button><button class="chip" id="cp-fwd">frame \u25B6</button>${[0.25, 0.5, 1].map((r) => `<button class="chip ${r === rate2 ? "sel" : ""}" data-rate="${r}">${r}\xD7</button>`).join("")}</div>
     <div class="chips">${["line", "angle", "circle", "free"].map((t) => `<button class="chip ${t === tool ? "sel" : ""}" data-tool="${t}">${t === "line" ? "Line" : t === "angle" ? "Angle" : t === "circle" ? "Circle" : "Draw"}</button>`).join("")}<button class="chip danger" id="cp-clear">Clear marks</button></div>
@@ -11277,30 +11870,30 @@ ${url}`);
     <h3>Both paths from above</h3>
     <div class="card"><canvas id="cp-top" width="360" height="600" style="width:100%;height:auto;aspect-ratio:360/600"></canvas><div class="note"><b style="color:var(--cy)">A</b> cyan, <b style="color:var(--mg)">B</b> magenta. The dashed green line is the pocket.</div></div>
     <h3>Numbers</h3>
-    <div class="card"><table><tr><th>Metric</th><th class="n">A</th><th class="n">B</th></tr>${rows2.map((f) => `<tr><td>${esc(f.label)}</td>${sides.map((s) => `<td class="n">${typeof s.shot.m[f.key] === "number" ? s.shot.m[f.key].toFixed(1) : "\u2013"}</td>`).join("")}${sides.length < 2 ? "<td></td>" : ""}</tr>`).join("")}</table></div>
-    ${sides.some((s) => s.shot.body) ? `<h3>Body and approach</h3><div class="card">${sides.map((s, i) => `<div><b>${i ? "B" : "A"}</b><ul>${s.shot.body ? describeBody(s.shot.body, S.profile?.hand ?? "R").map((d) => `<li>${esc(d)}</li>`).join("") : "<li>Not read yet: open the shot and tap Read my approach.</li>"}</ul></div>`).join("")}</div>` : ""}
+    <div class="card"><table><tr><th>Metric</th><th class="n">A</th><th class="n">B</th></tr>${rows2.map((f) => `<tr><td>${esc(f.label)}</td>${sides2.map((s) => `<td class="n">${typeof s.shot.m[f.key] === "number" ? s.shot.m[f.key].toFixed(1) : "\u2013"}</td>`).join("")}${sides2.length < 2 ? "<td></td>" : ""}</tr>`).join("")}</table></div>
+    ${sides2.some((s) => s.shot.body) ? `<h3>Body and approach</h3><div class="card">${sides2.map((s, i) => `<div><b>${i ? "B" : "A"}</b><ul>${s.shot.body ? describeBody(s.shot.body, S.profile?.hand ?? "R").map((d) => `<li>${esc(d)}</li>`).join("") : "<li>Not read yet: open the shot and tap Read my approach.</li>"}</ul></div>`).join("")}</div>` : ""}
     <h3>Send to a coach</h3>
     <div class="card"><div class="u">Shares both clips, a picture of each as it's shown now (with your marks) and the numbers, through your phone's share sheet. Nothing goes anywhere until you pick who to send it to.</div><div class="chips"><button class="btn ghost" id="cp-share">Get the packet ready</button></div><div id="cp-share-note"></div></div>`;
-    sides.forEach((s, i) => {
+    sides2.forEach((s, i) => {
       s.v = document.getElementById(`cp-v${i}`);
       s.ov = document.getElementById(`cp-o${i}`);
       s.draw = document.getElementById(`cp-d${i}`);
       if (s.draw) wireDraw(s);
       s.v?.addEventListener("loadedmetadata", () => s.v.currentTime = Math.max(0, s.rel - lead), { once: true });
     });
-    drawTopDown($("cp-top").getContext("2d"), 360, 600, sides.map((s, i) => ({ path: s.shot.path, color: i ? "#ff4fd8" : "#46e6ff", width: 3.2 })), { board: S.profile?.hand === "L" ? 22.5 : 17.5 });
-    $("cp-close").onclick = close8;
+    drawTopDown($("cp-top").getContext("2d"), 360, 600, sides2.map((s, i) => ({ path: s.shot.path, color: i ? "#ff4fd8" : "#46e6ff", width: 3.2 })), { board: S.profile?.hand === "L" ? 22.5 : 17.5 });
+    $("cp-close").onclick = close9;
     $("cp-play").onclick = () => void playAll();
     $("cp-back").onclick = () => stepAll(-1 / 30);
     $("cp-fwd").onclick = () => stepAll(1 / 30);
     $("cp-scrub").oninput = (e) => {
-      for (const s of sides) s.v?.pause();
+      for (const s of sides2) s.v?.pause();
       seekAll(Number(e.target.value));
     };
     el.querySelectorAll("[data-rate]").forEach(
       (b2) => b2.onclick = () => {
         rate2 = Number(b2.dataset.rate);
-        for (const s of sides) if (s.v) s.v.playbackRate = rate2;
+        for (const s of sides2) if (s.v) s.v.playbackRate = rate2;
         el.querySelectorAll("[data-rate]").forEach((x) => x.classList.toggle("sel", x === b2));
       }
     );
@@ -11310,7 +11903,7 @@ ${url}`);
         el.querySelectorAll("[data-tool]").forEach((x) => x.classList.toggle("sel", x === b2));
       }
     );
-    $("cp-clear").onclick = () => sides.forEach((s) => (s.shapes = [], s.draw && paintShapes(s.draw, [])));
+    $("cp-clear").onclick = () => sides2.forEach((s) => (s.shapes = [], s.draw && paintShapes(s.draw, [])));
     $("cp-pick").onchange = (e) => {
       const id = e.target.value;
       const pick = S.shots.find((x) => x.id === id);
@@ -11334,10 +11927,10 @@ ${url}`);
     { id: "hold", label: "Holding your finish", unit: "s", digits: 1, get: (s) => s.body?.heldS ?? null, fixDir: (h) => h ? "Your better shots are the ones you hold at the line. Post every shot until the ball reaches the pins." : "Shots you hold longest aren't helping here, so check something else first.", fixCons: () => "Some shots you post, some you fall out of. Hold the finish every time." },
     { id: "fatigue", label: "Shots into the session", unit: "shots", digits: 0, get: (s, ctx2) => ctx2.order.get(s.id) ?? null, fixDir: (h) => h ? "You get better as the session goes on: warm up longer before it counts." : "You fade as the session goes on: keep your legs under you, slow down between shots and stay with the same tempo.", fixCons: () => "Your misses get wider at one end of the session." }
   ];
-  var mean5 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var mean6 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
   var sdOf2 = (v) => {
     if (v.length < 2) return 0;
-    const m = mean5(v);
+    const m = mean6(v);
     return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (v.length - 1));
   };
   var median3 = (v) => {
@@ -11347,8 +11940,8 @@ ${url}`);
   };
   function pearson(x, y) {
     if (x.length < 3) return 0;
-    const mx = mean5(x);
-    const my = mean5(y);
+    const mx = mean6(x);
+    const my = mean6(y);
     let sxy = 0, sxx = 0, syy = 0;
     for (let i = 0; i < x.length; i++) {
       sxy += (x[i] - mx) * (y[i] - my);
@@ -11366,7 +11959,7 @@ ${url}`);
     for (const s of shots) bySession.set(s.sessionId, [...bySession.get(s.sessionId) ?? [], s]);
     for (const list of bySession.values()) list.sort((a, b) => a.at.localeCompare(b.at)).forEach((s, i) => order.set(s.id, i + 1));
     const miss = used.map((s) => s.m.pocketMiss);
-    const out = { status: "insufficient", shotsUsed: used.length, needed: MIN_FINDER, bias: miss.length ? mean5(miss) : null, spread: miss.length >= 2 ? sdOf2(miss) : null, factors: [], headline: "", summary: "" };
+    const out = { status: "insufficient", shotsUsed: used.length, needed: MIN_FINDER, bias: miss.length ? mean6(miss) : null, spread: miss.length >= 2 ? sdOf2(miss) : null, factors: [], headline: "", summary: "" };
     if (used.length < MIN_FINDER) {
       out.headline = `Miss Finder needs ${MIN_FINDER - used.length} more shot${MIN_FINDER - used.length === 1 ? "" : "s"} seen to the pins`;
       out.summary = "It ranks what goes with your misses: speed, aim, where the ball lands, your walk and timing, the time into the session. It needs shots the camera saw reach the pins.";
@@ -11394,8 +11987,8 @@ ${url}`);
       values.set(c.id, new Map(used.map((s) => [s.id, c.get(s, { order })])));
       if (rd * rd >= rc * rc || rc <= 0) {
         if (tOf(rd, rows2.length) < 2 || rd * rd < 0.08) continue;
-        const mLo = mean5(lo.map((r) => r.y));
-        const mHi = mean5(hi.map((r) => r.y));
+        const mLo = mean6(lo.map((r) => r.y));
+        const mHi = mean6(hi.map((r) => r.y));
         const betterHigh = Math.abs(mHi) < Math.abs(mLo);
         factors.push({ id: c.id, label: c.label, unit: c.unit, kind: "direction", explained: rd * rd, n: rows2.length, text: `At ${range(lo)} you meet the pins ${missWord(mLo)} on average; at ${range(hi)}, ${missWord(mHi)}.`, fix: c.fixDir(betterHigh, range(lo), range(hi)) });
       } else {
@@ -11404,7 +11997,7 @@ ${url}`);
         const near = devs.slice(0, Math.floor(devs.length / 2));
         const far = devs.slice(Math.floor(devs.length / 2));
         const cut = far[0].d;
-        factors.push({ id: c.id, label: c.label, unit: c.unit, kind: "consistency", explained: rc * rc, n: rows2.length, text: `Your usual is ${fmt4(cx)}${u}. Within ${fmt4(cut)}${u} of it you miss the pocket by ${mean5(near.map((r) => r.y)).toFixed(1)} boards on average; further off, by ${mean5(far.map((r) => r.y)).toFixed(1)}.`, fix: c.fixCons(fmt4(cx)) });
+        factors.push({ id: c.id, label: c.label, unit: c.unit, kind: "consistency", explained: rc * rc, n: rows2.length, text: `Your usual is ${fmt4(cx)}${u}. Within ${fmt4(cut)}${u} of it you miss the pocket by ${mean6(near.map((r) => r.y)).toFixed(1)} boards on average; further off, by ${mean6(far.map((r) => r.y)).toFixed(1)}.`, fix: c.fixCons(fmt4(cx)) });
       }
     }
     factors.sort((a, b) => b.explained - a.explained);
@@ -11432,10 +12025,10 @@ ${url}`);
 
   // core/src/moves.ts
   var MOVE_MIN = 3;
-  var mean6 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var mean7 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
   var sdOf3 = (v) => {
     if (v.length < 2) return 0;
-    const m = mean6(v);
+    const m = mean7(v);
     return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (v.length - 1));
   };
   var median4 = (v) => {
@@ -11464,7 +12057,7 @@ ${url}`);
       return { ...base, headline: `Bowl ${MOVE_MIN - seen2.length} more shot${MOVE_MIN - seen2.length === 1 ? "" : "s"} with this ball`, why: ["The advisor needs a few shots with the same ball that the camera saw reach the pins."] };
     }
     const misses = seen2.map((s) => s.m.pocketMiss);
-    const bias = mean6(misses);
+    const bias = mean7(misses);
     const spread = sdOf3(misses);
     const highs = misses.filter((m) => m > 1).length;
     const lights = misses.filter((m) => m < -1).length;
@@ -11474,7 +12067,7 @@ ${url}`);
     if (spread > 3) return { ...base, kind: "stay", headline: "Too scattered to call a move", why: [...why, `The misses spread \xB1${spread.toFixed(1)} boards, too wide for the data to point to one move.`] };
     const pocket = POCKET_BOARD[hand3];
     const entries = seen2.map((s) => s.m.entryBoard).filter((x) => x !== null);
-    const side = entries.length ? Math.sign(mean6(entries) - pocket) : hand3 === "R" ? Math.sign(bias) : -Math.sign(bias);
+    const side = entries.length ? Math.sign(mean7(entries) - pocket) : hand3 === "R" ? Math.sign(bias) : -Math.sign(bias);
     const size = Math.abs(bias);
     const high = bias > 0;
     if (lane?.status === "ok" && /earlier/.test(lane.headline) && high) why.push("The lane read agrees: the ball is reading the lane earlier as the oil dries up.");
@@ -11501,7 +12094,7 @@ ${url}`);
   // core/src/balladvisor.ts
   var BALL_MIN_SHOTS = 10;
   var STEP = 0.4;
-  var mean7 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  var mean8 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
   var nums2 = (v) => v.filter((x) => typeof x === "number" && Number.isFinite(x));
   function ballStats(shots) {
     const seen2 = shots.filter((s) => s.m.pocketMiss !== null);
@@ -11513,11 +12106,11 @@ ${url}`);
       pocketPct: seen2.length ? miss.filter((m) => Math.abs(m) <= 1).length / seen2.length * 100 : null,
       highPct: seen2.length ? miss.filter((m) => m > 1).length / seen2.length * 100 : null,
       lightPct: seen2.length ? miss.filter((m) => m < -1).length / seen2.length * 100 : null,
-      meanMiss: mean7(miss),
-      entryAngle: mean7(nums2(shots.map((s) => s.m.entryAngle))),
-      breakpointFt: mean7(nums2(shots.map((s) => s.m.breakpointFt))),
+      meanMiss: mean8(miss),
+      entryAngle: mean8(nums2(shots.map((s) => s.m.entryAngle))),
+      breakpointFt: mean8(nums2(shots.map((s) => s.m.breakpointFt))),
       strikePct: res.length >= 8 ? res.filter(isStrike).length / res.length * 100 : null,
-      speed: mean7(nums2(shots.map((s) => s.m.launchSpeed)))
+      speed: mean8(nums2(shots.map((s) => s.m.launchSpeed)))
     };
   }
   function judgeBall(st2) {
@@ -11621,7 +12214,7 @@ ${url}`);
     out.points.push("USBC's ball motion research put the best pocket hit at the 17.5 board with about 6\xB0 of entry angle.");
     return out;
   }
-  var mean8 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var mean9 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
   function fatigue(shots) {
     const bySession = /* @__PURE__ */ new Map();
     for (const s of shots) bySession.set(s.sessionId, [...bySession.get(s.sessionId) ?? [], s]);
@@ -11641,13 +12234,13 @@ ${url}`);
       };
       const a = speed(first);
       const b = speed(lastT);
-      if (a.length >= 3 && b.length >= 3) sp.push(mean8(b) - mean8(a));
+      if (a.length >= 3 && b.length >= 3) sp.push(mean9(b) - mean9(a));
       const pa = pocket(first);
       const pb = pocket(lastT);
       if (pa !== null && pb !== null) pk.push(pb - pa);
       sessions++;
     }
-    const out = { status: sessions ? "ok" : "insufficient", sessions, speedChange: sp.length ? mean8(sp) : null, pocketChange: pk.length ? mean8(pk) : null, headline: "", points: [] };
+    const out = { status: sessions ? "ok" : "insufficient", sessions, speedChange: sp.length ? mean9(sp) : null, pocketChange: pk.length ? mean9(pk) : null, headline: "", points: [] };
     if (!sessions) {
       out.headline = "Fatigue needs a session of 9 or more shots";
       return out;
@@ -11660,81 +12253,6 @@ ${url}`);
     if (tired) out.points.push("Slow down between shots, keep your legs under you and keep the same tempo. Speed that drops late usually means the legs, not the arm.");
     if (warm) out.points.push("Your first shots are your weakest: warm up properly before the ones that count.");
     return out;
-  }
-
-  // core/src/drills.ts
-  var DRILLS2 = [
-    { id: "arrow-sniper", name: "Arrow Sniper", blurb: "Hit your board at the arrows, within 1 board, 10 times.", shots: 10, needs: ["board"] },
-    { id: "speed-lock", name: "Speed Lock", blurb: "Throw the same speed, within 0.5 mph, 10 times.", shots: 10, needs: ["mph"] },
-    { id: "pocket-hunter", name: "Pocket Hunter", blurb: "Meet the pocket within a board, 10 times.", shots: 10, needs: [] },
-    { id: "speed-ladder", name: "Speed Ladder", blurb: "Slow, normal, fast on call: 1.5 mph either side of your speed, within 0.6 mph. 9 shots.", shots: 9, needs: ["mph"] },
-    { id: "corner-pins", name: "Corner Pins", blurb: "Spare practice: alternate the 10 pin and the 7 pin. A ball that reaches the pins close enough to take the pin counts. 10 shots.", shots: 10, needs: [] }
-  ];
-  var pinBoard = (pin) => (LANE_BOARDS + 1) / 2 - PIN_XY[pin].x / (41.5 / LANE_BOARDS);
-  var PIN_REACH = 5;
-  function drillTarget(run, i = run.results.filter((r) => r.ok !== null).length) {
-    switch (run.id) {
-      case "arrow-sniper":
-        return { kind: "arrows", target: run.board ?? 10, label: `board ${run.board ?? 10} at the arrows` };
-      case "speed-lock":
-        return { kind: "mph", target: run.mph ?? 17, label: `${(run.mph ?? 17).toFixed(1)} mph` };
-      case "pocket-hunter":
-        return { kind: "pocket", target: 0, label: "the pocket" };
-      case "speed-ladder": {
-        const step = [-1.5, 0, 1.5][i % 3];
-        const t = (run.mph ?? 17) + step;
-        return { kind: "mph", target: t, label: `${step < 0 ? "slow" : step > 0 ? "fast" : "normal"}: ${t.toFixed(1)} mph` };
-      }
-      case "corner-pins": {
-        const pin = i % 2 === 0 ? run.hand === "R" ? 10 : 7 : run.hand === "R" ? 7 : 10;
-        return { kind: "pin", target: pin, label: `the ${pin} pin` };
-      }
-    }
-  }
-  function scoreDrillShot(run, s) {
-    const t = drillTarget(run);
-    const base = { shotId: s.id, target: t.target };
-    if (t.kind === "arrows") {
-      const v = s.m.arrowsBoard;
-      return { ...base, value: v, ok: v === null ? null : Math.abs(v - t.target) <= 1, note: v === null ? "arrows board not measured" : `board ${v.toFixed(1)}` };
-    }
-    if (t.kind === "mph") {
-      const v = s.m.launchSpeed ?? s.a.speedMph;
-      const tol = run.id === "speed-ladder" ? 0.6 : 0.5;
-      return { ...base, value: v, ok: Math.abs(v - t.target) <= tol, note: `${v.toFixed(1)} mph` };
-    }
-    if (t.kind === "pocket") {
-      const v = s.m.pocketMiss;
-      return { ...base, value: v, ok: v === null ? null : Math.abs(v) <= 1, note: v === null ? "not seen to the pins" : Math.abs(v) <= 1 ? "pocket" : `${Math.abs(v).toFixed(1)} ${v > 0 ? "high" : "light"}` };
-    }
-    const atPins = s.a.entryMeasured ? s.a.entryBoard : s.a.lastSeen && s.a.lastSeen.ft >= 52 ? s.a.lastSeen.board : null;
-    const pb = pinBoard(t.target);
-    return { ...base, value: atPins, ok: atPins === null ? null : Math.abs(atPins - pb) <= PIN_REACH, note: atPins === null ? "not seen near the pins" : `board ${atPins.toFixed(0)} at the pins (the ${t.target} is on ${pb.toFixed(0)})` };
-  }
-  function summarize2(run) {
-    const def = DRILLS2.find((d) => d.id === run.id);
-    const scored = run.results.filter((r) => r.ok !== null);
-    const made = scored.filter((r) => r.ok).length;
-    let streak = 0, cur2 = 0;
-    for (const r of scored) {
-      cur2 = r.ok ? cur2 + 1 : 0;
-      streak = Math.max(streak, cur2);
-    }
-    const done2 = scored.length >= def.shots;
-    return { made, scored: scored.length, total: def.shots, done: done2, streak, text: `${made} of ${scored.length}${done2 ? "" : ` (${def.shots - scored.length} to go)`}${streak >= 3 ? ` \xB7 best streak ${streak}` : ""}` };
-  }
-  function addDrillShot(run, s) {
-    if (summarize2(run).done) return run;
-    const r = scoreDrillShot(run, s);
-    const next = { ...run, results: [...run.results, r] };
-    if (summarize2(next).done) next.finishedAt = s.at;
-    return next;
-  }
-  function personalBest(history2, id) {
-    const done2 = history2.filter((h) => h.id === id && h.finishedAt).map((h) => ({ s: summarize2(h), at: h.finishedAt }));
-    if (!done2.length) return null;
-    const best = done2.sort((a, b) => b.s.made - a.s.made || a.at.localeCompare(b.at))[0];
-    return { made: best.s.made, of: best.s.scored, at: best.at };
   }
 
   // core/src/lanememory.ts
@@ -12068,22 +12586,22 @@ ${url}`);
       return null;
     }
   }
-  var unescapeLit = (str3) => {
+  var unescapeLit = (str4) => {
     const out = [];
-    for (let p = 0; p < str3.length; p++) {
-      const c = str3[p];
+    for (let p = 0; p < str4.length; p++) {
+      const c = str4[p];
       if (c !== "\\") {
         out.push(c.charCodeAt(0) & 255);
         continue;
       }
-      const n = str3[++p];
+      const n = str4[++p];
       if (n === void 0) break;
       if (/[0-7]/.test(n)) {
         let o = n;
-        while (o.length < 3 && /[0-7]/.test(str3[p + 1] ?? "")) o += str3[++p];
+        while (o.length < 3 && /[0-7]/.test(str4[p + 1] ?? "")) o += str4[++p];
         out.push(parseInt(o, 8) & 255);
       } else if (n === "\r" || n === "\n") {
-        if (n === "\r" && str3[p + 1] === "\n") p++;
+        if (n === "\r" && str4[p + 1] === "\n") p++;
       } else out.push({ n: 10, r: 13, t: 9, b: 8, f: 12 }[n] ?? n.charCodeAt(0));
     }
     return Uint8Array.from(out);
@@ -12162,8 +12680,8 @@ ${url}`);
         objs.set(num3, { dict: text.slice(first + off, first + nxt), raw: null });
       }
     }
-    const ref = (str3, key2) => {
-      const m = new RegExp(`${key2}\\s+(\\d+)\\s+\\d+\\s+R`).exec(str3);
+    const ref = (str4, key2) => {
+      const m = new RegExp(`${key2}\\s+(\\d+)\\s+\\d+\\s+R`).exec(str4);
       return m ? Number(m[1]) : null;
     };
     const cmapCache = /* @__PURE__ */ new Map();
@@ -12249,11 +12767,11 @@ ${url}`);
   var tidy = (t) => t.replace(/ ?([.:]) ?/g, "$1 ").replace(/(\w) (?=\w)/g, "$1").replace(/(\d)[.] ?(\d)/g, "$1.$2");
 
   // camera/patternsheet.ts
-  var sheet8 = () => $("coachsheet");
+  var sheet9 = () => $("coachsheet");
   var onDone = null;
-  function close9() {
-    sheet8().classList.remove("on");
-    sheet8().innerHTML = "";
+  function close10() {
+    sheet9().classList.remove("on");
+    sheet9().innerHTML = "";
     onDone?.();
   }
   var describe = (p) => [`${p.lengthFt} ft (${lengthClass(p.lengthFt)})`, p.volumeMl !== void 0 ? `${p.volumeMl} mL` : "", p.ratio !== void 0 ? `${p.ratio}:1` : ""].filter(Boolean).join(" \xB7 ");
@@ -12262,7 +12780,7 @@ ${url}`);
   }
   function openPatterns(done2) {
     onDone = done2 ?? null;
-    const el = sheet8();
+    const el = sheet9();
     el.classList.add("on");
     const list = S.myPatterns;
     el.innerHTML = `<div class="row"><h2>My oil patterns</h2><button class="btn ghost" id="mp-close">Close</button></div>
@@ -12277,7 +12795,7 @@ ${url}`);
           <div class="note">${p.rows?.length ? `Oil map from the sheet's load table (${p.rows.length} rows)` : "Oil shape estimated from the length and ratio"} \xB7 rule of 31: board ${ruleOf31(p.lengthFt)} \xB7 ${p.from === "pdf" ? "from a PDF" : p.from === "photo" ? "from a photo" : "typed in"}</div>
           <div class="chips">${S.where.patternId === p.id ? `<button class="chip" data-act="off">Not tonight</button>` : `<button class="chip sel" data-act="use">Use tonight</button>`}<button class="chip" data-act="edit">Edit</button><button class="chip danger" data-act="del">Delete</button></div></div></div></div>`
     ).join("")}`;
-    $("mp-close").onclick = close9;
+    $("mp-close").onclick = close10;
     $("mp-type").onclick = () => openEditor2({ rows: [], tableOk: false, notes: [] }, "typed", "");
     $("mp-file").onchange = async (e) => {
       const f = e.target.files?.[0];
@@ -12339,7 +12857,7 @@ ${url}`);
     return { sheet: readSheetText(text), from: "photo" };
   }
   function openEditor2(r, from, name, existing) {
-    const el = sheet8();
+    const el = sheet9();
     el.classList.add("on");
     const field = (id, label2, v, hint) => `<div class="field"><label>${label2}</label><input id="${id}" inputmode="decimal" value="${v ?? ""}" placeholder="${hint}"></div>`;
     el.innerHTML = `<div class="row"><h2>${existing ? "Edit pattern" : "Check the pattern"}</h2><button class="btn ghost" id="pe-back">Back</button></div>
@@ -12408,7 +12926,7 @@ ${url}`);
   // camera/coachlive.ts
   var hand2 = () => S.profile?.hand ?? "R";
   var ballName2 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "unknown ball";
-  var day = (iso) => new Date(iso).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  var day = (iso2) => new Date(iso2).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
   function moveNow() {
     const shots = sessionShots();
     return adviseMove(shots, hand2(), S.target, readLane(shots.map((x) => ({ a: x.a, ballId: x.ballId }))));
@@ -12826,8 +13344,8 @@ ${url}`);
     const m = s.length >> 1;
     return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
   };
-  var mean9 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
-  var day2 = (iso) => new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
+  var mean10 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var day2 = (iso2) => new Date(iso2).toLocaleDateString([], { month: "short", day: "numeric" });
   var ballName3 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "unknown ball";
   var specLine2 = (b) => [b.rg && `RG ${b.rg.value}`, b.differential && `diff ${b.differential.value}`, b.coverstock?.value ?? b.coverstockType?.value, b.core?.value].filter(Boolean).join(" \xB7 ");
   var badge = (ok, text, warn = false) => `<span class="badge ${ok ? "good" : warn ? "low" : "moderate"}">${esc(text)}</span>`;
@@ -12846,7 +13364,7 @@ ${url}`);
     const pts = [];
     if (steps.length) pts.push(`Steps: ${median7(steps)} (over ${steps.length} shots${new Set(steps).size > 1 ? `; it varies from ${Math.min(...steps)} to ${Math.max(...steps)}` : ""}).`);
     if (drift.length) {
-      const m = mean9(drift);
+      const m = mean10(drift);
       const sd4 = drift.length > 1 ? Math.sqrt(drift.reduce((a, b) => a + (b - m) ** 2, 0) / (drift.length - 1)) : 0;
       pts.push(`Drift: ${Math.abs(m) < 1 ? "you walk straight on average" : `${Math.abs(m).toFixed(1)} boards ${m > 0 ? "left" : "right"} on average`}, give or take ${sd4.toFixed(1)}.${Math.abs(m) >= 2 ? " Some drift is fine if it's the same every time; start that much to the other side, or walk at your target." : ""}`);
     }
@@ -13053,12 +13571,13 @@ ${url}`);
     const card = document.createElement("div");
     card.className = "card";
     card.id = "sc-league";
-    card.innerHTML = `<div class="row"><div><div class="k">League night</div><div class="note">Standings, handicap, teams and the night's awards, kept on this phone.</div></div><button class="btn" id="sc-league-btn">Open</button></div>`;
+    card.innerHTML = `<div class="row"><div><div class="k">League night</div><div class="note">Standings, handicap, teams and the night's awards, kept on this phone.</div></div><button class="btn" id="sc-league-btn">Open</button></div>${crewsAllowed() ? `<div class="row" style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px"><div><div class="k">Crews</div><div class="note">Challenge friends anywhere, plan a bowl night.</div></div><button class="btn" id="sc-crews-btn">Open</button></div>` : ""}`;
     (h ?? page).insertAdjacentElement(h ? "afterend" : "afterbegin", card);
     $("sc-league-btn").onclick = () => openLeagues();
+    $("sc-crews-btn")?.addEventListener("click", () => openCrews());
   }
   var ballName4 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
-  var when2 = (iso) => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  var when2 = (iso2) => new Date(iso2).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   var ZONE = ZONE_LABEL;
   var pct3 = (n) => `${Math.round(n)}%`;
   function renderShots() {
@@ -13638,6 +14157,7 @@ ${url}`);
       <div class="field"><label>Rev rate (RPM, optional)</label><input id="me-rev" inputmode="numeric" value="${p.revRpm ?? ""}" placeholder="not measured"></div></div>
       <div class="chips"><button class="btn ghost" id="me-save">Save</button></div></div>` : ""}
     ${p ? `<div class="card"><div class="k">League night</div><div class="note">Keep a league's standings: handicap, averages, teams and the night's awards. Bowlers send their night as a link; you send the standings back as a link, a picture or text.</div><div class="chips"><button class="btn" id="me-league">League night</button></div></div>
+    ${p && crewsAllowed() ? `<div class="card"><div class="k">Crews</div><div class="note">Friends anywhere who bowl together: challenges inside your crew or against another, bowl nights, and kind cheers. Nothing to pay and no chat, only cheers.</div><div class="chips"><button class="btn" id="me-crews">Crews and challenges</button></div></div>` : ""}
     <div class="card"><div class="k">Juniors, parents and coaches</div><div class="note">${p.junior ? `This is a junior profile (${esc(p.junior.display)}). Make a progress card for a parent or coach, or see your group.` : "Make a junior profile, send a parent or coach a progress card, or keep a group as a youth coach."}</div><div class="chips"><button class="btn" id="me-junior">Open</button></div></div>` : ""}
     ${p ? p.junior ? `<div class="card"><div class="k">Friends and sharing</div><div class="note">Friends, shared sessions and live sync are switched off on a junior profile. A parent or the bowler can still send a progress card from Juniors, parents and coaches.</div></div>` : friendsCardHtml() : ""}
     <h3>Profiles on this phone</h3>
@@ -13672,6 +14192,7 @@ ${url}`);
     );
     if (!p?.junior) wireFriendsCard(renderMe);
     $("me-league")?.addEventListener("click", () => openLeagues());
+    $("me-crews")?.addEventListener("click", () => openCrews());
     $("me-junior")?.addEventListener("click", () => void openJuniorHub());
     $("me-rewards").onclick = () => void openRewards();
     $("me-glow").onclick = () => (setGlow(!glowEnabled()), renderMe());
@@ -13974,11 +14495,11 @@ ${url}`);
       this.edges(gray, r);
       let sum2 = 0, n = 0;
       for (let y = r.y0; y < r.y1; y += 2) for (let x = r.x0; x < r.x1; x += 2) sum2 += this.edge[y * w + x], n++;
-      const mean10 = n ? sum2 / n : 0;
+      const mean11 = n ? sum2 / n : 0;
       const cand = [];
       for (let y = r.y0; y < r.y1; y += 2) for (let x = r.x0; x < r.x1; x += 2) {
         const v = this.edge[y * w + x];
-        if (v > 2.2 * mean10) cand.push({ i: y * w + x, v });
+        if (v > 2.2 * mean11) cand.push({ i: y * w + x, v });
       }
       cand.sort((a, b) => b.v - a.v);
       const take = cand.slice(0, POINTS);
@@ -14951,12 +15472,12 @@ ${url}`);
       for (let i = 1; i < h.pts.length; i++) if (h.pts[i].ly > h.pts[i - 1].ly + 0.05) fwd++;
       const st2 = [];
       for (let i = 1; i < h.pts.length; i++) st2.push({ x: h.pts[i].x - h.pts[i - 1].x, y: h.pts[i].y - h.pts[i - 1].y });
-      const mean10 = st2.length ? st2.reduce((acc, v) => acc + Math.hypot(v.x, v.y), 0) / st2.length : 0;
+      const mean11 = st2.length ? st2.reduce((acc, v) => acc + Math.hypot(v.x, v.y), 0) / st2.length : 0;
       let jerk = 0;
       for (let i = 1; i < st2.length; i++) jerk += Math.hypot(st2[i].x - st2[i - 1].x, st2[i].y - st2[i - 1].y);
-      jerk = st2.length > 1 ? jerk / (st2.length - 1) / Math.max(3, mean10) : 0;
+      jerk = st2.length > 1 ? jerk / (st2.length - 1) / Math.max(3, mean11) : 0;
       const maxStep = st2.reduce((acc, v) => Math.max(acc, Math.hypot(v.x, v.y)), 0);
-      return { mph, fwd: h.pts.length > 1 ? fwd / (h.pts.length - 1) : 0, span: b.ly - a.ly, jerk, jumpy: maxStep > 3 * mean10 + 8 };
+      return { mph, fwd: h.pts.length > 1 ? fwd / (h.pts.length - 1) : 0, span: b.ly - a.ly, jerk, jumpy: maxStep > 3 * mean11 + 8 };
     }
     /** Feed one frame (grayscale, grid size, and optionally red-minus-blue). `t` is the frame's time in seconds. */
     step(gray, t, chroma) {
@@ -15259,7 +15780,7 @@ ${url}`);
     };
   }
   function samplePins(gray, w, h, boxes, ox = 0, oy = 0) {
-    const mean10 = (x0, y0, x1, y1) => {
+    const mean11 = (x0, y0, x1, y1) => {
       const a = Math.max(0, Math.floor(x0 - ox));
       const b = Math.min(w - 1, Math.ceil(x1 - ox) - 1);
       const c = Math.max(0, Math.floor(y0 - oy));
@@ -15275,14 +15796,14 @@ ${url}`);
     const cx1 = Math.max(...boxes.map((b) => b.x1));
     const cy0 = Math.min(...boxes.map((b) => b.y0));
     const cy1 = Math.max(...boxes.map((b) => b.y1));
-    const left = mean10(cx0 - wide * 2.4, cy0, cx0 - wide * 0.5, cy1);
-    const right = mean10(cx1 + wide * 0.5, cy0, cx1 + wide * 2.4, cy1);
+    const left = mean11(cx0 - wide * 2.4, cy0, cx0 - wide * 0.5, cy1);
+    const right = mean11(cx1 + wide * 0.5, cy0, cx1 + wide * 2.4, cy1);
     const ref = Number.isFinite(left) && Number.isFinite(right) ? (left + right) / 2 : Number.isFinite(left) ? left : right;
     return boxes.map((bx) => {
       const bw = bx.x1 - bx.x0;
       const bh = bx.y1 - bx.y0;
       const cells = [];
-      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) cells.push(mean10(bx.x0 + bw * c / COLS, bx.y0 + bh * r / ROWS, bx.x0 + bw * (c + 1) / COLS, bx.y0 + bh * (r + 1) / ROWS));
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) cells.push(mean11(bx.x0 + bw * c / COLS, bx.y0 + bh * r / ROWS, bx.x0 + bw * (c + 1) / COLS, bx.y0 + bh * (r + 1) / ROWS));
       const m = cells.reduce((s, v) => s + v, 0) / cells.length;
       return { id: bx.id, cells, mean: m, ref, ok: cells.every(Number.isFinite) && Number.isFinite(ref) };
     });
@@ -15529,9 +16050,9 @@ ${url}`);
       sq += g[i] * g[i];
       n++;
     }
-    const mean10 = sum2 / n;
-    const sd4 = Math.sqrt(Math.max(0, sq / n - mean10 * mean10));
-    frameHint = mean10 < 38 ? "It's too dark to see the lane. Add light or move the phone toward the lights." : mean10 > 232 ? "The picture is washed out by glare. Angle the phone away from the bright reflections." : sd4 < 14 ? "The picture looks flat or out of focus. Wipe the lens and check the phone is focused on the lane." : "";
+    const mean11 = sum2 / n;
+    const sd4 = Math.sqrt(Math.max(0, sq / n - mean11 * mean11));
+    frameHint = mean11 < 38 ? "It's too dark to see the lane. Add light or move the phone toward the lights." : mean11 > 232 ? "The picture is washed out by glare. Angle the phone away from the bright reflections." : sd4 < 14 ? "The picture looks flat or out of focus. Wipe the lens and check the phone is focused on the lane." : "";
     return { g, w: dcanvas.width, h: dcanvas.height, k: video.videoWidth / dcanvas.width, px };
   }
   function chromaChannels(px, n) {
