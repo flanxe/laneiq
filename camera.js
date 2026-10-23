@@ -53,6 +53,15 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-26-insights-back",
+      date: "2026-10-26",
+      title: "Insights is back in the tab bar",
+      items: [
+        "Insights has its own tab again, right next to Coach. It has your averages, common errors, improvement plan, shot map, skills chart and the Reset button, just as before.",
+        "Coach is its own tab too, for what to work on: Miss Finder, plan vs execution, a move to try, ball advice, approach, drills."
+      ]
+    },
+    {
       id: "2026-10-25-crews",
       date: "2026-10-25",
       title: "Crews: bowl with friends anywhere",
@@ -13392,7 +13401,7 @@ ${url}`);
     }).join("")}
     <div class="note">Start a drill, then bowl with the camera running: every shot is scored by itself and the Live screen shows your count.</div>`;
   }
-  function renderCoach(el, seg, wireSeg2) {
+  function renderCoach(el, seg, wireSeg) {
     const shots = insightShots();
     const hand3 = S.profile?.hand ?? "R";
     const miss = findMisses(shots);
@@ -13449,11 +13458,11 @@ ${url}`);
     <h3>Share</h3>
     <div class="card"><div class="k">Bowler DNA card</div><div class="u">Your speed, rev rate, axis, PAP, entry angle, pocket and strike rate on one picture, each marked measured or entered. For your coach, your pro shop or your friends.</div><div class="chips"><button class="btn" id="co-dna">Make my card</button></div><div class="note" id="co-dna-note"></div></div>
     <div class="card"><div class="k">Highlight reel</div><div class="u">Your best shots from the latest session (strikes first, then pocket hits), each with its ball path, cut into one short vertical video you can share.</div><div class="chips"><button class="btn" id="co-reel" ${sess.some((s) => s.hasClip) ? "" : "disabled"}>Make my highlight reel</button></div><div class="note" id="co-reel-note">${sess.some((s) => s.hasClip) ? "" : "The latest session has no clips."}</div></div>`;
-    wireSeg2();
+    wireSeg();
     $("co-target").onclick = () => openTarget();
     $("co-bodyauto").onclick = () => {
       setBodyAuto(!bodyAutoOn());
-      renderCoach(el, seg, wireSeg2);
+      renderCoach(el, seg, wireSeg);
     };
     document.getElementById("co-bodyrun")?.addEventListener("click", async () => {
       const list = shots.filter((s) => s.hasClip && !s.body && !bodyPending(s.id)).slice(-10);
@@ -13463,7 +13472,7 @@ ${url}`);
         await queueBody(s, { onProgress: (m) => note.textContent = `Clip ${done2 + 1} of ${list.length}: ${m}` });
         done2++;
       }
-      renderCoach(el, seg, wireSeg2);
+      renderCoach(el, seg, wireSeg);
     });
     document.getElementById("co-drillopen")?.addEventListener("click", () => openDrillStatus());
     el.querySelectorAll("[data-start]").forEach(
@@ -13475,7 +13484,7 @@ ${url}`);
         const mph = mphIn ? parseFloat(mphIn.value) : void 0;
         S.drill = { id, startedAt: (/* @__PURE__ */ new Date()).toISOString(), hand: hand3, board: Number.isFinite(board) ? board : void 0, mph: Number.isFinite(mph) ? mph : void 0, results: [] };
         await saveCoach();
-        renderCoach(el, seg, wireSeg2);
+        renderCoach(el, seg, wireSeg);
       }
     );
     $("co-dna").onclick = async () => {
@@ -13558,6 +13567,7 @@ ${url}`);
   function render2() {
     if (current3 === "shots") renderShots();
     else if (current3 === "score") void renderScore().then(addLeagueCard);
+    else if (current3 === "coach") renderCoachTab();
     else if (current3 === "insights") renderInsights();
     else if (current3 === "arsenal") renderArsenal();
     else if (current3 === "proshop") renderProshop();
@@ -13785,30 +13795,20 @@ ${url}`);
       await resetInsights();
     });
   }
-  var insView = "coach";
-  var segHtml = () => `<div class="chips" id="ins-seg" style="margin:0 0 4px"><button class="chip ${insView === "coach" ? "sel" : ""}" data-v="coach">Coach</button><button class="chip ${insView === "stats" ? "sel" : ""}" data-v="stats">My numbers</button></div>`;
-  function wireSeg() {
-    $("insights-page").querySelectorAll("#ins-seg [data-v]").forEach(
-      (b) => b.onclick = () => {
-        insView = b.dataset.v;
-        renderInsights();
-        window.scrollTo(0, 0);
-      }
-    );
-  }
   function renderInsights() {
-    if (insView === "coach") return renderCoach($("insights-page"), segHtml(), wireSeg);
     renderInsightsBody();
-    $("insights-page").insertAdjacentHTML("afterbegin", segHtml());
-    wireSeg();
     void mountSkills($("insights-page"));
+  }
+  function renderCoachTab() {
+    renderCoach($("coach-page"), "", () => {
+    });
   }
   function renderInsightsBody() {
     const el = $("insights-page");
     const mine = insightShots();
     const shots = mine;
     if (!shots.length) {
-      el.innerHTML = `<h2>My numbers</h2><div class="card"><div class="u">${S.insightsSince ? `Insights were reset on ${esc(when2(S.insightsSince))}. They start again from the next shot you bowl. Your earlier shots and their videos are still in the Shots tab.` : "Bowl a few shots first. Your averages, common errors and improvement plan build up here, and everything stays on this phone."}</div>${S.insightsSince ? `<div class="chips"><button class="btn ghost" id="ins-restore">Count my earlier shots again</button></div>` : ""}</div>${resetCardHtml()}`;
+      el.innerHTML = `<h2>Insights</h2><div class="card"><div class="u">${S.insightsSince ? `Insights were reset on ${esc(when2(S.insightsSince))}. They start again from the next shot you bowl. Your earlier shots and their videos are still in the Shots tab.` : "Bowl a few shots first. Your averages, common errors and improvement plan build up here, and everything stays on this phone."}</div>${S.insightsSince ? `<div class="chips"><button class="btn ghost" id="ins-restore">Count my earlier shots again</button></div>` : ""}</div>${resetCardHtml()}`;
       $("ins-restore")?.addEventListener("click", () => void restoreInsights());
       wireReset();
       return;
@@ -13832,7 +13832,7 @@ ${url}`);
     }).join("");
     const needMore = Math.max(0, MIN_OUTCOMES - p.withResults);
     el.innerHTML = `
-    <h2>My numbers</h2>
+    <h2>Insights</h2>
     <div class="grid">
       <div class="card"><div class="k">Shots tracked</div><div class="v">${p.shots}</div><div class="u">${sessions.length} session${sessions.length === 1 ? "" : "s"}</div></div>
       <div class="card"><div class="k">Strike rate</div><div class="v">${p.strike.rate === null ? "--" : pct3(p.strike.rate * 100)}</div><div class="u">${p.strike.attempts} shots with results${p.strike.attempts && !p.strike.sufficient ? ", low sample" : ""}</div></div>
@@ -14243,7 +14243,8 @@ ${url}`);
     { tab: "live", sel: "#result-card", title: "Pins are read from the camera", text: "The pins that fell are read from the deck. If it ever gets one wrong, tap the right number and the app learns from it." },
     { tab: "shots", sel: ".tb[data-tab='shots']", title: "Shots", text: "Every shot is saved with its video, from the bowler's approach until the rack is full again. Open one to replay it with the ball's path drawn on the lane, switch to the raw video, a top-down map, or 3D." },
     { tab: "score", sel: ".tb[data-tab='score']", title: "Score", text: "A scorecard that scores itself from the camera, with a spare coach that suggests where to throw your second ball." },
-    { tab: "insights", sel: ".tb[data-tab='insights']", title: "Coach", text: "Your one thing to work on, what goes with your misses (Miss Finder), whether it's your aim or your line, the move to make, which ball to throw or buy next, your approach read from your clips, and drills that score themselves. My numbers has your averages and skills chart." },
+    { tab: "coach", sel: ".tb[data-tab='coach']", title: "Coach", text: "Your one thing to work on, what goes with your misses (Miss Finder), whether it's your aim or your line, a move to try, which ball to ask your pro shop about, your approach read from your clips, and drills that score themselves. All of it is a starting point to talk over with your coach." },
+    { tab: "insights", sel: ".tb[data-tab='insights']", title: "Insights", text: "Your averages, common errors, improvement plan, shot map and skills chart: the numbers the Coach tab is built from. There is a Reset button here for when somebody else has bowled on your app." },
     { tab: "arsenal", sel: ".tb[data-tab='arsenal']", title: "Arsenal", text: "Your bowling balls. Photograph a ball to add it, estimate its PAP from three photos of the flare rings, and use the Spin lab on slow-motion video for rev rate, axis rotation and tilt." },
     { tab: "proshop", sel: ".tb[data-tab='proshop']", title: "Pro shop", text: "Layouts, drilling and surface advice built around how you throw and the balls you own." },
     { tab: "learn", sel: ".tb[data-tab='learn']", title: "Learn", text: 'Every bowling word the app uses, and exactly what it means in the app: pocket, breakpoint, high hit, Brooklyn, PAP and more. Search a word, or tap "what is this?" on a shot to jump straight to it.' },
