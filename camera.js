@@ -53,12 +53,15 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
-      id: "2026-10-26-insights-back",
+      id: "2026-10-26-tabs",
       date: "2026-10-26",
-      title: "Insights is back in the tab bar",
+      title: "A tidier tab bar",
       items: [
-        "Insights has its own tab again, right next to Coach. It has your averages, common errors, improvement plan, shot map, skills chart and the Reset button, just as before.",
-        "Coach is its own tab too, for what to work on: Miss Finder, plan vs execution, a move to try, ball advice, approach, drills."
+        "Five tabs now: Live, Community, Pro shop, Learn and Me.",
+        "Me is everything about your own game: tiles at the top for My shots, My scores, My coach and My insights, then your profile, rewards and settings. Each page has a back button to Me.",
+        "My arsenal is under the Pro shop tab, with the layout, fitting and drilling tools.",
+        "Community has League night, Crews, friends, and the junior, parent and coach pages.",
+        "Nothing was removed or reset: the same pages, in new places."
       ]
     },
     {
@@ -6028,7 +6031,7 @@
     <div class="card"><div class="k">Your look</div><div class="chips"><button class="chip ${skinsEnabled() ? "sel" : ""}" id="rw-skins">Skins: ${skinsEnabled() ? "on" : "off"}</button><button class="chip ${glowEnabled() ? "sel" : ""}" id="rw-glow">Glow: ${glowEnabled() ? "on" : "off"}</button></div><div class="note">${skinsEnabled() ? "Your skins are showing in the app." : "Skins are off: the app keeps its standard look. Tap one below to try it."} Turn glow off for crisp lines and no halos, so you can read each shot exactly.</div><canvas id="rw-big" width="360" height="300" style="width:100%;max-width:420px;display:block;margin:0 auto"></canvas></div>
     ${grid("tracer", "Ball tracers")}${grid("pins", "Pins")}${grid("lane", "Lanes")}
     <div class="card"><div class="k">How you earned your points</div>
-      ${p.earned.length ? `<ul>${p.earned.map((a) => `<li><b>+${a.points}</b> ${esc(a.title)} <span class="note">${esc(a.detail)}</span></li>`).join("")}</ul>` : `<div class="u">Nothing yet. Finish a game on the Score tab, or reach a target on the skills chart.</div>`}
+      ${p.earned.length ? `<ul>${p.earned.map((a) => `<li><b>+${a.points}</b> ${esc(a.title)} <span class="note">${esc(a.detail)}</span></li>`).join("")}</ul>` : `<div class="u">Nothing yet. Finish a game in My scores, or reach a target on the skills chart.</div>`}
       <div class="note">Points come from new high games, strike streaks, clean games, scoring milestones, a rising average, converted splits and skills reaching their targets.</div></div>`;
     $("rw-skins").onclick = () => (setSkinsOn(!skinsEnabled()), void openRewards());
     $("rw-glow").onclick = () => (setGlow(!glowEnabled()), void openRewards());
@@ -6336,7 +6339,7 @@
     let sel2 = focus.length ? axes.indexOf(focus[0].axis) : 0;
     const draw3 = () => {
       card.innerHTML = `<div class="k">Your skills</div>
-      ${scored.length ? radarSvg(axes, sel2) : `<div class="u">Your skills chart fills in as you bowl. Scoring axes come from games on the Score tab; accuracy and repeatability axes come from tracked camera shots.</div>${radarSvg(axes, sel2)}`}
+      ${scored.length ? radarSvg(axes, sel2) : `<div class="u">Your skills chart fills in as you bowl. Scoring axes come from games in My scores; accuracy and repeatability axes come from tracked camera shots.</div>${radarSvg(axes, sel2)}`}
       <div class="note" style="text-align:center"><span style="color:#46e6ff">\u2501 now</span> \xB7 ${axes.some((a) => a.earlierScore !== null) ? '<span style="color:#ccc">\u2505 when you started</span> \xB7 ' : ""}<span style="color:#ffd25a">\u25C6 200-average bowler</span> \xB7 outer ring = target. Tap a skill.</div>
       <div id="sk-detail" style="margin-top:8px">${detail(axes[sel2])}</div>
       ${focus.length ? `<div class="k" style="margin-top:12px">Work on these first</div><ol>${focus.slice(0, 3).map((f) => `<li><b>${esc(f.axis.label)}</b> (${f.axis.score}/100): ${esc(f.axis.drill)}</li>`).join("")}</ol>` : scored.length ? `<div class="u">Every scored skill is at its target. Raise the bar by bowling more games.</div>` : ""}
@@ -8299,9 +8302,9 @@ Games: ${p.games.join(", ")}`)) return;
       const mine = l.bowlers.find((b) => norm4(b.name) === norm4(myName()));
       const games2 = (await myCompleteGames(l.gamesPerNight)).map((g) => g.total);
       if (!mine) return void ($("lo-msg").textContent = `No one on the roster is called ${myName()}. Add yourself under Settings and bowlers.`);
-      if (!games2.length) return void ($("lo-msg").textContent = "No finished games in the Score tab yet.");
+      if (!games2.length) return void ($("lo-msg").textContent = "No finished games in My scores yet.");
       inputs().filter((i) => i.dataset.b === mine.id).forEach((i, k2) => i.value = String(games2[games2.length - l.gamesPerNight + k2] ?? games2[k2] ?? ""));
-      $("lo-msg").textContent = `Filled in your last ${games2.length} finished game${games2.length === 1 ? "" : "s"} from the Score tab. Check them, then save.`;
+      $("lo-msg").textContent = `Filled in your last ${games2.length} finished game${games2.length === 1 ? "" : "s"} from My scores. Check them, then save.`;
     };
     const snap = () => snapshotFor(l, rankBy);
     const msg = $("lo-smsg");
@@ -9026,7 +9029,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       return `<div class="card"><div class="row"><div><b>${esc(challengeTitle(c))}${c.vs ? ` \xB7 ${esc(c.crewName)} vs ${esc(c.vs.name)}` : ""}</b><div class="note">${esc(dayText2(c.start))} to ${esc(dayText2(c.end))} \xB7 ${esc(friendlyStatus(crew, c, today2))}</div></div></div>
       <div class="note">${esc(KIND_INFO[c.kind].how)}</div>
       ${s ? `<div class="row" style="padding:8px 0"><div style="text-align:center;flex:1"><div class="note">${esc(s.a.name)}</div><div class="lr-head">${s.a.score === null ? "\u2013" : fmtValue(c.kind, s.a.score)}</div><div class="note">${s.a.entrants} in</div></div><div class="note">vs</div><div style="text-align:center;flex:1"><div class="note">${esc(s.b.name)}</div><div class="lr-head">${s.b.score === null ? "\u2013" : fmtValue(c.kind, s.b.score)}</div><div class="note">${s.b.entrants} in</div></div></div><div class="note">Each crew scores the average of the bowlers who took part.</div>` : ""}
-      ${rows2.length ? `<table>${rows2.map((r) => `<tr><td>${r.rank}</td><td>${esc(r.name)}${r.code === meW.code ? ` <span class="note">(you)</span>` : ""}${c.vs ? `<div class="note">${r.crewId === c.crewId ? esc(c.crewName) : esc(c.vs.name)}</div>` : ""}</td><td class="n"><b>${fmtValue(c.kind, r.value)}</b><div class="note">${r.n} ${c.kind === "days" ? r.n === 1 ? "day" : "days" : c.kind === "drill" ? r.n === 1 ? "run" : "runs" : r.n === 1 ? "game" : "games"}</div></td><td class="n">${r.code !== meW.code && r.crewId === crew.id ? `<button class="chip" data-cheer="${r.code}" data-ch="${c.id}">Cheer</button>` : ""}</td></tr>`).join("")}</table>` : `<div class="u" style="margin-top:6px">No scores yet. Bowl a finished game in the Score tab and yours goes up on its own.</div>`}</div>`;
+      ${rows2.length ? `<table>${rows2.map((r) => `<tr><td>${r.rank}</td><td>${esc(r.name)}${r.code === meW.code ? ` <span class="note">(you)</span>` : ""}${c.vs ? `<div class="note">${r.crewId === c.crewId ? esc(c.crewName) : esc(c.vs.name)}</div>` : ""}</td><td class="n"><b>${fmtValue(c.kind, r.value)}</b><div class="note">${r.n} ${c.kind === "days" ? r.n === 1 ? "day" : "days" : c.kind === "drill" ? r.n === 1 ? "run" : "runs" : r.n === 1 ? "game" : "games"}</div></td><td class="n">${r.code !== meW.code && r.crewId === crew.id ? `<button class="chip" data-cheer="${r.code}" data-ch="${c.id}">Cheer</button>` : ""}</td></tr>`).join("")}</table>` : `<div class="u" style="margin-top:6px">No scores yet. Bowl a finished game in My scores and yours goes up on its own.</div>`}</div>`;
     };
     el.innerHTML = `<div class="row"><div><h2 style="margin:0">${esc(crew.name)}</h2><div class="note">${crew.members.map((m) => esc(m.name)).join(", ")}</div></div><button class="btn ghost" id="cw-close">Close</button></div>
     ${text ? `<div class="card" style="border-color:var(--mint)"><div class="u">${esc(text)}</div></div>` : ""}
@@ -9533,7 +9536,7 @@ ${url}`);
     const link = appLink();
     return `<div class="card"><div class="k">Friends</div>
     ${myUser() ? `<div class="note">Your account name: <b>@${esc(myUser())}</b> \xB7 your friend tag: <b>${esc(friendTag(myUser(), myCode()))}</b></div><div class="chips"><button class="chip" id="fr-copytag">Copy my tag</button></div>` : `<div class="note">Choose an account name so friends can add you.</div><div class="chips"><button class="btn" id="fr-setuser">Choose account name</button></div>`}
-    <div class="field"><label>Add a friend by their tag</label><div class="chips"><input id="fr-addtag" placeholder="name#CODE, e.g. strikeking22#K7QP2MXA" autocomplete="off" autocapitalize="none" spellcheck="false" style="flex:1"><button class="chip add" id="fr-addbtn">Add</button></div><div class="note" id="fr-addmsg">Ask your friend for their tag (it is on their Me tab), or send them an invite link. There is no server to search, so a name alone cannot be looked up.</div></div>
+    <div class="field"><label>Add a friend by their tag</label><div class="chips"><input id="fr-addtag" placeholder="name#CODE, e.g. strikeking22#K7QP2MXA" autocomplete="off" autocapitalize="none" spellcheck="false" style="flex:1"><button class="chip add" id="fr-addbtn">Add</button></div><div class="note" id="fr-addmsg">Ask your friend for their tag (it is on their Community tab), or send them an invite link. There is no server to search, so a name alone cannot be looked up.</div></div>
     ${deferred().filter((d) => !S.friends.some((f) => f.code === d.code)).map((d) => `<div class="card" style="margin:8px 0"><div class="u"><b>${esc(d.name)}</b>${d.username ? ` <span class="note">@${esc(d.username)}</span>` : ""} sent you a friend request.</div><div class="chips"><button class="chip add" data-def-add="${esc(d.code)}">Add</button><button class="chip" data-def-no="${esc(d.code)}">Dismiss</button></div></div>`).join("")}
     <div class="chips"><button class="btn" id="fr-invite">Invite a player</button><button class="btn ghost" id="fr-sharesess">Share a session</button><button class="btn ghost" id="fr-compare">Compare shots</button><button class="btn" id="fr-live">Bowl together, live</button></div>
     ${S.friends.length ? `<table>${S.friends.map((f) => `<tr><td>${esc(f.name)}${f.username ? ` <span class="note">@${esc(f.username)}</span>` : ""}</td><td class="note">${esc(f.code)}</td><td class="n"><button class="chip" data-rmf="${f.code}">Remove</button></td></tr>`).join("")}</table>` : `<div class="u" style="margin-top:8px">No friends yet.</div>`}
@@ -13514,11 +13517,19 @@ ${url}`);
   }
 
   // camera/tabs.ts
+  var PARENT = {
+    shots: { tab: "me", label: "Me" },
+    score: { tab: "me", label: "Me" },
+    coach: { tab: "me", label: "Me" },
+    insights: { tab: "me", label: "Me" },
+    arsenal: { tab: "proshop", label: "Pro shop" }
+  };
   var current3 = "live";
   function showTab(t) {
     current3 = t;
     document.querySelectorAll(".tab").forEach((el) => el.classList.toggle("on", el.id === `tab-${t}`));
-    document.querySelectorAll(".tb").forEach((el) => el.classList.toggle("on", el.dataset.tab === t));
+    const barTab = PARENT[t]?.tab ?? t;
+    document.querySelectorAll(".tb").forEach((el) => el.classList.toggle("on", el.dataset.tab === barTab));
     window.scrollTo(0, 0);
     render2();
   }
@@ -13564,27 +13575,43 @@ ${url}`);
       render2();
     });
   }
+  function withBack(t) {
+    const page = document.getElementById(`${t}-page`);
+    const parent = PARENT[t];
+    if (!page || !parent || page.querySelector(".backme")) return;
+    page.insertAdjacentHTML("afterbegin", `<button class="chip backme" style="margin-bottom:6px">\u2039 ${parent.label}</button>`);
+    page.querySelector(".backme").onclick = () => showTab(parent.tab);
+  }
   function render2() {
-    if (current3 === "shots") renderShots();
-    else if (current3 === "score") void renderScore().then(addLeagueCard);
-    else if (current3 === "coach") renderCoachTab();
-    else if (current3 === "insights") renderInsights();
-    else if (current3 === "arsenal") renderArsenal();
+    if (current3 === "shots") renderShots(), withBack("shots");
+    else if (current3 === "score") void renderScore().then(() => withBack("score"));
+    else if (current3 === "coach") renderCoachTab(), withBack("coach");
+    else if (current3 === "insights") renderInsights(), withBack("insights");
+    else if (current3 === "arsenal") renderArsenal(), withBack("arsenal");
     else if (current3 === "proshop") renderProshop();
     else if (current3 === "learn") renderLearn();
+    else if (current3 === "community") renderCommunity();
     else if (current3 === "me") renderMe();
   }
-  function addLeagueCard() {
-    const page = $("score-page");
-    if (!page || page.querySelector("#sc-league")) return;
-    const h = page.querySelector("h2");
-    const card = document.createElement("div");
-    card.className = "card";
-    card.id = "sc-league";
-    card.innerHTML = `<div class="row"><div><div class="k">League night</div><div class="note">Standings, handicap, teams and the night's awards, kept on this phone.</div></div><button class="btn" id="sc-league-btn">Open</button></div>${crewsAllowed() ? `<div class="row" style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px"><div><div class="k">Crews</div><div class="note">Challenge friends anywhere, plan a bowl night.</div></div><button class="btn" id="sc-crews-btn">Open</button></div>` : ""}`;
-    (h ?? page).insertAdjacentElement(h ? "afterend" : "afterbegin", card);
-    $("sc-league-btn").onclick = () => openLeagues();
-    $("sc-crews-btn")?.addEventListener("click", () => openCrews());
+  function meHub() {
+    const mine = S.shots;
+    const last = mine[mine.length - 1];
+    const tile = (tab, title, line2) => `<button class="card" data-mypage="${tab}" style="text-align:left;cursor:pointer;color:inherit;font:inherit;width:100%"><div class="lr-head" style="font-size:16px">${title}</div><div class="note">${esc(line2)}</div></button>`;
+    return `<div id="me-hub" class="grid">${tile("shots", "My shots", mine.length ? `${mine.length} shot${mine.length === 1 ? "" : "s"} with video \xB7 last ${when2(last.at)}` : "Replays, lane view, top-down and 3D")}${tile("score", "My scores", "Scorecard, spare coach and statistics")}${tile("coach", "My coach", "What to work on, a move to try, ball advice, drills")}${tile("insights", "My insights", "Averages, common errors, plan, shot map, skills")}</div>`;
+  }
+  function renderCommunity() {
+    const el = $("community-page");
+    const p = S.profile;
+    el.innerHTML = `<h2>Community</h2>
+    <div class="note">Bowl with other people: your league, your crew, your friends. Everything is shared by links you send yourself, and only when you send them.</div>
+    ${p ? `<div class="card"><div class="k">League night</div><div class="note">Keep a league's standings: handicap, averages, teams and the night's awards. Bowlers send their night as a link; you send the standings back as a link, a picture or text.</div><div class="chips"><button class="btn" id="me-league">League night</button></div></div>` : ""}
+    ${p && crewsAllowed() ? `<div class="card"><div class="k">Crews</div><div class="note">Friends anywhere who bowl together: challenges inside your crew or against another, bowl nights, and kind cheers. Nothing to pay and no chat, only cheers.</div><div class="chips"><button class="btn" id="me-crews">Crews and challenges</button></div></div>` : ""}
+    ${p ? `<div class="card"><div class="k">Juniors, parents and coaches</div><div class="note">${p.junior ? `This is a junior profile (${esc(p.junior.display)}). Make a progress card for a parent or coach, or see your group.` : "Make a junior profile, send a parent or coach a progress card, or keep a group as a youth coach."}</div><div class="chips"><button class="btn" id="me-junior">Open</button></div></div>` : ""}
+    ${p ? p.junior ? `<div class="card"><div class="k">Friends and sharing</div><div class="note">Friends, shared sessions and live sync are switched off on a junior profile. A parent or the bowler can still send a progress card from Juniors, parents and coaches.</div></div>` : friendsCardHtml() : ""}`;
+    if (p && !p.junior) wireFriendsCard(renderCommunity);
+    $("me-league")?.addEventListener("click", () => openLeagues());
+    $("me-crews")?.addEventListener("click", () => openCrews());
+    $("me-junior")?.addEventListener("click", () => void openJuniorHub());
   }
   var ballName4 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
   var when2 = (iso2) => new Date(iso2).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -13652,7 +13679,7 @@ ${url}`);
     <h3>Result</h3>
     <div class="chips">${[10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((n) => `<button class="chip ${s.result?.pinsDown === n ? "sel" : n === 10 ? "x" : ""}" data-n="${n}">${n === 10 ? "Strike" : n}</button>`).join("")}</div>
     <h3>Ball</h3>
-    <div class="chips">${S.arsenal.map((b) => `<button class="chip ${s.ballId === b.id ? "sel" : ""}" data-b="${b.id}">${esc(b.name)}</button>`).join("") || `<span class="note">Add balls in the Arsenal tab.</span>`}</div>
+    <div class="chips">${S.arsenal.map((b) => `<button class="chip ${s.ballId === b.id ? "sel" : ""}" data-b="${b.id}">${esc(b.name)}</button>`).join("") || `<span class="note">Add balls in Pro shop, under My arsenal.</span>`}</div>
     <div class="chips"><button class="btn ghost danger" id="rv-del">Delete this shot</button></div>`;
     el.querySelectorAll("a[data-learn]").forEach(
       (a) => a.onclick = (e) => {
@@ -13788,10 +13815,10 @@ ${url}`);
     );
   }
   var STATE_PLAN_RECENT = 15;
-  var resetCardHtml = () => `<h3>Reset</h3><div class="card"><div class="u">Start Insights again from zero: the averages, common errors, improvement plan, shot map and skills chart. Your shots and their videos stay in the Shots tab, and your scorecards stay in Score. Use this when somebody else has bowled on your app.</div><div class="chips"><button class="btn ghost danger" id="ins-reset">Reset insights</button></div></div>`;
+  var resetCardHtml = () => `<h3>Reset</h3><div class="card"><div class="u">Start Insights again from zero: the averages, common errors, improvement plan, shot map and skills chart. Your shots and their videos stay in My shots, and your scorecards stay in My scores. Use this when somebody else has bowled on your app.</div><div class="chips"><button class="btn ghost danger" id="ins-reset">Reset insights</button></div></div>`;
   function wireReset() {
     $("ins-reset")?.addEventListener("click", async () => {
-      if (!confirm("Reset Insights?\n\nThis starts your averages, common errors, improvement plan, shot map and skills chart again from zero.\n\nYour shots and their videos stay in the Shots tab. Your scorecards stay in Score.")) return;
+      if (!confirm("Reset Insights?\n\nThis starts your averages, common errors, improvement plan, shot map and skills chart again from zero.\n\nYour shots and their videos stay in My shots. Your scorecards stay in My scores.")) return;
       await resetInsights();
     });
   }
@@ -13808,7 +13835,7 @@ ${url}`);
     const mine = insightShots();
     const shots = mine;
     if (!shots.length) {
-      el.innerHTML = `<h2>Insights</h2><div class="card"><div class="u">${S.insightsSince ? `Insights were reset on ${esc(when2(S.insightsSince))}. They start again from the next shot you bowl. Your earlier shots and their videos are still in the Shots tab.` : "Bowl a few shots first. Your averages, common errors and improvement plan build up here, and everything stays on this phone."}</div>${S.insightsSince ? `<div class="chips"><button class="btn ghost" id="ins-restore">Count my earlier shots again</button></div>` : ""}</div>${resetCardHtml()}`;
+      el.innerHTML = `<h2>Insights</h2><div class="card"><div class="u">${S.insightsSince ? `Insights were reset on ${esc(when2(S.insightsSince))}. They start again from the next shot you bowl. Your earlier shots and their videos are still in My shots.` : "Bowl a few shots first. Your averages, common errors and improvement plan build up here, and everything stays on this phone."}</div>${S.insightsSince ? `<div class="chips"><button class="btn ghost" id="ins-restore">Count my earlier shots again</button></div>` : ""}</div>${resetCardHtml()}`;
       $("ins-restore")?.addEventListener("click", () => void restoreInsights());
       wireReset();
       return;
@@ -14035,6 +14062,7 @@ ${url}`);
     el.innerHTML = `
     <h2>Pro shop</h2>
     <div class="note">Tools for fitting, layout and drilling, for bowlers and for pro shop operators, plus what to look for at a pro shop.</div>
+    <div class="card"><div class="row"><div><div class="k">My arsenal</div><div class="note">${S.arsenal.length} ball${S.arsenal.length === 1 ? "" : "s"} \xB7 add a ball, build a lineup for a pattern, find your next ball.</div></div><button class="btn" id="ps-arsenal">Open</button></div></div>
     <div class="card"><div class="k">Layout and drilling</div>
       <div class="chips"><button class="btn" id="ps-lab">Layout Lab: see a layout on the ball</button><button class="btn" id="ps-scan">Scan a drilled ball</button><button class="btn" id="ps-pap">Estimate my PAP from photos</button><button class="btn ghost" id="ps-report">Fitting report (print or save PDF)</button></div>
       <div class="note">The Layout Lab draws the ball with its holes, pin, PSA, PAP and VAL in Dual Angle, Pin Buffer and 2LS, previews the flare, and prints a drill sheet. Scan reads the layout off a photo of a drilled ball.</div></div>
@@ -14052,6 +14080,7 @@ ${url}`);
     <div class="chips"><button class="chip" id="ps-print">Open as a printable sheet</button></div>
     ${playbookHtml(realPat)}`;
     wireProshopTools(el);
+    $("ps-arsenal").onclick = () => showTab("arsenal");
     $("ps-lab").onclick = () => openLayoutLab();
     $("ps-scan").onclick = () => openBallScan();
     $("ps-pap").onclick = () => openPapScan();
@@ -14144,6 +14173,7 @@ ${url}`);
     const profs = listProfiles();
     el.innerHTML = `
     <h2>Me</h2>
+    ${p ? meHub() : ""}
     <div class="card"><div class="k">Rewards</div><div class="note">Unlock ball tracers, pin looks and lane looks by playing and by improving.</div><div class="chips"><button class="btn" id="me-rewards">Skins and rewards</button><button class="chip ${glowEnabled() ? "sel" : ""}" id="me-glow">Glow: ${glowEnabled() ? "on" : "off"}</button></div><div class="note">Glow off gives crisp lines with no halos, for reading shots exactly.</div></div>
     ${p?.quiz ? `<div class="card"><div class="k">Your bowler profile</div><ul>${summarize(p.quiz).map((l) => `<li>${esc(l)}</li>`).join("")}</ul><div class="note">${esc(styleNotes(p.quiz.style).join(" "))}</div><div class="chips"><button class="btn ghost" id="me-quiz">Retake the quiz</button></div></div>` : p ? `<div class="card"><div class="u">Take the short bowler quiz so the app knows how you bowl.</div><div class="chips"><button class="btn" id="me-quiz">Take the quiz</button></div></div>` : ""}
     ${p ? `<div class="card"><div class="k">Ball motion (pro shop)</div>
@@ -14156,10 +14186,6 @@ ${url}`);
       <div class="two"><div class="field"><label>Throws</label><select id="me-hand"><option value="R" ${p.hand === "R" ? "selected" : ""}>Right-handed</option><option value="L" ${p.hand === "L" ? "selected" : ""}>Left-handed</option></select></div>
       <div class="field"><label>Rev rate (RPM, optional)</label><input id="me-rev" inputmode="numeric" value="${p.revRpm ?? ""}" placeholder="not measured"></div></div>
       <div class="chips"><button class="btn ghost" id="me-save">Save</button></div></div>` : ""}
-    ${p ? `<div class="card"><div class="k">League night</div><div class="note">Keep a league's standings: handicap, averages, teams and the night's awards. Bowlers send their night as a link; you send the standings back as a link, a picture or text.</div><div class="chips"><button class="btn" id="me-league">League night</button></div></div>
-    ${p && crewsAllowed() ? `<div class="card"><div class="k">Crews</div><div class="note">Friends anywhere who bowl together: challenges inside your crew or against another, bowl nights, and kind cheers. Nothing to pay and no chat, only cheers.</div><div class="chips"><button class="btn" id="me-crews">Crews and challenges</button></div></div>` : ""}
-    <div class="card"><div class="k">Juniors, parents and coaches</div><div class="note">${p.junior ? `This is a junior profile (${esc(p.junior.display)}). Make a progress card for a parent or coach, or see your group.` : "Make a junior profile, send a parent or coach a progress card, or keep a group as a youth coach."}</div><div class="chips"><button class="btn" id="me-junior">Open</button></div></div>` : ""}
-    ${p ? p.junior ? `<div class="card"><div class="k">Friends and sharing</div><div class="note">Friends, shared sessions and live sync are switched off on a junior profile. A parent or the bowler can still send a progress card from Juniors, parents and coaches.</div></div>` : friendsCardHtml() : ""}
     <h3>Profiles on this phone</h3>
     <div class="card">${profs.map((x) => `<div class="row" style="padding:6px 0"><div><b>${esc(x.name)}</b> <span class="note">${x.hand === "R" ? "right" : "left"}-handed${x.id === p?.id ? " \xB7 current" : ""}</span></div><div>${x.id === p?.id ? "" : `<button class="chip" data-sw="${x.id}">Switch</button>`}<button class="chip danger" data-rm="${x.id}">Delete</button></div></div>`).join("") || `<div class="u">No profiles yet.</div>`}<div class="chips"><button class="btn ghost" id="me-new">+ Add a profile</button></div>
       <div class="note">Each profile keeps its own balls, shots, videos, averages and plan, and they never mix. Use one per person if you share a phone.</div></div>
@@ -14190,10 +14216,7 @@ ${url}`);
         location.reload();
       }
     );
-    if (!p?.junior) wireFriendsCard(renderMe);
-    $("me-league")?.addEventListener("click", () => openLeagues());
-    $("me-crews")?.addEventListener("click", () => openCrews());
-    $("me-junior")?.addEventListener("click", () => void openJuniorHub());
+    el.querySelectorAll("[data-mypage]").forEach((b) => b.onclick = () => showTab(b.dataset.mypage));
     $("me-rewards").onclick = () => void openRewards();
     $("me-glow").onclick = () => (setGlow(!glowEnabled()), renderMe());
     $("me-new").onclick = () => showQuiz("add", () => {
@@ -14241,14 +14264,15 @@ ${url}`);
     { tab: "live", sel: "#startstop", title: "Start and Stop: just your shots", text: `In league the camera sees everyone's ball. Tap Stop and nothing is followed, recorded or saved (the lane stays locked); tap Start on your turn. Turn on "One shot at a time" and it stops by itself after each of your shots, so you only tap Start when it is your turn.` },
     { tab: "live", sel: ".grid", title: "Every shot, measured", text: "After each ball you get speed, the board at the arrows (read from the real arrows on your lane), breakpoint, the board where the ball was last seen, launch angle and more. Only what the camera saw is shown: nothing is guessed past it." },
     { tab: "live", sel: "#result-card", title: "Pins are read from the camera", text: "The pins that fell are read from the deck. If it ever gets one wrong, tap the right number and the app learns from it." },
-    { tab: "shots", sel: ".tb[data-tab='shots']", title: "Shots", text: "Every shot is saved with its video, from the bowler's approach until the rack is full again. Open one to replay it with the ball's path drawn on the lane, switch to the raw video, a top-down map, or 3D." },
-    { tab: "score", sel: ".tb[data-tab='score']", title: "Score", text: "A scorecard that scores itself from the camera, with a spare coach that suggests where to throw your second ball." },
-    { tab: "coach", sel: ".tb[data-tab='coach']", title: "Coach", text: "Your one thing to work on, what goes with your misses (Miss Finder), whether it's your aim or your line, a move to try, which ball to ask your pro shop about, your approach read from your clips, and drills that score themselves. All of it is a starting point to talk over with your coach." },
-    { tab: "insights", sel: ".tb[data-tab='insights']", title: "Insights", text: "Your averages, common errors, improvement plan, shot map and skills chart: the numbers the Coach tab is built from. There is a Reset button here for when somebody else has bowled on your app." },
-    { tab: "arsenal", sel: ".tb[data-tab='arsenal']", title: "Arsenal", text: "Your bowling balls. Photograph a ball to add it, estimate its PAP from three photos of the flare rings, and use the Spin lab on slow-motion video for rev rate, axis rotation and tilt." },
-    { tab: "proshop", sel: ".tb[data-tab='proshop']", title: "Pro shop", text: "Layouts, drilling and surface advice built around how you throw and the balls you own." },
-    { tab: "learn", sel: ".tb[data-tab='learn']", title: "Learn", text: 'Every bowling word the app uses, and exactly what it means in the app: pocket, breakpoint, high hit, Brooklyn, PAP and more. Search a word, or tap "what is this?" on a shot to jump straight to it.' },
-    { tab: "me", sel: ".tb[data-tab='me']", title: "Me", text: "Your profile, friends, rewards and skins, and settings such as turning the glow off for a plain view. You can take this tour again any time from the start screen." }
+    { tab: "me", sel: "#me-hub", title: "Me: everything about your game", text: "Your own game lives here: My shots, My scores, My coach and My insights, plus your profile, rewards and settings. You can take this tour again any time from the start screen." },
+    { tab: "shots", sel: "#shots-page h2", title: "My shots", text: "Every shot is saved with its video, from the bowler's approach until the rack is full again. Open one to replay it with the ball's path drawn on the lane, switch to the raw video, a top-down map, or 3D." },
+    { tab: "score", sel: "#score-page h2", title: "My scores", text: "A scorecard that scores itself from the camera, with a spare coach that suggests where to throw your second ball." },
+    { tab: "coach", sel: "#coach-page h2", title: "My coach", text: "Your one thing to work on, what goes with your misses (Miss Finder), whether it's your aim or your line, a move to try, which ball to ask your pro shop about, your approach read from your clips, and drills that score themselves. All of it is a starting point to talk over with your coach." },
+    { tab: "insights", sel: "#insights-page h2", title: "My insights", text: "Your averages, common errors, improvement plan, shot map and skills chart: the numbers My coach is built from. There is a Reset button here for when somebody else has bowled on your app." },
+    { tab: "proshop", sel: ".tb[data-tab='proshop']", title: "Pro shop", text: "Layouts, drilling and surface advice built around how you throw. Your arsenal is here too: add a ball, build a lineup for tonight's pattern, and find your next ball." },
+    { tab: "arsenal", sel: "#arsenal-page h2", title: "My arsenal", text: "Your bowling balls. Photograph a ball to add it, estimate its PAP from three photos of the flare rings, and use the Spin lab on slow-motion video for rev rate, axis rotation and tilt." },
+    { tab: "community", sel: ".tb[data-tab='community']", title: "Community", text: "League night, crews to challenge friends anywhere, friends, and the junior, parent and coach pages. It is all shared by links you send yourself." },
+    { tab: "learn", sel: ".tb[data-tab='learn']", title: "Learn", text: 'Every bowling word the app uses, and exactly what it means in the app: pocket, breakpoint, high hit, Brooklyn, PAP and more. Search a word, or tap "what is this?" on a shot to jump straight to it.' }
   ];
   function startTour(onDone2) {
     document.getElementById("tour")?.remove();
