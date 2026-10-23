@@ -53,6 +53,20 @@
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-10-24-league-juniors",
+      date: "2026-10-24",
+      title: "League night, and a place for juniors, parents and coaches",
+      items: [
+        "League night: start a league (handicap base, percent and cap, games a night, teams), type in or import each week, and get standings with handicap, scratch or pins over average, team standings and the night's awards. Handicap uses each bowler's average from before that week.",
+        "No server: bowlers send their night as a link or message and the secretary opens it. The standings go back out as a link, a picture or plain text, and a league invite carries the rules and roster. You can paste a link if it doesn't open by itself.",
+        "Junior profile: turn it on for a bowler under 18. Anything shared shows a first name or nickname only, and friends, live sharing, data sharing and ads are switched off.",
+        "Progress cards: a month of a young bowler's average, high game, spares, pocket hits and weekly averages, compared only with their own earlier weeks. Only true, encouraging things are shown, and no video, location or full name is on it.",
+        "Parent view: a parent opens the card with ways to help that put the coach and pro shop in charge of technique and equipment.",
+        "Youth coach group: save the progress cards you are sent into a group, in name order (not score order), with who has gone quiet and who has improved so there is something to say to each child.",
+        "Wording: the app now words advice as a starting point to try and talk over with your coach, and says your pro shop operator has the final say on fit, layout and surface."
+      ]
+    },
+    {
       id: "2026-10-23-oil",
       date: "2026-10-23",
       title: "See the oil on your lane",
@@ -414,11 +428,15 @@
     { term: "At the pins", cat: "LaneIQ", def: "The board where the camera last saw the ball, and how many feet down the lane that was. It is what the camera saw, not a prediction." },
     { term: "Partial", cat: "LaneIQ", def: "A shot the camera saw only part of. The part it saw is recorded; what it did not see is left empty." },
     { term: "One shot at a time", cat: "LaneIQ", def: "League mode. The app starts stopped and stops by itself after each of your shots, so you tap Start only on your own turn." },
-    { term: "Miss Finder", cat: "LaneIQ", def: "Ranks what goes with where your ball meets the pins: speed, your aim, where the ball lands, your drift and timing, how far into the session you are. The percentage is how much of the spread in your misses goes with that one thing. It shows what goes together, not proof of cause, so its fix is a test." },
-    { term: "Plan vs execution", cat: "LaneIQ", def: "Every shot is graded against the target you set. Missing the mark is execution; hitting it and still missing the pocket the same way is the line. The fix is different for each." },
-    { term: "Move Advisor", cat: "LaneIQ", def: "The adjustment to make, in boards, worked out after each shot from your last few with the same ball. It stays quiet when the misses go both ways or you're missing your mark, because a move would only chase them." },
-    { term: "Ball Advisor", cat: "LaneIQ", def: "Judges each of your balls from your own shots with it. It calls a ball too strong or too weak only when where it hits AND the shape of its reaction (breakpoint and entry angle) agree, then suggests what to try from your bag or what to buy: current, USBC-approved balls on the app's motion index." },
+    { term: "Miss Finder", cat: "LaneIQ", def: "Ranks what goes with where your ball meets the pins: speed, your aim, where the ball lands, your drift and timing, how far into the session you are. The percentage is how much of the spread in your misses goes with that one thing. It shows what goes together, not proof of cause, so what it suggests is something to test, ideally with your coach." },
+    { term: "Plan vs execution", cat: "LaneIQ", def: "Every shot is graded against the target you set. Missing the mark is execution; hitting it and still missing the pocket the same way is the line. The way to work on each is different, which is a good thing to talk over with your coach." },
+    { term: "Move Advisor", cat: "LaneIQ", def: "A move to try, in boards, worked out after each shot from your last few with the same ball. It stays quiet when the misses go both ways or you're missing your mark, because a move would only chase them. It is a starting point to talk over with your coach, not an instruction." },
+    { term: "Ball Advisor", cat: "LaneIQ", def: "Judges each of your balls from your own shots with it. It calls a ball too strong or too weak only when where it hits AND the shape of its reaction (breakpoint and entry angle) agree, then suggests what to try from your bag or what to ask your pro shop about: current, USBC-approved balls on the app's motion index. Your pro shop operator has the final say on fit, layout and surface." },
     { term: "Voice caddie", cat: "LaneIQ", def: "Says the speed, the arrows board, the breakpoint, the pocket and your next move out loud after each shot, using your phone's own speech. Turn it on with Voice on the Live screen." },
+    { term: "Handicap", cat: "Scoring", def: "Pins a league adds to a bowler's score so bowlers of different skill can compete. Usually a percent of the gap between a base score (often 200 to 220) and the bowler's average, rounded down: (210 \u2212 150) \xD7 90% = 54 pins a game. Each league sets its own base and percent.", app: "League night uses the league's own base, percent and cap, and the average from before each week." },
+    { term: "Entering average", cat: "Scoring", aka: ["book average"], def: "A bowler's average coming into a league season, used for handicap until they have bowled enough games for their real average to count." },
+    { term: "Pins over average", cat: "Scoring", def: "How many pins a bowler bowled above the average they came in with that week. It rewards beating your own number, whatever it is.", app: "One of the three ways League night ranks, next to handicap and scratch. Junior progress cards use the same idea: growth against your own earlier weeks." },
+    { term: "Progress card", cat: "LaneIQ", def: "A short summary of a young bowler's last month, sent to a parent or coach: average, high game, spares, pocket hits and what improved, always against the bowler's own earlier weeks, never other children. It holds no video, location or full name." },
     { term: "Bowler DNA", cat: "LaneIQ", def: "A shareable card with your speed, rev rate, axis, PAP, entry angle, pocket and strike rate, each marked measured or entered." }
   ];
 
@@ -530,7 +548,7 @@
     }
     const drying = /earlier/.test(read2.headline);
     const carrydown = /skidding farther/.test(read2.headline);
-    if (!drying && !carrydown) return { status: "none", text: "The lane looks stable, so stay with your current ball.", basis: [] };
+    if (!drying && !carrydown) return { status: "none", text: "The lane looks stable, so there is no reason in the numbers to change balls.", basis: [] };
     const cur2 = scored.find((x) => x.b.id === currentBallId);
     if (!cur2) return { status: "none", text: "Tell me which ball you're throwing so I can compare against it.", basis: [] };
     const want = drying ? scored.filter((x) => x.m < cur2.m) : scored.filter((x) => x.m > cur2.m);
@@ -546,7 +564,7 @@
     return {
       status: "ok",
       ballId: pick.b.id,
-      text: `${drying ? "Try the cleaner" : "Try the stronger"} ${pick.b.name}: ${drying ? "your current ball is reading the lane early" : "oil is carrying down and your current ball is skidding long"}. Change only the ball and keep your line, then judge two shots.`,
+      text: `${drying ? "Worth trying: the cleaner" : "Worth trying: the stronger"} ${pick.b.name}: ${drying ? "your current ball is reading the lane early" : "oil is carrying down and your current ball is skidding long"}. A common way to test it is to change only the ball, keep your line and judge two shots; your coach may see it differently.`,
       basis
     };
   }
@@ -1469,6 +1487,10 @@
     where: { center: "", lane: "", patternId: "" },
     /** oil patterns the bowler added from their centre's sheets (or typed in); there is no built-in library */
     myPatterns: [],
+    /** leagues kept on this phone (as secretary or as a member), the latest standings sent to this phone for each, and the progress cards a coach or parent has saved */
+    leagues: [],
+    boards: {},
+    cards: [],
     /** the practice drill under way, and every finished one */
     drill: null,
     drills: []
@@ -1492,6 +1514,9 @@
     S.target = await dbGet(id, "meta", "target").catch(() => null) ?? null;
     S.where = await dbGet(id, "meta", "where").catch(() => null) ?? { center: "", lane: "" };
     S.myPatterns = await dbGet(id, "meta", "patterns").catch(() => null) ?? [];
+    S.leagues = await dbGet(id, "meta", "leagues").catch(() => null) ?? [];
+    S.boards = await dbGet(id, "meta", "boards").catch(() => null) ?? {};
+    S.cards = await dbGet(id, "meta", "cards").catch(() => null) ?? [];
     S.drill = await dbGet(id, "meta", "drill").catch(() => null) ?? null;
     S.drills = await dbGet(id, "meta", "drills").catch(() => null) ?? [];
     if (p && !p.friendCode) {
@@ -1613,6 +1638,12 @@
       await dbPut(S.profile.id, "meta", S.drills, "drills").catch(() => {
       });
       await dbPut(S.profile.id, "meta", S.myPatterns, "patterns").catch(() => {
+      });
+      await dbPut(S.profile.id, "meta", S.leagues, "leagues").catch(() => {
+      });
+      await dbPut(S.profile.id, "meta", S.boards, "boards").catch(() => {
+      });
+      await dbPut(S.profile.id, "meta", S.cards, "cards").catch(() => {
       });
     }
     changed();
@@ -1898,10 +1929,10 @@
     const fresh2 = seen() !== LATEST_NOTE_ID;
     box.innerHTML = `<button class="chip" id="notes-open">${fresh2 ? "NEW \xB7 " : ""}What's new</button>`;
     document.getElementById("notes-open").onclick = () => {
-      const sheet7 = document.getElementById("notes");
-      sheet7.classList.add("on");
-      sheet7.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc(n.title)} <span class="note">${esc(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}`;
-      document.getElementById("notes-close").onclick = () => (sheet7.classList.remove("on"), sheet7.innerHTML = "");
+      const sheet9 = document.getElementById("notes");
+      sheet9.classList.add("on");
+      sheet9.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc(n.title)} <span class="note">${esc(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}`;
+      document.getElementById("notes-close").onclick = () => (sheet9.classList.remove("on"), sheet9.innerHTML = "");
       markSeen();
       document.getElementById("notes-open").textContent = "What's new";
     };
@@ -2333,12 +2364,12 @@
     };
     cv.addEventListener("pointerup", up);
     cv.addEventListener("pointercancel", up);
-    const close8 = () => {
+    const close10 = () => {
       cancelAnimationFrame(raf3);
       window.removeEventListener("resize", onResize);
       root.remove();
     };
-    root.querySelector("#tl-cancel").onclick = () => (close8(), o.onCancel());
+    root.querySelector("#tl-cancel").onclick = () => (close10(), o.onCancel());
     root.querySelectorAll(".tl-mode").forEach((b) => b.onclick = () => setMode2(b.dataset.mode));
     root.querySelector("#tl-reset").onclick = () => (c = initial.map((p) => ({ ...p })), anchors = makeAnchors(), touched = false, setMode2("lane"));
     root.querySelector("#tl-snap").onclick = () => {
@@ -2355,7 +2386,7 @@
       const area2 = Math.abs(c.reduce((a, p, i) => a + (p.x * c[(i + 1) % 4].y - c[(i + 1) % 4].x * p.y), 0)) / 2;
       if (area2 < cv.width * cv.height * 0.01) return void (hint.textContent = "The lane outline is too small. Drag the dots out onto the lane.");
       const out = c.map((p) => ({ x: p.x / k0, y: p.y / k0 }));
-      close8();
+      close10();
       o.onConfirm(out);
     };
   }
@@ -2894,9 +2925,9 @@
     }
     return `${whole === 0 && sixteenths < 0 ? "-" : ""}${whole !== 0 ? whole + " " : ""}${n}/${d}"`;
   }
-  function transitionRead(sum, drilling, val2) {
+  function transitionRead(sum2, drilling, val2) {
     const out = [];
-    out.push(sum < 70 ? "Quick transition: it turns skid into hook and roll early, so it reads the lane sooner." : sum < 110 ? "Medium transition: a balanced move from skid to hook to roll." : "Slow transition: it holds its energy longer and the move to roll comes late.");
+    out.push(sum2 < 70 ? "Quick transition: it turns skid into hook and roll early, so it reads the lane sooner." : sum2 < 110 ? "Medium transition: a balanced move from skid to hook to roll." : "Slow transition: it holds its energy longer and the move to roll comes late.");
     if (drilling - val2 > 20) out.push("A larger drilling angle than VAL angle points to a later, sharper breakpoint (more backend).");
     else if (val2 - drilling > 20) out.push("A smaller drilling angle than VAL angle points to a sooner, heavier roll (more midlane).");
     return out;
@@ -3057,40 +3088,40 @@
   function suggestDualAngle(b, pattern, ballTotalDiff) {
     const why = [];
     const dom = bowlerDominance(b.revRpm, b.launchSpeed);
-    let sum = dom === "speed" ? 75 : dom === "rev" ? 130 : 100;
+    let sum2 = dom === "speed" ? 75 : dom === "rev" ? 130 : 100;
     why.push(dom === "speed" ? "You're speed-dominant, so a smaller angle sum turns your speed into rotation sooner." : dom === "rev" ? "You're rev-dominant, so a larger angle sum keeps the ball from reading too early." : "Your speed and revs are balanced, so a medium angle sum fits.");
     if (b.axisTilt !== void 0) {
       const d = b.axisTilt >= 16 ? -10 : b.axisTilt <= 8 ? 10 : 0;
-      sum += d;
+      sum2 += d;
       if (d) why.push(b.axisTilt >= 16 ? "Your axis tilt is high, which points to a smaller sum." : "Your axis tilt is low, which points to a larger sum.");
     }
     let useFlare = 0.5;
     if (pattern) {
       if (pattern.lengthFt >= 42) {
-        sum -= 15;
+        sum2 -= 15;
         useFlare += 0.15;
         why.push(`${pattern.lengthFt} ft is a long pattern: a smaller sum and more flare to get the ball reading.`);
       } else if (pattern.lengthFt <= 37) {
-        sum += 15;
+        sum2 += 15;
         useFlare -= 0.15;
         why.push(`${pattern.lengthFt} ft is short: a larger sum and less flare keep it from hooking early.`);
       }
       if (pattern.volumeMl !== void 0) {
         const vd = pattern.volumeMl >= 26 ? 1 : pattern.volumeMl <= 22 ? -1 : 0;
-        sum -= 8 * vd;
+        sum2 -= 8 * vd;
         useFlare += 0.1 * vd;
         if (vd) why.push(vd > 0 ? "A lot of oil: friction is what you need, so more flare and a smaller sum." : "Not much oil: less flare and a larger sum.");
       }
     }
     if (dom === "rev") useFlare -= 0.1;
     if (dom === "speed") useFlare += 0.1;
-    sum = Math.max(30, Math.min(160, Math.round(sum / 5) * 5));
-    const valAngle = Math.max(20, Math.min(70, Math.round(sum * 0.45 / 5) * 5));
-    const drilling = Math.max(10, Math.min(90, sum - valAngle));
+    sum2 = Math.max(30, Math.min(160, Math.round(sum2 / 5) * 5));
+    const valAngle = Math.max(20, Math.min(70, Math.round(sum2 * 0.45 / 5) * 5));
+    const drilling = Math.max(10, Math.min(90, sum2 - valAngle));
     useFlare = Math.max(0.1, Math.min(0.95, useFlare));
     const pinToPap = Math.round((2.5 + useFlare * 3.25) * 8) / 8;
     if (ballTotalDiff !== void 0 && ballTotalDiff >= 0.055) why.push("This ball has a high differential already, so there is room to use less of its flare potential if it reads too early.");
-    return { drilling, pinToPap, valAngle, sumRange: [Math.max(30, sum - 15), Math.min(160, sum + 15)], why };
+    return { drilling, pinToPap, valAngle, sumRange: [Math.max(30, sum2 - 15), Math.min(160, sum2 + 15)], why };
   }
   function buildPlaybook(p) {
     const dom = bowlerDominance(p.revRpm, p.speedMph);
@@ -3313,19 +3344,19 @@
         if (pts2.length < kc) return pts2;
         let cs = Array.from({ length: kc }, (_, i) => pts2[Math.floor((i + 0.5) * (pts2.length / kc))]);
         for (let it = 0; it < 6; it++) {
-          const sum = cs.map(() => [0, 0, 0, 0]);
+          const sum2 = cs.map(() => [0, 0, 0, 0]);
           for (const p of pts2) {
             let bi = 0, bd = 1e9;
             cs.forEach((c, i) => {
               const d = (c[0] - p[0]) ** 2 + (c[1] - p[1]) ** 2 + (c[2] - p[2]) ** 2;
               if (d < bd) bd = d, bi = i;
             });
-            sum[bi][0] += p[0];
-            sum[bi][1] += p[1];
-            sum[bi][2] += p[2];
-            sum[bi][3]++;
+            sum2[bi][0] += p[0];
+            sum2[bi][1] += p[1];
+            sum2[bi][2] += p[2];
+            sum2[bi][3]++;
           }
-          cs = cs.map((c, i) => sum[i][3] ? [sum[i][0] / sum[i][3], sum[i][1] / sum[i][3], sum[i][2] / sum[i][3]] : c);
+          cs = cs.map((c, i) => sum2[i][3] ? [sum2[i][0] / sum2[i][3], sum2[i][1] / sum2[i][3], sum2[i][2] / sum2[i][3]] : c);
         }
         return cs;
       };
@@ -3460,7 +3491,7 @@
       }
       return I;
     });
-    const mean9 = (j, x, y) => {
+    const mean10 = (j, x, y) => {
       const x0 = Math.max(0, x - rad2), x1 = Math.min(sw, x + rad2 + 1), y0 = Math.max(0, y - rad2), y1 = Math.min(sh, y + rad2 + 1);
       const I = integ[j];
       return (I[y1 * (sw + 1) + x1] - I[y0 * (sw + 1) + x1] - I[y1 * (sw + 1) + x0] + I[y0 * (sw + 1) + x0]) / ((x1 - x0) * (y1 - y0));
@@ -3474,7 +3505,7 @@
       for (let x = 0; x < sw; x++) {
         if (Math.hypot(x - c.x, y - c.y) > c.r * 0.9 || nearAvoid(x, y)) continue;
         const i = y * sw + x;
-        const d = Math.hypot(ch[0][i] - mean9(0, x, y), ch[1][i] - mean9(1, x, y), ch[2][i] - mean9(2, x, y));
+        const d = Math.hypot(ch[0][i] - mean10(0, x, y), ch[1][i] - mean10(1, x, y), ch[2][i] - mean10(2, x, y));
         dist2[i] = d;
         const mx = Math.max(ch[0][i], ch[1][i], ch[2][i]), mn = Math.min(ch[0][i], ch[1][i], ch[2][i]);
         sat[i] = mx ? (mx - mn) / mx : 0;
@@ -4585,8 +4616,8 @@
     const s = solved, e = s.eq, f = flare;
     const bp = bowlerProfile();
     const sug = suggestDualAngle({ ...bp, revRpm: l.rev, launchSpeed: l.speed }, null, l.ball.totalDiff);
-    const sum = s.angleSum;
-    const inRange = sum >= sug.sumRange[0] && sum <= sug.sumRange[1];
+    const sum2 = s.angleSum;
+    const inRange = sum2 >= sug.sumRange[0] && sum2 <= sug.sumRange[1];
     const dom = bowlerDominance(l.rev, l.speed);
     const bar = (v, max) => `<div style="height:8px;border-radius:4px;background:rgba(255,255,255,.1)"><div style="height:8px;border-radius:4px;width:${Math.min(100, v / Math.max(0.01, max) * 100)}%;background:linear-gradient(90deg,#46e6ff,#ff4fd8)"></div></div>`;
     out.innerHTML = s.ok ? `<div class="card"><div class="k">The same layout in every system</div><table>
@@ -4602,12 +4633,12 @@
           <div class="u">${f.cycleRevs === null ? "This ball barely wobbles, so there's no track flare to speak of." : `The spin axis takes about ${Math.round(f.cycleRevs)} revolutions to finish one wobble (${fmt2(f.cycleRevs / (l.rev / 60), 1)} s at your rev rate): ${f.cycleRevs < 35 ? "it settles quickly, so the ball rolls earlier" : f.cycleRevs > 70 ? "it settles slowly, so the ball holds its skid longer" : "a medium settle"}.`}</div>
           <ul>${f.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}</div>
       <div class="card"><div class="k">How it fits you</div>
-        <div class="u">You're ${dom === "rev" ? "rev-dominant" : dom === "speed" ? "speed-dominant" : "balanced between speed and revs"}. For you the angle sum (drilling angle plus angle to the VAL) is best around ${sug.sumRange[0]}-${sug.sumRange[1]}\xB0. This layout's is <b>${Math.round(sum)}\xB0</b>: ${inRange ? "in that range." : sum < sug.sumRange[0] ? "smaller, so the ball will turn speed into rotation sooner than your numbers suggest." : "larger, so the ball will hold its energy longer than your numbers suggest."}</div>
-        <ul>${transitionRead(sum, e.dual.drilling, e.dual.valAngle).map((t) => `<li>${esc(t)}</li>`).join("")}${sug.why.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
+        <div class="u">You're ${dom === "rev" ? "rev-dominant" : dom === "speed" ? "speed-dominant" : "balanced between speed and revs"}. For you the angle sum (drilling angle plus angle to the VAL) is best around ${sug.sumRange[0]}-${sug.sumRange[1]}\xB0. This layout's is <b>${Math.round(sum2)}\xB0</b>: ${inRange ? "in that range." : sum2 < sug.sumRange[0] ? "smaller, so the ball will turn speed into rotation sooner than your numbers suggest." : "larger, so the ball will hold its energy longer than your numbers suggest."}</div>
+        <ul>${transitionRead(sum2, e.dual.drilling, e.dual.valAngle).map((t) => `<li>${esc(t)}</li>`).join("")}${sug.why.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
         <div class="u">Rule-of-thumb start for you: <b>${sug.drilling}\xB0 \xD7 ${fractionInches(sug.pinToPap)} \xD7 ${sug.valAngle}\xB0</b>. Rules come from the Dual Angle paper by MoRich; your driller adjusts them for your PAP, your hand and your lanes.</div></div>
       ${l.compare ? `<div class="card"><div class="k">Compared with A</div><table><tr><th></th><th class="n">A</th><th class="n">Now</th></tr>
         <tr><td>Layout</td><td class="n">${esc(layoutLine(l.compare.solved))}</td><td class="n">${esc(layoutLine(s))}</td></tr>
-        <tr><td>Angle sum</td><td class="n">${Math.round(l.compare.solved.angleSum)}\xB0</td><td class="n">${Math.round(sum)}\xB0</td></tr>
+        <tr><td>Angle sum</td><td class="n">${Math.round(l.compare.solved.angleSum)}\xB0</td><td class="n">${Math.round(sum2)}\xB0</td></tr>
         <tr><td>Flare at 30 ft</td><td class="n">${fmt2(l.compare.flare.flare30In, 1)} in</td><td class="n">${f ? fmt2(f.flare30In, 1) : "-"} in</td></tr>
         <tr><td>Settle (revs)</td><td class="n">${l.compare.flare.cycleRevs === null ? "-" : Math.round(l.compare.flare.cycleRevs)}</td><td class="n">${f?.cycleRevs == null ? "-" : Math.round(f.cycleRevs)}</td></tr></table><div class="note">A: ${esc(l.compare.label)}</div></div>` : ""}` : `<div class="card"><div class="u">That layout can't be drawn: ${esc(s.problems.join(" "))}</div></div>`;
     void R;
@@ -4862,11 +4893,11 @@
     const out = [];
     for (const p2 of solved2.problems) out.push({ level: "error", text: p2 });
     const eq = solved2.eq;
-    const sum = solved2.angleSum;
+    const sum2 = solved2.angleSum;
     if (input.system === "dual") {
       if (input.drilling < 10 || input.drilling > 90) out.push({ level: "error", text: `A drilling angle runs 10 to 90 degrees; ${input.drilling} is outside it.` });
       if (input.valAngle < 20 || input.valAngle > 70) out.push({ level: "warn", text: `The VAL angle is only effective from 20 to about 70 degrees (Pinel); ${input.valAngle} is outside it.` });
-      if (sum < 30 || sum > 160) out.push({ level: "warn", text: `The angle sum ${Math.round(sum)} is outside the 30 to 160 range the system is built for.` });
+      if (sum2 < 30 || sum2 > 160) out.push({ level: "warn", text: `The angle sum ${Math.round(sum2)} is outside the 30 to 160 range the system is built for.` });
       if (opt.symmetric && input.pinToPap < 1.5) out.push({ level: "warn", text: "Pinel: Dual Angle is accurate on a symmetric core only with the pin out at least 1 1/2 inches." });
     }
     if (input.system === "2ls" && solved2.ok && input.pinToPap + input.pinToGrip < solved2.papToGrip - 1e-6) out.push({ level: "error", text: "Pin to PAP plus pin to the center of the grip must reach at least the PAP to grip-center distance (the lightning-arc rule)." });
@@ -4883,7 +4914,7 @@
       const d = surfDist(p.pin, h);
       if (d < 1) out.push({ level: "error", text: `The pin lands ${fr(d)} from ${name}. Storm voids the warranty within 1 inch of any hole: move the grip or drill the pin out completely.` });
     }
-    if (sum >= 30 && sum <= 160 && !out.some((f) => f.level === "error")) out.push({ level: "info", text: `Angle sum ${Math.round(sum)}: ${sum < 70 ? "a fast skid-to-hook transition" : sum < 110 ? "a medium transition" : "a slow, late transition"}.` });
+    if (sum2 >= 30 && sum2 <= 160 && !out.some((f) => f.level === "error")) out.push({ level: "info", text: `Angle sum ${Math.round(sum2)}: ${sum2 < 70 ? "a fast skid-to-hook transition" : sum2 < 110 ? "a medium transition" : "a slow, late transition"}.` });
     return out;
   }
   var TRACK_TABLE = [
@@ -6064,6 +6095,14 @@
     await persist();
     return true;
   }
+  async function myCompleteGames(limit = 6) {
+    await ensureLoaded();
+    return games.filter((g) => replay(g.rolls).complete).slice(-limit).map((g) => ({ id: g.id, at: g.at, total: scoreGame(g.rolls).total }));
+  }
+  async function myGames() {
+    await ensureLoaded();
+    return games;
+  }
   function liveScoreHtml() {
     const g = games[games.length - 1];
     if (!g || !g.rolls.length) return "";
@@ -6358,9 +6397,9 @@
       picks.push(r);
     }
     if (!picks.length) return { error: "No photos yet." };
-    const mean9 = unit2(picks.reduce((a, p) => [a[0] + p.vec[0], a[1] + p.vec[1], a[2] + p.vec[2]], [0, 0, 0]));
-    const ou = overUpOf(mean9, hand3);
-    const spread = picks.length > 1 ? Math.max(...picks.map((p) => surfDist(p.vec, mean9))) : null;
+    const mean10 = unit2(picks.reduce((a, p) => [a[0] + p.vec[0], a[1] + p.vec[1], a[2] + p.vec[2]], [0, 0, 0]));
+    const ou = overUpOf(mean10, hand3);
+    const spread = picks.length > 1 ? Math.max(...picks.map((p) => surfDist(p.vec, mean10))) : null;
     const notes = [];
     if (spread !== null && spread > 0.75) notes.push(`The photos disagree by up to ${spread.toFixed(2)}". Rings can be misread: retake the photo that's furthest from the others, with the grip square to the camera.`);
     if (spread !== null && spread <= 0.4) notes.push("The photos agree closely, which is a good sign.");
@@ -7616,6 +7655,866 @@
     drawTopDown($("lv-map").getContext("2d"), 360, 560, paths, { board: S.profile?.hand === "L" ? 22.5 : 17.5 });
   }
 
+  // core/src/league.ts
+  var DEFAULT_LEAGUE = { gamesPerNight: 3, hcpBase: 210, hcpPct: 90, establishGames: 9 };
+  var validScore = (n) => typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= 300;
+  var norm4 = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  var sum = (v) => v.reduce((a, b) => a + b, 0);
+  function played(l, id, beforeWeek) {
+    const games2 = [];
+    for (const w of l.weeks) if (beforeWeek === void 0 || w.n < beforeWeek) games2.push(...w.scores[id] ?? []);
+    return games2;
+  }
+  function leagueAverage(l, b, beforeWeek) {
+    const g = played(l, b.id, beforeWeek);
+    if (b.enteringAvg !== void 0 && g.length < l.establishGames) return b.enteringAvg;
+    return g.length ? sum(g) / g.length : null;
+  }
+  function handicapFor(avg2, l) {
+    if (avg2 === null) return 0;
+    const h = Math.max(0, Math.floor((l.hcpBase - avg2) * l.hcpPct / 100 + 1e-9));
+    return l.hcpCap !== void 0 ? Math.min(h, l.hcpCap) : h;
+  }
+  function nightLines(l, week) {
+    const out = [];
+    for (const b of l.bowlers) {
+      const games2 = (week.scores[b.id] ?? []).filter(validScore);
+      if (!games2.length) continue;
+      const avgBefore = leagueAverage(l, b, week.n);
+      const hcp = handicapFor(avgBefore, l);
+      out.push({
+        bowler: b,
+        games: games2,
+        scratch: sum(games2),
+        hcp,
+        avgBefore,
+        hdcpSeries: sum(games2) + hcp * games2.length,
+        highGame: Math.max(...games2),
+        highHdcpGame: Math.max(...games2) + hcp,
+        overAvg: avgBefore === null ? null : sum(games2) - avgBefore * games2.length
+      });
+    }
+    return out;
+  }
+  function standings(l, by = "hdcp") {
+    const rows2 = l.bowlers.map((b) => ({ bowler: b, games: 0, weeks: 0, pins: 0, hdcpPins: 0, avg: null, hcp: 0, highGame: 0, highSeries: 0, highHdcpGame: 0, highHdcpSeries: 0, overAvg: 0, rank: 0 }));
+    const byId = new Map(rows2.map((r) => [r.bowler.id, r]));
+    for (const w of l.weeks)
+      for (const line2 of nightLines(l, w)) {
+        const r = byId.get(line2.bowler.id);
+        r.games += line2.games.length;
+        r.weeks += 1;
+        r.pins += line2.scratch;
+        r.hdcpPins += line2.hdcpSeries;
+        r.highGame = Math.max(r.highGame, line2.highGame);
+        r.highSeries = Math.max(r.highSeries, line2.scratch);
+        r.highHdcpGame = Math.max(r.highHdcpGame, line2.highHdcpGame);
+        r.highHdcpSeries = Math.max(r.highHdcpSeries, line2.hdcpSeries);
+        r.overAvg += line2.overAvg ?? 0;
+      }
+    for (const r of rows2) {
+      r.avg = r.games ? r.pins / r.games : r.bowler.enteringAvg ?? null;
+      r.hcp = handicapFor(leagueAverage(l, r.bowler), l);
+    }
+    const key2 = (r) => by === "scratch" ? r.pins : by === "improve" ? r.overAvg : r.hdcpPins;
+    rows2.sort((a, b) => key2(b) - key2(a) || b.pins - a.pins || a.bowler.name.localeCompare(b.bowler.name));
+    rows2.forEach((r, i) => r.rank = i > 0 && key2(rows2[i - 1]) === key2(r) ? rows2[i - 1].rank : i + 1);
+    return rows2;
+  }
+  function teamStandings(l) {
+    const teams = /* @__PURE__ */ new Map();
+    for (const b of l.bowlers) {
+      if (!b.team) continue;
+      if (!teams.has(b.team)) teams.set(b.team, { team: b.team, members: [], games: 0, pins: 0, hdcpPins: 0, highHdcpSeries: 0, rank: 0 });
+      teams.get(b.team).members.push(b.name);
+    }
+    for (const w of l.weeks) {
+      const night = /* @__PURE__ */ new Map();
+      for (const line2 of nightLines(l, w)) {
+        const t = line2.bowler.team;
+        if (!t) continue;
+        const r = teams.get(t);
+        r.games += line2.games.length;
+        r.pins += line2.scratch;
+        r.hdcpPins += line2.hdcpSeries;
+        night.set(t, (night.get(t) ?? 0) + line2.hdcpSeries);
+      }
+      for (const [t, v] of night) teams.get(t).highHdcpSeries = Math.max(teams.get(t).highHdcpSeries, v);
+    }
+    const rows2 = [...teams.values()].sort((a, b) => b.hdcpPins - a.hdcpPins || b.pins - a.pins || a.team.localeCompare(b.team));
+    rows2.forEach((r, i) => r.rank = i > 0 && rows2[i - 1].hdcpPins === r.hdcpPins ? rows2[i - 1].rank : i + 1);
+    return rows2;
+  }
+  function nightAwards(l, week) {
+    const lines = nightLines(l, week);
+    if (!lines.length) return [];
+    const best = (f, title, text) => {
+      const c = lines.filter((x) => f(x) !== null).sort((a, b) => f(b) - f(a))[0];
+      return c ? { title, who: c.bowler.name, detail: text(c) } : null;
+    };
+    return [
+      best((x) => x.highGame, "High game", (x) => `${x.highGame}`),
+      best((x) => x.scratch, "High series", (x) => `${x.scratch} over ${x.games.length} games`),
+      best((x) => x.highHdcpGame, "High handicap game", (x) => `${x.highHdcpGame} (${x.highGame} + ${x.hcp})`),
+      best((x) => x.hdcpSeries, "High handicap series", (x) => `${x.hdcpSeries}`),
+      best((x) => x.overAvg !== null && x.overAvg > 0 ? x.overAvg : null, "Most pins over average", (x) => `+${Math.round(x.overAvg)} pins over the ${Math.round(x.avgBefore)} average they came in with`)
+    ].filter((a) => a !== null);
+  }
+  var str = (v, max) => typeof v === "string" ? v.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, max) : "";
+  var finite = (v) => typeof v === "number" && Number.isFinite(v);
+  var inviteFor = (l) => ({ v: 1, t: "setup", id: l.id, name: l.name, center: l.center, gamesPerNight: l.gamesPerNight, hcpBase: l.hcpBase, hcpPct: l.hcpPct, hcpCap: l.hcpCap, establishGames: l.establishGames, roster: l.bowlers.map((b) => ({ name: b.name, team: b.team, enteringAvg: b.enteringAvg, junior: b.junior })) });
+  function snapshotFor(l, by = "hdcp") {
+    const last = l.weeks[l.weeks.length - 1];
+    return {
+      v: 1,
+      t: "board",
+      leagueId: l.id,
+      name: l.name,
+      center: l.center,
+      week: last?.n ?? 0,
+      date: last?.date ?? "",
+      by,
+      rows: standings(l, by).map((r) => ({ rank: r.rank, name: r.bowler.name, team: r.bowler.team, games: r.games, avg: r.avg === null ? null : Math.round(r.avg * 10) / 10, hcp: r.hcp, pins: r.pins, hdcpPins: r.hdcpPins, highGame: r.highGame, highSeries: r.highSeries, over: Math.round(r.overAvg), junior: r.bowler.junior })),
+      teams: teamStandings(l).map((t) => ({ rank: t.rank, team: t.team, hdcpPins: t.hdcpPins, pins: t.pins })),
+      awards: last ? nightAwards(l, last) : []
+    };
+  }
+  function parseLeaguePayload(json) {
+    let o;
+    try {
+      o = JSON.parse(json);
+    } catch {
+      return null;
+    }
+    if (!o || o.v !== 1) return null;
+    if (o.t === "setup") {
+      const roster = Array.isArray(o.roster) ? o.roster.slice(0, 80) : null;
+      const base = Number(o.hcpBase), pct4 = Number(o.hcpPct), gpn = Number(o.gamesPerNight), est = Number(o.establishGames);
+      if (!roster || !str(o.id, 40) || !str(o.name, 60) || !(base >= 100 && base <= 300) || !(pct4 >= 0 && pct4 <= 100) || !(gpn >= 1 && gpn <= 6) || !(est >= 0 && est <= 60)) return null;
+      const cap = Number(o.hcpCap);
+      return {
+        v: 1,
+        t: "setup",
+        id: str(o.id, 40),
+        name: str(o.name, 60),
+        center: str(o.center, 60) || void 0,
+        gamesPerNight: Math.round(gpn),
+        hcpBase: Math.round(base),
+        hcpPct: Math.round(pct4),
+        hcpCap: finite(o.hcpCap) && cap >= 0 && cap <= 150 ? Math.round(cap) : void 0,
+        establishGames: Math.round(est),
+        roster: roster.map((r) => {
+          const x = r;
+          const avg2 = Number(x.enteringAvg);
+          return { name: str(x.name, 40), team: str(x.team, 40) || void 0, enteringAvg: finite(x.enteringAvg) && avg2 >= 0 && avg2 <= 300 ? Math.round(avg2) : void 0, junior: x.junior === true ? true : void 0 };
+        }).filter((r) => r.name)
+      };
+    }
+    if (o.t === "night") {
+      const games2 = Array.isArray(o.games) ? o.games.slice(0, 8).filter(validScore) : [];
+      const week = Number(o.week);
+      if (!str(o.leagueId, 40) || !str(o.name, 40) || !games2.length || !(week >= 1 && week <= 60)) return null;
+      return { v: 1, t: "night", leagueId: str(o.leagueId, 40), leagueName: str(o.leagueName, 60), week: Math.round(week), date: str(o.date, 10), name: str(o.name, 40), games: games2 };
+    }
+    if (o.t === "board") {
+      const rows2 = Array.isArray(o.rows) ? o.rows.slice(0, 80) : null;
+      if (!rows2 || !str(o.name, 60)) return null;
+      const cleanRows = [];
+      for (const r of rows2) {
+        const x = r;
+        if (!str(x.name, 40) || !finite(x.pins) || !finite(x.hdcpPins) || !finite(x.rank)) return null;
+        cleanRows.push({ rank: Math.round(x.rank), name: str(x.name, 40), team: str(x.team, 40) || void 0, games: finite(x.games) ? Math.round(x.games) : 0, avg: finite(x.avg) ? x.avg : null, hcp: finite(x.hcp) ? Math.round(x.hcp) : 0, pins: Math.round(x.pins), hdcpPins: Math.round(x.hdcpPins), highGame: finite(x.highGame) ? Math.round(x.highGame) : 0, highSeries: finite(x.highSeries) ? Math.round(x.highSeries) : 0, over: finite(x.over) ? Math.round(x.over) : 0, junior: x.junior === true ? true : void 0 });
+      }
+      const teams = (Array.isArray(o.teams) ? o.teams.slice(0, 40) : []).map((t) => {
+        const x = t;
+        return { rank: finite(x.rank) ? Math.round(x.rank) : 0, team: str(x.team, 40), hdcpPins: finite(x.hdcpPins) ? Math.round(x.hdcpPins) : 0, pins: finite(x.pins) ? Math.round(x.pins) : 0 };
+      });
+      const awards = (Array.isArray(o.awards) ? o.awards.slice(0, 8) : []).map((a) => {
+        const x = a;
+        return { title: str(x.title, 40), who: str(x.who, 40), detail: str(x.detail, 120) };
+      });
+      const by = o.by === "scratch" || o.by === "improve" ? o.by : "hdcp";
+      return { v: 1, t: "board", leagueId: str(o.leagueId, 40), name: str(o.name, 60), center: str(o.center, 60) || void 0, week: finite(o.week) ? Math.round(o.week) : 0, date: str(o.date, 10), by, rows: cleanRows, teams, awards };
+    }
+    return null;
+  }
+  function leagueFromInvite(i, newId2) {
+    return {
+      id: i.id,
+      name: i.name,
+      center: i.center,
+      gamesPerNight: i.gamesPerNight,
+      hcpBase: i.hcpBase,
+      hcpPct: i.hcpPct,
+      hcpCap: i.hcpCap,
+      establishGames: i.establishGames,
+      bowlers: i.roster.map((r) => ({ id: newId2(), name: r.name, team: r.team, enteringAvg: r.enteringAvg, junior: r.junior })),
+      weeks: [],
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+  }
+  function applyNight(l, c, newId2) {
+    const league = { ...l, bowlers: [...l.bowlers], weeks: l.weeks.map((w2) => ({ ...w2, scores: { ...w2.scores } })) };
+    let b = league.bowlers.find((x) => norm4(x.name) === norm4(c.name));
+    let added = false;
+    if (!b) {
+      b = { id: newId2(), name: c.name };
+      league.bowlers.push(b);
+      added = true;
+    }
+    let w = league.weeks.find((x) => x.n === c.week);
+    if (!w) {
+      w = { n: c.week, date: c.date || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10), scores: {} };
+      league.weeks.push(w);
+      league.weeks.sort((a, z) => a.n - z.n);
+    }
+    const replaced = !!w.scores[b.id]?.length;
+    w.scores[b.id] = c.games.filter(validScore).slice(0, Math.max(l.gamesPerNight, 3));
+    return { league, added, replaced };
+  }
+  function boardText(s) {
+    const lines = [`${s.name}${s.center ? ` \xB7 ${s.center}` : ""}${s.week ? ` \xB7 after week ${s.week}` : ""}`, `Ranked by ${s.by === "scratch" ? "scratch pins" : s.by === "improve" ? "pins over average" : "pins with handicap"}`, ""];
+    for (const r of s.rows) lines.push(`${r.rank}. ${r.name}${r.team ? ` (${r.team})` : ""}  avg ${r.avg === null ? "-" : Math.round(r.avg)}  hcp ${r.hcp}  ${s.by === "improve" ? `${r.over >= 0 ? "+" : ""}${r.over} over` : s.by === "scratch" ? `${r.pins} pins` : `${r.hdcpPins} with hcp`}  high ${r.highGame}`);
+    if (s.teams.length) {
+      lines.push("", "Teams");
+      for (const t of s.teams) lines.push(`${t.rank}. ${t.team}  ${t.hdcpPins} with hcp`);
+    }
+    if (s.awards.length) {
+      lines.push("", `Week ${s.week}`);
+      for (const a of s.awards) lines.push(`${a.title}: ${a.who}, ${a.detail}`);
+    }
+    return lines.join("\n");
+  }
+
+  // core/src/junior.ts
+  function juniorDisplayName(name, nickname) {
+    const pick = (nickname?.trim() || name.trim().split(/\s+/)[0] || "Bowler").replace(/[^\p{L}\p{N} '-]/gu, "").trim();
+    return (pick || "Bowler").slice(0, 18);
+  }
+  var DAY = 864e5;
+  var mean3 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var sd3 = (v) => {
+    if (v.length < 2) return 0;
+    const m = mean3(v);
+    return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (v.length - 1));
+  };
+  var mondayOf = (t) => {
+    const d = new Date(t);
+    const dow = (d.getUTCDay() + 6) % 7;
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - dow)).toISOString().slice(0, 10);
+  };
+  function buildProgress(display, band, inp) {
+    const now = (inp.now ?? /* @__PURE__ */ new Date()).getTime();
+    const days = inp.days ?? 28;
+    const from = now - days * DAY;
+    const prevFrom = from - days * DAY;
+    const inP = (iso, a, b) => {
+      const t = Date.parse(iso);
+      return t >= a && t < b;
+    };
+    const games2 = inp.games.filter((g) => replay(g.rolls).complete && inP(g.at, from, now + DAY));
+    const prevGames = inp.games.filter((g) => replay(g.rolls).complete && inP(g.at, prevFrom, from));
+    const shots = inp.shots.filter((s) => inP(s.at, from, now + DAY));
+    const prevShots = inp.shots.filter((s) => inP(s.at, prevFrom, from));
+    const st2 = bowlingStats(games2);
+    const prevSt = bowlingStats(prevGames);
+    const pocket = (list) => {
+      const seen2 = list.filter((s) => s.m.pocketMiss !== null);
+      return seen2.length >= 8 ? seen2.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / seen2.length * 100 : null;
+    };
+    const pk = pocket(shots);
+    const pkPrev = pocket(prevShots);
+    const speeds2 = shots.map((s) => s.m.launchSpeed).filter((x) => x !== null);
+    const days_ = /* @__PURE__ */ new Set([...games2.map((g) => g.at.slice(0, 10)), ...shots.map((s) => s.at.slice(0, 10))]);
+    const drillRuns = inp.drills.filter((d) => d.finishedAt && inP(d.finishedAt, from, now + DAY));
+    const weeks = [];
+    for (let i = 7; i >= 0; i--) {
+      const start = mondayOf(now - i * 7 * DAY);
+      const a = Date.parse(start);
+      const b = a + 7 * DAY;
+      const g = inp.games.filter((x) => replay(x.rolls).complete && inP(x.at, a, b));
+      const totals = g.map((x) => scoreGame(x.rolls).total);
+      weeks.push({ start, games: g.length, avg: totals.length ? Math.round(mean3(totals)) : null, tracked: inp.shots.filter((s) => inP(s.at, a, b)).length });
+    }
+    let streak = 0;
+    for (let i = weeks.length - 1; i >= 0; i--) {
+      const active = weeks[i].games > 0 || weeks[i].tracked > 0;
+      if (active) streak++;
+      else if (i === weeks.length - 1) continue;
+      else break;
+    }
+    const all = [...inp.games.map((g) => g.at), ...inp.shots.map((s) => s.at)].map((t) => Date.parse(t)).filter(Number.isFinite);
+    const lastActive = all.length ? new Date(Math.max(...all)).toISOString().slice(0, 10) : null;
+    const avg2 = st2.completeGames >= 3 ? st2.average : null;
+    const avgChange = st2.completeGames >= 3 && prevSt.completeGames >= 3 && st2.average !== null && prevSt.average !== null ? st2.average - prevSt.average : null;
+    const card = {
+      v: 1,
+      t: "progress",
+      name: display,
+      band,
+      asOf: new Date(now).toISOString().slice(0, 10),
+      days,
+      sessions: days_.size,
+      games: st2.completeGames,
+      avg: avg2 === null ? null : Math.round(avg2),
+      avgChange: avgChange === null ? null : Math.round(avgChange),
+      high: st2.high,
+      strikePct: st2.strikePct === null || st2.completeGames < 3 ? null : Math.round(st2.strikePct),
+      sparePct: st2.sparePct === null || st2.completeGames < 3 ? null : Math.round(st2.sparePct),
+      trackedShots: shots.length,
+      pocketPct: pk === null ? null : Math.round(pk),
+      pocketChange: pk !== null && pkPrev !== null ? Math.round(pk - pkPrev) : null,
+      speedMph: speeds2.length >= 8 ? Math.round(mean3(speeds2) * 10) / 10 : null,
+      speedSteady: speeds2.length >= 8 ? Math.round(sd3(speeds2) * 10) / 10 : null,
+      drills: drillRuns.length,
+      streakWeeks: streak,
+      weeks,
+      lastActive,
+      highlights: []
+    };
+    card.highlights = highlightsFor(card, prevSt.high);
+    return card;
+  }
+  function highlightsFor(c, prevHigh) {
+    const out = [];
+    if (c.avgChange !== null && c.avgChange >= 3) out.push(`Average up ${c.avgChange} pins on the month before.`);
+    if (c.high !== null && prevHigh !== void 0 && prevHigh !== null && c.high > prevHigh) out.push(`A new high game: ${c.high}.`);
+    else if (c.high !== null && c.high >= 100 && c.games >= 3) out.push(`High game of ${c.high}.`);
+    if (c.pocketChange !== null && c.pocketChange >= 5) out.push(`Hitting the pocket ${c.pocketChange} points more often.`);
+    if (c.sparePct !== null && c.sparePct >= 50) out.push(`Picked up ${c.sparePct}% of their spares.`);
+    if (c.strikePct !== null && c.strikePct >= 15) out.push(`Strikes on ${c.strikePct}% of first balls.`);
+    if (c.speedSteady !== null && c.speedSteady <= 0.8 && c.trackedShots >= 20) out.push("A very steady ball speed: that takes a smooth, repeatable approach.");
+    if (c.drills >= 1) out.push(`Finished ${c.drills} practice drill${c.drills === 1 ? "" : "s"}.`);
+    if (c.streakWeeks >= 3) out.push(`${c.streakWeeks} weeks in a row of bowling or practising.`);
+    if (!out.length && c.sessions > 0) out.push(`Bowled or practised on ${c.sessions} day${c.sessions === 1 ? "" : "s"} in the last ${c.days}.`);
+    return out.slice(0, 5);
+  }
+  function parentTips(c) {
+    const tips = ["Ask them what they were working on and what felt good. Let them explain it to you.", "Praise effort and good habits (a smooth approach, a steady finish) as much as the score."];
+    if (c.sparePct !== null && c.sparePct < 45) tips.push("Spares are the quickest place to gain pins. Their coach can show a simple spare system; offering to practise single-pin spares together is a good, low-pressure start.");
+    if (c.sessions <= 1 && c.games > 0) tips.push("Regular, short practice beats one long session. Even a few shots a week helps.");
+    if (c.speedSteady !== null && c.speedSteady > 1.2) tips.push("Their ball speed varies quite a bit. A coach can help them find a smooth, repeatable tempo.");
+    tips.push("Match-day nerves are normal. A calm drive there and 'have fun' beat last-minute tips.");
+    tips.push("If you have questions about technique or equipment, take them to the coach or the pro shop: they know your child's game.");
+    return tips;
+  }
+  var WEEKS_QUIET = 2;
+  function coachRoster(cards, now = /* @__PURE__ */ new Date()) {
+    return cards.map((card) => {
+      const quietDays = card.lastActive ? Math.floor((now.getTime() - Date.parse(card.lastActive)) / DAY) : null;
+      return { card, quietDays, quiet: quietDays === null || quietDays >= WEEKS_QUIET * 7, improved: (card.avgChange ?? 0) >= 3 || (card.pocketChange ?? 0) >= 5 };
+    }).sort((a, b) => a.card.name.localeCompare(b.card.name));
+  }
+  var str2 = (v, max) => typeof v === "string" ? v.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, max) : "";
+  var numOrNull2 = (v, lo, hi) => typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi ? v : null;
+  function parseProgress(json) {
+    let o;
+    try {
+      o = JSON.parse(json);
+    } catch {
+      return null;
+    }
+    if (!o || o.v !== 1 || o.t !== "progress") return null;
+    const name = juniorDisplayName(str2(o.name, 40));
+    const band = o.band === "under13" ? "under13" : "13to17";
+    const weeks = (Array.isArray(o.weeks) ? o.weeks.slice(0, 8) : []).map((w) => {
+      const x = w;
+      return { start: str2(x.start, 10), games: numOrNull2(x.games, 0, 200) ?? 0, avg: numOrNull2(x.avg, 0, 300), tracked: numOrNull2(x.tracked, 0, 5e3) ?? 0 };
+    });
+    const asOf = str2(o.asOf, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) return null;
+    const last = str2(o.lastActive, 10);
+    return {
+      v: 1,
+      t: "progress",
+      name,
+      band,
+      asOf,
+      days: numOrNull2(o.days, 7, 120) ?? 28,
+      sessions: numOrNull2(o.sessions, 0, 200) ?? 0,
+      games: numOrNull2(o.games, 0, 500) ?? 0,
+      avg: numOrNull2(o.avg, 0, 300),
+      avgChange: numOrNull2(o.avgChange, -300, 300),
+      high: numOrNull2(o.high, 0, 300),
+      strikePct: numOrNull2(o.strikePct, 0, 100),
+      sparePct: numOrNull2(o.sparePct, 0, 100),
+      trackedShots: numOrNull2(o.trackedShots, 0, 2e4) ?? 0,
+      pocketPct: numOrNull2(o.pocketPct, 0, 100),
+      pocketChange: numOrNull2(o.pocketChange, -100, 100),
+      speedMph: numOrNull2(o.speedMph, 3, 40),
+      speedSteady: numOrNull2(o.speedSteady, 0, 20),
+      drills: numOrNull2(o.drills, 0, 500) ?? 0,
+      streakWeeks: numOrNull2(o.streakWeeks, 0, 60) ?? 0,
+      weeks,
+      lastActive: /^\d{4}-\d{2}-\d{2}$/.test(last) ? last : null,
+      // the highlights are rebuilt from the numbers here, never taken from the link, so a link can't put words in a child's mouth
+      highlights: []
+    };
+  }
+  function withHighlights(c) {
+    return { ...c, highlights: highlightsFor(c) };
+  }
+
+  // camera/sharefiles.ts
+  function offerShare(box, files, opts = {}) {
+    box.innerHTML = "";
+    const row = document.createElement("div");
+    row.className = "chips";
+    const nav = navigator;
+    const note = document.createElement("div");
+    note.className = "note";
+    const data = { files, title: opts.title, text: opts.text };
+    if (nav.share && (!nav.canShare || nav.canShare({ files }))) {
+      const b = document.createElement("button");
+      b.className = "btn";
+      b.textContent = opts.label ?? "Share";
+      b.onclick = () => {
+        nav.share(data).then(() => note.textContent = "Shared.").catch((e) => {
+          if (e.name !== "AbortError") note.textContent = `Couldn't open the share sheet (${e.message}). Use Save instead.`;
+        });
+      };
+      row.append(b);
+    }
+    const save = document.createElement("button");
+    save.className = "btn ghost";
+    save.textContent = files.length > 1 ? "Save the files" : "Save";
+    save.onclick = () => {
+      const all = opts.text ? [...files, new File([opts.text], "laneiq-notes.txt", { type: "text/plain" })] : files;
+      for (const f of all) {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(f);
+        a.download = f.name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 8e3);
+      }
+      note.textContent = "Saved.";
+    };
+    row.append(save);
+    box.append(row, note);
+  }
+
+  // camera/leagueui.ts
+  var sheet5 = () => $("league");
+  var close5 = () => (sheet5().classList.remove("on"), sheet5().innerHTML = "");
+  var today = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  var myName = () => S.profile?.junior ? S.profile.junior.display : S.profile?.name ?? "A bowler";
+  var rankBy = "hdcp";
+  async function linkFor(payload) {
+    return `${appLink()}/#league=${await packText(JSON.stringify(payload))}`;
+  }
+  async function handleLeagueLink(value) {
+    const json = await unpackText(value);
+    const p = json ? parseLeaguePayload(json) : null;
+    if (!p) return void alert("That league link is damaged or isn't from LaneIQ.");
+    if (p.t === "setup") {
+      if (S.leagues.some((l2) => l2.id === p.id)) return void openLeague(p.id);
+      if (!confirm(`Join "${p.name}"${p.center ? ` at ${p.center}` : ""}?
+
+${p.gamesPerNight} games a night, handicap ${p.hcpPct}% of ${p.hcpBase}. ${p.roster.length} bowlers on the roster. It's kept on this phone.`)) return;
+      const l = leagueFromInvite(p, newId);
+      S.leagues.push(l);
+      await saveCoach();
+      return void openLeague(l.id);
+    }
+    if (p.t === "night") {
+      const l = S.leagues.find((x) => x.id === p.leagueId);
+      if (!l) return void alert(`This is ${p.name}'s night for "${p.leagueName}", but that league isn't on this phone. It goes to the league secretary's phone.`);
+      if (!confirm(`Add ${p.name}'s week ${p.week} to ${l.name}?
+
+Games: ${p.games.join(", ")}`)) return;
+      const r = applyNight(l, p, newId);
+      S.leagues = S.leagues.map((x) => x.id === l.id ? r.league : x);
+      await saveCoach();
+      return void openLeague(l.id);
+    }
+    S.boards[p.leagueId || p.name] = p;
+    await saveCoach();
+    openBoard(p);
+  }
+  function openLeagues() {
+    const el = sheet5();
+    el.classList.add("on");
+    const junior = !!S.profile?.junior;
+    el.innerHTML = `<div class="row"><h2>League night</h2><button class="btn ghost" id="lg-close">Close</button></div>
+    <div class="note">Keep the standings for a league without a server. Bowlers send their night to you as a link or a message; you send the standings back as a link, a picture or text. Handicap, averages, teams and the night's awards are worked out for you. Leagues score match points in many different ways, so this ranks by pins; keep points however your league does.</div>
+    <div class="chips"><button class="btn" id="lg-new">Start a league</button></div>
+    ${S.leagues.length ? "" : `<div class="card"><div class="u">No leagues on this phone yet. Start one, or open a league link someone sent you.</div></div>`}
+    ${S.leagues.map((l) => `<div class="card"><div class="row"><div><b>${esc(l.name)}</b><div class="note">${esc(l.center ?? "")}${l.center ? " \xB7 " : ""}${l.bowlers.length} bowlers \xB7 ${l.weeks.length} week${l.weeks.length === 1 ? "" : "s"}</div></div><button class="chip sel" data-open="${l.id}">Open</button></div></div>`).join("")}
+    ${Object.values(S.boards).length ? `<h3>Standings sent to me</h3>${Object.values(S.boards).map((b) => `<div class="card"><div class="row"><div><b>${esc(b.name)}</b><div class="note">after week ${b.week}</div></div><button class="chip" data-board="${esc(b.leagueId || b.name)}">View</button></div></div>`).join("")}` : ""}
+    <h3>Opened a link that didn't work?</h3>
+    <div class="card"><div class="field"><label>Paste the league link here</label><input id="lg-paste" placeholder="https://\u2026/#league=\u2026" autocomplete="off"></div><div class="chips"><button class="chip" id="lg-go">Open it</button></div></div>
+    ${junior ? `<div class="note">This is a junior profile: standings and cards show first names or nicknames only.</div>` : ""}`;
+    $("lg-close").onclick = close5;
+    $("lg-new").onclick = () => openEditor();
+    el.querySelectorAll("[data-open]").forEach((b) => b.onclick = () => openLeague(b.dataset.open));
+    el.querySelectorAll("[data-board]").forEach((b) => b.onclick = () => openBoard(S.boards[b.dataset.board]));
+    $("lg-go").onclick = () => {
+      const m = /#league=([^\s]+)/.exec($("lg-paste").value);
+      if (m) void handleLeagueLink(m[1]);
+      else alert("That doesn't look like a league link.");
+    };
+  }
+  function openEditor(existing) {
+    const el = sheet5();
+    el.classList.add("on");
+    const l = existing;
+    const rosterText = (l?.bowlers ?? []).map((b) => [b.name, b.team ?? "", b.enteringAvg ?? ""].filter((x, i, a) => i < 1 || a.slice(i).some((y) => y !== "")).join(", ")).join("\n");
+    el.innerHTML = `<div class="row"><h2>${l ? "League settings" : "Start a league"}</h2><button class="btn ghost" id="le-back">Back</button></div>
+    <div class="card">
+      <div class="field"><label>League name</label><input id="le-name" value="${esc(l?.name ?? "")}" placeholder="e.g. Tuesday Mixed"></div>
+      <div class="field"><label>Centre (optional)</label><input id="le-center" value="${esc(l?.center ?? S.where.center ?? "")}"></div>
+      <div class="two"><div class="field"><label>Games a night</label><input id="le-gpn" inputmode="numeric" value="${l?.gamesPerNight ?? DEFAULT_LEAGUE.gamesPerNight}"></div><div class="field"><label>Games to establish an average</label><input id="le-est" inputmode="numeric" value="${l?.establishGames ?? DEFAULT_LEAGUE.establishGames}"></div></div>
+      <div class="two"><div class="field"><label>Handicap base</label><input id="le-base" inputmode="numeric" value="${l?.hcpBase ?? DEFAULT_LEAGUE.hcpBase}"></div><div class="field"><label>Handicap percent</label><input id="le-pct" inputmode="numeric" value="${l?.hcpPct ?? DEFAULT_LEAGUE.hcpPct}"></div></div>
+      <div class="field"><label>Handicap cap (optional)</label><input id="le-cap" inputmode="numeric" value="${l?.hcpCap ?? ""}" placeholder="most pins of handicap per game"></div>
+      <div class="note">Handicap = (base \u2212 average) \xD7 percent, rounded down, from the average before that week. The entering average counts until the bowler has bowled the games above. Use your league's own numbers.</div>
+    </div>
+    <div class="card"><div class="field"><label>Bowlers: one per line, as: name, team, entering average (team and average are optional)</label><textarea id="le-roster" rows="8" style="width:100%;font:inherit;background:var(--glass);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:8px" placeholder="Ann Lee, Pinheads, 150&#10;Bo Ray, Pinheads, 190">${esc(rosterText)}</textarea></div>
+      <label class="note"><input type="checkbox" id="le-junior" ${l?.bowlers.some((b) => b.junior) || S.profile?.junior ? "checked" : ""}> A junior league: use first names or nicknames only</label></div>
+    <div class="chips"><button class="btn" id="le-save">${l ? "Save" : "Start the league"}</button></div><div class="note" id="le-err"></div>`;
+    $("le-back").onclick = () => l ? openLeague(l.id) : openLeagues();
+    $("le-save").onclick = async () => {
+      const num3 = (id) => {
+        const v = parseFloat($(id).value);
+        return Number.isFinite(v) ? v : void 0;
+      };
+      const name = $("le-name").value.trim();
+      const gpn = num3("le-gpn"), est = num3("le-est"), base = num3("le-base"), pct4 = num3("le-pct"), cap = num3("le-cap");
+      const err = $("le-err");
+      if (!name) return void (err.textContent = "Give the league a name.");
+      if (!gpn || gpn < 1 || gpn > 6) return void (err.textContent = "Games a night: 1 to 6.");
+      if (base === void 0 || base < 100 || base > 300) return void (err.textContent = "Handicap base: 100 to 300.");
+      if (pct4 === void 0 || pct4 < 0 || pct4 > 100) return void (err.textContent = "Handicap percent: 0 to 100.");
+      const junior = $("le-junior").checked;
+      const lines = $("le-roster").value.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 80);
+      const names = /* @__PURE__ */ new Set();
+      const parsed = [];
+      for (const ln of lines) {
+        const [n0, t0, a0] = ln.split(",").map((x) => x.trim());
+        const nm = junior ? juniorDisplayName(n0) : n0.slice(0, 40);
+        if (!nm) continue;
+        if (names.has(norm4(nm))) return void (err.textContent = `${nm} is on the list twice. Add a last initial to tell them apart.`);
+        names.add(norm4(nm));
+        const a = Number(a0);
+        parsed.push({ name: nm, team: t0 || void 0, enteringAvg: a0 && Number.isFinite(a) && a >= 0 && a <= 300 ? Math.round(a) : void 0 });
+      }
+      const keep = new Map((l?.bowlers ?? []).map((b) => [norm4(b.name), b]));
+      const bowlers = parsed.map((p) => ({ id: keep.get(norm4(p.name))?.id ?? newId(), name: p.name, team: p.team, enteringAvg: p.enteringAvg, junior: junior || void 0 }));
+      const dropped = (l?.bowlers ?? []).filter((b) => !bowlers.some((x) => x.id === b.id) && l.weeks.some((w) => w.scores[b.id]?.length));
+      if (dropped.length && !confirm(`${dropped.map((d) => d.name).join(", ")} ${dropped.length === 1 ? "has" : "have"} scores and would be removed from the standings. Remove anyway?`)) return;
+      const next = { id: l?.id ?? newId(), name, center: $("le-center").value.trim() || void 0, gamesPerNight: Math.round(gpn), hcpBase: Math.round(base), hcpPct: Math.round(pct4), hcpCap: cap !== void 0 && cap >= 0 ? Math.round(cap) : void 0, establishGames: Math.round(est ?? DEFAULT_LEAGUE.establishGames), bowlers, weeks: l?.weeks ?? [], createdAt: l?.createdAt ?? (/* @__PURE__ */ new Date()).toISOString() };
+      S.leagues = l ? S.leagues.map((x) => x.id === l.id ? next : x) : [...S.leagues, next];
+      await saveCoach();
+      openLeague(next.id);
+    };
+  }
+  var weekSel = 0;
+  function openLeague(id) {
+    const l = S.leagues.find((x) => x.id === id);
+    if (!l) return openLeagues();
+    const el = sheet5();
+    el.classList.add("on");
+    const rows2 = standings(l, rankBy);
+    const teams = teamStandings(l);
+    const last = l.weeks[l.weeks.length - 1];
+    const nextWeek = (last?.n ?? 0) + 1;
+    if (!weekSel || weekSel > nextWeek) weekSel = nextWeek;
+    const wk = l.weeks.find((w) => w.n === weekSel);
+    const awards = last ? nightAwards(l, last) : [];
+    const metric = (r) => rankBy === "scratch" ? `${r.pins}` : rankBy === "improve" ? `${r.overAvg >= 0 ? "+" : ""}${Math.round(r.overAvg)}` : `${r.hdcpPins}`;
+    el.innerHTML = `<div class="row"><div><h2 style="margin:0">${esc(l.name)}</h2><div class="note">${esc(l.center ?? "")}${l.center ? " \xB7 " : ""}${l.gamesPerNight} games \xB7 handicap ${l.hcpPct}% of ${l.hcpBase}</div></div><button class="btn ghost" id="lo-close">Close</button></div>
+    <div class="chips"><button class="chip" id="lo-list">All leagues</button><button class="chip" id="lo-set">Settings and bowlers</button></div>
+    <h3>Standings</h3>
+    <div class="chips" id="lo-by">${["hdcp", "scratch", "improve"].map((b) => `<button class="chip ${rankBy === b ? "sel" : ""}" data-by="${b}">${b === "hdcp" ? "With handicap" : b === "scratch" ? "Scratch" : "Over average"}</button>`).join("")}</div>
+    <div class="card">${rows2.some((r) => r.games) ? `<table><tr><th>#</th><th>Bowler</th><th class="n">Avg</th><th class="n">Hcp</th><th class="n">${rankBy === "improve" ? "Over" : "Pins"}</th><th class="n">High</th></tr>${rows2.map((r) => `<tr><td>${r.rank}</td><td>${esc(r.bowler.name)}${r.bowler.team ? `<div class="note">${esc(r.bowler.team)}</div>` : ""}</td><td class="n">${r.avg === null ? "\u2013" : Math.round(r.avg)}</td><td class="n">${r.hcp}</td><td class="n">${metric(r)}</td><td class="n">${r.highGame || "\u2013"}</td></tr>`).join("")}</table>` : `<div class="u">No scores yet. Enter week 1 below, or open the links bowlers send you.</div>`}
+      <div class="note">${rankBy === "improve" ? "Pins over average is the total pins above the average each bowler came in with each week: it rewards beating your own number, whatever it is." : rankBy === "scratch" ? "Scratch: pins bowled, no handicap." : "With handicap: pins bowled plus every week's handicap on every game."}</div></div>
+    ${teams.length ? `<h3>Teams</h3><div class="card"><table><tr><th>#</th><th>Team</th><th class="n">With hcp</th><th class="n">Scratch</th></tr>${teams.map((t) => `<tr><td>${t.rank}</td><td>${esc(t.team)}<div class="note">${esc(t.members.join(", "))}</div></td><td class="n">${t.hdcpPins}</td><td class="n">${t.pins}</td></tr>`).join("")}</table></div>` : ""}
+    ${awards.length ? `<h3>Week ${last.n}</h3><div class="card">${awards.map((a) => `<div class="row" style="padding:5px 0;border-top:1px solid var(--line)"><div><b>${esc(a.title)}</b><div class="note">${esc(a.detail)}</div></div><div>${esc(a.who)}</div></div>`).join("")}</div>` : ""}
+    <h3>Enter a week</h3>
+    <div class="card">
+      <div class="field"><label>Week</label><select id="lo-week">${Array.from({ length: nextWeek }, (_, i) => `<option value="${i + 1}" ${i + 1 === weekSel ? "selected" : ""}>Week ${i + 1}${l.weeks.some((w) => w.n === i + 1) ? " (entered)" : " (new)"}</option>`).join("")}</select></div>
+      <div class="field"><label>Date</label><input id="lo-date" type="date" value="${wk?.date ?? today()}"></div>
+      <table>${l.bowlers.map((b) => {
+      const avg2 = leagueAverage(l, b, weekSel);
+      const h = handicapFor(avg2, l);
+      return `<tr><td style="width:36%">${esc(b.name)}<div class="note">avg ${avg2 === null ? "\u2013" : Math.round(avg2)} \xB7 hcp ${h}</div></td>${Array.from({ length: l.gamesPerNight }, (_, g) => `<td><input data-b="${b.id}" data-g="${g}" inputmode="numeric" maxlength="3" style="width:100%;min-width:44px;text-align:center" value="${wk?.scores[b.id]?.[g] ?? ""}"></td>`).join("")}</tr>`;
+    }).join("")}</table>
+      <div class="chips"><button class="btn" id="lo-save">Save week ${weekSel}</button><button class="chip" id="lo-mine">Fill in my own games</button></div><div class="note" id="lo-msg"></div></div>
+    <h3>Send and share</h3>
+    <div class="card"><div class="chips"><button class="btn" id="lo-board">Send the standings (link)</button><button class="chip" id="lo-pic">Standings as a picture</button><button class="chip" id="lo-txt">Copy as text</button><button class="chip" id="lo-invite">Invite bowlers (link)</button></div>
+      <div class="chips"><button class="chip" id="lo-night">Send my night to the secretary</button></div><div id="lo-share"></div><div class="note" id="lo-smsg"></div>
+      <div class="note">A link opens in LaneIQ on the other phone. Nothing is uploaded: it travels in the link itself, through whatever app you send it with.</div></div>
+    <div class="chips"><button class="btn ghost danger" id="lo-del">Delete this league</button></div>`;
+    $("lo-close").onclick = close5;
+    $("lo-list").onclick = openLeagues;
+    $("lo-set").onclick = () => openEditor(l);
+    el.querySelectorAll("[data-by]").forEach((b) => b.onclick = () => (rankBy = b.dataset.by, openLeague(id)));
+    $("lo-week").onchange = (e) => (weekSel = Number(e.target.value), openLeague(id));
+    const inputs = () => Array.from(el.querySelectorAll("input[data-b]"));
+    $("lo-save").onclick = async () => {
+      const scores = {};
+      for (const b of l.bowlers) {
+        const g = inputs().filter((i) => i.dataset.b === b.id).map((i) => i.value.trim() === "" ? NaN : Number(i.value));
+        if (g.some((x) => !Number.isNaN(x) && !validScore(x))) return void ($("lo-msg").textContent = `${b.name}: scores are whole numbers from 0 to 300.`);
+        const got = g.filter((x) => !Number.isNaN(x));
+        if (got.length) scores[b.id] = got;
+      }
+      const date = $("lo-date").value || today();
+      const weeks = l.weeks.filter((w) => w.n !== weekSel);
+      if (Object.keys(scores).length) weeks.push({ n: weekSel, date, scores });
+      weeks.sort((a, z) => a.n - z.n);
+      S.leagues = S.leagues.map((x) => x.id === id ? { ...l, weeks } : x);
+      await saveCoach();
+      openLeague(id);
+    };
+    $("lo-mine").onclick = async () => {
+      const mine = l.bowlers.find((b) => norm4(b.name) === norm4(myName()));
+      const games2 = (await myCompleteGames(l.gamesPerNight)).map((g) => g.total);
+      if (!mine) return void ($("lo-msg").textContent = `No one on the roster is called ${myName()}. Add yourself under Settings and bowlers.`);
+      if (!games2.length) return void ($("lo-msg").textContent = "No finished games in the Score tab yet.");
+      inputs().filter((i) => i.dataset.b === mine.id).forEach((i, k2) => i.value = String(games2[games2.length - l.gamesPerNight + k2] ?? games2[k2] ?? ""));
+      $("lo-msg").textContent = `Filled in your last ${games2.length} finished game${games2.length === 1 ? "" : "s"} from the Score tab. Check them, then save.`;
+    };
+    const snap = () => snapshotFor(l, rankBy);
+    const msg = $("lo-smsg");
+    $("lo-board").onclick = async () => msg.textContent = await shareLink(`${l.name} standings`, `${l.name}${last ? `, after week ${last.n}` : ""}. Open it in LaneIQ to see the standings.`, await linkFor(snap()));
+    $("lo-invite").onclick = async () => msg.textContent = await shareLink(`Join ${l.name}`, `Join ${l.name} on LaneIQ: the rules and the roster are in the link.`, await linkFor(inviteFor(l)));
+    $("lo-txt").onclick = async () => {
+      const t = boardText(snap());
+      try {
+        await navigator.clipboard.writeText(t);
+        msg.textContent = "Copied. Paste it into a message or a group chat.";
+      } catch {
+        msg.textContent = t;
+      }
+    };
+    $("lo-pic").onclick = async () => {
+      const blob = await boardPicture(snap());
+      if (!blob) return void (msg.textContent = "Couldn't draw the picture.");
+      const f = new File([blob], "league-standings.png", { type: "image/png" });
+      offerShare($("lo-share"), [f], { title: `${l.name} standings`, text: boardText(snap()) });
+    };
+    $("lo-night").onclick = async () => {
+      const mine = l.bowlers.find((b) => norm4(b.name) === norm4(myName()));
+      const w = l.weeks.find((x) => x.n === weekSel);
+      const games2 = mine ? w?.scores[mine.id] ?? [] : [];
+      if (!mine || !games2.length) return void (msg.textContent = `Enter your games for week ${weekSel} above and save first (your name on the roster must be ${myName()}).`);
+      const card = { v: 1, t: "night", leagueId: l.id, leagueName: l.name, week: weekSel, date: w.date, name: mine.name, games: games2 };
+      msg.textContent = await shareLink(`${mine.name}, week ${weekSel}`, `${mine.name}'s games for ${l.name}, week ${weekSel}: ${games2.join(", ")}. Open it in LaneIQ on the secretary's phone.`, await linkFor(card));
+    };
+    $("lo-del").onclick = async () => {
+      if (!confirm(`Delete ${l.name} and all its scores from this phone?`)) return;
+      S.leagues = S.leagues.filter((x) => x.id !== id);
+      await saveCoach();
+      openLeagues();
+    };
+  }
+  function openBoard(b) {
+    const el = sheet5();
+    el.classList.add("on");
+    el.innerHTML = `<div class="row"><div><h2 style="margin:0">${esc(b.name)}</h2><div class="note">${esc(b.center ?? "")}${b.center ? " \xB7 " : ""}after week ${b.week}${b.date ? ` \xB7 ${esc(b.date)}` : ""} \xB7 read only</div></div><button class="btn ghost" id="bd-close">Close</button></div>
+    <div class="card"><table><tr><th>#</th><th>Bowler</th><th class="n">Avg</th><th class="n">Hcp</th><th class="n">${b.by === "improve" ? "Over" : "Pins"}</th><th class="n">High</th></tr>${b.rows.map((r) => `<tr><td>${r.rank}</td><td>${esc(r.name)}${r.team ? `<div class="note">${esc(r.team)}</div>` : ""}</td><td class="n">${r.avg === null ? "\u2013" : Math.round(r.avg)}</td><td class="n">${r.hcp}</td><td class="n">${b.by === "scratch" ? r.pins : b.by === "improve" ? `${r.over >= 0 ? "+" : ""}${r.over}` : r.hdcpPins}</td><td class="n">${r.highGame || "\u2013"}</td></tr>`).join("")}</table>
+      <div class="note">${b.by === "scratch" ? "Scratch pins." : b.by === "improve" ? "Pins over the average each bowler came in with." : "Pins with handicap."}</div></div>
+    ${b.teams.length ? `<h3>Teams</h3><div class="card"><table>${b.teams.map((t) => `<tr><td>${t.rank}</td><td>${esc(t.team)}</td><td class="n">${t.hdcpPins}</td></tr>`).join("")}</table></div>` : ""}
+    ${b.awards.length ? `<h3>Week ${b.week}</h3><div class="card">${b.awards.map((a) => `<div class="row" style="padding:5px 0;border-top:1px solid var(--line)"><div><b>${esc(a.title)}</b><div class="note">${esc(a.detail)}</div></div><div>${esc(a.who)}</div></div>`).join("")}</div>` : ""}`;
+    $("bd-close").onclick = close5;
+  }
+  async function boardPicture(b) {
+    const W2 = 1080;
+    const rowH = 64;
+    const rows2 = b.rows.slice(0, 24);
+    const H3 = 360 + rows2.length * rowH + (b.awards.length ? 90 + b.awards.length * 52 : 0) + 100;
+    const c = document.createElement("canvas");
+    c.width = W2;
+    c.height = H3;
+    const g = c.getContext("2d");
+    const bg = g.createLinearGradient(0, 0, W2, H3);
+    bg.addColorStop(0, "#070b18");
+    bg.addColorStop(1, "#1a0b2a");
+    g.fillStyle = bg;
+    g.fillRect(0, 0, W2, H3);
+    const t = (s, x, y2, size, color = "#fff", weight = 800, align = "left") => {
+      g.font = `${weight} ${size}px system-ui, -apple-system, sans-serif`;
+      g.fillStyle = color;
+      g.textAlign = align;
+      g.fillText(s, x, y2);
+    };
+    t("LaneIQ", 60, 100, 52, "#46e6ff", 900);
+    t(b.name, 60, 190, 64, "#fff", 900);
+    t(`${b.center ? b.center + " \xB7 " : ""}after week ${b.week}${b.date ? " \xB7 " + b.date : ""}`, 60, 245, 30, "#c9d4ee", 600);
+    t(b.by === "scratch" ? "Scratch pins" : b.by === "improve" ? "Pins over average" : "Pins with handicap", 60, 300, 26, "#ffd25a", 800);
+    const top = 330;
+    t("#", 60, top + 36, 24, "#8a97b2", 800);
+    t("Bowler", 130, top + 36, 24, "#8a97b2", 800);
+    t("Avg", 640, top + 36, 24, "#8a97b2", 800, "right");
+    t("Hcp", 760, top + 36, 24, "#8a97b2", 800, "right");
+    t(b.by === "improve" ? "Over" : "Pins", 920, top + 36, 24, "#8a97b2", 800, "right");
+    t("High", 1020, top + 36, 24, "#8a97b2", 800, "right");
+    rows2.forEach((r, i) => {
+      const y2 = top + 56 + i * rowH;
+      g.fillStyle = i % 2 ? "rgba(255,255,255,.035)" : "rgba(255,255,255,.07)";
+      g.fillRect(40, y2, W2 - 80, rowH - 6);
+      t(String(r.rank), 60, y2 + 40, 30, r.rank <= 3 ? "#ffd25a" : "#fff", 900);
+      t(r.name + (r.team ? `  \xB7  ${r.team}` : ""), 130, y2 + 40, 30, "#fff", 700);
+      t(r.avg === null ? "\u2013" : String(Math.round(r.avg)), 640, y2 + 40, 30, "#c9d4ee", 700, "right");
+      t(String(r.hcp), 760, y2 + 40, 30, "#c9d4ee", 700, "right");
+      t(b.by === "scratch" ? String(r.pins) : b.by === "improve" ? `${r.over >= 0 ? "+" : ""}${r.over}` : String(r.hdcpPins), 920, y2 + 40, 32, "#5affb0", 900, "right");
+      t(r.highGame ? String(r.highGame) : "\u2013", 1020, y2 + 40, 30, "#c9d4ee", 700, "right");
+    });
+    let y = top + 56 + rows2.length * rowH + 50;
+    if (b.awards.length) {
+      t(`Week ${b.week}`, 60, y, 34, "#fff", 900);
+      y += 20;
+      for (const a of b.awards) {
+        y += 52;
+        t(`${a.title}: ${a.who}`, 60, y, 28, "#ffd25a", 800);
+        t(a.detail, W2 - 60, y, 24, "#c9d4ee", 600, "right");
+      }
+    }
+    return new Promise((r) => c.toBlob((x) => r(x), "image/png"));
+  }
+
+  // camera/juniorui.ts
+  var sheet6 = () => $("junior");
+  var close6 = () => (sheet6().classList.remove("on"), sheet6().innerHTML = "");
+  var dayText = (iso) => iso ? (/* @__PURE__ */ new Date(iso + "T12:00:00")).toLocaleDateString([], { month: "short", day: "numeric" }) : "never";
+  async function myCard() {
+    const j = S.profile?.junior;
+    return buildProgress(j?.display ?? juniorDisplayName(S.profile?.name ?? ""), j?.band ?? "13to17", { shots: S.shots, games: await myGames(), drills: S.drills });
+  }
+  async function handleProgressLink(value) {
+    const json = await unpackText(value);
+    const c = json ? parseProgress(json) : null;
+    if (!c) return void alert("That progress link is damaged or isn't from LaneIQ.");
+    openProgress(withHighlights(c), true);
+  }
+  async function openJuniorHub() {
+    const el = sheet6();
+    el.classList.add("on");
+    const j = S.profile?.junior;
+    const card = j ? await myCard() : null;
+    const roster = coachRoster(S.cards);
+    el.innerHTML = `<div class="row"><h2>Juniors, parents and coaches</h2><button class="btn ghost" id="jr-close">Close</button></div>
+    <div class="note">LaneIQ is a tool for families and coaches to use together. It shows a young bowler's growth against their own earlier weeks, never against other children, and the coach and the family decide what to do with it.</div>
+
+    <h3>Junior profile</h3>
+    <div class="card">${j ? `<div class="u"><b>${esc(S.profile.name)}'s</b> profile is a junior profile: it shows <b>${esc(j.display)}</b> on anything shared, keeps no video or location on a shared card, and has no friend codes, live sharing, data sharing or ads.</div>` : `<div class="u">Turn this on for a bowler under 18. It cuts the name on anything shared down to a first name or nickname, and switches off friends, live sharing, data sharing and ads. It can be turned off again.</div>`}
+      <div class="two"><div class="field"><label>Age</label><select id="jr-band"><option value="under13" ${j?.band === "under13" ? "selected" : ""}>Under 13</option><option value="13to17" ${j?.band !== "under13" ? "selected" : ""}>13 to 17</option></select></div><div class="field"><label>Name on cards (first name or nickname)</label><input id="jr-name" maxlength="18" value="${esc(j?.display ?? juniorDisplayName(S.profile?.name ?? ""))}"></div></div>
+      <div class="chips"><button class="btn" id="jr-on">${j ? "Save" : "Make this a junior profile"}</button>${j ? `<button class="chip danger" id="jr-off">Turn junior mode off</button>` : ""}</div>
+      <div class="note">For a bowler under 13, a parent or guardian should set this up and decide who the progress card goes to. Nothing here is uploaded.</div></div>
+
+    ${card ? `<h3>Progress card</h3><div class="card"><div class="u">The card for the last ${card.days} days. A parent or coach opens it from the link in LaneIQ.</div>${cardHtml2(card)}<div class="chips"><button class="btn" id="jr-send">Send to a parent or coach (link)</button><button class="chip" id="jr-pic">As a picture</button><button class="chip" id="jr-view">See what they'll see</button></div><div id="jr-share"></div><div class="note" id="jr-msg"></div></div>` : ""}
+
+    <h3>My group (for a coach)</h3>
+    <div class="card">${roster.length ? `<div class="note">In name order, not score order. A quiet bowler is one who hasn't bowled or practised in two weeks: a good moment for a friendly message.</div><table>${roster.map((r, i) => `<tr data-i="${i}" style="cursor:pointer"><td><b>${esc(r.card.name)}</b><div class="note">last ${esc(dayText(r.card.lastActive))}</div></td><td class="n">${r.card.avg ?? "\u2013"}${r.card.avgChange !== null ? `<div class="note" style="color:${r.card.avgChange >= 0 ? "var(--mint)" : "var(--dim)"}">${r.card.avgChange >= 0 ? "+" : ""}${r.card.avgChange}</div>` : ""}</td><td class="n">${r.improved ? `<span class="badge good">improving</span>` : ""}${r.quiet ? `<span class="badge low">quiet</span>` : ""}</td></tr>`).join("")}</table>` : `<div class="u">No cards yet. When a parent or bowler sends you a progress link and you open it, you can save it here.</div>`}</div>
+    <div class="card"><div class="field"><label>Paste a progress link here</label><input id="jr-paste" placeholder="https://\u2026/#progress=\u2026" autocomplete="off"></div><div class="chips"><button class="chip" id="jr-go">Open it</button></div></div>`;
+    $("jr-close").onclick = close6;
+    $("jr-on").onclick = async () => {
+      const display = juniorDisplayName($("jr-name").value);
+      const band = $("jr-band").value;
+      if (!j && !confirm(`Make ${S.profile.name}'s profile a junior profile?
+
+Friends, live sharing and sharing data are switched off, and anything shared shows "${display}" only.`)) return;
+      updateProfile({ junior: { band, display } });
+      void openJuniorHub();
+    };
+    $("jr-off")?.addEventListener("click", () => {
+      if (!confirm("Turn junior mode off? Friends and live sharing become available again.")) return;
+      updateProfile({ junior: void 0 });
+      void openJuniorHub();
+    });
+    $("jr-go").onclick = () => {
+      const m = /#progress=([^\s]+)/.exec($("jr-paste").value);
+      if (m) void handleProgressLink(m[1]);
+      else alert("That doesn't look like a progress link.");
+    };
+    el.querySelectorAll("tr[data-i]").forEach((tr) => tr.onclick = () => openProgress(roster[Number(tr.dataset.i)].card, false));
+    if (card) {
+      $("jr-view").onclick = () => openProgress(withHighlights(card), false, true);
+      $("jr-send").onclick = async () => {
+        const url = `${appLink()}/#progress=${await packText(JSON.stringify(card))}`;
+        $("jr-msg").textContent = await shareLink(`${card.name}'s bowling progress`, `${card.name}'s bowling progress from LaneIQ. Open it in LaneIQ to see how they're getting on.`, url);
+      };
+      $("jr-pic").onclick = async () => {
+        const blob = await cardPicture(card);
+        if (!blob) return void ($("jr-msg").textContent = "Couldn't draw the picture.");
+        offerShare($("jr-share"), [new File([blob], "bowling-progress.png", { type: "image/png" })], { title: `${card.name}'s bowling progress` });
+      };
+    }
+  }
+  function cardHtml2(c) {
+    const stat = (k2, v, sub3 = "") => `<div class="card" style="padding:10px"><div class="k">${k2}</div><div class="v" style="font-size:24px">${v}</div>${sub3 ? `<div class="note">${sub3}</div>` : ""}</div>`;
+    const maxAvg = Math.max(100, ...c.weeks.map((w) => w.avg ?? 0));
+    return `${c.highlights.length ? `<ul>${c.highlights.map((h) => `<li>${esc(h)}</li>`).join("")}</ul>` : ""}
+    <div class="grid" style="margin:8px 0">${stat("Games", String(c.games), `${c.sessions} day${c.sessions === 1 ? "" : "s"} bowling or practising`)}${stat("Average", c.avg === null ? "\u2013" : String(c.avg), c.avgChange === null ? "" : c.avgChange >= 0 ? `up ${c.avgChange} on the month before` : "")}${stat("High game", c.high === null ? "\u2013" : String(c.high))}${c.sparePct !== null ? stat("Spares", `${c.sparePct}%`) : ""}${c.pocketPct !== null ? stat("In the pocket", `${c.pocketPct}%`, c.pocketChange !== null && c.pocketChange > 0 ? `up ${c.pocketChange} points` : "") : ""}${c.speedMph !== null ? stat("Ball speed", `${c.speedMph} mph`, c.speedSteady !== null ? `steady to \xB1${c.speedSteady}` : "") : ""}</div>
+    <div class="k">Weekly average, last 8 weeks</div><div style="display:flex;gap:4px;align-items:flex-end;height:70px;margin:6px 0">${c.weeks.map((w) => `<div style="flex:1;text-align:center"><div style="height:${w.avg === null ? 3 : Math.max(6, Math.round(w.avg / maxAvg * 56))}px;background:${w.avg === null ? "rgba(255,255,255,.12)" : "linear-gradient(180deg,var(--cy),var(--mg))"};border-radius:4px 4px 0 0" title="${esc(w.start)}"></div><div class="note" style="font-size:10px">${w.avg ?? ""}</div></div>`).join("")}</div>`;
+  }
+  function openProgress(c, saveable, preview2 = false) {
+    const el = sheet6();
+    el.classList.add("on");
+    const have = S.cards.some((x) => x.name === c.name && x.asOf >= c.asOf);
+    el.innerHTML = `<div class="row"><div><h2 style="margin:0">${esc(c.name)}'s bowling</h2><div class="note">The last ${c.days} days, as of ${esc(dayText(c.asOf))}${preview2 ? " \xB7 this is what a parent or coach sees" : ""}</div></div><button class="btn ghost" id="pg-close">Close</button></div>
+    <div class="card">${cardHtml2(c)}</div>
+    <h3>How you can help</h3>
+    <div class="card"><ul>${parentTips(c).map((t) => `<li>${esc(t)}</li>`).join("")}</ul></div>
+    <h3>What these numbers are</h3>
+    <div class="card"><div class="note">Everything here is measured from ${esc(c.name)}'s own games and shots, and compared only with their own earlier weeks, never with other children. Ball speed and pocket hits are estimates from one phone camera. Technique and equipment are for ${esc(c.name)}'s coach and pro shop to decide. This card holds no video, no location and no full name.</div></div>
+    ${saveable ? `<div class="chips">${have ? `<span class="badge good">saved to my group</span>` : `<button class="btn" id="pg-save">Save to my group (coach)</button>`}</div>` : ""}`;
+    $("pg-close").onclick = close6;
+    $("pg-save")?.addEventListener("click", async () => {
+      S.cards = [...S.cards.filter((x) => x.name !== c.name), c].slice(-200);
+      await saveCoach();
+      void openJuniorHub();
+    });
+  }
+  async function cardPicture(c) {
+    const W2 = 1080;
+    const H3 = 1350;
+    const cv = document.createElement("canvas");
+    cv.width = W2;
+    cv.height = H3;
+    const g = cv.getContext("2d");
+    const bg = g.createLinearGradient(0, 0, W2, H3);
+    bg.addColorStop(0, "#070b18");
+    bg.addColorStop(1, "#1a0b2a");
+    g.fillStyle = bg;
+    g.fillRect(0, 0, W2, H3);
+    const t = (s, x, y2, size, color = "#fff", weight = 800, align = "left") => {
+      g.font = `${weight} ${size}px system-ui, -apple-system, sans-serif`;
+      g.fillStyle = color;
+      g.textAlign = align;
+      g.fillText(s, x, y2);
+    };
+    t("LaneIQ", 60, 100, 52, "#46e6ff", 900);
+    t(`${c.name}'s bowling`, 60, 200, 72, "#fff", 900);
+    t(`The last ${c.days} days \xB7 ${dayText(c.asOf)}`, 60, 255, 30, "#c9d4ee", 600);
+    let y = 340;
+    for (const h of c.highlights.slice(0, 4)) {
+      g.fillStyle = "rgba(255,255,255,.07)";
+      g.fillRect(50, y - 44, W2 - 100, 76);
+      t("\u2605 " + h, 80, y + 6, 32, "#ffd25a", 800);
+      y += 96;
+    }
+    y += 20;
+    const stats = [["Games", String(c.games)], ["Average", c.avg === null ? "\u2013" : String(c.avg)], ["High game", c.high === null ? "\u2013" : String(c.high)]];
+    stats.forEach(([k2, v], i) => {
+      const x = 60 + i * 330;
+      t(k2.toUpperCase(), x, y, 24, "#8a97b2", 800);
+      t(v, x, y + 80, 76, "#5affb0", 900);
+    });
+    y += 190;
+    t("Weekly average", 60, y, 28, "#c9d4ee", 800);
+    const max = Math.max(100, ...c.weeks.map((w) => w.avg ?? 0));
+    c.weeks.forEach((w, i) => {
+      const bh = w.avg === null ? 8 : Math.max(16, Math.round(w.avg / max * 280));
+      const x = 60 + i * 120;
+      g.fillStyle = w.avg === null ? "rgba(255,255,255,.12)" : "#46e6ff";
+      g.fillRect(x, y + 340 - bh, 90, bh);
+      if (w.avg !== null) t(String(w.avg), x + 45, y + 332 - bh, 26, "#fff", 800, "center");
+    });
+    t("Growth against their own earlier weeks. No video, location or full name on this card.", W2 / 2, H3 - 60, 24, "#8a97b2", 600, "center");
+    return new Promise((r) => cv.toBlob((x) => r(x), "image/png"));
+  }
+
   // camera/pending.ts
   var HASH_KEY = "laneiq.pendingHash";
   var TAG_KEY = "laneiq.pendingTag";
@@ -7777,21 +8676,21 @@ ${url}`);
     const json = await unpackText(payload);
     return json === null ? null : decodeSession(b64urlEncode(json));
   }
-  var sheet5 = () => $("friends");
-  var close5 = () => (sheet5().classList.remove("on"), sheet5().innerHTML = "");
-  var myName = () => S.profile?.name ?? "A bowler";
+  var sheet7 = () => $("friends");
+  var close7 = () => (sheet7().classList.remove("on"), sheet7().innerHTML = "");
+  var myName2 = () => S.profile?.name ?? "A bowler";
   var myUser = () => S.profile?.username ?? "";
   var myCode = () => {
     if (S.profile && !S.profile.friendCode) updateProfile({ friendCode: newFriendCode() });
     return S.profile?.friendCode ?? "";
   };
   function askForUsername(then) {
-    const el = sheet5();
+    const el = sheet7();
     el.classList.add("on");
     el.innerHTML = `<div class="row"><h2>Choose an account name</h2><button class="btn ghost" id="fr-close">Close</button></div>
     <div class="note">Friends add you by account name plus your friend code. Pick one (3 to 20 letters, numbers or underscores).</div>
     <div class="card"><div class="field"><label>Account name</label><input id="fr-user" placeholder="e.g. strikeking22" autocomplete="off" autocapitalize="none" spellcheck="false"></div><div class="chips"><button class="btn" id="fr-usersave">Save</button></div><div class="note" id="fr-usermsg"></div></div>`;
-    $("fr-close").onclick = close5;
+    $("fr-close").onclick = close7;
     $("fr-usersave").onclick = () => {
       const u = cleanUsername($("fr-user").value);
       if (!isUsername(u)) return void ($("fr-usermsg").textContent = "Use 3 to 20 letters, numbers or underscores, no spaces.");
@@ -7801,9 +8700,9 @@ ${url}`);
   }
   function openInvite() {
     if (!myUser()) return askForUsername(openInvite);
-    const link = `${appLink()}/#invite=${encodeInvite(myName(), myCode(), myUser())}`;
+    const link = `${appLink()}/#invite=${encodeInvite(myName2(), myCode(), myUser())}`;
     const warn = isPrivateHost(appLink());
-    const el = sheet5();
+    const el = sheet7();
     el.classList.add("on");
     el.innerHTML = `
     <div class="row"><h2>Invite a player</h2><button class="btn ghost" id="fr-close">Close</button></div>
@@ -7814,9 +8713,9 @@ ${url}`);
       <div class="chips"><button class="chip" id="fr-copytag2">Copy tag</button><button class="chip" id="fr-copylink">Copy link</button></div></div>
     <div class="card"><div class="k">Your invite link</div><div class="u" style="word-break:break-all;user-select:all">${esc(link)}</div>
       <div class="chips"><button class="btn" id="fr-send">Send invite / friend request</button></div><div class="note" id="fr-msg"></div></div>`;
-    $("fr-close").onclick = close5;
+    $("fr-close").onclick = close7;
     const tag = friendTag(myUser(), myCode());
-    $("fr-send").onclick = async () => ($("fr-msg").textContent = await shareLink("Join me on LaneIQ", `${myName()} invited you to LaneIQ, a free bowling coach that uses your phone's camera, and wants to be friends. Open the link, then add it to your Home Screen. If I don't show up as a friend, add me with my tag: ${tag}`, link), void 0);
+    $("fr-send").onclick = async () => ($("fr-msg").textContent = await shareLink("Join me on LaneIQ", `${myName2()} invited you to LaneIQ, a free bowling coach that uses your phone's camera, and wants to be friends. Open the link, then add it to your Home Screen. If I don't show up as a friend, add me with my tag: ${tag}`, link), void 0);
     const copy = (id, text, label2) => $(id).onclick = async () => {
       try {
         await navigator.clipboard.writeText(text);
@@ -7829,7 +8728,7 @@ ${url}`);
     copy("fr-copylink", link, "Your invite link:");
   }
   function openFriendRequest(from, kind2) {
-    const el = sheet5();
+    const el = sheet7();
     el.classList.add("on");
     const already = S.friends.some((f) => f.code === from.code);
     const self = from.code === myCode();
@@ -7837,18 +8736,18 @@ ${url}`);
     <div class="row"><h2>${kind2 === "invite" ? "Friend request" : "Friend request accepted"}</h2><button class="btn ghost" id="fr-close">Close</button></div>
     ${self ? `<div class="card"><div class="u">That's your own link.</div></div>` : `<div class="card"><div class="lr-head">${esc(from.name)}${from.username ? ` <span class="note">@${esc(from.username)}</span>` : ""}</div><div class="u">${kind2 === "invite" ? "wants to be friends so you can compare shots on the same lane." : "added you. Add them back to finish connecting."}</div><div class="u">Friend code ${esc(from.code)}</div>
     <div class="chips">${already ? `<span class="tag">Already friends</span>` : `<button class="btn" id="fr-accept">${kind2 === "invite" ? `Add ${esc(from.name)} and let them know` : `Add ${esc(from.name)} as a friend`}</button>`}<button class="chip" id="fr-no">Not now</button></div><div class="note" id="fr-msg"></div></div>`}`;
-    $("fr-close").onclick = close5;
+    $("fr-close").onclick = close7;
     $("fr-no")?.addEventListener("click", () => {
       if (!self && !already) deferInvite(from);
-      close5();
+      close7();
     });
     $("fr-accept")?.addEventListener("click", async () => {
       S.friends.push({ code: from.code, name: from.name, username: from.username, addedAt: (/* @__PURE__ */ new Date()).toISOString() });
       dropDeferred(from.code);
       await saveSocial();
-      if (kind2 === "reply") return close5();
+      if (kind2 === "reply") return close7();
       $("fr-msg").innerHTML = `Added ${esc(from.name)}. Send the confirmation so they can add you back.`;
-      const send2 = async () => $("fr-msg").textContent = await shareLink("Friend request accepted", `${myName()} accepted your friend request on LaneIQ. Tap to add them back.`, `${appLink()}/#reply=${encodeInvite(myName(), myCode(), myUser())}`);
+      const send2 = async () => $("fr-msg").textContent = await shareLink("Friend request accepted", `${myName2()} accepted your friend request on LaneIQ. Tap to add them back.`, `${appLink()}/#reply=${encodeInvite(myName2(), myCode(), myUser())}`);
       void send2();
       const btn = document.createElement("button");
       btn.className = "btn";
@@ -7862,7 +8761,7 @@ ${url}`);
     if (!shots.length) return null;
     return {
       v: 1,
-      from: { name: myName(), code: myCode() },
+      from: { name: myName2(), code: myCode() },
       lane,
       date: new Date(shots[0].at).toISOString().slice(0, 10),
       hand: S.profile?.hand ?? "R",
@@ -7888,7 +8787,7 @@ ${url}`);
     });
   };
   function openShareSession() {
-    const el = sheet5();
+    const el = sheet7();
     el.classList.add("on");
     const list = sessionsOf().reverse();
     const warn = isPrivateHost(appLink());
@@ -7900,7 +8799,7 @@ ${url}`);
     <div class="field"><label>Where was it? (center and lane, e.g. AMF 14)</label><input id="fr-lane" placeholder="Center and lane"></div>
     ${list.map((s) => `<div class="card"><div class="row"><div><b>${esc(s.date)}</b> <span class="note">${s.n} shots</span></div><button class="chip" data-id="${s.id}">Share</button></div></div>`).join("")}
     <div class="note" id="fr-msg"></div>`;
-    $("fr-close").onclick = close5;
+    $("fr-close").onclick = close7;
     el.querySelectorAll("[data-id]").forEach(
       (b) => b.onclick = async () => {
         const lane = $("fr-lane").value.trim();
@@ -7909,12 +8808,12 @@ ${url}`);
         await saveSocial();
         const sess = buildSession(b.dataset.id, lane);
         if (!sess) return;
-        $("fr-msg").textContent = await shareLink("My shots on LaneIQ", `${myName()} shared a session from ${lane}. Open it in LaneIQ to compare with yours.`, `${appLink()}/#session=${await packSession(sess)}`);
+        $("fr-msg").textContent = await shareLink("My shots on LaneIQ", `${myName2()} shared a session from ${lane}. Open it in LaneIQ to compare with yours.`, `${appLink()}/#session=${await packSession(sess)}`);
       }
     );
   }
   function openReceivedSession(sess) {
-    const el = sheet5();
+    const el = sheet7();
     el.classList.add("on");
     const known = S.friends.some((f) => f.code === sess.from.code);
     el.innerHTML = `
@@ -7922,22 +8821,22 @@ ${url}`);
     <div class="card"><div class="lr-head">${esc(sess.from.name)}</div><div class="u">${esc(sess.lane)} \xB7 ${esc(sess.date)} \xB7 ${sess.shots.length} shots${sess.pattern ? ` \xB7 ${esc(sess.pattern)}` : ""}</div>
       <div class="note">${known ? "A friend of yours." : "Not in your friends yet. Saving this does not add them."}</div>
       <div class="chips"><button class="btn" id="fr-save">Save to compare</button><button class="chip" id="fr-no">Not now</button></div></div>`;
-    $("fr-close").onclick = close5;
-    $("fr-no").onclick = close5;
+    $("fr-close").onclick = close7;
+    $("fr-no").onclick = close7;
     $("fr-save").onclick = async () => {
       S.shared = [...S.shared.filter((x) => !(x.from.code === sess.from.code && x.date === sess.date && x.lane === sess.lane)), sess];
       await saveSocial();
-      close5();
+      close7();
       openCompare(sess);
     };
   }
   function openCompare(theirs) {
-    const el = sheet5();
+    const el = sheet7();
     el.classList.add("on");
     const mine = sessionsOf().reverse();
     if (!S.shared.length || !mine.length) {
       el.innerHTML = `<div class="row"><h2>Compare</h2><button class="btn ghost" id="fr-close">Close</button></div><div class="card"><div class="u">${!S.shared.length ? "No friend sessions yet. When a friend shares a session with you and you save it, it shows up here." : "Bowl some shots first so there is something to compare."}</div></div>`;
-      $("fr-close").onclick = close5;
+      $("fr-close").onclick = close7;
       return;
     }
     let pickTheirs = theirs ?? S.shared[S.shared.length - 1];
@@ -7955,7 +8854,7 @@ ${url}`);
         <div class="note"><span style="color:#46e6ff">Cyan: you</span> \xB7 <span style="color:#ffd25a">Gold: ${esc(pickTheirs.from.name)}</span></div></div>
       <div class="card"><table><tr><th></th><th class="n">You</th><th class="n">${esc(pickTheirs.from.name)}</th></tr>${cmp.rows.map((r) => `<tr><td>${esc(r.label)}</td><td class="n">${fmt4(r.mine, r.unit)}</td><td class="n">${fmt4(r.theirs, r.unit)}</td></tr>`).join("")}</table></div>
       <div class="card"><ul>${cmp.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>`;
-      $("fr-close").onclick = close5;
+      $("fr-close").onclick = close7;
       $("cp-theirs").onchange = (e) => (pickTheirs = S.shared[Number(e.target.value)], draw3());
       $("cp-mine").onchange = (e) => (pickMine = e.target.value, draw3());
       $("cp-lane").onchange = async (e) => {
@@ -7972,7 +8871,7 @@ ${url}`);
     draw3();
   }
   function captureIncomingHash() {
-    if (/^#(invite|reply|session|live)=/.test(location.hash)) {
+    if (/^#(invite|reply|session|live|league|progress)=/.test(location.hash)) {
       const h = location.hash;
       writePendingHash(h);
       installManifestFor(h);
@@ -7984,8 +8883,11 @@ ${url}`);
     const h = readPendingHash();
     if (!h || !S.profile) return;
     clearPendingHash();
-    const [, kind2, value] = /^#(invite|reply|session|live)=(.+)$/.exec(h) ?? [];
+    const [, kind2, value] = /^#(invite|reply|session|live|league|progress)=(.+)$/.exec(h) ?? [];
     if (!kind2) return;
+    if (kind2 === "league") return void handleLeagueLink(value);
+    if (kind2 === "progress") return void handleProgressLink(value);
+    if (S.profile?.junior) return void alert("Friend, session and live links are switched off on a junior profile.");
     if (kind2 === "live") return void joinFrom(value);
     if (kind2 === "session") {
       const s = await unpackSession(value);
@@ -8038,7 +8940,7 @@ ${url}`);
     ${isPrivateHost(link) ? `<div class="note" style="color:var(--gold)">That address only works on your own network or Tailscale. Friends need a public address; set it here once the app is hosted for everyone.</div>` : ""}</div>`;
   }
   function wireFriendsCard(rerender) {
-    $("fr-setuser")?.addEventListener("click", () => askForUsername(() => (close5(), rerender())));
+    $("fr-setuser")?.addEventListener("click", () => askForUsername(() => (close7(), rerender())));
     $("fr-copytag")?.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(friendTag(myUser(), myCode()));
@@ -8452,8 +9354,8 @@ ${url}`);
       if (!s) return;
       const lo = Math.max(0, i - half), hi = Math.min(n - 1, i + half);
       const mags = filled.slice(lo, hi + 1).map((q) => Math.hypot(q.x, q.y, q.z));
-      const mean9 = mags.reduce((a, b) => a + b, 0) / mags.length;
-      const spread = mags.length > 1 ? Math.sqrt(mags.reduce((a, m) => a + (m - mean9) ** 2, 0) / (mags.length - 1)) / (mean9 || 1) : 0.3;
+      const mean10 = mags.reduce((a, b) => a + b, 0) / mags.length;
+      const spread = mags.length > 1 ? Math.sqrt(mags.reduce((a, m) => a + (m - mean10) ** 2, 0) / (mags.length - 1)) / (mean10 || 1) : 0.3;
       series.push({ t: (i + 0.5) / fps, rpm: s.rpm, rotation: s.axisRotation, tilt: s.axisTilt, quality: Math.max(0, Math.min(1, s.quality * (1 - spread * 4))) });
     });
     const take = (a) => a.length ? { t: med(a.map((p) => p.t)), rpm: med(a.map((p) => p.rpm)), rotation: med(a.map((p) => p.rotation)), tilt: med(a.map((p) => p.tilt)), quality: med(a.map((p) => p.quality)) } : null;
@@ -8556,18 +9458,18 @@ ${url}`);
   };
   function ringScore(g, cx, cy, r) {
     const n = 40, w = Math.max(2, r * 0.07);
-    let sum = 0, pos = 0, cnt = 0;
+    let sum2 = 0, pos = 0, cnt = 0;
     const ds = [];
     for (let i = 0; i < n; i++) {
       const t = i / n * Math.PI * 2, ux = Math.cos(t), uy = Math.sin(t);
       const d = at2(g, cx + ux * (r - w), cy + uy * (r - w)) - at2(g, cx + ux * (r + w), cy + uy * (r + w));
       if (!Number.isFinite(d)) continue;
       ds.push(d);
-      sum += d;
+      sum2 += d;
       cnt++;
     }
     if (cnt < n * 0.7) return 0;
-    const s = sum >= 0 ? 1 : -1;
+    const s = sum2 >= 0 ? 1 : -1;
     for (const d of ds) pos += Math.max(0, s * d);
     return pos / cnt;
   }
@@ -9432,7 +10334,7 @@ ${url}`);
   var sub2 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
   var dot4 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   var cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-  var norm4 = (a) => {
+  var norm5 = (a) => {
     const l = Math.hypot(...a) || 1;
     return [a[0] / l, a[1] / l, a[2] / l];
   };
@@ -9481,8 +10383,8 @@ ${url}`);
       const th = yaw * Math.PI / 180;
       const ph = Math.min(89.5, Math.max(4, pitch)) * Math.PI / 180;
       const C2 = [target[0] + dist2 * Math.sin(th) * Math.cos(ph), target[1] - dist2 * Math.cos(th) * Math.cos(ph), target[2] + dist2 * Math.sin(ph)];
-      const F = norm4(sub2(target, C2));
-      const R2 = norm4(cross3(F, [0, 0, 1]));
+      const F = norm5(sub2(target, C2));
+      const R2 = norm5(cross3(F, [0, 0, 1]));
       const U = cross3(R2, F);
       const f = h / 2 / Math.tan(50 * Math.PI / 360);
       return { C: C2, F, R: R2, U, f, w, h };
@@ -9965,7 +10867,7 @@ ${url}`);
     return { hitMark: markOff === null ? null : Math.abs(markOff) <= MARK_TOL, markOff, hitBreak: breakOff === null ? null : Math.abs(breakOff) <= BREAK_TOL, breakOff };
   }
   var MIN_GRADED = 6;
-  var mean3 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var mean4 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
   var pct2 = (r) => r.rate === null ? "n/a" : `${Math.round(r.rate * 100)}% (${r.made} of ${r.attempts})`;
   function executionReport(shots) {
     const rows2 = shots.map((s) => ({ s, g: gradeShot(s, s.plan) })).filter((r) => !!r.g && r.g.hitMark !== null);
@@ -9977,7 +10879,7 @@ ${url}`);
     const strikes = (list) => rate(withRes(list).filter((r) => isStrike(r.s)).length, withRes(list).length);
     const bp = rows2.filter((r) => r.g.hitBreak !== null);
     const hitSeen = seen2(hit);
-    const lineBias = hitSeen.length >= 4 ? mean3(hitSeen.map((r) => r.s.m.pocketMiss)) : null;
+    const lineBias = hitSeen.length >= 4 ? mean4(hitSeen.map((r) => r.s.m.pocketMiss)) : null;
     const report = {
       verdict: "insufficient",
       graded: rows2.length,
@@ -9995,7 +10897,7 @@ ${url}`);
     if (rows2.length < MIN_GRADED) {
       report.headline = `Set a target and bowl ${MIN_GRADED - rows2.length} more shot${MIN_GRADED - rows2.length === 1 ? "" : "s"}`;
       report.points.push("Tap Target on the Live screen, say where you stand and which board you aim at the arrows, and every shot is graded against it.");
-      report.next = "Pick your normal line and set it as the target before you bowl.";
+      report.next = "Set your usual line as the target before you bowl; if you work with a coach, use the line they've given you.";
       return report;
     }
     const markRate = report.mark.rate ?? 0;
@@ -10011,21 +10913,21 @@ ${url}`);
     const biasWord = (b) => b > 0 ? "high" : "light";
     if (markRate < 0.6) {
       report.verdict = "execution";
-      report.headline = "Execution first: you're missing your mark";
-      report.next = "Don't move yet. Throw at the same target until you hit it 7 of 10 times; until then a move just chases misses. The Arrow Sniper drill trains exactly this.";
+      report.headline = "The ball isn't reaching your mark yet";
+      report.next = "A move won't tell you much until the ball reaches the mark. A common practice is the same target until you hit it 7 of 10 times; the Arrow Sniper drill does this. Your coach may have a better drill for you.";
     } else if (lineBias !== null && Math.abs(lineBias) > 1.2) {
       report.verdict = "line";
       report.headline = `Your aim is good; your line is ${biasWord(lineBias)}`;
       report.points.push(`On the shots that hit your mark, the ball still met the pins ${Math.abs(lineBias).toFixed(1)} boards ${biasWord(lineBias)} on average. That's the line, not you.`);
-      report.next = "Make a move (see Move Advisor) and keep throwing the same shot.";
+      report.next = "A move may help (see Move Advisor). Worth talking over with your coach.";
     } else if (report.pocketWhenHit.rate !== null && report.pocketWhenHit.rate >= 0.5) {
       report.verdict = "good";
       report.headline = "On your mark, it works";
-      report.next = "Keep this line. Your job is repeating it: the misses come from shots off the mark.";
+      report.next = "This line is working. The misses come from shots off the mark, so repeating the shot is what to watch.";
     } else {
       report.verdict = "mixed";
       report.headline = "Hitting the mark, but the pocket comes and goes";
-      report.next = "The line looks right on average, so the spread comes from something else: speed or release. Miss Finder ranks which.";
+      report.next = "The line looks right on average, so the spread probably comes from something else, like speed or release. Miss Finder ranks what goes with it; a coach can help you work out the cause.";
     }
     return report;
   }
@@ -10174,44 +11076,6 @@ ${url}`);
   }
   var bodyPending = (id) => waiting2.has(id);
 
-  // camera/sharefiles.ts
-  function offerShare(box, files, opts = {}) {
-    box.innerHTML = "";
-    const row = document.createElement("div");
-    row.className = "chips";
-    const nav = navigator;
-    const note = document.createElement("div");
-    note.className = "note";
-    const data = { files, title: opts.title, text: opts.text };
-    if (nav.share && (!nav.canShare || nav.canShare({ files }))) {
-      const b = document.createElement("button");
-      b.className = "btn";
-      b.textContent = opts.label ?? "Share";
-      b.onclick = () => {
-        nav.share(data).then(() => note.textContent = "Shared.").catch((e) => {
-          if (e.name !== "AbortError") note.textContent = `Couldn't open the share sheet (${e.message}). Use Save instead.`;
-        });
-      };
-      row.append(b);
-    }
-    const save = document.createElement("button");
-    save.className = "btn ghost";
-    save.textContent = files.length > 1 ? "Save the files" : "Save";
-    save.onclick = () => {
-      const all = opts.text ? [...files, new File([opts.text], "laneiq-notes.txt", { type: "text/plain" })] : files;
-      for (const f of all) {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(f);
-        a.download = f.name;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 8e3);
-      }
-      note.textContent = "Saved.";
-    };
-    row.append(save);
-    box.append(row, note);
-  }
-
   // camera/compare.ts
   var raf2 = 0;
   var sides = [];
@@ -10225,7 +11089,7 @@ ${url}`);
     const scored = pool.filter((x) => x.m.pocketMiss !== null).sort((a, b) => Number(b.result?.pinsDown === 10) - Number(a.result?.pinsDown === 10) || Math.abs(a.m.pocketMiss) - Math.abs(b.m.pocketMiss));
     return scored[0] ?? pool[pool.length - 1] ?? null;
   }
-  function close6() {
+  function close8() {
     cancelAnimationFrame(raf2);
     for (const s of sides) if (s.url) URL.revokeObjectURL(s.url);
     sides = [];
@@ -10393,7 +11257,7 @@ ${url}`);
     offerShare(box, files, { text: summaryText(), title: "LaneIQ shots", label: "Share with my coach" });
   }
   async function openCompare2(a, b) {
-    close6();
+    close8();
     const el = $("compare");
     el.classList.add("on");
     const other = b ?? bestShotFor(a);
@@ -10425,7 +11289,7 @@ ${url}`);
       s.v?.addEventListener("loadedmetadata", () => s.v.currentTime = Math.max(0, s.rel - lead), { once: true });
     });
     drawTopDown($("cp-top").getContext("2d"), 360, 600, sides.map((s, i) => ({ path: s.shot.path, color: i ? "#ff4fd8" : "#46e6ff", width: 3.2 })), { board: S.profile?.hand === "L" ? 22.5 : 17.5 });
-    $("cp-close").onclick = close6;
+    $("cp-close").onclick = close8;
     $("cp-play").onclick = () => void playAll();
     $("cp-back").onclick = () => stepAll(-1 / 30);
     $("cp-fwd").onclick = () => stepAll(1 / 30);
@@ -10470,10 +11334,10 @@ ${url}`);
     { id: "hold", label: "Holding your finish", unit: "s", digits: 1, get: (s) => s.body?.heldS ?? null, fixDir: (h) => h ? "Your better shots are the ones you hold at the line. Post every shot until the ball reaches the pins." : "Shots you hold longest aren't helping here, so check something else first.", fixCons: () => "Some shots you post, some you fall out of. Hold the finish every time." },
     { id: "fatigue", label: "Shots into the session", unit: "shots", digits: 0, get: (s, ctx2) => ctx2.order.get(s.id) ?? null, fixDir: (h) => h ? "You get better as the session goes on: warm up longer before it counts." : "You fade as the session goes on: keep your legs under you, slow down between shots and stay with the same tempo.", fixCons: () => "Your misses get wider at one end of the session." }
   ];
-  var mean4 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var mean5 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
   var sdOf2 = (v) => {
     if (v.length < 2) return 0;
-    const m = mean4(v);
+    const m = mean5(v);
     return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (v.length - 1));
   };
   var median3 = (v) => {
@@ -10483,8 +11347,8 @@ ${url}`);
   };
   function pearson(x, y) {
     if (x.length < 3) return 0;
-    const mx = mean4(x);
-    const my = mean4(y);
+    const mx = mean5(x);
+    const my = mean5(y);
     let sxy = 0, sxx = 0, syy = 0;
     for (let i = 0; i < x.length; i++) {
       sxy += (x[i] - mx) * (y[i] - my);
@@ -10502,7 +11366,7 @@ ${url}`);
     for (const s of shots) bySession.set(s.sessionId, [...bySession.get(s.sessionId) ?? [], s]);
     for (const list of bySession.values()) list.sort((a, b) => a.at.localeCompare(b.at)).forEach((s, i) => order.set(s.id, i + 1));
     const miss = used.map((s) => s.m.pocketMiss);
-    const out = { status: "insufficient", shotsUsed: used.length, needed: MIN_FINDER, bias: miss.length ? mean4(miss) : null, spread: miss.length >= 2 ? sdOf2(miss) : null, factors: [], headline: "", summary: "" };
+    const out = { status: "insufficient", shotsUsed: used.length, needed: MIN_FINDER, bias: miss.length ? mean5(miss) : null, spread: miss.length >= 2 ? sdOf2(miss) : null, factors: [], headline: "", summary: "" };
     if (used.length < MIN_FINDER) {
       out.headline = `Miss Finder needs ${MIN_FINDER - used.length} more shot${MIN_FINDER - used.length === 1 ? "" : "s"} seen to the pins`;
       out.summary = "It ranks what goes with your misses: speed, aim, where the ball lands, your walk and timing, the time into the session. It needs shots the camera saw reach the pins.";
@@ -10530,8 +11394,8 @@ ${url}`);
       values.set(c.id, new Map(used.map((s) => [s.id, c.get(s, { order })])));
       if (rd * rd >= rc * rc || rc <= 0) {
         if (tOf(rd, rows2.length) < 2 || rd * rd < 0.08) continue;
-        const mLo = mean4(lo.map((r) => r.y));
-        const mHi = mean4(hi.map((r) => r.y));
+        const mLo = mean5(lo.map((r) => r.y));
+        const mHi = mean5(hi.map((r) => r.y));
         const betterHigh = Math.abs(mHi) < Math.abs(mLo);
         factors.push({ id: c.id, label: c.label, unit: c.unit, kind: "direction", explained: rd * rd, n: rows2.length, text: `At ${range(lo)} you meet the pins ${missWord(mLo)} on average; at ${range(hi)}, ${missWord(mHi)}.`, fix: c.fixDir(betterHigh, range(lo), range(hi)) });
       } else {
@@ -10540,7 +11404,7 @@ ${url}`);
         const near = devs.slice(0, Math.floor(devs.length / 2));
         const far = devs.slice(Math.floor(devs.length / 2));
         const cut = far[0].d;
-        factors.push({ id: c.id, label: c.label, unit: c.unit, kind: "consistency", explained: rc * rc, n: rows2.length, text: `Your usual is ${fmt4(cx)}${u}. Within ${fmt4(cut)}${u} of it you miss the pocket by ${mean4(near.map((r) => r.y)).toFixed(1)} boards on average; further off, by ${mean4(far.map((r) => r.y)).toFixed(1)}.`, fix: c.fixCons(fmt4(cx)) });
+        factors.push({ id: c.id, label: c.label, unit: c.unit, kind: "consistency", explained: rc * rc, n: rows2.length, text: `Your usual is ${fmt4(cx)}${u}. Within ${fmt4(cut)}${u} of it you miss the pocket by ${mean5(near.map((r) => r.y)).toFixed(1)} boards on average; further off, by ${mean5(far.map((r) => r.y)).toFixed(1)}.`, fix: c.fixCons(fmt4(cx)) });
       }
     }
     factors.sort((a, b) => b.explained - a.explained);
@@ -10562,12 +11426,16 @@ ${url}`);
     return out;
   }
 
+  // core/src/guidance.ts
+  var WITH_COACH = "These are starting points from your own shots, to try and to talk over with your coach. They know your game better than any app.";
+  var WITH_PSO = "Your pro shop operator has the final say on fit, layout and surface.";
+
   // core/src/moves.ts
   var MOVE_MIN = 3;
-  var mean5 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var mean6 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
   var sdOf3 = (v) => {
     if (v.length < 2) return 0;
-    const m = mean5(v);
+    const m = mean6(v);
     return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (v.length - 1));
   };
   var median4 = (v) => {
@@ -10588,7 +11456,7 @@ ${url}`);
     const planned = graded.filter((r) => r.g && r.g.hitMark !== null);
     const onMark = planned.length >= 3 ? planned.filter((r) => r.g.hitMark).map((r) => r.s) : window2;
     if (planned.length >= 4 && planned.filter((r) => r.g.hitMark).length / planned.length < 0.5) {
-      return { ...base, kind: "fix-aim", headline: "Don't move yet: you're missing your target", why: [`You hit your target on ${planned.filter((r) => r.g.hitMark).length} of the last ${planned.length} planned shots.`, "A move only helps when the ball goes where you aim. Hit the mark first, then judge the line."], shotsUsed: planned.length };
+      return { ...base, kind: "fix-aim", headline: "Hold off on a move: the ball isn't going where you aim", why: [`You hit your target on ${planned.filter((r) => r.g.hitMark).length} of the last ${planned.length} planned shots.`, "A move only tells you something when the ball goes where you aim. Your coach may want to look at your aim first."], shotsUsed: planned.length };
     }
     const seen2 = onMark.filter((s) => s.m.pocketMiss !== null);
     base.shotsUsed = seen2.length;
@@ -10596,36 +11464,36 @@ ${url}`);
       return { ...base, headline: `Bowl ${MOVE_MIN - seen2.length} more shot${MOVE_MIN - seen2.length === 1 ? "" : "s"} with this ball`, why: ["The advisor needs a few shots with the same ball that the camera saw reach the pins."] };
     }
     const misses = seen2.map((s) => s.m.pocketMiss);
-    const bias = mean5(misses);
+    const bias = mean6(misses);
     const spread = sdOf3(misses);
     const highs = misses.filter((m) => m > 1).length;
     const lights = misses.filter((m) => m < -1).length;
     const why = [`Last ${seen2.length} shots with this ball: ${misses.map((m) => Math.abs(m) <= 1 ? "pocket" : m > 0 ? `+${m.toFixed(1)}` : m.toFixed(1)).join(", ")} (boards from the pocket, + high).`];
-    if (Math.abs(bias) <= 1) return { ...base, kind: "stay", headline: "Stay where you are", why: [...why, "On average the ball is meeting the pocket. Keep the line and repeat the shot."] };
-    if (highs && lights && Math.min(highs, lights) / seen2.length >= 0.3) return { ...base, kind: "stay", headline: "Don't move: the misses go both ways", why: [...why, "Some high and some light is repeatability, not the line. A move would chase it. Look at Miss Finder for what changes between them."] };
-    if (spread > 3) return { ...base, kind: "stay", headline: "Too scattered to call a move", why: [...why, `The misses spread \xB1${spread.toFixed(1)} boards. Tighten up the shot first.`] };
+    if (Math.abs(bias) <= 1) return { ...base, kind: "stay", headline: "Things look steady: no move suggested", why: [...why, "On average the ball is meeting the pocket. Repeating the same shot is the usual advice."] };
+    if (highs && lights && Math.min(highs, lights) / seen2.length >= 0.3) return { ...base, kind: "stay", headline: "No move suggested: the misses go both ways", why: [...why, "Some high and some light is repeatability, not the line, and a move would only chase it. Miss Finder shows what changes between them; a coach can help with the cause."] };
+    if (spread > 3) return { ...base, kind: "stay", headline: "Too scattered to call a move", why: [...why, `The misses spread \xB1${spread.toFixed(1)} boards, too wide for the data to point to one move.`] };
     const pocket = POCKET_BOARD[hand3];
     const entries = seen2.map((s) => s.m.entryBoard).filter((x) => x !== null);
-    const side = entries.length ? Math.sign(mean5(entries) - pocket) : hand3 === "R" ? Math.sign(bias) : -Math.sign(bias);
+    const side = entries.length ? Math.sign(mean6(entries) - pocket) : hand3 === "R" ? Math.sign(bias) : -Math.sign(bias);
     const size = Math.abs(bias);
     const high = bias > 0;
     if (lane?.status === "ok" && /earlier/.test(lane.headline) && high) why.push("The lane read agrees: the ball is reading the lane earlier as the oil dries up.");
     if (lane?.status === "ok" && /skidding farther/.test(lane.headline) && !high) why.push("The lane read agrees: oil is carrying down and the ball is skidding farther.");
     if (size > 4.5) {
-      return { ...base, kind: "ball", ball: high ? "cleaner" : "stronger", headline: `Change balls: ${size.toFixed(1)} boards ${high ? "high" : "light"} is more than a move should fix`, why: [...why, high ? "A cleaner, later-reading ball lets you stay on a line you can repeat." : "A stronger, earlier-reading ball gets back the hook you're missing."], feet: 0, eyes: 0 };
+      return { ...base, kind: "ball", ball: high ? "cleaner" : "stronger", headline: `Worth asking about a ball change: ${size.toFixed(1)} boards ${high ? "high" : "light"} is more than a move usually fixes`, why: [...why, high ? "A cleaner, later-reading ball may let you stay on a line you can repeat. Your pro shop can say what fits your game." : "A stronger, earlier-reading ball may get back the hook you're missing. Your pro shop can say what fits your game."], feet: 0, eyes: 0 };
     }
     const feet = side * (size > 2.5 ? 4 : 2);
     const eyes = side * (size > 2.5 ? 2 : 1);
     const to = { stand: base.from.stand !== null ? base.from.stand + feet : null, arrows: base.from.arrows !== null ? base.from.arrows + eyes : null };
     why.push(`Averaging ${size.toFixed(1)} boards ${high ? "high" : "light"}: move toward the miss, feet ${Math.abs(feet)} boards and eyes ${Math.abs(eyes)} ${dirWord(feet)} (the ${Math.abs(feet)}-and-${Math.abs(eyes)} move).`);
-    why.push("Judge two shots after the move before changing anything else.");
+    why.push("A common approach is to judge two shots after a move before changing anything else. Your coach knows your game: treat this as something to try and talk over.");
     return {
       ...base,
       kind: "move",
       feet,
       eyes,
       to,
-      headline: `Move ${Math.abs(feet)} and ${Math.abs(eyes)} ${dirWord(feet)}${to.stand !== null && to.arrows !== null ? `: stand on ${to.stand}, aim at ${to.arrows}` : ""}`,
+      headline: `A move to try: ${Math.abs(feet)} and ${Math.abs(eyes)} ${dirWord(feet)}${to.stand !== null && to.arrows !== null ? `: stand on ${to.stand}, aim at ${to.arrows}` : ""}`,
       why
     };
   }
@@ -10633,7 +11501,7 @@ ${url}`);
   // core/src/balladvisor.ts
   var BALL_MIN_SHOTS = 10;
   var STEP = 0.4;
-  var mean6 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  var mean7 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
   var nums2 = (v) => v.filter((x) => typeof x === "number" && Number.isFinite(x));
   function ballStats(shots) {
     const seen2 = shots.filter((s) => s.m.pocketMiss !== null);
@@ -10645,11 +11513,11 @@ ${url}`);
       pocketPct: seen2.length ? miss.filter((m) => Math.abs(m) <= 1).length / seen2.length * 100 : null,
       highPct: seen2.length ? miss.filter((m) => m > 1).length / seen2.length * 100 : null,
       lightPct: seen2.length ? miss.filter((m) => m < -1).length / seen2.length * 100 : null,
-      meanMiss: mean6(miss),
-      entryAngle: mean6(nums2(shots.map((s) => s.m.entryAngle))),
-      breakpointFt: mean6(nums2(shots.map((s) => s.m.breakpointFt))),
+      meanMiss: mean7(miss),
+      entryAngle: mean7(nums2(shots.map((s) => s.m.entryAngle))),
+      breakpointFt: mean7(nums2(shots.map((s) => s.m.breakpointFt))),
       strikePct: res.length >= 8 ? res.filter(isStrike).length / res.length * 100 : null,
-      speed: mean6(nums2(shots.map((s) => s.m.launchSpeed)))
+      speed: mean7(nums2(shots.map((s) => s.m.launchSpeed)))
     };
   }
   function judgeBall(st2) {
@@ -10682,7 +11550,7 @@ ${url}`);
   function adviseBalls(owned, shots, catalog, ownedKeys, filter) {
     const caveats = [
       "Judged from your own shots with each ball on the lanes you bowled. A different pattern can change the answer.",
-      "The wanted ball is placed on the app's motion index, built from published specs (RG, differential, cover). Have a pro shop confirm the surface and layout before you buy."
+      "The wanted ball is placed on the app's motion index, built from published specs (RG, differential, cover). Your pro shop operator has the final say: they can confirm the fit, surface and layout before you buy."
     ];
     const reads = owned.map((b) => {
       const mine = shots.filter((s) => s.ballId === b.id);
@@ -10714,7 +11582,7 @@ ${url}`);
     let headline;
     if (!owned.length) headline = "Add the balls you throw (Arsenal) and bowl with them: the advisor learns how each one works for you.";
     else if (!judged.length) headline = `Bowl ${BALL_MIN_SHOTS} shots with a ball and the advisor will say how it fits you.`;
-    else if (change) headline = change.owned ? `Try your ${change.owned.name} where you'd throw the ${change.name}` : change.buys.length ? `Your next ball: ${change.verdict === "too-strong" ? "a cleaner" : "a stronger"} one than the ${change.name}, like the ${change.buys[0].ball.manufacturer} ${change.buys[0].ball.name}` : change.headline;
+    else if (change) headline = change.owned ? `Worth trying: your ${change.owned.name} where you'd throw the ${change.name}` : change.buys.length ? `One to ask your pro shop about: ${change.verdict === "too-strong" ? "a cleaner" : "a stronger"} ball than the ${change.name}, such as the ${change.buys[0].ball.manufacturer} ${change.buys[0].ball.name}` : change.headline;
     else headline = best ? `Your best ball right now is the ${best.name}` : "Nothing in your bag needs replacing on this evidence.";
     return { balls: reads, headline, best, caveats };
   }
@@ -10753,7 +11621,7 @@ ${url}`);
     out.points.push("USBC's ball motion research put the best pocket hit at the 17.5 board with about 6\xB0 of entry angle.");
     return out;
   }
-  var mean7 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var mean8 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
   function fatigue(shots) {
     const bySession = /* @__PURE__ */ new Map();
     for (const s of shots) bySession.set(s.sessionId, [...bySession.get(s.sessionId) ?? [], s]);
@@ -10773,13 +11641,13 @@ ${url}`);
       };
       const a = speed(first);
       const b = speed(lastT);
-      if (a.length >= 3 && b.length >= 3) sp.push(mean7(b) - mean7(a));
+      if (a.length >= 3 && b.length >= 3) sp.push(mean8(b) - mean8(a));
       const pa = pocket(first);
       const pb = pocket(lastT);
       if (pa !== null && pb !== null) pk.push(pb - pa);
       sessions++;
     }
-    const out = { status: sessions ? "ok" : "insufficient", sessions, speedChange: sp.length ? mean7(sp) : null, pocketChange: pk.length ? mean7(pk) : null, headline: "", points: [] };
+    const out = { status: sessions ? "ok" : "insufficient", sessions, speedChange: sp.length ? mean8(sp) : null, pocketChange: pk.length ? mean8(pk) : null, headline: "", points: [] };
     if (!sessions) {
       out.headline = "Fatigue needs a session of 9 or more shots";
       return out;
@@ -11200,22 +12068,22 @@ ${url}`);
       return null;
     }
   }
-  var unescapeLit = (str) => {
+  var unescapeLit = (str3) => {
     const out = [];
-    for (let p = 0; p < str.length; p++) {
-      const c = str[p];
+    for (let p = 0; p < str3.length; p++) {
+      const c = str3[p];
       if (c !== "\\") {
         out.push(c.charCodeAt(0) & 255);
         continue;
       }
-      const n = str[++p];
+      const n = str3[++p];
       if (n === void 0) break;
       if (/[0-7]/.test(n)) {
         let o = n;
-        while (o.length < 3 && /[0-7]/.test(str[p + 1] ?? "")) o += str[++p];
+        while (o.length < 3 && /[0-7]/.test(str3[p + 1] ?? "")) o += str3[++p];
         out.push(parseInt(o, 8) & 255);
       } else if (n === "\r" || n === "\n") {
-        if (n === "\r" && str[p + 1] === "\n") p++;
+        if (n === "\r" && str3[p + 1] === "\n") p++;
       } else out.push({ n: 10, r: 13, t: 9, b: 8, f: 12 }[n] ?? n.charCodeAt(0));
     }
     return Uint8Array.from(out);
@@ -11294,8 +12162,8 @@ ${url}`);
         objs.set(num3, { dict: text.slice(first + off, first + nxt), raw: null });
       }
     }
-    const ref = (str, key2) => {
-      const m = new RegExp(`${key2}\\s+(\\d+)\\s+\\d+\\s+R`).exec(str);
+    const ref = (str3, key2) => {
+      const m = new RegExp(`${key2}\\s+(\\d+)\\s+\\d+\\s+R`).exec(str3);
       return m ? Number(m[1]) : null;
     };
     const cmapCache = /* @__PURE__ */ new Map();
@@ -11381,11 +12249,11 @@ ${url}`);
   var tidy = (t) => t.replace(/ ?([.:]) ?/g, "$1 ").replace(/(\w) (?=\w)/g, "$1").replace(/(\d)[.] ?(\d)/g, "$1.$2");
 
   // camera/patternsheet.ts
-  var sheet6 = () => $("coachsheet");
+  var sheet8 = () => $("coachsheet");
   var onDone = null;
-  function close7() {
-    sheet6().classList.remove("on");
-    sheet6().innerHTML = "";
+  function close9() {
+    sheet8().classList.remove("on");
+    sheet8().innerHTML = "";
     onDone?.();
   }
   var describe = (p) => [`${p.lengthFt} ft (${lengthClass(p.lengthFt)})`, p.volumeMl !== void 0 ? `${p.volumeMl} mL` : "", p.ratio !== void 0 ? `${p.ratio}:1` : ""].filter(Boolean).join(" \xB7 ");
@@ -11394,7 +12262,7 @@ ${url}`);
   }
   function openPatterns(done2) {
     onDone = done2 ?? null;
-    const el = sheet6();
+    const el = sheet8();
     el.classList.add("on");
     const list = S.myPatterns;
     el.innerHTML = `<div class="row"><h2>My oil patterns</h2><button class="btn ghost" id="mp-close">Close</button></div>
@@ -11409,15 +12277,15 @@ ${url}`);
           <div class="note">${p.rows?.length ? `Oil map from the sheet's load table (${p.rows.length} rows)` : "Oil shape estimated from the length and ratio"} \xB7 rule of 31: board ${ruleOf31(p.lengthFt)} \xB7 ${p.from === "pdf" ? "from a PDF" : p.from === "photo" ? "from a photo" : "typed in"}</div>
           <div class="chips">${S.where.patternId === p.id ? `<button class="chip" data-act="off">Not tonight</button>` : `<button class="chip sel" data-act="use">Use tonight</button>`}<button class="chip" data-act="edit">Edit</button><button class="chip danger" data-act="del">Delete</button></div></div></div></div>`
     ).join("")}`;
-    $("mp-close").onclick = close7;
-    $("mp-type").onclick = () => openEditor({ rows: [], tableOk: false, notes: [] }, "typed", "");
+    $("mp-close").onclick = close9;
+    $("mp-type").onclick = () => openEditor2({ rows: [], tableOk: false, notes: [] }, "typed", "");
     $("mp-file").onchange = async (e) => {
       const f = e.target.files?.[0];
       if (!f) return;
       const prog = $("mp-prog");
       try {
         const read2 = await readFile(f, (m) => prog.textContent = m);
-        openEditor(read2.sheet, read2.from, f.name.replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ").trim());
+        openEditor2(read2.sheet, read2.from, f.name.replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ").trim());
       } catch (err) {
         prog.textContent = `Couldn't read that file: ${err instanceof Error ? err.message : String(err)}. You can type the numbers in instead.`;
       }
@@ -11438,7 +12306,7 @@ ${url}`);
         await saveCoach();
         openPatterns(done2);
       });
-      card.querySelector("[data-act=edit]")?.addEventListener("click", () => openEditor({ rows: p.rows ?? [], tableOk: !!p.rows?.length, notes: [], lengthFt: p.lengthFt, volumeMl: p.volumeMl, ratio: p.ratio, forwardMl: p.forwardMl, reverseMl: p.reverseMl, brushDropFt: p.brushDropFt }, p.from, p.name, p));
+      card.querySelector("[data-act=edit]")?.addEventListener("click", () => openEditor2({ rows: p.rows ?? [], tableOk: !!p.rows?.length, notes: [], lengthFt: p.lengthFt, volumeMl: p.volumeMl, ratio: p.ratio, forwardMl: p.forwardMl, reverseMl: p.reverseMl, brushDropFt: p.brushDropFt }, p.from, p.name, p));
       card.querySelector("[data-act=del]")?.addEventListener("click", async () => {
         if (!confirm(`Delete ${p.name}?`)) return;
         S.myPatterns = S.myPatterns.filter((x) => x.id !== p.id);
@@ -11470,8 +12338,8 @@ ${url}`);
     progress2("");
     return { sheet: readSheetText(text), from: "photo" };
   }
-  function openEditor(r, from, name, existing) {
-    const el = sheet6();
+  function openEditor2(r, from, name, existing) {
+    const el = sheet8();
     el.classList.add("on");
     const field = (id, label2, v, hint) => `<div class="field"><label>${label2}</label><input id="${id}" inputmode="decimal" value="${v ?? ""}" placeholder="${hint}"></div>`;
     el.innerHTML = `<div class="row"><h2>${existing ? "Edit pattern" : "Check the pattern"}</h2><button class="btn ghost" id="pe-back">Back</button></div>
@@ -11647,7 +12515,7 @@ ${url}`);
     const el = document.getElementById("move-card");
     if (!el) return;
     const m = moveNow();
-    el.innerHTML = `<div class="lr-head">${esc(m.headline)}</div><span class="badge ${m.kind === "move" ? "good" : m.kind === "insufficient" ? "low" : "moderate"}">${m.kind === "move" ? "move" : m.kind === "fix-aim" ? "aim first" : m.kind === "ball" ? "ball change" : m.kind === "stay" ? "stay" : "waiting"} \xB7 ${m.shotsUsed} shot${m.shotsUsed === 1 ? "" : "s"}</span><ul>${m.why.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>${m.kind === "move" && m.to.arrows !== null ? `<div class="chips"><button class="chip sel" id="mv-take">Make this my target</button></div>` : ""}`;
+    el.innerHTML = `<div class="lr-head">${esc(m.headline)}</div><span class="badge ${m.kind === "move" ? "good" : m.kind === "insufficient" ? "low" : "moderate"}">${m.kind === "move" ? "move" : m.kind === "fix-aim" ? "aim first" : m.kind === "ball" ? "ball change" : m.kind === "stay" ? "stay" : "waiting"} \xB7 ${m.shotsUsed} shot${m.shotsUsed === 1 ? "" : "s"}</span><ul>${m.why.map((w) => `<li>${esc(w)}</li>`).join("")}</ul><div class="note" style="margin-top:6px">A starting point to try and talk over with your coach, not an instruction.</div>${m.kind === "move" && m.to.arrows !== null ? `<div class="chips"><button class="chip sel" id="mv-take">Make this my target</button></div>` : ""}`;
     $("mv-take")?.addEventListener("click", async () => {
       S.target = { arrows: m.to.arrows, stand: m.to.stand ?? S.target?.stand, breakpoint: S.target?.breakpoint, at: (/* @__PURE__ */ new Date()).toISOString() };
       await saveCoach();
@@ -11669,8 +12537,8 @@ ${url}`);
       const def = DRILLS2.find((d) => d.id === s.drill.id);
       if (run && def) bits.push(`${def.name}: ${s.drill.ok === null ? "not judged" : s.drill.ok ? "made it" : "missed"}, ${summarize2(run).made} of ${summarize2(run).scored}`);
     }
-    if (move.kind === "move") bits.push(`try ${Math.abs(move.feet)} and ${Math.abs(move.eyes)} ${move.feet > 0 ? "left" : "right"}`);
-    else if (move.kind === "fix-aim") bits.push("hit your target before you move");
+    if (move.kind === "move") bits.push(`a move to try: ${Math.abs(move.feet)} and ${Math.abs(move.eyes)} ${move.feet > 0 ? "left" : "right"}`);
+    else if (move.kind === "fix-aim") bits.push("the ball is missing your target, so hold off on a move");
     return bits.join(". ") + ".";
   }
   function paintOil() {
@@ -11958,7 +12826,7 @@ ${url}`);
     const m = s.length >> 1;
     return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
   };
-  var mean8 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  var mean9 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
   var day2 = (iso) => new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
   var ballName3 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "unknown ball";
   var specLine2 = (b) => [b.rg && `RG ${b.rg.value}`, b.differential && `diff ${b.differential.value}`, b.coverstock?.value ?? b.coverstockType?.value, b.core?.value].filter(Boolean).join(" \xB7 ");
@@ -11978,9 +12846,9 @@ ${url}`);
     const pts = [];
     if (steps.length) pts.push(`Steps: ${median7(steps)} (over ${steps.length} shots${new Set(steps).size > 1 ? `; it varies from ${Math.min(...steps)} to ${Math.max(...steps)}` : ""}).`);
     if (drift.length) {
-      const m = mean8(drift);
-      const sd3 = drift.length > 1 ? Math.sqrt(drift.reduce((a, b) => a + (b - m) ** 2, 0) / (drift.length - 1)) : 0;
-      pts.push(`Drift: ${Math.abs(m) < 1 ? "you walk straight on average" : `${Math.abs(m).toFixed(1)} boards ${m > 0 ? "left" : "right"} on average`}, give or take ${sd3.toFixed(1)}.${Math.abs(m) >= 2 ? " Some drift is fine if it's the same every time; start that much to the other side, or walk at your target." : ""}`);
+      const m = mean9(drift);
+      const sd4 = drift.length > 1 ? Math.sqrt(drift.reduce((a, b) => a + (b - m) ** 2, 0) / (drift.length - 1)) : 0;
+      pts.push(`Drift: ${Math.abs(m) < 1 ? "you walk straight on average" : `${Math.abs(m).toFixed(1)} boards ${m > 0 ? "left" : "right"} on average`}, give or take ${sd4.toFixed(1)}.${Math.abs(m) >= 2 ? " Some drift is fine if it's the same every time; start that much to the other side, or walk at your target." : ""}`);
     }
     if (timing.length) {
       const c = (l) => timing.filter((t) => t === l).length;
@@ -12020,30 +12888,30 @@ ${url}`);
     const mems = laneMemories(S.shots);
     const one = exec.verdict === "execution" ? { title: exec.headline, body: exec.next } : miss.status === "ok" && miss.factors[0] ? { title: miss.headline, body: miss.factors[0].fix } : exec.verdict === "line" || move.kind === "move" ? { title: move.kind === "move" ? move.headline : exec.headline, body: move.kind === "move" ? move.why.slice(-2).join(" ") : exec.next } : null;
     el.innerHTML = `${seg}<h2>Coach</h2>
-    <div class="note">Everything here comes from your own shots${S.insightsSince ? " since you reset Insights" : ""}: ${shots.length} tracked. Each card says what it's based on.</div>
-    ${one ? `<div class="card" style="border-color:var(--cy)"><div class="k">Your one thing right now</div><div class="lr-head">${esc(one.title)}</div><div class="lr-next">${esc(one.body)}</div></div>` : ""}
+    <div class="note">Everything here comes from your own shots${S.insightsSince ? " since you reset Insights" : ""}: ${shots.length} tracked. Each card says what it's based on. ${esc(WITH_COACH)}</div>
+    ${one ? `<div class="card" style="border-color:var(--cy)"><div class="k">Worth working on right now</div><div class="lr-head">${esc(one.title)}</div><div class="lr-next">${esc(one.body)}</div></div>` : ""}
 
     <h3>Miss Finder</h3>
     <div class="card"><div class="lr-head" style="font-size:17px">${esc(miss.headline)}</div>${miss.status === "ok" ? badge(true, `${miss.shotsUsed} shots seen to the pins`) : badge(false, `${miss.shotsUsed}/${miss.needed} shots`, true)}
       <div class="u" style="margin-top:6px">${esc(miss.summary)}</div>
-      ${miss.factors.length ? `<table style="margin-top:8px">${miss.factors.map((f) => `<tr><td><b>${esc(f.label)}</b><div class="note">${esc(f.text)}</div><div class="u" style="margin-top:4px">${esc(f.fix)}</div></td><td class="n">${Math.round(f.explained * 100)}%</td></tr>`).join("")}</table><div class="note">The percentage is how much of the spread in where your ball meets the pins goes with that one thing. It goes with your misses; it doesn't prove it causes them, so treat the fix as a test.</div>` : ""}</div>
+      ${miss.factors.length ? `<table style="margin-top:8px">${miss.factors.map((f) => `<tr><td><b>${esc(f.label)}</b><div class="note">${esc(f.text)}</div><div class="u" style="margin-top:4px"><b>Worth trying:</b> ${esc(f.fix)}</div></td><td class="n">${Math.round(f.explained * 100)}%</td></tr>`).join("")}</table><div class="note">The percentage is how much of the spread in where your ball meets the pins goes with that one thing. It goes with your misses; it doesn't prove it causes them, so treat the suggestion as something to test, ideally with your coach.</div>` : ""}</div>
 
     <h3>Plan vs execution</h3>
     <div class="card"><div class="lr-head" style="font-size:17px">${esc(exec.headline)}</div>${exec.verdict === "insufficient" ? badge(false, `${exec.graded} planned shots`, true) : badge(exec.verdict === "good", exec.verdict === "execution" ? "aim" : exec.verdict === "line" ? "line" : exec.verdict === "good" ? "on track" : "mixed")}
       <ul>${exec.points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul><div class="lr-next">${esc(exec.next)}</div>
       <div class="chips"><button class="chip" id="co-target">${S.target ? `Target: aim ${S.target.arrows}${S.target.stand !== void 0 ? ` from ${S.target.stand}` : ""}` : "Set my target"}</button></div></div>
 
-    <h3>Move advisor</h3>
+    <h3>Move to try</h3>
     <div class="card"><div class="lr-head" style="font-size:17px">${esc(move.headline)}</div><div class="note">${sess.length ? `From your latest session (${day2(sess[0].at)}, ${sess.length} shots).` : "Bowl a session first."}</div><ul>${move.why.map((w) => `<li>${esc(w)}</li>`).join("")}</ul></div>
 
-    <h3>Ball advisor</h3>
+    <h3>Ball advice, to take to your pro shop</h3>
     <div class="card"><div class="lr-head" style="font-size:17px">${esc(balls.headline)}</div>
       ${balls.balls.map((b) => `<div style="padding:10px 0;border-top:1px solid var(--line)"><div class="row"><b>${esc(b.name)}</b>${badge(b.verdict === "good", b.verdict === "too-strong" ? "too strong" : b.verdict === "too-weak" ? "too weak" : b.verdict === "good" ? "fits you" : b.verdict === "need-shots" ? `${b.stats.shots} shots` : b.verdict === "no-specs" ? "no specs" : "no call yet", b.verdict === "need-shots")}</div>
         <div class="note">${b.stats.seen ? `${b.stats.seen} shots seen to the pins \xB7 ${b.stats.pocketPct !== null ? `${Math.round(b.stats.pocketPct)}% pocket` : ""}${b.stats.highPct !== null ? ` \xB7 ${Math.round(b.stats.highPct)}% high \xB7 ${Math.round(b.stats.lightPct)}% light` : ""}${b.stats.strikePct !== null ? ` \xB7 ${Math.round(b.stats.strikePct)}% strikes` : ""}` : ""}</div>
         <ul>${b.why.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>
         ${b.owned ? `<div class="lr-next">You already own a ball close to what's wanted: try your <b>${esc(b.owned.name)}</b> first.</div>` : ""}
-        ${b.buys.length ? `<div class="k" style="margin-top:6px">${b.verdict === "too-strong" ? "Cleaner" : "Stronger"} balls to look at</div>${b.buys.map((c) => `<div style="display:flex;gap:10px;margin-top:8px">${ballThumb(c.ball, 56)}<div style="flex:1;min-width:0"><b>${esc(c.ball.manufacturer)} ${esc(c.ball.name)}</b><div class="note">${esc(specLine2(c.ball))}${c.ball.releaseYear ? ` \xB7 ${c.ball.releaseYear.value}` : ""} \xB7 motion ${c.index.toFixed(2)} (want ${b.want.toFixed(2)})</div>${c.ball.rg ? `<div class="note">Specs: <a style="color:var(--cy)" href="${esc(c.ball.rg.source.url)}" target="_blank" rel="noopener">source</a>, ${esc(c.ball.rg.source.retrievedOn)}</div>` : ""}</div></div>`).join("")}` : ""}</div>`).join("") || `<div class="u">Add your balls in Arsenal and pick which one each shot was.</div>`}
-      <div class="note">${balls.caveats.map(esc).join(" ")} Only current, USBC-approved balls from the last two years are suggested.</div></div>
+        ${b.buys.length ? `<div class="k" style="margin-top:6px">${b.verdict === "too-strong" ? "Cleaner" : "Stronger"} balls to ask your pro shop about</div>${b.buys.map((c) => `<div style="display:flex;gap:10px;margin-top:8px">${ballThumb(c.ball, 56)}<div style="flex:1;min-width:0"><b>${esc(c.ball.manufacturer)} ${esc(c.ball.name)}</b><div class="note">${esc(specLine2(c.ball))}${c.ball.releaseYear ? ` \xB7 ${c.ball.releaseYear.value}` : ""} \xB7 motion ${c.index.toFixed(2)} (want ${b.want.toFixed(2)})</div>${c.ball.rg ? `<div class="note">Specs: <a style="color:var(--cy)" href="${esc(c.ball.rg.source.url)}" target="_blank" rel="noopener">source</a>, ${esc(c.ball.rg.source.retrievedOn)}</div>` : ""}</div></div>`).join("")}` : ""}</div>`).join("") || `<div class="u">Add your balls in Arsenal and pick which one each shot was.</div>`}
+      <div class="note">${balls.caveats.map(esc).join(" ")} ${esc(WITH_PSO)} Only current, USBC-approved balls from the last two years are suggested, and the order is never paid for.</div></div>
 
     <h3>Body and approach</h3>
     ${bodySummary(shots)}
@@ -12171,12 +13039,23 @@ ${url}`);
   }
   function render2() {
     if (current3 === "shots") renderShots();
-    else if (current3 === "score") void renderScore();
+    else if (current3 === "score") void renderScore().then(addLeagueCard);
     else if (current3 === "insights") renderInsights();
     else if (current3 === "arsenal") renderArsenal();
     else if (current3 === "proshop") renderProshop();
     else if (current3 === "learn") renderLearn();
     else if (current3 === "me") renderMe();
+  }
+  function addLeagueCard() {
+    const page = $("score-page");
+    if (!page || page.querySelector("#sc-league")) return;
+    const h = page.querySelector("h2");
+    const card = document.createElement("div");
+    card.className = "card";
+    card.id = "sc-league";
+    card.innerHTML = `<div class="row"><div><div class="k">League night</div><div class="note">Standings, handicap, teams and the night's awards, kept on this phone.</div></div><button class="btn" id="sc-league-btn">Open</button></div>`;
+    (h ?? page).insertAdjacentElement(h ? "afterend" : "afterbegin", card);
+    $("sc-league-btn").onclick = () => openLeagues();
   }
   var ballName4 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
   var when2 = (iso) => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -12185,11 +13064,13 @@ ${url}`);
   function renderShots() {
     const el = $("shots-page");
     const list = [...S.shots].reverse().slice(0, 200);
-    el.innerHTML = `<h2>Shots</h2><div class="chips"><button class="btn ghost" id="sh-share">Share a session</button><button class="btn ghost" id="sh-compare">Compare with a friend</button></div><div class="note">Every tracked shot is saved on this phone with its raw footage. Tap one to replay it, flip between the lane view and the raw video, and fix its ball or result.</div>` + (list.length ? "" : `<div class="card"><div class="u">No shots yet. Start the camera on the Live tab and bowl.</div></div>`) + list.map(
+    el.innerHTML = `<h2>Shots</h2>${S.profile?.junior ? "" : `<div class="chips"><button class="btn ghost" id="sh-share">Share a session</button><button class="btn ghost" id="sh-compare">Compare with a friend</button></div>`}<div class="note">Every tracked shot is saved on this phone with its raw footage. Tap one to replay it, flip between the lane view and the raw video, and fix its ball or result.</div>` + (list.length ? "" : `<div class="card"><div class="u">No shots yet. Start the camera on the Live tab and bowl.</div></div>`) + list.map(
       (s) => `<div class="card shot" data-id="${s.id}"><div class="big">${s.a.speedMph.toFixed(1)}<small style="font-size:12px;color:var(--dim)"> mph</small></div><div style="flex:1"><div>${esc(when2(s.at))} \xB7 ${esc(ballName4(s.ballId))}</div><div>${s.m.zone ? `<span class="tag ${s.m.zone}">${ZONE[s.m.zone]}</span>` : ""}${s.result ? `<span class="tag ${s.result.pinsDown === 10 ? "strike" : ""}">${s.result.pinsDown === 10 ? "Strike" : s.result.pinsDown + " pins"}</span>` : `<span class="tag">no result</span>`}${s.hasClip ? `<span class="tag">video</span>` : ""}<span class="tag">entry ${f1(s.a.entryBoard)}</span></div></div></div>`
     ).join("");
-    $("sh-share").onclick = openShareSession;
-    $("sh-compare").onclick = () => openCompare();
+    if ($("sh-share")) {
+      $("sh-share").onclick = openShareSession;
+      $("sh-compare").onclick = () => openCompare();
+    }
     el.querySelectorAll(".shot").forEach((c) => c.onclick = () => openReview(S.shots.find((s) => s.id === c.dataset.id)));
   }
   var reviewUrl = null;
@@ -12756,7 +13637,9 @@ ${url}`);
       <div class="two"><div class="field"><label>Throws</label><select id="me-hand"><option value="R" ${p.hand === "R" ? "selected" : ""}>Right-handed</option><option value="L" ${p.hand === "L" ? "selected" : ""}>Left-handed</option></select></div>
       <div class="field"><label>Rev rate (RPM, optional)</label><input id="me-rev" inputmode="numeric" value="${p.revRpm ?? ""}" placeholder="not measured"></div></div>
       <div class="chips"><button class="btn ghost" id="me-save">Save</button></div></div>` : ""}
-    ${p ? friendsCardHtml() : ""}
+    ${p ? `<div class="card"><div class="k">League night</div><div class="note">Keep a league's standings: handicap, averages, teams and the night's awards. Bowlers send their night as a link; you send the standings back as a link, a picture or text.</div><div class="chips"><button class="btn" id="me-league">League night</button></div></div>
+    <div class="card"><div class="k">Juniors, parents and coaches</div><div class="note">${p.junior ? `This is a junior profile (${esc(p.junior.display)}). Make a progress card for a parent or coach, or see your group.` : "Make a junior profile, send a parent or coach a progress card, or keep a group as a youth coach."}</div><div class="chips"><button class="btn" id="me-junior">Open</button></div></div>` : ""}
+    ${p ? p.junior ? `<div class="card"><div class="k">Friends and sharing</div><div class="note">Friends, shared sessions and live sync are switched off on a junior profile. A parent or the bowler can still send a progress card from Juniors, parents and coaches.</div></div>` : friendsCardHtml() : ""}
     <h3>Profiles on this phone</h3>
     <div class="card">${profs.map((x) => `<div class="row" style="padding:6px 0"><div><b>${esc(x.name)}</b> <span class="note">${x.hand === "R" ? "right" : "left"}-handed${x.id === p?.id ? " \xB7 current" : ""}</span></div><div>${x.id === p?.id ? "" : `<button class="chip" data-sw="${x.id}">Switch</button>`}<button class="chip danger" data-rm="${x.id}">Delete</button></div></div>`).join("") || `<div class="u">No profiles yet.</div>`}<div class="chips"><button class="btn ghost" id="me-new">+ Add a profile</button></div>
       <div class="note">Each profile keeps its own balls, shots, videos, averages and plan, and they never mix. Use one per person if you share a phone.</div></div>
@@ -12787,7 +13670,9 @@ ${url}`);
         location.reload();
       }
     );
-    wireFriendsCard(renderMe);
+    if (!p?.junior) wireFriendsCard(renderMe);
+    $("me-league")?.addEventListener("click", () => openLeagues());
+    $("me-junior")?.addEventListener("click", () => void openJuniorHub());
     $("me-rewards").onclick = () => void openRewards();
     $("me-glow").onclick = () => (setGlow(!glowEnabled()), renderMe());
     $("me-new").onclick = () => showQuiz("add", () => {
@@ -13087,13 +13972,13 @@ ${url}`);
       this.region = { x0: Math.max(m, Math.floor(box.x0)), y0: Math.max(m, Math.floor(box.y0)), x1: Math.min(w - m, Math.ceil(box.x1)), y1: Math.min(h - m, Math.ceil(box.y1)) };
       const r = this.region;
       this.edges(gray, r);
-      let sum = 0, n = 0;
-      for (let y = r.y0; y < r.y1; y += 2) for (let x = r.x0; x < r.x1; x += 2) sum += this.edge[y * w + x], n++;
-      const mean9 = n ? sum / n : 0;
+      let sum2 = 0, n = 0;
+      for (let y = r.y0; y < r.y1; y += 2) for (let x = r.x0; x < r.x1; x += 2) sum2 += this.edge[y * w + x], n++;
+      const mean10 = n ? sum2 / n : 0;
       const cand = [];
       for (let y = r.y0; y < r.y1; y += 2) for (let x = r.x0; x < r.x1; x += 2) {
         const v = this.edge[y * w + x];
-        if (v > 2.2 * mean9) cand.push({ i: y * w + x, v });
+        if (v > 2.2 * mean10) cand.push({ i: y * w + x, v });
       }
       cand.sort((a, b) => b.v - a.v);
       const take = cand.slice(0, POINTS);
@@ -14066,12 +14951,12 @@ ${url}`);
       for (let i = 1; i < h.pts.length; i++) if (h.pts[i].ly > h.pts[i - 1].ly + 0.05) fwd++;
       const st2 = [];
       for (let i = 1; i < h.pts.length; i++) st2.push({ x: h.pts[i].x - h.pts[i - 1].x, y: h.pts[i].y - h.pts[i - 1].y });
-      const mean9 = st2.length ? st2.reduce((acc, v) => acc + Math.hypot(v.x, v.y), 0) / st2.length : 0;
+      const mean10 = st2.length ? st2.reduce((acc, v) => acc + Math.hypot(v.x, v.y), 0) / st2.length : 0;
       let jerk = 0;
       for (let i = 1; i < st2.length; i++) jerk += Math.hypot(st2[i].x - st2[i - 1].x, st2[i].y - st2[i - 1].y);
-      jerk = st2.length > 1 ? jerk / (st2.length - 1) / Math.max(3, mean9) : 0;
+      jerk = st2.length > 1 ? jerk / (st2.length - 1) / Math.max(3, mean10) : 0;
       const maxStep = st2.reduce((acc, v) => Math.max(acc, Math.hypot(v.x, v.y)), 0);
-      return { mph, fwd: h.pts.length > 1 ? fwd / (h.pts.length - 1) : 0, span: b.ly - a.ly, jerk, jumpy: maxStep > 3 * mean9 + 8 };
+      return { mph, fwd: h.pts.length > 1 ? fwd / (h.pts.length - 1) : 0, span: b.ly - a.ly, jerk, jumpy: maxStep > 3 * mean10 + 8 };
     }
     /** Feed one frame (grayscale, grid size, and optionally red-minus-blue). `t` is the frame's time in seconds. */
     step(gray, t, chroma) {
@@ -14374,7 +15259,7 @@ ${url}`);
     };
   }
   function samplePins(gray, w, h, boxes, ox = 0, oy = 0) {
-    const mean9 = (x0, y0, x1, y1) => {
+    const mean10 = (x0, y0, x1, y1) => {
       const a = Math.max(0, Math.floor(x0 - ox));
       const b = Math.min(w - 1, Math.ceil(x1 - ox) - 1);
       const c = Math.max(0, Math.floor(y0 - oy));
@@ -14390,14 +15275,14 @@ ${url}`);
     const cx1 = Math.max(...boxes.map((b) => b.x1));
     const cy0 = Math.min(...boxes.map((b) => b.y0));
     const cy1 = Math.max(...boxes.map((b) => b.y1));
-    const left = mean9(cx0 - wide * 2.4, cy0, cx0 - wide * 0.5, cy1);
-    const right = mean9(cx1 + wide * 0.5, cy0, cx1 + wide * 2.4, cy1);
+    const left = mean10(cx0 - wide * 2.4, cy0, cx0 - wide * 0.5, cy1);
+    const right = mean10(cx1 + wide * 0.5, cy0, cx1 + wide * 2.4, cy1);
     const ref = Number.isFinite(left) && Number.isFinite(right) ? (left + right) / 2 : Number.isFinite(left) ? left : right;
     return boxes.map((bx) => {
       const bw = bx.x1 - bx.x0;
       const bh = bx.y1 - bx.y0;
       const cells = [];
-      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) cells.push(mean9(bx.x0 + bw * c / COLS, bx.y0 + bh * r / ROWS, bx.x0 + bw * (c + 1) / COLS, bx.y0 + bh * (r + 1) / ROWS));
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) cells.push(mean10(bx.x0 + bw * c / COLS, bx.y0 + bh * r / ROWS, bx.x0 + bw * (c + 1) / COLS, bx.y0 + bh * (r + 1) / ROWS));
       const m = cells.reduce((s, v) => s + v, 0) / cells.length;
       return { id: bx.id, cells, mean: m, ref, ok: cells.every(Number.isFinite) && Number.isFinite(ref) };
     });
@@ -14638,15 +15523,15 @@ ${url}`);
       if (d / c < 7) for (let i = 0; i < g.length; i++) g[i] = g[i] + prevGray[i] >> 1;
     }
     prevGray = Uint8ClampedArray.from(g);
-    let sum = 0, sq = 0, n = 0;
+    let sum2 = 0, sq = 0, n = 0;
     for (let i = 0; i < g.length; i += 23) {
-      sum += g[i];
+      sum2 += g[i];
       sq += g[i] * g[i];
       n++;
     }
-    const mean9 = sum / n;
-    const sd3 = Math.sqrt(Math.max(0, sq / n - mean9 * mean9));
-    frameHint = mean9 < 38 ? "It's too dark to see the lane. Add light or move the phone toward the lights." : mean9 > 232 ? "The picture is washed out by glare. Angle the phone away from the bright reflections." : sd3 < 14 ? "The picture looks flat or out of focus. Wipe the lens and check the phone is focused on the lane." : "";
+    const mean10 = sum2 / n;
+    const sd4 = Math.sqrt(Math.max(0, sq / n - mean10 * mean10));
+    frameHint = mean10 < 38 ? "It's too dark to see the lane. Add light or move the phone toward the lights." : mean10 > 232 ? "The picture is washed out by glare. Angle the phone away from the bright reflections." : sd4 < 14 ? "The picture looks flat or out of focus. Wipe the lens and check the phone is focused on the lane." : "";
     return { g, w: dcanvas.width, h: dcanvas.height, k: video.videoWidth / dcanvas.width, px };
   }
   function chromaChannels(px, n) {
