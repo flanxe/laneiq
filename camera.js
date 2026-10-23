@@ -1088,6 +1088,21 @@
       reachedDeck: last.y >= 60
     };
   }
+  function projectToPins(path2, fromFt = 38) {
+    const p = forwardPath(path2).filter((s) => s.y >= 3);
+    if (p.length < 8) return [];
+    const last = p[p.length - 1];
+    if (last.y >= ENTRY_FT - 0.5 || last.y < fromFt) return [];
+    const tail = p.filter((s) => s.y >= last.y - 8);
+    if (tail.length < 4 || tail[tail.length - 1].y - tail[0].y < 2.5) return [];
+    const fx = linearFit(tail.map((s) => s.y), tail.map((s) => s.x));
+    const ft = linearFit(tail.map((s) => s.y), tail.map((s) => s.t));
+    if (!(ft.slope > 0)) return [];
+    const out = [];
+    for (let y = Math.floor(last.y) + 1; y < ENTRY_FT; y += 1) out.push({ t: last.t + (y - last.y) * ft.slope, x: fx.slope * y + fx.intercept, y });
+    out.push({ t: last.t + (ENTRY_FT - last.y) * ft.slope, x: fx.slope * ENTRY_FT + fx.intercept, y: ENTRY_FT });
+    return out;
+  }
   function gatePath(p) {
     if (p.length < 3) return p;
     const out = [p[0]];
@@ -1600,7 +1615,7 @@
     const a = s.a;
     const m = s.m;
     setText("c-speed", a.speedMph.toFixed(1));
-    setText("c-speed-u", `\xB1 ${a.speedUncertainty.toFixed(1)} mph`);
+    setText("c-speed-u", `\xB1 ${a.speedUncertainty < 0.1 ? a.speedUncertainty.toFixed(2) : a.speedUncertainty.toFixed(1)} mph`);
     setText("c-arrows", f1(a.boardAtArrows));
     setText("c-bp", f1(a.breakpointBoard));
     setText("c-bp-u", a.breakpointFt === null ? "" : `at ${a.breakpointFt.toFixed(0)} ft`);
@@ -1613,7 +1628,7 @@
     setText("c-miss", m.pocketMiss === null ? "n/a" : `${m.pocketMiss > 0 ? "+" : ""}${m.pocketMiss.toFixed(1)}`);
     setText("c-miss-u", m.zone ? ZONE_TEXT[m.zone] : "+ high, \u2212 light");
     $("c-conf").style.width = `${Math.round(a.confidence * 100)}%`;
-    setText("c-conf-t", a.partial ? `partial: the camera saw ${a.lastSeen && a.release ? Math.round(a.lastSeen.ft - a.release.ft) : "part of"} ft of the roll \xB7 ${a.samples} pts` : `${Math.round(a.confidence * 100)}% confidence \xB7 ${a.samples} pts`);
+    setText("c-conf-t", a.partial ? `partial: the camera saw ${a.lastSeen && a.release ? Math.round(a.lastSeen.ft - a.release.ft) : "part of"} ft of the roll \xB7 ${a.samples} pts` : `${Math.round(a.confidence * 100)}% confidence \xB7 ${a.samples} pts${a.precision && Number.isFinite(a.precision.boardMid) ? ` \xB7 board reads within \xB1${Math.max(0.05, a.precision.boardMid).toFixed(2)} mid-lane` : ""}`);
     document.querySelectorAll("#tab-live .card").forEach((el) => {
       el.classList.remove("pop");
       void el.offsetWidth;
@@ -3033,6 +3048,22 @@
     for (let i = 0; i < MAX_TRAIL_POINTS - 1; i++) out.push(points[Math.round(i * (n - 1) / (MAX_TRAIL_POINTS - 1))]);
     out.push(points[n - 1]);
     return out;
+  }
+  function strokeProjected(v, points, baseAlpha) {
+    if (points.length < 2) return;
+    const { ctx: ctx2 } = v;
+    const s = k(v);
+    const tr = currentTracer();
+    ctx2.save();
+    ctx2.lineCap = "round";
+    ctx2.lineJoin = "round";
+    ctx2.setLineDash([9 * s, 9 * s]);
+    ctx2.lineWidth = 3.2 * s * tr.width;
+    ctx2.strokeStyle = `rgba(${tr.core},${0.7 * baseAlpha})`;
+    ctx2.beginPath();
+    points.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
+    ctx2.stroke();
+    ctx2.restore();
   }
   function strokeTrail(v, pointsIn, baseAlpha, headBoost) {
     if (pointsIn.length < 2) return;
@@ -19556,7 +19587,7 @@ ${url}`);
         const i = (Math.min(h - 1, Math.round(y * k2)) * w + Math.min(w - 1, Math.round(x * k2))) * 3;
         return [rgb[i], rgb[i + 1], rgb[i + 2]];
       };
-      const sample2 = (pred) => {
+      const sample3 = (pred) => {
         const out = [];
         for (let y = 0; y < sh; y += 2) for (let x = 0; x < sw; x += 2) if (pred(Math.hypot(x - cx, y - cy))) out.push(px(x, y));
         return out;
@@ -19581,8 +19612,8 @@ ${url}`);
         }
         return cs;
       };
-      const fg = kmeans(sample2((d) => d < R0 * 0.45), 4);
-      const bg = kmeans(sample2((d) => d > R0 * 1.55), 5);
+      const fg = kmeans(sample3((d) => d < R0 * 0.45), 4);
+      const bg = kmeans(sample3((d) => d > R0 * 1.55), 5);
       if (fg.length && bg.length) {
         fgScore = new Float32Array(sw * sh);
         const near = (cs, p) => Math.sqrt(Math.min(...cs.map((c) => (c[0] - p[0]) ** 2 + (c[1] - p[1]) ** 2 + (c[2] - p[2]) ** 2)));
@@ -24388,6 +24419,7 @@ ${url}`);
       const t = s.v.currentTime + s.shot.recStartT;
       const last = s.shot.path[s.shot.path.length - 1]?.t ?? 0;
       strokeTrail(view3, s.shot.path.filter((p) => p.t <= t).map((p) => P(p.x, p.y)), 1, t < last);
+      if (s.shot.proj?.length && t > last) strokeProjected(view3, [s.shot.path[s.shot.path.length - 1], ...s.shot.proj.filter((p) => p.t <= t)].map((p) => P(p.x, p.y)), 1);
     }
     const [a, b] = sides2;
     if (a?.v && b?.v && !a.v.paused) {
@@ -25889,6 +25921,7 @@ ${url}`);
             g.drawImage(v, ox, oy, vw * sc, vh * sc);
             const t = v.currentTime + s.recStartT;
             if (Hinv2) strokeTrail(view3, s.path.filter((p) => p.t <= t).map((p) => P(p.x, p.y)), 1, t < last);
+            if (Hinv2 && s.proj?.length && t > last) strokeProjected(view3, [s.path[s.path.length - 1], ...s.proj.filter((p) => p.t <= t)].map((p) => P(p.x, p.y)), 1);
             const grad = g.createLinearGradient(0, H - 260, 0, H);
             grad.addColorStop(0, "rgba(0,0,0,0)");
             grad.addColorStop(1, "rgba(0,0,0,.8)");
@@ -26444,6 +26477,7 @@ ${url}`);
           const t = v.currentTime + s.recStartT;
           const upto = s.path.filter((p) => p.t <= t).map((p) => P(p.x, p.y));
           strokeTrail(view3, upto, 1, t < last);
+          if (s.proj?.length && t > last) strokeProjected(view3, [s.path[s.path.length - 1], ...s.proj.filter((p) => p.t <= t)].map((p) => P(p.x, p.y)), 1);
           if (t >= last) drawShotMarkers(view3, s.a);
         }
         reviewRaf = requestAnimationFrame(loop);
@@ -27204,20 +27238,267 @@ ${url}`);
       }
     }
     if (!best) return null;
-    const chain3 = [];
+    const chain4 = [];
     let cur2 = [best.f, best.c];
     while (cur2) {
       const [f, c] = cur2;
-      chain3.push({ t: frames[f].t, lx: frames[f].cands[c].lx, ly: frames[f].cands[c].ly, q: frames[f].cands[c].q });
+      chain4.push({ t: frames[f].t, lx: frames[f].cands[c].lx, ly: frames[f].cands[c].ly, q: frames[f].cands[c].q });
       cur2 = nodes[f][c].prev;
     }
-    chain3.reverse();
-    if (chain3.length < 8) return null;
-    const span = chain3[chain3.length - 1].ly - chain3[0].ly;
-    const mph = span / Math.max(1e-6, chain3[chain3.length - 1].t - chain3[0].t) * (3600 / 5280);
+    chain4.reverse();
+    if (chain4.length < 8) return null;
+    const span = chain4[chain4.length - 1].ly - chain4[0].ly;
+    const mph = span / Math.max(1e-6, chain4[chain4.length - 1].t - chain4[0].t) * (3600 / 5280);
     if (span < 12 || mph < 6 || mph > 40) return null;
-    if (chain3.reduce((s, p) => s + p.q, 0) / chain3.length > 1) return null;
-    return chain3.map((p) => ({ t: p.t, x: p.lx, y: p.ly }));
+    if (chain4.reduce((s, p) => s + p.q, 0) / chain4.length > 1) return null;
+    return chain4.map((p) => ({ t: p.t, x: p.lx, y: p.ly }));
+  }
+
+  // core/src/refine.ts
+  init_vision();
+  var median8 = (a) => {
+    if (!a.length) return 0;
+    const s = [...a].sort((x, y) => x - y);
+    return s.length % 2 ? s[s.length >> 1] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+  };
+  function regularizeClock(times) {
+    const n = times.length;
+    if (n < 8) return times.slice();
+    const diffs = [];
+    for (let i = 1; i < n; i++) if (times[i] > times[i - 1]) diffs.push(times[i] - times[i - 1]);
+    if (diffs.length < 6) return times.slice();
+    const dt0 = median8(diffs);
+    if (!(dt0 > 2e-3 && dt0 < 0.2)) return times.slice();
+    const idx = [0];
+    let phase = times[0];
+    for (let i = 1; i < n; i++) {
+      const k2 = Math.max(idx[i - 1] + 1, Math.round((times[i] - phase) / dt0));
+      idx.push(k2);
+      phase = 0.9 * phase + 0.1 * (times[i] - k2 * dt0);
+    }
+    const W2 = Math.max(8, Math.round(0.8 / dt0));
+    const out = times.slice();
+    for (let i = 0; i < n; i++) {
+      let lo = i, hi = i;
+      while (lo > 0 && idx[i] - idx[lo - 1] <= W2) lo--;
+      while (hi < n - 1 && idx[hi + 1] - idx[i] <= W2) hi++;
+      if (hi - lo < 7) continue;
+      let a = 0, b = dt0, keep = new Array(hi - lo + 1).fill(true);
+      for (let pass = 0; pass < 3; pass++) {
+        let sw = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+        for (let j = lo; j <= hi; j++) {
+          if (!keep[j - lo]) continue;
+          sw++;
+          sx += idx[j];
+          sy += times[j];
+          sxx += idx[j] * idx[j];
+          sxy += idx[j] * times[j];
+        }
+        const den = sw * sxx - sx * sx;
+        if (sw < 6 || Math.abs(den) < 1e-9) break;
+        b = (sw * sxy - sx * sy) / den;
+        a = (sy - b * sx) / sw;
+        const res = [];
+        for (let j = lo; j <= hi; j++) res.push(Math.abs(times[j] - (a + b * idx[j])));
+        const cut = Math.max(2e-3, 3 * 1.4826 * median8(res));
+        keep = res.map((r) => r <= cut);
+      }
+      if (!(b > 0.5 * dt0 && b < 2 * dt0)) continue;
+      const rs = [];
+      for (let j = lo; j <= hi; j++) rs.push(Math.abs(times[j] - (a + b * idx[j])));
+      if (1.4826 * median8(rs) > 0.45 * b) continue;
+      const fit = a + b * idx[i];
+      if (Math.abs(fit - times[i]) < 0.5 * b) out[i] = fit;
+    }
+    for (let i = 1; i < n; i++) if (out[i] <= out[i - 1]) out[i] = out[i - 1] + 1e-4;
+    return out;
+  }
+  function laneMaps(cal) {
+    const lane = [{ x: 0, y: 0 }, { x: LANE_BOARDS, y: 0 }, { x: LANE_BOARDS, y: LANE_LENGTH_FT }, { x: 0, y: LANE_LENGTH_FT }];
+    const toPic = solveHomography(lane, cal);
+    const toLane = solveHomography(cal, lane);
+    return { toPic, toLane };
+  }
+  function pixelSigma(cal, px) {
+    const { toPic, toLane } = laneMaps(cal);
+    return (x, y) => {
+      const p = applyHomography(toPic, { x, y: Math.min(Math.max(y, 0), LANE_LENGTH_FT + 4) });
+      const a = applyHomography(toLane, { x: p.x + px, y: p.y });
+      const b = applyHomography(toLane, { x: p.x, y: p.y + px });
+      return { sx: Math.max(0.02, Math.hypot(a.x - x, b.x - x) / Math.SQRT2), sy: Math.max(0.01, Math.hypot(a.y - y, b.y - y) / Math.SQRT2) };
+    };
+  }
+  function solve32(A, b) {
+    const m = A.map((r, i) => [...r, b[i]]);
+    for (let c = 0; c < 3; c++) {
+      let p = c;
+      for (let r = c + 1; r < 3; r++) if (Math.abs(m[r][c]) > Math.abs(m[p][c])) p = r;
+      if (Math.abs(m[p][c]) < 1e-12) return null;
+      [m[c], m[p]] = [m[p], m[c]];
+      for (let r = 0; r < 3; r++) {
+        if (r === c) continue;
+        const f = m[r][c] / m[c][c];
+        for (let k2 = c; k2 < 4; k2++) m[r][k2] -= f * m[c][k2];
+      }
+    }
+    return [m[0][3] / m[0][0], m[1][3] / m[1][1], m[2][3] / m[2][2]];
+  }
+  function localFit(p, rob, t0, k2, self2, degree) {
+    const n = p.length;
+    const d = p.map((q) => Math.abs(q.t - t0));
+    const h = [...d].sort((a, b) => a - b)[Math.min(n - 1, k2 - 1)] * 1.0001 + 1e-9;
+    const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    const B = [0, 0, 0];
+    const wts = new Array(n).fill(0);
+    let nEff = 0;
+    for (let j = 0; j < n; j++) {
+      const u = d[j] / h;
+      if (u >= 1) continue;
+      const tri = (1 - u * u * u) ** 3;
+      const w = tri * rob[j] / (p[j].s * p[j].s);
+      if (w <= 0) continue;
+      wts[j] = w;
+      nEff++;
+      const x = p[j].t - t0;
+      const row = degree === 2 ? [1, x, x * x] : [1, x, 0];
+      for (let r = 0; r < 3; r++) {
+        B[r] += w * row[r] * p[j].v;
+        for (let c = 0; c < 3; c++) A[r][c] += w * row[r] * row[c];
+      }
+    }
+    if (nEff < (degree === 2 ? 4 : 3)) return null;
+    if (degree === 1) A[2][2] = 1;
+    const sol = solve32(A, B);
+    if (!sol) return null;
+    let hat = 0;
+    if (self2 >= 0 && wts[self2] > 0) {
+      const z = solve32(A, [1, 0, 0]);
+      if (z) hat = Math.min(0.98, wts[self2] * z[0]);
+    }
+    return { value: sol[0], slope: sol[1], hat };
+  }
+  var bisquare = (z) => Math.abs(z) >= 1 ? 0 : (1 - z * z) ** 2;
+  function robustSmooth(points, spans, degree = 2) {
+    const n = points.length;
+    if (n < 6) return null;
+    let best = null;
+    for (const span of spans) {
+      const k2 = Math.max(degree === 2 ? 5 : 4, Math.min(n, Math.ceil(span * n)));
+      let rob = new Array(n).fill(1);
+      let fit = new Array(n).fill(0);
+      let slope = new Array(n).fill(0);
+      let hat = new Array(n).fill(0);
+      let ok = true;
+      for (let it = 0; it < 4 && ok; it++) {
+        for (let i = 0; i < n; i++) {
+          const f = localFit(points, rob, points[i].t, k2, i, degree);
+          if (!f) {
+            ok = false;
+            break;
+          }
+          fit[i] = f.value;
+          slope[i] = f.slope;
+          hat[i] = f.hat;
+        }
+        if (!ok) break;
+        const z = points.map((q, i) => (q.v - fit[i]) / q.s);
+        const scale2 = Math.max(0.6, 1.4826 * median8(z.map(Math.abs)));
+        rob = z.map((v) => bisquare(v / (4.685 * scale2)));
+        if (rob.filter((r) => r > 0.05).length < Math.max(5, n * 0.5)) rob = rob.map((r) => Math.max(r, 0.05));
+      }
+      if (!ok) continue;
+      let num4 = 0, den = 0;
+      for (let i = 0; i < n; i++) {
+        if (rob[i] <= 0.05) continue;
+        const loo = (points[i].v - fit[i]) / (1 - hat[i]) / points[i].s;
+        num4 += Math.min(loo * loo, 36);
+        den++;
+      }
+      const score = den ? num4 / den : Infinity;
+      const z2 = points.map((q, i) => rob[i] > 0.05 ? (q.v - fit[i]) / q.s : 0);
+      const chi = Math.sqrt(z2.reduce((s, v) => s + v * v, 0) / Math.max(1, rob.filter((r) => r > 0.05).length));
+      if (!best || score < best.score) best = { score, res: { fit, slope, trust: rob, chi, span } };
+    }
+    return best ? best.res : null;
+  }
+  function refineRoll(samples, sigma, extraSigma = { x: 0.15, y: 0.1 }) {
+    const s = [...samples].sort((a, b) => a.t - b.t).filter((q) => Number.isFinite(q.t) && Number.isFinite(q.x) && Number.isFinite(q.y));
+    const u = [];
+    for (const q of s) if (!u.length || q.t > u[u.length - 1].t + 1e-6) u.push(q);
+    const med3 = (i) => median8([u[Math.max(0, i - 1)].y, u[i].y, u[Math.min(u.length - 1, i + 1)].y]);
+    let top = -Infinity;
+    for (let i = 0; i < u.length; i++) {
+      top = Math.max(top, med3(i));
+      if (top >= 40 && i + 2 < u.length && med3(i) < top - 2.5 && med3(i + 1) < top - 2.5 && med3(i + 2) < top - 2.5) {
+        u.length = i;
+        break;
+      }
+    }
+    if (u.length < 8) return null;
+    const t0 = u[0].t;
+    const sg = u.map((q) => {
+      const g = sigma ? sigma(q.x, q.y) : { sx: 0.5, sy: 0.5 };
+      return { sx: Math.hypot(g.sx, extraSigma.x), sy: Math.hypot(g.sy, extraSigma.y) };
+    });
+    const px = u.map((q, i) => ({ t: q.t - t0, v: q.x, s: sg[i].sx }));
+    const py = u.map((q, i) => ({ t: q.t - t0, v: q.y, s: sg[i].sy }));
+    const fy = robustSmooth(py, [0.5, 0.7, 1], 2);
+    const fx = robustSmooth(px, [0.2, 0.3, 0.45, 0.65], 2);
+    if (!fx || !fy) return null;
+    const keep = [];
+    for (let i = 0; i < u.length; i++) if (fx.trust[i] > 0.05 && fy.trust[i] > 0.05) keep.push(i);
+    if (keep.length < 6) return null;
+    const path2 = [];
+    let far = -Infinity;
+    for (const i of keep) {
+      const y = Math.max(far, fy.fit[i]);
+      far = y;
+      path2.push({ t: u[i].t, x: fx.fit[i], y });
+    }
+    let speedMph = null;
+    let speedSe = null;
+    const win = keep.filter((i) => fy.fit[i] >= 3 && fy.fit[i] <= 58);
+    if (win.length >= 8) {
+      const ta = u[win[0]].t - t0, tb = u[win[win.length - 1]].t - t0;
+      const tc = (ta + tb) / 2;
+      const w = win.map((i) => 1 / (sg[i].sy * sg[i].sy) * fy.trust[i]);
+      const X = win.map((i) => [1, u[i].t - t0 - tc, (u[i].t - t0 - tc) ** 2]);
+      const Y = win.map((i) => u[i].y);
+      const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+      const B = [0, 0, 0];
+      win.forEach((_, k2) => {
+        for (let r = 0; r < 3; r++) {
+          B[r] += w[k2] * X[k2][r] * Y[k2];
+          for (let c = 0; c < 3; c++) A[r][c] += w[k2] * X[k2][r] * X[k2][c];
+        }
+      });
+      const co = solve32(A, B);
+      const zb = solve32(A, [0, 1, 0]);
+      const zc = solve32(A, [0, 0, 1]);
+      if (co && zb && zc && tb - ta > 0.3) {
+        const q = (t) => co[0] + co[1] * (t - tc) + co[2] * (t - tc) ** 2;
+        let chi2 = 0;
+        win.forEach((_, k2) => chi2 += w[k2] * (Y[k2] - (co[0] + co[1] * X[k2][1] + co[2] * X[k2][2])) ** 2);
+        const infl = Math.max(1, chi2 / Math.max(1, win.length - 3));
+        const dist2 = q(tb) - q(ta);
+        speedMph = dist2 / (tb - ta) * (3600 / 5280);
+        speedSe = Math.sqrt(infl * zb[1]) * (3600 / 5280);
+      }
+    }
+    const seAt = (ft) => {
+      const near = keep.filter((i) => Math.abs(u[i].y - ft) <= 6);
+      if (near.length < 2) return NaN;
+      const wsum = near.reduce((a, i) => a + 1 / (sg[i].sx * sg[i].sx), 0);
+      return Math.sqrt(Math.max(1, fx.chi) ** 2 / wsum);
+    };
+    return {
+      path: path2,
+      dropped: u.length - keep.length,
+      speedMph,
+      speedSe,
+      boardSe: { near: seAt(8), mid: seAt(30), far: seAt(52) },
+      chi: { x: fx.chi, y: fy.chi }
+    };
   }
 
   // core/src/stabilize.ts
@@ -27395,8 +27676,8 @@ ${url}`);
         gy[i] = dy;
         mag[i] = Math.hypot(dx, dy);
       }
-    const sample2 = Float32Array.from({ length: 4e3 }, (_, k2) => mag[Math.floor(k2 / 4e3 * mag.length)]).sort();
-    let thr = Math.max(14, sample2[Math.floor(sample2.length * 0.9)], 7 * sample2[Math.floor(sample2.length * 0.5)]);
+    const sample3 = Float32Array.from({ length: 4e3 }, (_, k2) => mag[Math.floor(k2 / 4e3 * mag.length)]).sort();
+    let thr = Math.max(14, sample3[Math.floor(sample3.length * 0.9)], 7 * sample3[Math.floor(sample3.length * 0.5)]);
     if (seed) {
       const near = [];
       for (let y = Math.max(2, Math.round(seed.y - h * 0.2)); y < Math.min(h - 2, Math.round(seed.y + h * 0.2)); y += 2)
@@ -28076,6 +28357,298 @@ ${url}`);
   init_render();
   init_live();
   init_state();
+
+  // core/src/precise.ts
+  function sample2(img, x, y) {
+    const { w, h, data } = img;
+    if (x < 0 || y < 0 || x > w - 1.001 || y > h - 1.001) return NaN;
+    const x0 = x | 0, y0 = y | 0;
+    const fx = x - x0, fy = y - y0;
+    const i = y0 * w + x0;
+    return (data[i] * (1 - fx) + data[i + 1] * fx) * (1 - fy) + (data[i + w] * (1 - fx) + data[i + w + 1] * fx) * fy;
+  }
+  function edgeScore(img, cx, cy, r) {
+    const n = Math.max(24, Math.min(72, Math.round(2 * Math.PI * r / 2.2)));
+    const d = Math.max(1, 0.1 * r);
+    let pos = 0, neg = 0, cnt = 0;
+    for (let k2 = 0; k2 < n; k2++) {
+      const a = 2 * Math.PI * k2 / n;
+      const ux = Math.cos(a), uy = Math.sin(a);
+      const o = sample2(img, cx + (r + d) * ux, cy + (r + d) * uy);
+      const i = sample2(img, cx + (r - d) * ux, cy + (r - d) * uy);
+      if (Number.isNaN(o) || Number.isNaN(i)) continue;
+      const g = o - i;
+      if (g > 0) pos += g;
+      else neg -= g;
+      cnt++;
+    }
+    if (cnt < n * 0.6) return 0;
+    return Math.abs(pos - neg) / cnt;
+  }
+  function fitBall(img, cx, cy, r, search = 0.6 * r) {
+    if (!(r >= 2.5)) return null;
+    const radii = [0.86, 0.93, 1, 1.07, 1.14].map((k2) => k2 * r);
+    const best = { x: cx, y: cy, r, s: -1 };
+    const scores = [];
+    const step0 = Math.max(1, r / 7);
+    for (let dy = -search; dy <= search + 1e-9; dy += step0)
+      for (let dx = -search; dx <= search + 1e-9; dx += step0)
+        for (const rr of radii) {
+          const s = edgeScore(img, cx + dx, cy + dy, rr);
+          scores.push(s);
+          if (s > best.s) best.s = s, best.x = cx + dx, best.y = cy + dy, best.r = rr;
+        }
+    if (best.s <= 0) return null;
+    let step = step0 / 2;
+    while (step >= 0.06) {
+      let improved = true;
+      let guard = 0;
+      while (improved && guard++ < 12) {
+        improved = false;
+        for (const [ox, oy, orr] of [[step, 0, 0], [-step, 0, 0], [0, step, 0], [0, -step, 0], [0, 0, step * 0.5], [0, 0, -step * 0.5]]) {
+          const s = edgeScore(img, best.x + ox, best.y + oy, best.r + orr);
+          if (s > best.s + 1e-9) best.s = s, best.x += ox, best.y += oy, best.r += orr, improved = true;
+        }
+      }
+      step /= 2;
+    }
+    const sorted2 = [...scores].sort((a, b) => a - b);
+    const typical2 = sorted2[sorted2.length >> 1] + 1e-6;
+    const out = { cx: best.x, cy: best.y, r: best.r, score: best.s, margin: best.s / typical2 };
+    if (out.score < 15 || out.margin < 2.8) return null;
+    return out;
+  }
+  function findOffset(frames, predict, range = 0.5, step = 0.01) {
+    if (frames.length < 4) return null;
+    const cands = [];
+    for (let off2 = -range; off2 <= range + 1e-9; off2 += step) {
+      let sum2 = 0, n = 0;
+      for (const f of frames) {
+        const p = predict(f.t + off2, f.img.w);
+        if (!p || p.r < 5) continue;
+        let best2 = 0;
+        let around = 0;
+        for (const k2 of [0.93, 1, 1.07]) {
+          best2 = Math.max(best2, edgeScore(f.img, p.cx, p.cy, p.r * k2));
+          around = Math.max(around, edgeScore(f.img, p.cx - 1.8 * p.r, p.cy, p.r * k2), edgeScore(f.img, p.cx + 1.8 * p.r, p.cy, p.r * k2));
+        }
+        sum2 += Math.max(0, best2 - around);
+        n++;
+      }
+      cands.push({ off: off2, mean: n >= Math.max(3, frames.length * 0.6) ? sum2 / n : 0, n });
+    }
+    let bi = 0;
+    cands.forEach((c, i) => c.mean > cands[bi].mean && (bi = i));
+    const best = cands[bi];
+    if (best.mean <= 0) return null;
+    const sorted2 = cands.map((c) => c.mean).filter((m) => m > 0).sort((a, b) => a - b);
+    const typical2 = sorted2[sorted2.length >> 1] + 1e-6;
+    let off = best.off;
+    if (bi > 0 && bi < cands.length - 1) {
+      const a = cands[bi - 1].mean, b = best.mean, c = cands[bi + 1].mean;
+      const den = a - 2 * b + c;
+      if (den < 0 && a > 0 && c > 0) off += 0.5 * (a - c) / den * step;
+    }
+    return { offset: off, sharpness: best.mean / typical2 };
+  }
+
+  // camera/precise.ts
+  init_vision();
+  init_metrics();
+  init_state();
+  var waitFor2 = (el, ev, ms = 2e4) => new Promise((res, rej) => {
+    const to = setTimeout(() => rej(new Error(`The video didn't ${ev}.`)), ms);
+    el.addEventListener(ev, () => (clearTimeout(to), res()), { once: true });
+  });
+  var interp2 = (path2, t) => {
+    if (path2.length < 2 || t < path2[0].t - 0.02 || t > path2[path2.length - 1].t + 0.02) return null;
+    let i = 1;
+    while (i < path2.length - 1 && path2[i].t < t) i++;
+    const a = path2[i - 1], b = path2[i];
+    const k2 = b.t > a.t ? Math.max(0, Math.min(1, (t - a.t) / (b.t - a.t))) : 0;
+    return { x: a.x + (b.x - a.x) * k2, y: a.y + (b.y - a.y) * k2 };
+  };
+  async function playFrames(v, from, to, each, rate3 = 0.5) {
+    v.currentTime = Math.max(0, from);
+    await waitFor2(v, "seeked").catch(() => {
+    });
+    v.playbackRate = rate3;
+    await new Promise((resolve) => {
+      let done2 = false;
+      const end = () => {
+        if (done2) return;
+        done2 = true;
+        v.pause();
+        resolve();
+      };
+      const guard = setTimeout(end, Math.max(8e3, (to - from) / rate3 * 1e3 + 8e3));
+      const onFrame2 = (_n, meta) => {
+        if (done2) return;
+        if (meta.mediaTime >= from - 0.02) each(meta.mediaTime);
+        if (meta.mediaTime > to || v.ended) {
+          clearTimeout(guard);
+          end();
+        } else v.requestVideoFrameCallback(onFrame2);
+      };
+      v.requestVideoFrameCallback(onFrame2);
+      v.play().catch(() => {
+        clearTimeout(guard);
+        end();
+      });
+    });
+  }
+  async function refineShotFromClip(shot, clip, onProgress) {
+    if (shot.precise) return { ok: true, why: "already done" };
+    if (shot.cal.length !== 4 || shot.path.length < 10) return { ok: false, why: "no lane lock or path" };
+    const url = URL.createObjectURL(clip);
+    const v = document.createElement("video");
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = "auto";
+    v.style.cssText = "position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.02;pointer-events:none";
+    document.body.appendChild(v);
+    v.src = url;
+    try {
+      onProgress?.("Reading the video at full size\u2026");
+      await waitFor2(v, "loadedmetadata");
+      if (!v.requestVideoFrameCallback) return { ok: false, why: "this browser can't step through frames" };
+      const vw = v.videoWidth, vh = v.videoHeight;
+      const cal = shot.cal.map((p) => ({ x: p.x * vw / shot.vw, y: p.y * vh / shot.vh }));
+      const P = laneToPicture(cal);
+      const { toLane } = laneMaps(cal);
+      const live2 = forwardPath(shot.path);
+      const proj = shot.proj ?? projectToPins(live2);
+      const full = proj.length ? [...live2, ...proj] : live2;
+      const t30 = (live2.find((p) => p.y >= 30) ?? live2[live2.length - 1]).t;
+      const ballAt = (rel, path2) => {
+        const q = interp2(path2, rel);
+        return q ? ballInPicture(P, q.x, q.y) : null;
+      };
+      const sc = Math.min(1, 960 / vw);
+      const sw = Math.round(vw * sc), sh = Math.round(vh * sc);
+      const cnv = document.createElement("canvas");
+      const cx = cnv.getContext("2d", { willReadFrequently: true });
+      cnv.width = sw;
+      cnv.height = sh;
+      const early = [];
+      let lastTaken = -1;
+      const winA = live2[0].t - 0.6 - shot.recStartT, winB = t30 + 0.6 - shot.recStartT;
+      await playFrames(v, winA, winB, (m) => {
+        const rel = m + shot.recStartT;
+        if (rel < live2[0].t - 0.6 || rel > t30 + 0.6 || early.length >= 18 || m - lastTaken < 0.07) return;
+        lastTaken = m;
+        cx.drawImage(v, 0, 0, sw, sh);
+        const px = cx.getImageData(0, 0, sw, sh).data;
+        const g = new Float32Array(sw * sh);
+        for (let i = 0; i < g.length; i++) g[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+        early.push({ t: rel, img: { data: g, w: sw, h: sh } });
+      });
+      const off = findOffset(early, (t, w) => {
+        const b = ballAt(t, live2);
+        return b ? { cx: b.cx * (w / vw), cy: b.cy * (w / vw), r: b.r * (w / vw) } : null;
+      });
+      if (!off || off.sharpness < 2.5) return { ok: false, why: "could not line the video up with the path" };
+      const delta = off.offset;
+      early.length = 0;
+      const samples = [];
+      const liveEnd = live2[live2.length - 1].t;
+      let frames = 0;
+      const rc = document.createElement("canvas");
+      const rx = rc.getContext("2d", { willReadFrequently: true });
+      const from = live2[0].t - delta - shot.recStartT - 0.05;
+      const to = full[full.length - 1].t - delta - shot.recStartT + 0.05;
+      await playFrames(v, from, to, (m) => {
+        if (frames >= 420) return;
+        const rel = m + shot.recStartT + delta;
+        const seen2 = rel <= liveEnd + 0.02;
+        const g = ballAt(rel, seen2 ? live2 : full);
+        if (!g || g.r < 5) return;
+        frames++;
+        const half = Math.ceil(2.4 * g.r) + 2;
+        const x0 = Math.max(0, Math.round(g.cx - half)), y0 = Math.max(0, Math.round(g.cy - half));
+        const w = Math.min(vw - x0, 2 * half), h = Math.min(vh - y0, 2 * half);
+        if (w < 8 || h < 8) return;
+        rc.width = w;
+        rc.height = h;
+        rx.drawImage(v, x0, y0, w, h, 0, 0, w, h);
+        const px = rx.getImageData(0, 0, w, h).data;
+        const gr = new Float32Array(w * h);
+        for (let i = 0; i < gr.length; i++) gr[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+        const fit = fitBall(
+          { data: gr, w, h },
+          g.cx - x0,
+          g.cy - y0,
+          g.r,
+          (seen2 ? 0.6 : 0.9) * g.r
+        );
+        if (!fit) return;
+        if (!seen2 && (fit.margin < 4 || fit.score < 25)) return;
+        if (Math.abs(fit.r / g.r - 1) > 0.17) return;
+        const l = applyHomography(toLane, { x: x0 + fit.cx, y: y0 + fit.cy + 0.95 * g.r });
+        samples.push({ t: rel, x: l.x, y: l.y });
+      });
+      onProgress?.("Fitting the roll\u2026");
+      if (samples.length < 25) return { ok: false, why: `ball found in only ${samples.length} frames` };
+      const sorted2 = samples.sort((a2, b) => a2.t - b.t);
+      const r = refineRoll(sorted2, pixelSigma(cal, 0.45));
+      if (!r || r.path.length < 20) return { ok: false, why: "the fit was not usable" };
+      const liveFit = analyzeShot(live2) ?? partialShot(live2);
+      const reach = (p) => p[p.length - 1].y - p[0].y;
+      if (reach(r.path) < 0.7 * reach(live2)) return { ok: false, why: "covered too little of the roll" };
+      const a = analyzeShot(r.path) ?? partialShot(r.path);
+      if (!a) return { ok: false, why: "no reading from the fit" };
+      if (liveFit && Math.abs(a.speedMph - liveFit.speedMph) > 0.15 * liveFit.speedMph) return { ok: false, why: "the speed did not agree with the live reading" };
+      if (r.speedMph !== null && r.speedSe !== null && Math.abs(r.speedMph - a.speedMph) < 3) a.speedMph = r.speedMph, a.speedUncertainty = r.speedSe;
+      a.precision = { speedMph: r.speedSe, boardNear: r.boardSe.near, boardMid: r.boardSe.mid, boardFar: r.boardSe.far, dropped: r.dropped, fps: Math.round(frames / Math.max(0.5, sorted2[sorted2.length - 1].t - sorted2[0].t)) };
+      const far = r.path[r.path.length - 1].y;
+      const near0 = r.path[0].y;
+      const merged = forwardPath([...live2.filter((p) => p.y < near0 - 0.5), ...r.path, ...live2.filter((p) => p.y > far + 0.5)]);
+      shot.path = merged;
+      shot.a = a;
+      shot.m = deriveMetrics(a, merged, S.profile?.hand ?? "R");
+      const p2 = projectToPins(merged);
+      if (p2.length) shot.proj = p2.map((p) => ({ t: Math.round(p.t * 100) / 100, x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100 }));
+      else delete shot.proj;
+      shot.recStartT += delta;
+      shot.precise = { offset: Math.round(delta * 1e3) / 1e3, frames: sorted2.length, at: (/* @__PURE__ */ new Date()).toISOString() };
+      await updateShot(shot);
+      changed();
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, why: e instanceof Error ? e.message : "the video could not be read" };
+    } finally {
+      v.remove();
+      v.removeAttribute("src");
+      v.load();
+      URL.revokeObjectURL(url);
+    }
+  }
+  var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
+  var chain3 = Promise.resolve();
+  var waiting3 = /* @__PURE__ */ new Map();
+  function queuePrecise(shot, opts = {}) {
+    if (shot.precise) return Promise.resolve({ ok: true, why: "already done" });
+    const have = waiting3.get(shot.id);
+    if (have) return have;
+    const job = new Promise((resolve) => {
+      chain3 = chain3.then(async () => {
+        try {
+          for (let i = 0; opts.busy?.() && i < 120; i++) await sleep3(1e3);
+          const blob = opts.blob ?? (shot.hasClip ? await loadClip(shot.id) : void 0);
+          if (!blob) return resolve({ ok: false, why: "no clip" });
+          resolve(await refineShotFromClip(shot, blob, opts.onProgress));
+        } catch {
+          resolve({ ok: false, why: "failed" });
+        } finally {
+          waiting3.delete(shot.id);
+        }
+      });
+    });
+    waiting3.set(shot.id, job);
+    return job;
+  }
+
+  // camera/camera.ts
   init_db();
 
   // camera/guide.ts
@@ -28668,6 +29241,10 @@ ${url}`);
   async function openCamera() {
     const sz = (w, h) => ({ width: { ideal: w }, height: { ideal: h } });
     const tries = [
+      // a phone whose browser offers 120 (many Android phones do; iPhone Safari does not, whatever the Camera app can do) is asked first: spin is read from the turn
+      // of the ball's surface between frames, and it needs about 120 a second
+      { ...sz(1920, 1080), frameRate: { exact: 120 } },
+      { ...sz(1280, 720), frameRate: { exact: 120 } },
       { ...sz(1920, 1080), frameRate: { exact: 60 } },
       { ...sz(1280, 720), frameRate: { exact: 60 } },
       { ...sz(1920, 1080), frameRate: { min: 50, ideal: 60 } },
@@ -28752,7 +29329,7 @@ ${url}`);
     work.height = GH;
     document.body.classList.add("live");
     const fps = stream.getVideoTracks()[0].getSettings().frameRate;
-    setText("fps", fps ? `${Math.round(fps)} FPS` : "LIVE");
+    setText("fps", fps ? `${Math.round(fps)} FPS${fps >= 100 ? " \xB7 spin ready" : ""}` : "LIVE");
     cameraFps = fps ? Math.round(fps) : 0;
     const saved = savedCalibration();
     if (saved) {
@@ -29852,7 +30429,7 @@ ${url}`);
     if (!stream || !window.MediaRecorder || S.demo) return;
     try {
       const mime = pickMime2();
-      const mr = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 6e6 } : void 0);
+      const mr = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: cameraFps >= 100 ? 14e6 : 6e6 } : void 0);
       const chunks = [];
       mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
       mr.onerror = (e) => logTrack("recorder error", { error: String(e.error ?? e) });
@@ -29909,7 +30486,9 @@ ${url}`);
     }
     if (lastShot) {
       const age = (now - lastShot.at) / 1e3;
-      strokeTrail(v, lastShot.trail, age < 10 ? 1 : Math.max(0.35, 1 - (age - 10) / 10), false);
+      const fade = age < 10 ? 1 : Math.max(0.35, 1 - (age - 10) / 10);
+      strokeTrail(v, lastShot.trail, fade, false);
+      if (lastShot.proj?.length && lastShot.trail.length) strokeProjected(v, [lastShot.trail[lastShot.trail.length - 1], ...lastShot.proj], fade);
       drawShotMarkers(v, lastShot.a);
     }
     if ((confirmed || histActive) && trail.length > 1) {
@@ -30037,8 +30616,15 @@ ${url}`);
       logTrack("clip save failed", { error: String(e) });
     }
     await updateShot(p.shot);
-    if (p.shot.hasClip) void queueSpin(p.shot, { blob: clip.blob, busy: () => recActive || !!pendingClip });
-    if (p.shot.hasClip) void queueBody(p.shot, { blob: clip.blob, busy: () => recActive || !!pendingClip, auto: true });
+    if (p.shot.hasClip) {
+      const busy = () => recActive || !!pendingClip;
+      const sh = p.shot;
+      void queuePrecise(sh, { blob: clip.blob, busy }).then((r) => {
+        logTrack(r.ok ? "precise pass done" : "precise pass kept the live reading", { why: r.why ?? null, offset: sh.precise?.offset ?? null, frames: sh.precise?.frames ?? null });
+        void queueSpin(sh, { blob: clip.blob, busy });
+        void queueBody(sh, { blob: clip.blob, busy, auto: true });
+      });
+    }
   }
   function approachWatch(g, media, now) {
     const sm = new Float32Array(Math.ceil(g.length / MOTION_STEP));
@@ -30083,13 +30669,19 @@ ${url}`);
   var skipCount = 0;
   var lastFrameT = -1;
   var lastPres = -1;
+  var lastNow = 0;
+  var clockSrc = null;
   function frameClock(meta, now) {
-    const pt2 = meta.presentationTime;
+    const m = meta;
+    if (!clockSrc) clockSrc = typeof m.captureTime === "number" && m.captureTime > 0 ? "captureTime" : typeof m.presentationTime === "number" && m.presentationTime > 0 ? "presentationTime" : null;
+    const pt2 = clockSrc ? m[clockSrc] : void 0;
     let t;
     if (typeof pt2 === "number" && pt2 > 0 && pt2 > lastPres) {
       lastPres = pt2;
       t = pt2 / 1e3;
-    } else t = now / 1e3;
+    } else if (lastFrameT >= 0 && lastPres > 0) t = lastFrameT + Math.max(1e-3, (now - lastNow) / 1e3);
+    else t = now / 1e3;
+    lastNow = now;
     if (t <= lastFrameT) t = lastFrameT + 1e-3;
     lastFrameT = t;
     return t;
@@ -30104,7 +30696,7 @@ ${url}`);
         deliv.fps = Math.round(deliv.n * 1e3 / (t - deliv.t0));
         deliv.n = 0;
         deliv.t0 = t;
-        setText("fps", `${deliv.fps} FPS`);
+        setText("fps", `${deliv.fps} FPS${deliv.fps >= 100 ? " \xB7 spin ready" : ""}`);
       }
     }
     if (tracing) return;
@@ -30272,13 +30864,13 @@ ${url}`);
     }
     ctx.restore();
   }
-  var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
+  var sleep4 = (ms) => new Promise((r) => setTimeout(r, ms));
   async function readPinfall(shot, start, full) {
     if (!start && !full) return;
     const counts = [];
     const stands = [];
     for (const wait of [900, 400, 400, 400, 400, 400]) {
-      await sleep3(wait);
+      await sleep4(wait);
       const cur2 = lookAtPins();
       const r = cur2 ? pinfallNow(start, full, cur2) : null;
       counts.push(r ? r.down : null);
@@ -30302,15 +30894,32 @@ ${url}`);
     const fullRack = fullDeck;
     const points = path.length;
     const liveSmooth = smoothPath(path);
-    const frames = candHist.filter((f) => f.t > lastShotMedia);
-    if (frames.length) lastShotMedia = frames[frames.length - 1].t;
+    const framesRaw = candHist.filter((f) => f.t > lastShotMedia);
+    if (framesRaw.length) lastShotMedia = framesRaw[framesRaw.length - 1].t;
+    const evenT = regularizeClock(framesRaw.map((f) => f.t));
+    const frames = framesRaw.map((f, i) => ({ ...f, t: evenT[i] }));
     const whole = tracePath(frames);
     const t0Abs = whole && whole.length ? whole[0].t : tracker?.t0 ?? 0;
     const wholeRel = whole ? whole.map((p) => ({ ...p, t: p.t - whole[0].t })) : null;
-    const wholeSmooth = wholeRel ? smoothPath(wholeRel) : null;
+    let refined = null;
+    if (wholeRel && corners.length === 4) {
+      try {
+        refined = refineRoll(wholeRel, pixelSigma(corners, Math.max(0.8, 0.8 * (video.videoWidth / GW))));
+      } catch {
+        refined = null;
+      }
+    }
+    const wholeSmooth = refined ? refined.path : wholeRel ? smoothPath(wholeRel) : null;
     const reach = (p) => p.length ? p[p.length - 1].y - p[0].y : 0;
     const smooth = wholeSmooth && reach(wholeSmooth) >= reach(liveSmooth) - 0.5 ? wholeSmooth : liveSmooth;
     const a = analyzeShot(smooth) ?? partialShot(smooth);
+    if (a && refined && smooth === wholeSmooth && !a.partial) {
+      if (refined.speedMph !== null && refined.speedSe !== null && Math.abs(refined.speedMph - a.speedMph) < 3) {
+        a.speedMph = refined.speedMph;
+        a.speedUncertainty = refined.speedSe;
+      }
+      a.precision = { speedMph: refined.speedSe, boardNear: refined.boardSe.near, boardMid: refined.boardSe.mid, boardFar: refined.boardSe.far, dropped: refined.dropped, fps: cameraFps || void 0 };
+    }
     const saved = forwardPath(smooth);
     const r2 = (n) => Math.round(n * 100) / 100;
     const rawRecord = {
@@ -30334,7 +30943,8 @@ ${url}`);
     cooldownUntil = performance.now() + 8e3;
     status.textContent = a.speedMph < 8 || a.speedMph > 26 ? `Speed reads ${a.speedMph.toFixed(1)} mph, which looks off. The lane lock may be wrong: tap Re-lock.` : "Shot captured. Watching for the next shot.";
     const drawn = saved.map((p) => laneToPx(p.x, p.y));
-    lastShot = { trail: drawn, a, at: performance.now(), path: saved };
+    const proj = projectToPins(saved);
+    lastShot = { trail: drawn, a, at: performance.now(), path: saved, proj: proj.map((p) => laneToPx(p.x, p.y)) };
     const shot = {
       id: newId(),
       at: (/* @__PURE__ */ new Date()).toISOString(),
@@ -30343,6 +30953,7 @@ ${url}`);
       a,
       m: deriveMetrics(a, saved, S.profile?.hand ?? "R"),
       path: saved,
+      ...proj.length ? { proj: proj.map((p) => ({ t: r2(p.t), x: r2(p.x), y: r2(p.y) })) } : {},
       cal: corners.map((p) => ({ ...p })),
       vw: video.videoWidth,
       vh: video.videoHeight,
