@@ -61,6 +61,7 @@
         "Me is everything about your own game: tiles at the top for My shots, My scores, My coach and My insights, then your profile, rewards and settings. Each page has a back button to Me.",
         "My arsenal is under the Pro shop tab, with the layout, fitting and drilling tools.",
         "Community has League night, Crews, friends, and the junior, parent and coach pages.",
+        "The tour is rebuilt: 69 steps covering every feature, part by part (Live camera, My shots, My scores, My coach, My insights, Me, Pro shop and arsenal, Community, Learn), with a menu on each card to jump to any part.",
         "Nothing was removed or reset: the same pages, in new places."
       ]
     },
@@ -14255,35 +14256,107 @@ ${url}`);
   }
 
   // camera/tour.ts
+  var LIVE = "Live camera";
+  var SHOTS = "My shots";
+  var SCORES = "My scores";
+  var COACH = "My coach";
+  var INSIGHTS = "My insights";
+  var ME = "Me";
+  var SHOP = "Pro shop and arsenal";
+  var COMMUNITY = "Community";
+  var LEARN = "Learn and the rest";
   var STEPS = [
-    { tab: "live", sel: "#hero", title: "Point. Lock. Bowl.", text: "LaneIQ turns your phone's camera into a bowling coach. There is nothing to put in your ball and nothing to buy. Put the phone where the whole lane is in view, from the foul line to the pins." },
-    { tab: "live", sel: "#start", title: "Start the camera", text: "Tap Start camera and allow the camera. The app asks for 60 frames a second so it can follow a fast ball. Everything stays on your phone." },
-    { tab: "live", sel: "#guide-open", title: "Where to put the phone", text: "Behind the approach, or off to one side, steady, with both gutters, the foul line and the pins in view. This guide has pictures and tips for a clean lock." },
-    { tab: "live", sel: "#status", title: "It finds the lane by itself", text: "The app scans the lane, and the biggest lane that stays steady in view is locked. This line always says what it is doing: scanning, locked, ball detected, shot captured." },
-    { tab: "live", sel: "#tracebtn, #reset", title: "If the lock is off, fix it", text: "Fix my lane freezes the picture so you can drag four numbered dots onto the lane, use Snap to edges, then place the head pin, the 7 and the 10. The yellow rings are the arrows the app found on your lane. Re-lock throws a bad lock away and starts again." },
-    { tab: "live", sel: "#startstop", title: "Start and Stop: just your shots", text: `In league the camera sees everyone's ball. Tap Stop and nothing is followed, recorded or saved (the lane stays locked); tap Start on your turn. Turn on "One shot at a time" and it stops by itself after each of your shots, so you only tap Start when it is your turn.` },
-    { tab: "live", sel: ".grid", title: "Every shot, measured", text: "After each ball you get speed, the board at the arrows (read from the real arrows on your lane), breakpoint, the board where the ball was last seen, launch angle and more. Only what the camera saw is shown: nothing is guessed past it." },
-    { tab: "live", sel: "#result-card", title: "Pins are read from the camera", text: "The pins that fell are read from the deck. If it ever gets one wrong, tap the right number and the app learns from it." },
-    { tab: "me", sel: "#me-hub", title: "Me: everything about your game", text: "Your own game lives here: My shots, My scores, My coach and My insights, plus your profile, rewards and settings. You can take this tour again any time from the start screen." },
-    { tab: "shots", sel: "#shots-page h2", title: "My shots", text: "Every shot is saved with its video, from the bowler's approach until the rack is full again. Open one to replay it with the ball's path drawn on the lane, switch to the raw video, a top-down map, or 3D." },
-    { tab: "score", sel: "#score-page h2", title: "My scores", text: "A scorecard that scores itself from the camera, with a spare coach that suggests where to throw your second ball." },
-    { tab: "coach", sel: "#coach-page h2", title: "My coach", text: "Your one thing to work on, what goes with your misses (Miss Finder), whether it's your aim or your line, a move to try, which ball to ask your pro shop about, your approach read from your clips, and drills that score themselves. All of it is a starting point to talk over with your coach." },
-    { tab: "insights", sel: "#insights-page h2", title: "My insights", text: "Your averages, common errors, improvement plan, shot map and skills chart: the numbers My coach is built from. There is a Reset button here for when somebody else has bowled on your app." },
-    { tab: "proshop", sel: ".tb[data-tab='proshop']", title: "Pro shop", text: "Layouts, drilling and surface advice built around how you throw. Your arsenal is here too: add a ball, build a lineup for tonight's pattern, and find your next ball." },
-    { tab: "arsenal", sel: "#arsenal-page h2", title: "My arsenal", text: "Your bowling balls. Photograph a ball to add it, estimate its PAP from three photos of the flare rings, and use the Spin lab on slow-motion video for rev rate, axis rotation and tilt." },
-    { tab: "community", sel: ".tb[data-tab='community']", title: "Community", text: "League night, crews to challenge friends anywhere, friends, and the junior, parent and coach pages. It is all shared by links you send yourself." },
-    { tab: "learn", sel: ".tb[data-tab='learn']", title: "Learn", text: 'Every bowling word the app uses, and exactly what it means in the app: pocket, breakpoint, high hit, Brooklyn, PAP and more. Search a word, or tap "what is this?" on a shot to jump straight to it.' }
+    // ---------------- Live camera ----------------
+    { part: LIVE, tab: "live", sel: "#hero", title: "Point. Lock. Bowl.", text: "LaneIQ turns your phone's camera into a bowling coach. There is nothing to put in your ball and nothing to buy. Put the phone where the whole lane is in view, from the foul line to the pins. This tour shows every part of the app, and the menu on each card jumps to any part." },
+    { part: LIVE, tab: "live", sel: "#start", title: "Start the camera", text: "Tap Start camera and allow the camera. The app asks for the sharpest picture and 60 frames a second so it can follow a fast ball, and it sharpens its own copy of the picture so the ball stands out from feet and pins. Everything stays on your phone." },
+    { part: LIVE, tab: "live", sel: "#guide-open", title: "Where to put the phone", text: "Behind the approach, or off to one side, steady, with both gutters, the foul line and the pins in view. This guide has pictures and tips for a clean lock." },
+    { part: LIVE, tab: "live", sel: "#status", title: "It finds the lane by itself", text: "The app scans for your lane, votes over several looks, and locks the lane from the foul line to the head pin, even from off to the side. When several lanes are in view it numbers them for you to tap. This line always says what it is doing: scanning, locked, ball detected, shot captured." },
+    { part: LIVE, tab: "live", sel: "#tracebtn, #reset", title: "If the lock is off, fix it", text: "Trace my lane freezes the picture so you can drag four numbered dots onto the lane, use Snap to edges, then mark the arrows and place the head pin, the 7 and the 10, with a magnifier under your finger. The yellow rings are the real arrows the app read off your lane. Re-lock throws a bad lock away and starts again." },
+    { part: LIVE, tab: "live", sel: "#viewtoggle", title: "Lane view, Raw and 3D", text: "Once the camera runs, Lane view draws the lane grid, the arrows, the oil and the ball's path over the picture; Raw is the plain video; 3D is a model of the lane. Expand makes the picture as big as the screen, and you can pinch or scroll to zoom and drag to pan." },
+    { part: LIVE, tab: "live", sel: "#startstop", title: "Start and Stop: just your shots", text: "In league the camera sees everyone's ball. Tap Stop and nothing is followed, recorded or saved (the lane stays locked); tap Start on your turn." },
+    { part: LIVE, tab: "live", sel: "#oneshot", title: "One shot at a time", text: "League mode: the app starts stopped and stops by itself after each of your shots, so you only tap Start when it is your turn and only your shots are kept." },
+    { part: LIVE, tab: "live", sel: "#target-btn", title: "Target: where you stand and aim", text: "Say where your slide foot starts and which board you aim at. Every shot is then graded against it, so the app can tell a missed shot from a good shot on the wrong line. You also type your centre and lane here, and pick tonight's oil pattern." },
+    { part: LIVE, tab: "live", sel: "#tonight", title: "Tonight's card", text: 'Shows your target, the centre and lanes, and "Last time on this pair": where you stood, what you aimed at and how it went the last time you bowled on these lanes, with a button to start on that line.' },
+    { part: LIVE, tab: "live", sel: "#oil-btn", title: "Oil on your lane", text: "Once you pick a pattern, the oil is shaded on the lane in the camera view, with a gold line where it ends and the rule-of-31 board for your breakpoint. When your pattern sheet has a load table, it is drawn exactly as the lane machine lays it. This switch turns it on or off." },
+    { part: LIVE, tab: "live", sel: "#voice-btn", title: "Voice caddie", text: "After each shot the phone says the speed, the board at the arrows, the breakpoint, whether you hit the pocket, and a move to try, using your phone's own voice, so you don't have to look. It works offline." },
+    { part: LIVE, tab: "live", sel: ".grid", title: "Every shot, measured", text: "After each ball: speed, the board at the arrows (from the real arrows on your lane), breakpoint board and distance, the board where the ball was last seen, launch angle, entry angle, speed loss, hook and where you hit the pocket. Only what the camera saw is shown: nothing is guessed past it." },
+    { part: LIVE, tab: "live", sel: "#result-card", title: "Pins are read from the camera", text: "The pins that fell are read from the deck and go straight on your scorecard. If it ever gets one wrong, tap the right number and the app learns from it." },
+    { part: LIVE, tab: "live", sel: "#ball-row", title: "Which ball was that?", text: 'The app recognizes your balls from how they look. Add a ball by name, "Show me this ball" so it can name it from shot one, or scan one from a photo. Tap to correct it: the ball is what Ball advice judges.' },
+    { part: LIVE, tab: "live", sel: "#lane-read", title: "Lane read", text: "After a few shots with the same ball it tells you if the lane looks stable, drying out so the ball reads earlier, or oil carrying down so it skids farther, and one change to test." },
+    { part: LIVE, tab: "live", sel: "#move-card", title: "Move to try", text: "After each shot, a move to try in boards (for example 2 and 1 left), only when your misses are one-sided and you're hitting your mark. It's a starting point to talk over with your coach, and one tap makes it your new target." },
+    { part: LIVE, tab: "live", sel: "#history", title: "This session", text: "A chip for every shot of tonight's session with its speed and entry board." },
+    { part: LIVE, tab: "live", sel: "#saveframe, #diag", title: "Help me improve the app", text: "Save frame stores the current picture and what the lane detector saw, and Copy diagnostics (in Me) copies how tracking behaved, so a lock that struggles can be fixed from a real example. Nothing is sent anywhere." },
+    // ---------------- My shots ----------------
+    { part: SHOTS, tab: "me", sel: "#me-hub", title: "Me: everything about your game", text: "Your own game lives under Me: My shots, My scores, My coach and My insights, then your profile, rewards and settings. Each page has a back button to Me." },
+    { part: SHOTS, tab: "shots", sel: "#shots-page h2", title: "My shots", text: "Every shot is saved on your phone with its video, from the bowler's approach until the rack is full again, with its speed, ball, hit (pocket, high, light), pin count and entry board." },
+    { part: SHOTS, tab: "shots", sel: "#shots-page .shot", title: "Replay a shot", text: `Open a shot to replay it with the ball's path drawn on the lane (Lane view), the raw video, a top-down map with your other shots with that ball, or a 3D replay. Words like "Light hit" link to Learn.` },
+    { part: SHOTS, tab: "shots", sel: "#shots-page .shot", title: "Spin, body and approach", text: `In a shot's review the spin (rev rate, axis rotation and tilt) is read from its clip, and "Read my approach" uses a pose model on your phone to read your steps, timing, drift, laydown and finish. A clip too coarse for spin says so and offers a slow-motion pass instead.` },
+    { part: SHOTS, tab: "shots", sel: "#shots-page .shot", title: "Side by side", text: "Put two shots next to each other, lined up at release, with slow motion, frame steps, both paths from above, drawing tools (line, angle, circle, freehand) and a packet to send to your coach." },
+    { part: SHOTS, tab: "shots", sel: "#shots-page .shot", title: "Fix, tag or delete", text: "In a shot's review you can set the pin count, change which ball it was, and delete the shot and its video." },
+    { part: SHOTS, tab: "shots", sel: "#sh-share", title: "Share a session", text: "Send a friend a session as a link (nothing is uploaded), or compare a session with a friend's on the same lane. Not available on a junior profile." },
+    // ---------------- My scores ----------------
+    { part: SCORES, tab: "score", sel: "#score-page h2", title: "My scores", text: "A scorecard that scores itself: the pins the camera reads go straight on the card, a game starts by itself and the next one after the tenth frame. Tap the pin deck only to fix a mistake or to score without the camera." },
+    { part: SCORES, tab: "score", sel: "@Spare coach", title: "Spare coach", text: "After a first ball it names the leave and tells you how far to move your feet with the 3-6-9 spare system (every direction reversed for left-handers). Splits are marked as the low-percentage shots they are." },
+    { part: SCORES, tab: "score", sel: "@Your statistics", title: "Your statistics", text: "Average, high game, strike and spare percentages, first-ball average, open frames, and how you do on single pins, multi-pin leaves and each specific leave." },
+    { part: SCORES, tab: "score", sel: "@What costs you pins", title: "What costs you pins", text: "A what-if on your own games: the pins a game that missed single-pin spares and every missed spare cost you (and what your average would be without them), the leaves you convert worst with how to shoot them, and how often each part of the pocket strikes." },
+    { part: SCORES, tab: "score", sel: "#sc-rewards", title: "Rewards", text: "Playing and improving earn points and unlock ball tracers, pin looks and lane looks. Open Skins and rewards to see what's next." },
+    // ---------------- My coach ----------------
+    { part: COACH, tab: "coach", sel: "#coach-page h2", title: "My coach", text: "Everything the app has worked out about how to improve, in the order a coach would say it. Each card says what it's based on, says so plainly when there isn't enough yet, and is a starting point to talk over with your coach." },
+    { part: COACH, tab: "coach", sel: "@Miss Finder", title: "Miss Finder", text: "Ranks what goes with where your ball meets the pins (speed, your aim, where the ball lands, drift, timing, how far into the session you are), with how much of your misses each explains and something to try. It shows what goes together, not proof of cause." },
+    { part: COACH, tab: "coach", sel: "@Plan vs execution", title: "Plan vs execution", text: "Grades every shot against the target you set: a missed mark is about aim; hitting it and still missing the pocket the same way is about the line. The fix is different for each, which is a good thing to take to your coach." },
+    { part: COACH, tab: "coach", sel: "@Move to try", title: "Move to try", text: "The 2-and-1 adjustment worked out from your last shots with the same ball: feet and target the same way, feet about twice as far. It stays quiet when the misses go both ways or you're missing your mark." },
+    { part: COACH, tab: "coach", sel: "@Ball advice", title: "Ball advice", text: "Judges each of your balls from your own shots with it. It only calls a ball too strong or too weak when where it hits AND its reaction shape agree, then suggests a ball from your own bag first, then current, USBC-approved balls to ask your pro shop about. The order is never paid for." },
+    { part: COACH, tab: "coach", sel: "@Body and approach", title: "Body and approach", text: 'Steps, timing, drift, where the ball lands next to your slide foot and whether you hold your finish, read from your clips by a pose model on your phone. Turn on "Read every new shot" or read the last ten clips.' },
+    { part: COACH, tab: "coach", sel: "@Drills", title: "Drills that score themselves", text: "Arrow Sniper, Speed Lock, Pocket Hunter, Speed Ladder and Corner Pins. Start one, bowl with the camera running, and every shot is scored by itself with a count on the Live screen and personal bests." },
+    { part: COACH, tab: "coach", sel: "@Entry angle and carry", title: "Carry, and through a session", text: "Whether more entry angle helps you carry (strike rate on pocket hits by angle band), and how you hold up through a session: speed and pocket rate from the first third to the last." },
+    { part: COACH, tab: "coach", sel: "@Lane-pair memory", title: "Lane-pair memory", text: "Remembers each centre and lane pair you've bowled: where you stood, what you aimed at, which ball and how it went, so next time you can start on the line that worked." },
+    { part: COACH, tab: "coach", sel: "@Share", title: "Bowler DNA card and highlight reel", text: "A shareable card with your speed, rev rate, axis, PAP, entry angle, pocket and strike rate (each marked measured or entered), and a short vertical highlight video of your best shots, made on your phone." },
+    // ---------------- My insights ----------------
+    { part: INSIGHTS, tab: "insights", sel: "#insights-page h2", title: "My insights", text: "The numbers My coach is built from. Tap a skill on the chart to see where you stand against the figure for a 200-average bowler." },
+    { part: INSIGHTS, tab: "insights", sel: "@Common errors", title: "Common errors and your plan", text: "Habits that cost you strikes, ranked by how much, with how sure the app is. Create my plan turns them into targets with a drill each, and tracks progress against your saved baseline." },
+    { part: INSIGHTS, tab: "insights", sel: "@Shot map", title: "Shot map, averages and sessions", text: "Every recent path on the lane (strikes green, leaves red), where you enter the pocket, your averages with how much they spread, and tables by ball and by session." },
+    { part: INSIGHTS, tab: "insights", sel: "@Reset", title: "Reset insights", text: "For when somebody else has bowled on your app: starts the averages, errors, plan, shot map and skills chart again from zero. Your shots, their videos and your scorecards stay exactly where they are, and you can count your earlier shots again." },
+    // ---------------- Me ----------------
+    { part: ME, tab: "me", sel: "#me-rewards", title: "Rewards and looks", text: "Unlock ball tracers, pin looks and lane looks by playing and by improving. Glow off gives crisp lines with no halos, for reading shots exactly." },
+    { part: ME, tab: "me", sel: "@Your bowler profile", title: "Your bowler profile", text: "The short quiz tells the app how you bowl: one hand with or without the thumb, or two-handed, your level, how you think you rev and what you want help with. It shapes the advice, and you can retake it any time." },
+    { part: ME, tab: "me", sel: "#sp-rpm", title: "Ball motion", text: "Rev rate, axis rotation, axis tilt and your PAP: enter numbers from a pro shop, measure them from a slow-motion release video (Spin lab), or estimate your PAP from three photos of the flare rings. They improve ball picks and layouts." },
+    { part: ME, tab: "me", sel: "#me-name", title: "Profile and profiles", text: "Your name, which hand you throw, and your rev rate. Add a profile for each person who shares the phone: each keeps its own balls, shots, videos, averages and plan, and they never mix." },
+    { part: ME, tab: "me", sel: "#me-diag", title: "Diagnostics, your data, legal", text: "How the app is doing (with Copy diagnostics), your storage and Export my data, and links to the privacy policy, terms and credits. There is no account: everything is stored only on this phone." },
+    // ---------------- Pro shop and arsenal ----------------
+    { part: SHOP, tab: "proshop", sel: "#ps-arsenal", title: "Pro shop", text: "Tools for fitting, layout and drilling, for bowlers and for pro shop operators. Your arsenal opens from here." },
+    { part: SHOP, tab: "proshop", sel: "#ps-lab", title: "Layout Lab", text: "Draws your ball with its holes, pin, PSA, PAP and VAL in Dual Angle, Pin Buffer or 2LS, with per-weight RG and differentials. Drag to turn it, preview the flare, save layouts, and print a drill sheet for the driller." },
+    { part: SHOP, tab: "proshop", sel: "#ps-scan", title: "Scan a drilled ball", text: "Photograph a drilled ball and the app finds the outline, the grip holes and the pin, CG and mass-bias marks, then reads off the layout. Everything is editable by tapping or dragging with a magnifier." },
+    { part: SHOP, tab: "proshop", sel: "#ps-pap", title: "PAP from photos", text: "Estimates your positive axis point from photos of the flare rings on your ball, so you don't need a pro shop tool to start." },
+    { part: SHOP, tab: "proshop", sel: "#ps-report", title: "Fitting report", text: "A printable report for your pro shop: your measured speed, entry angle, breakpoint and hook, your ball motion numbers, the pattern, a suggested lineup and catalog balls to consider with layouts. The pro shop operator has the final say on fit, layout and surface." },
+    { part: SHOP, tab: "proshop", sel: "@Layout checker", title: "Pro shop toolkit", text: "Open each: the layout checker (rules, hole clearance, conversion, estimated effect of drilling, static weight), the reaction doctor (what is the ball doing, and what to change), the surface guide, fit, grip and ball weight, and a theory library that names its sources, including where experts disagree." },
+    { part: SHOP, tab: "proshop", sel: "#ps-print", title: "What to look for at a pro shop", text: "A printable sheet built from your own profile: what to know before you walk in, questions to ask the pro shop, what a good fitting includes, what to look for in your next ball, and things to watch for." },
+    { part: SHOP, tab: "arsenal", sel: "#arsenal-page h2", title: "My arsenal", text: "Your bowling balls, saved on your profile. Add one by name from the 1,000+ ball catalog (every spec with its source), by photo, or by entering RG, differential and cover for balls not in it." },
+    { part: SHOP, tab: "arsenal", sel: "#pat-mine", title: "Oil patterns: add your centre's sheet", text: "LaneIQ has no built-in pattern library. Add the sheet your centre posts (a PDF, screenshot or photo): it's read on your phone, you check the numbers, and Kegel load tables are read row by row to draw the oil exactly. Lineups and ball picks use it." },
+    { part: SHOP, tab: "arsenal", sel: "@Your lineup", title: "Your lineup", text: "Which of your balls to start with and which to move to when the lane hooks early or skids, for the pattern, your speed, your entry angle and your rev rate and axis, with the gaps in your bag." },
+    { part: SHOP, tab: "arsenal", sel: "@Arsenal optimizer", title: "Arsenal optimizer", text: "Scores how well your balls cover heavy oil, a typical house shot, dry lanes and short and long sport patterns, shows overlaps, whether you have a spare ball, and the best balls to add." },
+    { part: SHOP, tab: "arsenal", sel: "@Find my next ball", title: "Find my next ball and new releases", text: "Catalog balls matched to what you need for each role, only balls the maker still sells, from the last two years and approved for competition, at most two per brand, with suggested layouts. New balls coming out that fit your gaps are listed with their dates and sources." },
+    // ---------------- Community ----------------
+    { part: COMMUNITY, tab: "community", sel: "#me-league", title: "League night", text: "Start a league (handicap base, percent and cap, games a night, teams), type in each week or fill in your own games, and get standings with handicap, scratch or pins over average, team standings and the night's awards. Bowlers send their night as a link; send the standings back as a link, picture or text." },
+    { part: COMMUNITY, tab: "community", sel: "#me-crews", title: "Crews", text: "Friends anywhere in the world who bowl together: challenges inside the crew (pins over your own average, best game, most strikes, most days bowled, drills), crew-against-crew challenges scored by average, bowl nights with I'm-in, and kind cheers from a fixed set. No chat, shared by link, nothing uploaded." },
+    { part: COMMUNITY, tab: "community", sel: "@Friends", title: "Friends", text: "Choose an account name and share your friend tag, invite a player, share a session, compare shots with a friend, and bowl together live with a friend on another lane. Everything travels as links you send yourself." },
+    { part: COMMUNITY, tab: "community", sel: "#me-junior", title: "Juniors, parents and coaches", text: "A junior profile keeps a first name or nickname only and switches off friends, crews, live sharing, data sharing and ads. It makes a progress card for a parent or coach, compared only with the bowler's own earlier weeks. Parents get a plain view with ways to help; a youth coach keeps a group in name order." },
+    // ---------------- Learn and the rest ----------------
+    { part: LEARN, tab: "learn", sel: "#ln-q", title: "Learn", text: 'Every bowling word the app uses, and exactly what it means in the app: pocket, breakpoint, high hit, Brooklyn, PAP, handicap, rule of 31 and more. Search a word, filter by group, or tap "what is this?" on a shot to jump straight to it.' },
+    { part: LEARN, tab: "live", sel: "#whatsnew", title: "What's new, and this tour", text: "On the start screen, What's new lists every update in plain words, and Take the tour replays this walk-through. The app updates itself when the camera is idle." },
+    { part: LEARN, tab: "me", sel: "@Legal", title: "Yours, and private", text: "No account, no ads in the app today, and your shots, videos and scores stay on your phone unless you send something yourself. LaneIQ is a tool for bowlers, coaches and pro shops to use together: a coach and a pro shop operator always have the final say." }
   ];
   function startTour(onDone2) {
     document.getElementById("tour")?.remove();
     let i = 0;
+    const parts = Array.from(new Set(STEPS.map((s) => s.part)));
     const root = document.createElement("div");
     root.id = "tour";
     root.style.cssText = "position:fixed;inset:0;z-index:400;font-family:system-ui,sans-serif";
     root.innerHTML = `
     <div id="tour-spot" style="position:fixed;border-radius:16px;border:2px solid #46e6ff;box-shadow:0 0 0 9999px rgba(3,7,16,.78);transition:all .25s ease;pointer-events:none"></div>
-    <div id="tour-card" style="position:fixed;left:12px;right:12px;max-width:380px;margin:0 auto;background:#0d1626;border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:14px 14px 12px;color:#fff;box-shadow:0 12px 40px rgba(0,0,0,.5)">
-      <div id="tour-n" style="font-size:11px;color:#9fb0cc;letter-spacing:.06em;text-transform:uppercase"></div>
+    <div id="tour-card" style="position:fixed;left:12px;right:12px;max-width:380px;margin:0 auto;background:#0d1626;border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:14px 14px 12px;color:#fff;box-shadow:0 12px 40px rgba(0,0,0,.5);max-height:62vh;overflow:auto">
+      <div style="display:flex;gap:8px;align-items:center"><div id="tour-n" style="font-size:11px;color:#9fb0cc;letter-spacing:.06em;text-transform:uppercase;flex:1"></div>
+        <select id="tour-jump" aria-label="Jump to a part of the tour" style="max-width:150px;font:600 12px system-ui;background:#16233a;color:#d6e2f5;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:4px 6px">${parts.map((p) => `<option>${p}</option>`).join("")}</select></div>
       <div id="tour-t" style="font-weight:800;font-size:18px;margin:4px 0 6px"></div>
       <div id="tour-x" style="font-size:14px;line-height:1.45;color:#d6e2f5"></div>
       <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
@@ -14297,9 +14370,18 @@ ${url}`);
     const spot = root.querySelector("#tour-spot");
     const card = root.querySelector("#tour-card");
     const q = (id) => root.querySelector(id);
+    const visible = (e) => e.offsetParent !== null || getComputedStyle(e).position === "fixed";
+    const find = (sel2) => {
+      if (sel2.startsWith("@")) {
+        const want = sel2.slice(1).toLowerCase();
+        const page = document.querySelector(".tab.on") ?? document.body;
+        return Array.from(page.querySelectorAll("h2,h3,.k,summary,.lr-head,button")).find((e) => visible(e) && (e.textContent ?? "").toLowerCase().includes(want));
+      }
+      return Array.from(document.querySelectorAll(sel2)).find(visible);
+    };
     const place = () => {
       const s = STEPS[i];
-      const el = Array.from(document.querySelectorAll(s.sel)).find((e) => e.offsetParent !== null || getComputedStyle(e).position === "fixed");
+      const el = find(s.sel) ?? (s.tab === "live" ? find("#stage") : void 0);
       const vh = window.innerHeight;
       if (el) {
         el.scrollIntoView({ block: "center", behavior: "instant" });
@@ -14322,11 +14404,14 @@ ${url}`);
       const s = STEPS[i];
       showTab(s.tab);
       q("#tour-n").textContent = `${i + 1} of ${STEPS.length}`;
+      q("#tour-jump").value = s.part;
       q("#tour-t").textContent = s.title;
       q("#tour-x").textContent = s.text;
+      card.scrollTop = 0;
       q("#tour-back").style.visibility = i === 0 ? "hidden" : "visible";
       q("#tour-next").textContent = i === STEPS.length - 1 ? "Done" : "Next";
       requestAnimationFrame(() => requestAnimationFrame(place));
+      setTimeout(place, 350);
     };
     const finish2 = () => {
       window.removeEventListener("resize", place);
@@ -14342,6 +14427,11 @@ ${url}`);
     q("#tour-next").onclick = () => i === STEPS.length - 1 ? finish2() : (i++, show());
     q("#tour-back").onclick = () => i > 0 ? (i--, show()) : void 0;
     q("#tour-skip").onclick = finish2;
+    q("#tour-jump").onchange = (e) => {
+      const p = e.target.value;
+      i = Math.max(0, STEPS.findIndex((s) => s.part === p));
+      show();
+    };
     show();
   }
   var tourSeen = () => {
