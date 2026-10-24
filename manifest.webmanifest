@@ -1,7 +1,11 @@
 {
+  "id": "./",
   "name": "LaneIQ",
   "short_name": "LaneIQ",
-  "description": "Automatic bowling shot tracking",
+  "description": "Free bowling coach: track every shot with just your phone camera. No sensor, no subscription.",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["sports", "health", "lifestyle"],
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
