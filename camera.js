@@ -97,6 +97,48 @@
     }
   });
 
+  // camera/sharefiles.ts
+  function offerShare(box, files, opts = {}) {
+    box.innerHTML = "";
+    const row2 = document.createElement("div");
+    row2.className = "chips";
+    const nav = navigator;
+    const note = document.createElement("div");
+    note.className = "note";
+    const data = { files, title: opts.title, text: opts.text };
+    if (nav.share && (!nav.canShare || nav.canShare({ files }))) {
+      const b = document.createElement("button");
+      b.className = "btn";
+      b.textContent = opts.label ?? "Share";
+      b.onclick = () => {
+        nav.share(data).then(() => note.textContent = "Shared.").catch((e) => {
+          if (e.name !== "AbortError") note.textContent = `Couldn't open the share sheet (${e.message}). Use Save instead.`;
+        });
+      };
+      row2.append(b);
+    }
+    const save2 = document.createElement("button");
+    save2.className = "btn ghost";
+    save2.textContent = files.length > 1 ? "Save the files" : "Save";
+    save2.onclick = () => {
+      const all = opts.text ? [...files, new File([opts.text], "laneiq-notes.txt", { type: "text/plain" })] : files;
+      for (const f of all) {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(f);
+        a.download = f.name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 8e3);
+      }
+      note.textContent = "Saved.";
+    };
+    row2.append(save2);
+    box.append(row2, note);
+  }
+  var init_sharefiles = __esm({
+    "camera/sharefiles.ts"() {
+    }
+  });
+
   // core/src/tiles.ts
   function angleSe(seA, seB, ft) {
     return Math.atan(Math.hypot(seA, seB) * BOARD_IN / (ft * 12)) * 180 / Math.PI;
@@ -1451,7 +1493,7 @@
     } catch {
     }
   }
-  function open(profileId) {
+  function open2(profileId) {
     let p = opened.get(profileId);
     if (!p) {
       p = new Promise((resolve, reject) => {
@@ -1470,20 +1512,20 @@
     return p;
   }
   async function dbAll(profileId, store) {
-    return wrap((await open(profileId)).transaction(store).objectStore(store).getAll());
+    return wrap((await open2(profileId)).transaction(store).objectStore(store).getAll());
   }
   async function dbGet(profileId, store, key2) {
-    return wrap((await open(profileId)).transaction(store).objectStore(store).get(key2));
+    return wrap((await open2(profileId)).transaction(store).objectStore(store).get(key2));
   }
   async function dbPut(profileId, store, value, key2) {
-    const s = (await open(profileId)).transaction(store, "readwrite").objectStore(store);
+    const s = (await open2(profileId)).transaction(store, "readwrite").objectStore(store);
     await wrap(key2 === void 0 ? s.put(value) : s.put(value, key2));
   }
   async function dbDelete(profileId, store, key2) {
-    await wrap((await open(profileId)).transaction(store, "readwrite").objectStore(store).delete(key2));
+    await wrap((await open2(profileId)).transaction(store, "readwrite").objectStore(store).delete(key2));
   }
   async function deleteProfileData(profileId) {
-    const db = await open(profileId).catch(() => null);
+    const db = await open2(profileId).catch(() => null);
     db?.close();
     opened.delete(profileId);
     await new Promise((res) => {
@@ -2121,8 +2163,8 @@
           else marks.push(n === 0 ? "-" : String(n));
           prev = marks[k2] === "/" ? 0 : n;
         });
-        const done2 = rest.length === 3 || rest.length === 2 && rest[0] !== 10 && rest[0] + rest[1] < 10;
-        frames.push({ pins: rest, marks, total: done2 ? running += rest.reduce((x, y) => x + y, 0) : null });
+        const done3 = rest.length === 3 || rest.length === 2 && rest[0] !== 10 && rest[0] + rest[1] < 10;
+        frames.push({ pins: rest, marks, total: done3 ? running += rest.reduce((x, y) => x + y, 0) : null });
         i = counts.length;
       }
     }
@@ -2132,7 +2174,7 @@
   function bowlingStats(games2) {
     const complete = games2.filter((g) => replay(g.rolls).complete);
     const scores = complete.map((g) => scoreGame(g.rolls).total);
-    let fresh2 = 0, strikes = 0, freshPins = 0, spareTry = 0, spareMade = 0, open3 = 0;
+    let fresh2 = 0, strikes = 0, freshPins = 0, spareTry = 0, spareMade = 0, open4 = 0;
     const single = { attempts: 0, made: 0 }, multi = { attempts: 0, made: 0 };
     const byLeave = {};
     for (const g of games2) {
@@ -2158,8 +2200,8 @@
       const frameRolls = /* @__PURE__ */ new Map();
       rp.states.forEach((s, k2) => frameRolls.set(s.frame, [...frameRolls.get(s.frame) ?? [], g.rolls[k2].down.filter((p) => s.standingBefore.includes(p)).length]));
       for (const [f, c] of frameRolls) {
-        if (f < 10 && c.length === 2 && c[0] + c[1] < 10) open3++;
-        if (f === 10 && c.length >= 2 && c[0] < 10 && c[0] + c[1] < 10) open3++;
+        if (f < 10 && c.length === 2 && c[0] + c[1] < 10) open4++;
+        if (f === 10 && c.length >= 2 && c[0] < 10 && c[0] + c[1] < 10) open4++;
       }
     }
     const avg3 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
@@ -2171,7 +2213,7 @@
       strikePct: fresh2 ? strikes / fresh2 * 100 : null,
       firstBallAvg: fresh2 ? freshPins / fresh2 : null,
       sparePct: spareTry ? spareMade / spareTry * 100 : null,
-      openFrames: open3,
+      openFrames: open4,
       singlePin: single,
       multiPin: multi,
       byLeave
@@ -2517,9 +2559,9 @@
   }
   function achievements(games2, axes) {
     const out = [];
-    const done2 = games2.filter((g) => replay(g.rolls).complete).sort((a, b) => a.at.localeCompare(b.at));
-    const scores = done2.map((g) => scoreGame(g.rolls).total);
-    if (done2.length) out.push({ id: "first-game", title: "First game on the card", detail: "Finish a scored game", points: 10 });
+    const done3 = games2.filter((g) => replay(g.rolls).complete).sort((a, b) => a.at.localeCompare(b.at));
+    const scores = done3.map((g) => scoreGame(g.rolls).total);
+    if (done3.length) out.push({ id: "first-game", title: "First game on the card", detail: "Finish a scored game", points: 10 });
     for (const [min, pts, title] of GAME_MILESTONES) if (scores.some((s) => s >= min)) out.push({ id: `score-${min}`, title, detail: `Score ${min} or more in a game`, points: pts });
     let best = -1, pbs = 0;
     scores.forEach((s) => {
@@ -2531,13 +2573,13 @@
     for (let i = 1; i <= Math.min(pbs, 20); i++) out.push({ id: `pb-${i}`, title: `New high game (#${i})`, detail: "Beat your best game", points: 10 });
     const run = games2.reduce((m, g) => Math.max(m, strikeRun(g)), 0);
     for (const [n, pts, title] of STREAKS) if (run >= n) out.push({ id: `streak-${n}`, title, detail: `${n} strikes in a row in one game`, points: pts });
-    const clean = done2.filter((g) => {
+    const clean = done3.filter((g) => {
       const f = bowlingStats([g]);
       return f.openFrames === 0;
     }).length;
     if (clean >= 1) out.push({ id: "clean-1", title: "Clean game", detail: "A game with no open frames", points: 50 });
     if (clean >= 5) out.push({ id: "clean-5", title: "Five clean games", detail: "Five games with no open frames", points: 150 });
-    if (done2.length >= 10) {
+    if (done3.length >= 10) {
       const avg3 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
       const gain = avg3(scores.slice(-5)) - avg3(scores.slice(0, 5));
       for (const [need, pts] of [[5, 30], [10, 60], [20, 120]]) if (gain >= need) out.push({ id: `avg-${need}`, title: `Average up ${need} pins`, detail: "Your last five games against your first five", points: pts });
@@ -2620,7 +2662,7 @@
 
   // core/src/skills.ts
   function frameOutcomes(games2) {
-    let closed = 0, open3 = 0;
+    let closed = 0, open4 = 0;
     for (const g of games2) {
       const rp = replay(g.rolls);
       const by = /* @__PURE__ */ new Map();
@@ -2628,13 +2670,13 @@
       for (const [f, c] of by) {
         if (f < 10) {
           if (c[0] === 10) closed++;
-          else if (c.length === 2) c[0] + c[1] === 10 ? closed++ : open3++;
+          else if (c.length === 2) c[0] + c[1] === 10 ? closed++ : open4++;
         } else if (rp.complete) {
-          c[0] === 10 || c.length >= 2 && c[0] + c[1] >= 10 ? closed++ : open3++;
+          c[0] === 10 || c.length >= 2 && c[0] + c[1] >= 10 ? closed++ : open4++;
         }
       }
     }
-    return { closed, open: open3 };
+    return { closed, open: open4 };
   }
   function measure(games2, shots) {
     const st2 = bowlingStats(games2);
@@ -2936,12 +2978,12 @@
   async function checkUnlocks() {
     try {
       const p = await current();
-      const open3 = SKINS.filter((s) => isUnlocked(s, p)).map((s) => s.id);
+      const open4 = SKINS.filter((s) => isUnlocked(s, p)).map((s) => s.id);
       const raw = localStorage.getItem(SEEN_KEY);
-      localStorage.setItem(SEEN_KEY, JSON.stringify(open3));
+      localStorage.setItem(SEEN_KEY, JSON.stringify(open4));
       if (raw === null) return;
       const seen2 = new Set(JSON.parse(raw));
-      const fresh2 = SKINS.filter((s) => open3.includes(s.id) && !seen2.has(s.id));
+      const fresh2 = SKINS.filter((s) => open4.includes(s.id) && !seen2.has(s.id));
       if (fresh2.length) toast(`Unlocked: ${fresh2.slice(0, 2).map((s) => s.name).join(", ")}${fresh2.length > 2 ? ` and ${fresh2.length - 2} more` : ""}. Tap to equip.`);
     } catch {
     }
@@ -2961,8 +3003,8 @@
     const eq = skinsEnabled() ? equippedSkins() : { tracer: "", pins: "", lane: "" };
     const base = activeSkins();
     const grid = (kind2, title) => `<h3>${title}</h3><div class="skin-grid">${SKINS.filter((s) => s.kind === kind2).map((s) => {
-      const open3 = isUnlocked(s, p);
-      return `<button class="skin ${open3 ? "" : "locked"} ${eq[kind2] === s.id ? "on" : ""}" data-skin="${s.id}" data-kind="${kind2}" ${open3 ? "" : "disabled"}><canvas width="150" height="170" data-c="${s.id}"></canvas><div class="n">${esc(s.name)}</div><div class="r ${"points" in s.unlock ? "rare" : ""}">${open3 ? eq[kind2] === s.id ? "Equipped" : "Tap to equip" : "Locked: " + esc(unlockText(s))}</div></button>`;
+      const open4 = isUnlocked(s, p);
+      return `<button class="skin ${open4 ? "" : "locked"} ${eq[kind2] === s.id ? "on" : ""}" data-skin="${s.id}" data-kind="${kind2}" ${open4 ? "" : "disabled"}><canvas width="150" height="170" data-c="${s.id}"></canvas><div class="n">${esc(s.name)}</div><div class="r ${"points" in s.unlock ? "rare" : ""}">${open4 ? eq[kind2] === s.id ? "Equipped" : "Tap to equip" : "Locked: " + esc(unlockText(s))}</div></button>`;
     }).join("")}</div>`;
     el.innerHTML = `
     <div class="row"><h2>Rewards</h2><button class="btn ghost" id="rw-close">Close</button></div>
@@ -3114,10 +3156,10 @@
     ${leaves.length ? `<div class="k" style="margin-top:8px">Spare tries by leave</div><table>${leaves.map(([k2, t]) => `<tr><td>${esc(k2)}</td><td class="n">${t.made}/${t.attempts} (${pctStr(t.made / t.attempts * 100)})</td></tr>`).join("")}</table>` : ""}`;
   }
   function analysisHtml() {
-    const done2 = games.filter((g) => replay(g.rolls).complete);
+    const done3 = games.filter((g) => replay(g.rolls).complete);
     const out = [];
-    if (done2.length) {
-      const w = done2.map((g) => whatIf(g.rolls));
+    if (done3.length) {
+      const w = done3.map((g) => whatIf(g.rolls));
       const avg3 = (f) => w.reduce((a, b) => a + f(b), 0) / w.length;
       const gain = avg3((x) => x.ifSingles - x.actual);
       out.push(`<div class="u">Missed single-pin spares cost you <b>${gain.toFixed(1)} pins a game</b> (${avg3((x) => x.missedSingles).toFixed(1)} a game). Make them all and your average would be ${avg3((x) => x.ifSingles).toFixed(0)} instead of ${avg3((x) => x.actual).toFixed(0)}.</div>`);
@@ -3156,7 +3198,7 @@
     const standing = rp?.standing ?? ALL_PINS;
     const advice = g && standing.length < 10 ? adviseSpare(standing, bowlerProfile().hand) : null;
     const cam = g ? cameraSuggestion() : null;
-    const done2 = games.slice().reverse().slice(0, 12);
+    const done3 = games.slice().reverse().slice(0, 12);
     el.innerHTML = `
     <h2>Score</h2>
     <div class="note">With the camera running, every shot is scored for you: the pins it reads go straight on the card and the spare coach tells you where to move. Tap the pins below only to fix a mistake or to score without the camera. Free, and it stays on this phone.</div>
@@ -3172,7 +3214,7 @@
     <div class="card" id="sc-rewards"><div class="note">Loading rewards\u2026</div></div>
     <div class="card"><div class="k">Your statistics</div>${statsHtml()}</div>
     <div class="card"><div class="k">What costs you pins</div>${analysisHtml()}</div>
-    ${done2.length ? `<div class="card"><div class="k">Games</div>${done2.map((x) => {
+    ${done3.length ? `<div class="card"><div class="k">Games</div>${done3.map((x) => {
       const s = scoreGame(x.rolls);
       return `<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${s.total}</b> <span class="note">${replay(x.rolls).complete ? "" : "in progress \xB7 "}${esc(new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</span></div><button class="chip danger" data-del="${x.id}">Delete</button></div>`;
     }).join("")}</div>` : ""}`;
@@ -3247,48 +3289,6 @@
       };
       setResultExtra(liveScoreHtml);
       pctStr = (v) => v === null ? "-" : `${Math.round(v)}%`;
-    }
-  });
-
-  // camera/sharefiles.ts
-  function offerShare(box, files, opts = {}) {
-    box.innerHTML = "";
-    const row2 = document.createElement("div");
-    row2.className = "chips";
-    const nav = navigator;
-    const note = document.createElement("div");
-    note.className = "note";
-    const data = { files, title: opts.title, text: opts.text };
-    if (nav.share && (!nav.canShare || nav.canShare({ files }))) {
-      const b = document.createElement("button");
-      b.className = "btn";
-      b.textContent = opts.label ?? "Share";
-      b.onclick = () => {
-        nav.share(data).then(() => note.textContent = "Shared.").catch((e) => {
-          if (e.name !== "AbortError") note.textContent = `Couldn't open the share sheet (${e.message}). Use Save instead.`;
-        });
-      };
-      row2.append(b);
-    }
-    const save2 = document.createElement("button");
-    save2.className = "btn ghost";
-    save2.textContent = files.length > 1 ? "Save the files" : "Save";
-    save2.onclick = () => {
-      const all = opts.text ? [...files, new File([opts.text], "laneiq-notes.txt", { type: "text/plain" })] : files;
-      for (const f of all) {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(f);
-        a.download = f.name;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 8e3);
-      }
-      note.textContent = "Saved.";
-    };
-    row2.append(save2);
-    box.append(row2, note);
-  }
-  var init_sharefiles = __esm({
-    "camera/sharefiles.ts"() {
     }
   });
 
@@ -3943,8 +3943,8 @@
   async function gathered(pc) {
     if (pc.iceGatheringState !== "complete")
       await new Promise((res) => {
-        const done2 = () => pc.iceGatheringState === "complete" && (pc.removeEventListener("icegatheringstatechange", done2), res());
-        pc.addEventListener("icegatheringstatechange", done2);
+        const done3 = () => pc.iceGatheringState === "complete" && (pc.removeEventListener("icegatheringstatechange", done3), res());
+        pc.addEventListener("icegatheringstatechange", done3);
         setTimeout(res, 5e3);
       });
     return pc.localDescription.sdp;
@@ -5191,8 +5191,8 @@ Friends, live sharing and sharing data are switched off, and anything shared sho
     if (known) return { kind: "known", crewId: known.id };
     const versus = crews.find((c) => p.challenges.some((ch) => ch.vs?.crewId === c.id || ch.crewId === c.id && ch.vs?.crewId === p.crew.id));
     if (versus) return { kind: "versus", crewId: versus.id };
-    const open3 = p.challenges.find((ch) => ch.vs && !ch.vs.crewId && ch.end >= isoDay(/* @__PURE__ */ new Date()));
-    if (open3) return { kind: "challenge-invite", challenge: open3 };
+    const open4 = p.challenges.find((ch) => ch.vs && !ch.vs.crewId && ch.end >= isoDay(/* @__PURE__ */ new Date()));
+    if (open4) return { kind: "challenge-invite", challenge: open4 };
     return { kind: "new" };
   }
   function crewFromPacket(p, me3, now = /* @__PURE__ */ new Date()) {
@@ -5348,8 +5348,8 @@ Friends, live sharing and sharing data are switched off, and anything shared sho
       cur2 = r.ok ? cur2 + 1 : 0;
       streak = Math.max(streak, cur2);
     }
-    const done2 = scored.length >= def.shots;
-    return { made, scored: scored.length, total: def.shots, done: done2, streak, text: `${made} of ${scored.length}${done2 ? "" : ` (${def.shots - scored.length} to go)`}${streak >= 3 ? ` \xB7 best streak ${streak}` : ""}` };
+    const done3 = scored.length >= def.shots;
+    return { made, scored: scored.length, total: def.shots, done: done3, streak, text: `${made} of ${scored.length}${done3 ? "" : ` (${def.shots - scored.length} to go)`}${streak >= 3 ? ` \xB7 best streak ${streak}` : ""}` };
   }
   function addDrillShot(run, s) {
     if (summarize2(run).done) return run;
@@ -5359,9 +5359,9 @@ Friends, live sharing and sharing data are switched off, and anything shared sho
     return next;
   }
   function personalBest(history2, id) {
-    const done2 = history2.filter((h) => h.id === id && h.finishedAt).map((h) => ({ s: summarize2(h), at: h.finishedAt }));
-    if (!done2.length) return null;
-    const best = done2.sort((a, b) => b.s.made - a.s.made || a.at.localeCompare(b.at))[0];
+    const done3 = history2.filter((h) => h.id === id && h.finishedAt).map((h) => ({ s: summarize2(h), at: h.finishedAt }));
+    if (!done3.length) return null;
+    const best = done3.sort((a, b) => b.s.made - a.s.made || a.at.localeCompare(b.at))[0];
     return { made: best.s.made, of: best.s.scored, at: best.at };
   }
   var DRILLS2, pinBoard, PIN_REACH;
@@ -5491,7 +5491,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     const today3 = isoDay(/* @__PURE__ */ new Date());
     const meW = me2();
     const active = crew.challenges.filter((c) => !hasEnded(c, today3)).sort((a, b) => a.end.localeCompare(b.end));
-    const done2 = crew.challenges.filter((c) => hasEnded(c, today3)).slice(-3).reverse();
+    const done3 = crew.challenges.filter((c) => hasEnded(c, today3)).slice(-3).reverse();
     const games2 = await myGames();
     const needs = crew.challenges.filter((c) => !hasEnded(c, today3) && c.start <= today3 && needsBaseline(c, games2, typedAvg(c.id)));
     const upcoming = crew.events.filter((e) => e.when >= today3);
@@ -5519,7 +5519,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       <div class="two"><div class="field"><label>How long</label><select id="cw-days"><option value="3">3 days</option><option value="7" selected>A week</option><option value="14">Two weeks</option></select></div><div class="field"><label>Against another crew? Their name</label><input id="cw-vs" maxlength="30" placeholder="optional"></div></div>
       <div class="chips"><button class="btn" id="cw-make">Start it</button></div>
       <div class="note">Against another crew: you get a link to send them. They accept it for one of their crews, and each crew is scored by the average of the bowlers who take part.</div></div>
-    ${done2.length ? `<h3>Recently finished</h3>${done2.map(board).join("")}` : ""}
+    ${done3.length ? `<h3>Recently finished</h3>${done3.map(board).join("")}` : ""}
     <h3>Bowl nights</h3>
     ${upcoming.length ? upcoming.map((e) => {
       const going = goingTo(crew, e);
@@ -18409,6 +18409,109 @@ ${url}`);
     });
   }
 
+  // camera/lanecases.ts
+  init_sharefiles();
+  var DB = "laneiq-lane-cases";
+  var MAX_CASES = 30;
+  var open = () => new Promise((res, rej) => {
+    const r = indexedDB.open(DB, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("cases", { keyPath: "id" });
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  var done = (t) => new Promise((res, rej) => (t.oncomplete = () => res(), t.onerror = () => rej(t.error), t.onabort = () => rej(t.error)));
+  var lastSaved = 0;
+  async function saveLaneCase(kind2, video2, corners2, candidates = [], how) {
+    try {
+      const now = Date.now();
+      if (now - lastSaved < 2e4 && kind2 !== "hand-placed" && kind2 !== "thrown-out") return;
+      if (!video2.videoWidth) return;
+      lastSaved = now;
+      const k2 = Math.min(1, 960 / video2.videoWidth);
+      const c = document.createElement("canvas");
+      c.width = Math.round(video2.videoWidth * k2);
+      c.height = Math.round(video2.videoHeight * k2);
+      c.getContext("2d").drawImage(video2, 0, 0, c.width, c.height);
+      const rec2 = { id: `${now}-${Math.random().toString(36).slice(2, 7)}`, kind: kind2, at: new Date(now).toISOString(), w: video2.videoWidth, h: video2.videoHeight, image: c.toDataURL("image/jpeg", 0.72), corners: corners2.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })), candidates: candidates.slice(0, 4).map((d) => ({ corners: d.corners.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })), confidence: Math.round(d.confidence * 100) / 100 })), how };
+      const db = await open();
+      const t = db.transaction("cases", "readwrite");
+      t.objectStore("cases").put(rec2);
+      await done(t);
+      const all = await listCases(db);
+      if (all.length > MAX_CASES) {
+        const t2 = db.transaction("cases", "readwrite");
+        for (const old of all.slice(0, all.length - MAX_CASES)) t2.objectStore("cases").delete(old.id);
+        await done(t2);
+      }
+      db.close();
+    } catch {
+    }
+  }
+  async function listCases(db) {
+    const rows2 = await new Promise((res, rej) => {
+      const r = db.transaction("cases").objectStore("cases").getAll();
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    return rows2.sort((a, b) => a.at.localeCompare(b.at));
+  }
+  async function laneCaseCount() {
+    try {
+      const db = await open();
+      const rows2 = await listCases(db);
+      db.close();
+      const byKind = {};
+      for (const r of rows2) byKind[r.kind] = (byKind[r.kind] ?? 0) + 1;
+      return { total: rows2.length, byKind };
+    } catch {
+      return { total: 0, byKind: {} };
+    }
+  }
+  async function clearLaneCases() {
+    try {
+      const db = await open();
+      const t = db.transaction("cases", "readwrite");
+      t.objectStore("cases").clear();
+      await done(t);
+      db.close();
+    } catch {
+    }
+  }
+  function laneCasesHtml() {
+    return `<h3>Lane lock reports</h3><div class="card" id="lc-card"><div class="note" id="lc-line">Counting\u2026</div><div id="lc-share"></div><div class="note">When the lane lock fails or you correct it, the app keeps a small picture and the outline, on this phone only. They are what make the lock better. Nothing is sent unless you tap Send, and the pictures may show people standing near the lane, so look before you send.</div><div class="chips"><button class="btn" id="lc-send" disabled>Prepare to send</button><button class="btn ghost danger" id="lc-clear" disabled>Delete them</button></div></div>`;
+  }
+  function wireLaneCases() {
+    const line2 = document.getElementById("lc-line");
+    const send2 = document.getElementById("lc-send");
+    const clear = document.getElementById("lc-clear");
+    if (!line2 || !send2 || !clear) return;
+    const paint2 = async () => {
+      const c = await laneCaseCount();
+      const names = { "thrown-out": "lock you threw away", "hand-placed": "lane you placed by hand", "gave-up": "time it gave up", asked: "time it asked you to tap" };
+      line2.textContent = c.total ? `${c.total} saved: ${Object.entries(c.byKind).map(([k2, n]) => `${n} ${names[k2] ?? k2}${n === 1 ? "" : "s"}`).join(", ")}.` : "None yet. They appear after a lock fails or you fix one.";
+      send2.disabled = clear.disabled = !c.total;
+    };
+    void paint2();
+    send2.onclick = async () => {
+      send2.disabled = true;
+      try {
+        const db = await open();
+        const rows2 = await listCases(db);
+        db.close();
+        const file = new File([JSON.stringify({ app: "LaneIQ lane lock reports", exportedAt: (/* @__PURE__ */ new Date()).toISOString(), userAgent: navigator.userAgent, screen: `${screen.width}x${screen.height}`, cases: rows2 }, null, 1)], `laneiq-lane-reports-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`, { type: "application/json" });
+        offerShare(document.getElementById("lc-share"), [file], { title: "LaneIQ lane lock reports", label: "Send the reports" });
+      } finally {
+        send2.disabled = false;
+      }
+    };
+    clear.onclick = async () => {
+      if (!confirm("Delete all saved lane lock reports from this phone?")) return;
+      await clearLaneCases();
+      document.getElementById("lc-share").innerHTML = "";
+      void paint2();
+    };
+  }
+
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
@@ -18423,6 +18526,7 @@ ${url}`);
         "Clean up your stats: tick shots that came from another bowler or a neighbouring lane in a session and remove them, so they do not count in your averages.",
         "The lane lock now favours the lane in the middle of the picture, or the lane you tapped earlier this evening, and asks you to tap yours when it cannot tell. The camera no longer grabs a bigger neighbouring lane.",
         "A much clearer lane lock: the lane is outlined in bright green with white corner brackets and the rest of the picture is dimmed, a green sweep and a LANE LOCKED banner flash the moment it locks (with a short buzz on phones that allow it), and the pill at the top turns solid green. If you see no green outline, it is not locked.",
+        "Lane lock reports: when the lock fails, you throw one away, or you place the lane by hand, the app keeps a small picture and the outline on your phone (Me, under Lane lock reports). They are how the lock gets fixed for lanes like yours. Nothing is sent unless you tap Send, and you can delete them any time.",
         "If something goes wrong the app now says so in plain words, records it in Copy diagnostics, and keeps your data safe. The tab bar is labelled for screen readers."
       ]
     },
@@ -20853,9 +20957,9 @@ ${url}`);
       ${res.warnings.map((w) => `<div class="note" style="color:var(--gold)">${esc(w)}</div>`).join("")}
       <div class="note">A careful photo reads distances to about an eighth to a quarter inch and angles to a few degrees, if the outline fits the ball and the points are on the right spots. Check against the ball's drill sheet before relying on it. Negative angles and distances mean the other side of the line.</div>
       <div class="chips">${m.drilling !== null ? `<button class="btn" id="bs-open">Open in the Layout Lab</button>` : ""}</div></div>`;
-    const open3 = document.getElementById("bs-open");
-    if (open3)
-      open3.onclick = () => {
+    const open4 = document.getElementById("bs-open");
+    if (open4)
+      open4.onclick = () => {
         close();
         const frame2 = scanFrame({ circle: s.circle, thumb: s.noThumb ? null : s.thumb, fingerA: s.fingerA, fingerB: s.fingerB });
         const keepImg = document.createElement("canvas");
@@ -22453,13 +22557,13 @@ ${url}`);
   var sheet3 = () => $("papscan");
   var kind = "thumb";
   var hand = "R";
-  var done = [];
+  var done2 = [];
   var cur = null;
   function openPapScan() {
     const bp = bowlerProfile();
     hand = bp.hand;
     kind = bp.style === "two-handed" ? "two" : bp.style === "one-hand-no-thumb" ? "nothumb" : "thumb";
-    done = [];
+    done2 = [];
     cur = null;
     intro();
   }
@@ -22569,7 +22673,7 @@ ${url}`);
   function edit() {
     if (!cur) return;
     const c = cur;
-    const n = done.length + 1;
+    const n = done2.length + 1;
     const live2 = c.ring.length >= 4 ? poleFromShot({ circle: c.circle, thumb: kind === "thumb" ? c.thumb : null, fingerA: c.fingerA, fingerB: c.fingerB, ring: c.ring }, hand) : null;
     const modes = MODES.filter((m) => m.id !== "thumb" || kind === "thumb");
     sheet3().innerHTML = `
@@ -22601,9 +22705,9 @@ ${url}`);
     $("pp-smaller").onclick = () => (c.circle = { ...c.circle, r: c.circle.r * 0.97 }, edit());
     $("pp-bigger").onclick = () => (c.circle = { ...c.circle, r: c.circle.r * 1.03 }, edit());
     $("pp-use").onclick = () => {
-      done.push({ circle: c.circle, thumb: kind === "thumb" ? c.thumb : null, fingerA: c.fingerA, fingerB: c.fingerB, ring: c.ring.slice() });
+      done2.push({ circle: c.circle, thumb: kind === "thumb" ? c.thumb : null, fingerA: c.fingerA, fingerB: c.fingerB, ring: c.ring.slice() });
       cur = null;
-      done.length >= WANT ? result() : between();
+      done2.length >= WANT ? result() : between();
     };
   }
   function paint(cv, c) {
@@ -22642,16 +22746,16 @@ ${url}`);
   }
   function between() {
     sheet3().innerHTML = `
-    <div class="row"><h2>Photo ${done.length} saved</h2><button class="btn ghost" id="pp-close">Close</button></div>
-    <div class="card"><div class="u">${done.length} of ${WANT} photos done. Turn the ball a little so a different stretch of the ring faces the camera, with the grip still in view, then take the next one.</div>
-      <div class="chips"><label class="btn" style="display:inline-block;cursor:pointer">Take or choose photo ${done.length + 1}<input id="pp-file" type="file" accept="image/*" capture="environment" style="display:none"></label><button class="btn ghost" id="pp-finish">Use ${done.length === 1 ? "this one photo" : `these ${done.length}`}</button></div>
+    <div class="row"><h2>Photo ${done2.length} saved</h2><button class="btn ghost" id="pp-close">Close</button></div>
+    <div class="card"><div class="u">${done2.length} of ${WANT} photos done. Turn the ball a little so a different stretch of the ring faces the camera, with the grip still in view, then take the next one.</div>
+      <div class="chips"><label class="btn" style="display:inline-block;cursor:pointer">Take or choose photo ${done2.length + 1}<input id="pp-file" type="file" accept="image/*" capture="environment" style="display:none"></label><button class="btn ghost" id="pp-finish">Use ${done2.length === 1 ? "this one photo" : `these ${done2.length}`}</button></div>
       <div class="note" id="pp-msg">Nothing is uploaded: the pictures stay on this phone.</div></div>`;
     $("pp-close").onclick = close3;
     $("pp-finish").onclick = result;
     $("pp-file").onchange = onFile;
   }
   function result() {
-    const e = papEstimate(done, hand);
+    const e = papEstimate(done2, hand);
     if ("error" in e) {
       sheet3().innerHTML = `<div class="row"><h2>PAP from flare rings</h2><button class="btn ghost" id="pp-close">Close</button></div><div class="card"><div class="u">${esc(e.error)}</div><div class="chips"><button class="btn" id="pp-again">Start over</button></div></div>`;
       $("pp-close").onclick = close3;
@@ -22819,9 +22923,9 @@ ${url}`);
     const T = await loadTesseract();
     const words = /* @__PURE__ */ new Map();
     const runs = [["lum", false], ["lum", true], ["r", false], ["r", true], ["b", false], ["b", true], ["g", false], ["g", true]];
-    let done2 = 0;
+    let done3 = 0;
     for (const [ch, inv] of runs) {
-      progress2(done2++, runs.length);
+      progress2(done3++, runs.length);
       const { data } = await T.recognize(prepare(src, c, ch, inv), "eng");
       for (const w of data.words) {
         const clean = w.text.replace(/[^A-Za-z0-9]/g, "");
@@ -23830,16 +23934,16 @@ ${url}`);
         });
         v.playbackRate = 0.5;
         await new Promise((resolve) => {
-          let done2 = false;
+          let done3 = false;
           const finish2 = () => {
-            if (done2) return;
-            done2 = true;
+            if (done3) return;
+            done3 = true;
             v.pause();
             resolve();
           };
           const guard = setTimeout(finish2, Math.max(8e3, (tEnd - startAt) / 0.5 * 1e3 + 8e3));
           const onFrame2 = (_n, meta) => {
-            if (done2) return;
+            if (done3) return;
             const t = meta.mediaTime;
             if (t >= tFirst - 0.02 && t <= tEnd + 0.02 && frames.length < MAX_FRAMES) {
               const b = ballAt(t);
@@ -23984,15 +24088,15 @@ ${url}`);
     const withClip = S.shots.filter((s) => s.hasClip).slice(-30).reverse();
     const stat = (s) => !s.spin ? "not measured yet" : s.spin.status === "measured" || s.spin.status === "rough" ? `${Math.round(s.spin.rpm)} rpm (${s.spin.status})` : "too coarse";
     const paintShots = () => {
-      const done2 = S.shots.filter((s) => s.spin && s.spin.status !== "too-coarse" && s.spin.status !== "none" && s.spin.rpm !== null);
+      const done3 = S.shots.filter((s) => s.spin && s.spin.status !== "too-coarse" && s.spin.status !== "none" && s.spin.rpm !== null);
       const medv = (k2) => {
-        const a = done2.map((s) => s.spin[k2]).sort((x, y) => x - y);
+        const a = done3.map((s) => s.spin[k2]).sort((x, y) => x - y);
         return a[Math.floor(a.length / 2)];
       };
       $("sl-shots").innerHTML = `<div class="k">From a shot you recorded</div>
       <div class="note">Every shot's video is read automatically. At 30 or 60 frames a second a ball turning 5 to 7 times a second turns 36\xB0 to 72\xB0 between frames and is only a few dozen pixels wide, so most ordinary clips come back as too coarse; slow-motion clips (120 or 240 fps, ball filling a good part of the frame) can be read.</div>
       ${withClip.length ? `<div class="field"><select id="sl-shotsel">${withClip.map((s) => `<option value="${s.id}">${esc(new Date(s.at).toLocaleString())} \xB7 ${esc(stat(s))}</option>`).join("")}</select></div>
-      <div class="chips"><button class="btn" id="sl-shotgo">Measure this shot</button>${done2.length ? `<button class="chip" id="sl-usemed">Use the median of ${done2.length} measured shot${done2.length === 1 ? "" : "s"} (${Math.round(medv("rpm"))} rpm)</button>` : ""}</div>
+      <div class="chips"><button class="btn" id="sl-shotgo">Measure this shot</button>${done3.length ? `<button class="chip" id="sl-usemed">Use the median of ${done3.length} measured shot${done3.length === 1 ? "" : "s"} (${Math.round(medv("rpm"))} rpm)</button>` : ""}</div>
       <div class="note" id="sl-shotprog"></div><div id="sl-shotres">${spinCardHtml(withClip[0].spin)}</div>` : `<div class="note">No recorded shots with video yet.</div>`}`;
       const sel2 = document.getElementById("sl-shotsel");
       if (!sel2) return;
@@ -24332,7 +24436,7 @@ ${url}`);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   };
   var when2 = (on3) => on3 ? (/* @__PURE__ */ new Date(on3 + "T00:00:00")).toLocaleDateString(void 0, { month: "short", day: "numeric", year: "numeric" }) : "no date";
-  var open2 = /* @__PURE__ */ new Set();
+  var open3 = /* @__PURE__ */ new Set();
   var FIELDS = [
     { key: "drilling", label: "Drilling angle (\xB0)", kind: "deg", systems: ["dual"], placeholder: "70" },
     { key: "pinToPap", label: "Pin to PAP (in)", kind: "in", systems: ["dual", "pinbuffer", "2ls"], placeholder: "3 3/4" },
@@ -24370,7 +24474,7 @@ ${url}`);
       <div class="u" style="opacity:.85">${esc3(track)}</div>
       <div class="chips"><button class="chip" data-bn="edit">Edit</button><button class="chip danger" data-bn="rm">Remove</button></div></div>`;
     };
-    return `<details class="bn" data-bn-card="${esc3(b.id)}" ${open2.has(b.id) ? "open" : ""} style="margin-top:8px"><summary class="k" style="cursor:pointer">Notes and layouts${layouts.length ? ` (${layouts.length})` : ""}${b.notes ? " \xB7 notes" : ""}</summary>
+    return `<details class="bn" data-bn-card="${esc3(b.id)}" ${open3.has(b.id) ? "open" : ""} style="margin-top:8px"><summary class="k" style="cursor:pointer">Notes and layouts${layouts.length ? ` (${layouts.length})` : ""}${b.notes ? " \xB7 notes" : ""}</summary>
     <div class="u" style="margin:6px 0">${cur2 ? `Now: <b>${esc3(layoutLine(cur2))}</b>${cur2.on ? `, drilled ${esc3(when2(cur2.on))}` : ""}.` : "No layout recorded. Add it if you know it: it's on the drill sheet your driller gave you, and your pro shop can tell you."}</div>
     ${ordered.map(entry).join("")}
     ${lab2.length ? `<div class="chips">${lab2.map((l, i) => `<button class="chip add" data-bn="lab" data-i="${i}">+ Use my Layout Lab layout: ${esc3(layoutLine(l))}</button>`).join("")}</div>` : ""}
@@ -24390,7 +24494,7 @@ ${url}`);
   function wireBallNotes(card, b) {
     const det = card.querySelector("details.bn");
     if (!det) return;
-    det.addEventListener("toggle", () => det.open ? open2.add(b.id) : open2.delete(b.id));
+    det.addEventListener("toggle", () => det.open ? open3.add(b.id) : open3.delete(b.id));
     const form = det.querySelector(".bn-form");
     const get = (k2) => form.querySelector(`[data-bf="${k2}"]`);
     const msg = form.querySelector('[data-bn="msg"]');
@@ -24399,8 +24503,8 @@ ${url}`);
     const showFields = () => form.querySelectorAll("[data-systems]").forEach((f) => f.style.display = !sys() || f.dataset.systems.split(",").includes(sys()) ? "" : "none");
     get("system").onchange = showFields;
     showFields();
-    const done2 = async () => {
-      open2.add(b.id);
+    const done3 = async () => {
+      open3.add(b.id);
       await saveArsenal();
     };
     form.querySelector('[data-bn="cancel"]').onclick = () => form.open = false;
@@ -24419,14 +24523,14 @@ ${url}`);
       const prev = (b.layouts ?? []).find((x) => x.id === clean.id);
       if (prev?.fromLab) clean.fromLab = true;
       b.layouts = [...(b.layouts ?? []).filter((x) => x.id !== clean.id), clean];
-      await done2();
+      await done3();
     };
     det.querySelectorAll(".bn-entry").forEach((row2) => {
       const id = row2.dataset.lid;
       row2.querySelector('[data-bn="rm"]').onclick = async () => {
         if (!confirm("Remove this layout entry?")) return;
         b.layouts = (b.layouts ?? []).filter((x) => x.id !== id);
-        await done2();
+        await done3();
       };
       row2.querySelector('[data-bn="edit"]').onclick = () => {
         const l = (b.layouts ?? []).find((x) => x.id === id);
@@ -24448,13 +24552,13 @@ ${url}`);
         const l = list[Number(btn.dataset.i)];
         if (!l) return;
         b.layouts = [...b.layouts ?? [], l];
-        await done2();
+        await done3();
       };
     });
     const notes = det.querySelector('textarea[data-bn="notes"]');
     notes.onchange = async () => {
       b.notes = notes.value.replace(/\r/g, "").slice(0, 2e3).trim() || void 0;
-      await done2();
+      await done3();
     };
   }
 
@@ -25125,10 +25229,10 @@ ${url}`);
   var lastFrames = [];
   var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
   var seekTo = (v, t) => new Promise((res) => {
-    let done2 = false;
+    let done3 = false;
     const f = () => {
-      if (done2) return;
-      done2 = true;
+      if (done3) return;
+      done3 = true;
       v.removeEventListener("seeked", f);
       res();
     };
@@ -26123,8 +26227,8 @@ ${url}`);
       const parts = [];
       for (; ; ) {
         try {
-          const { done: done2, value } = await reader.read();
-          if (done2) break;
+          const { done: done3, value } = await reader.read();
+          if (done3) break;
           parts.push(value);
         } catch {
           break;
@@ -26332,8 +26436,8 @@ ${url}`);
   function preview(canvas, p) {
     drawTopDown(canvas.getContext("2d"), canvas.width, canvas.height, [], void 0, mapOf(p));
   }
-  function openPatterns(done2) {
-    onDone = done2 ?? null;
+  function openPatterns(done3) {
+    onDone = done3 ?? null;
     const el = sheet10();
     el.classList.add("on");
     const list = S.myPatterns;
@@ -26371,12 +26475,12 @@ ${url}`);
       card.querySelector("[data-act=use]")?.addEventListener("click", async () => {
         S.where = { ...S.where, patternId: p.id };
         await saveCoach();
-        openPatterns(done2);
+        openPatterns(done3);
       });
       card.querySelector("[data-act=off]")?.addEventListener("click", async () => {
         S.where = { ...S.where, patternId: "" };
         await saveCoach();
-        openPatterns(done2);
+        openPatterns(done3);
       });
       card.querySelector("[data-act=edit]")?.addEventListener("click", () => openEditor2({ rows: p.rows ?? [], tableOk: !!p.rows?.length, notes: [], lengthFt: p.lengthFt, volumeMl: p.volumeMl, ratio: p.ratio, forwardMl: p.forwardMl, reverseMl: p.reverseMl, brushDropFt: p.brushDropFt }, p.from, p.name, p));
       card.querySelector("[data-act=del]")?.addEventListener("click", async () => {
@@ -26384,7 +26488,7 @@ ${url}`);
         S.myPatterns = S.myPatterns.filter((x) => x.id !== p.id);
         if (S.where.patternId === p.id) S.where = { ...S.where, patternId: "" };
         await saveCoach();
-        openPatterns(done2);
+        openPatterns(done3);
       });
     });
   }
@@ -27017,10 +27121,10 @@ ${url}`);
     document.getElementById("co-bodyrun")?.addEventListener("click", async () => {
       const list = shots.filter((s) => s.hasClip && !s.body && !bodyPending(s.id)).slice(-10);
       const note = $("co-bodyprog");
-      let done2 = 0;
+      let done3 = 0;
       for (const s of list) {
-        await queueBody(s, { onProgress: (m) => note.textContent = `Clip ${done2 + 1} of ${list.length}: ${m}` });
-        done2++;
+        await queueBody(s, { onProgress: (m) => note.textContent = `Clip ${done3 + 1} of ${list.length}: ${m}` });
+        done3++;
       }
       renderCoach(el, seg, wireSeg);
     });
@@ -27766,12 +27870,14 @@ ${url}`);
     <div class="card"><ul>${healthSummary().lines.map((l) => `<li>${esc(l)}</li>`).join("")}<li>Ball catalog: ${S.catalog.length} balls, each spec with its source.</li></ul>
       <div class="note">The app keeps these numbers on this phone only. If lane lock keeps struggling, copy them and send them with a Save frame picture so detection can be improved from real examples.</div>
       <div class="chips"><button class="btn ghost" id="me-diag">Copy diagnostics</button></div></div>
+    ${laneCasesHtml()}
     <h3>Your data</h3>
     <div class="card"><div class="note">Everything is stored only on this phone. Nothing is uploaded, and there is no account to sign in to. If you delete the app's website data or switch phones, your history doesn't come along unless you export it.</div><div id="me-storage" class="u" style="margin-top:6px"></div><div class="chips"><button class="btn ghost" id="me-export">Export my data</button></div></div>
     <h3>Legal</h3>
     <div class="card"><div class="note">LaneIQ is not affiliated with, endorsed by or sponsored by the USBC, the PBA or any ball maker. Their names and marks belong to their owners. Ball and pattern information comes from public sources, listed in the credits, and may be out of date or wrong.</div><div class="chips"><a class="chip" href="privacy.html">Privacy policy</a><a class="chip" href="terms.html">Terms of use</a><a class="chip" href="credits.html">Credits and data sources</a></div></div>
     <h3>About</h3>
     <div class="card"><div class="note">Measurements come from one phone camera, so they carry uncertainty. The coaching only links your habits to strikes once there are at least ${MIN_OUTCOMES} shots with a pin count entered, and calls small samples "tentative". Ball and pattern numbers are published specs, not measurements of how a ball behaves for you. Minimum sample for a reliable percentage is ${MIN_SAMPLE}.</div></div>`;
+    wireLaneCases();
     $("me-save")?.addEventListener("click", () => {
       const rev = parseInt($("me-rev").value, 10);
       const name = $("me-name").value.trim() || p.name;
@@ -29364,16 +29470,16 @@ ${url}`);
     });
     v.playbackRate = rate3;
     await new Promise((resolve) => {
-      let done2 = false;
+      let done3 = false;
       const end = () => {
-        if (done2) return;
-        done2 = true;
+        if (done3) return;
+        done3 = true;
         v.pause();
         resolve();
       };
       const guard = setTimeout(end, Math.max(8e3, (to - from) / rate3 * 1e3 + 8e3));
       const onFrame2 = (_n, meta) => {
-        if (done2) return;
+        if (done3) return;
         if (meta.mediaTime >= from - 0.02) each(meta.mediaTime);
         if (meta.mediaTime > to || v.ended) {
           clearTimeout(guard);
@@ -30285,10 +30391,10 @@ ${url}`);
     await video.play();
     if (!video.videoWidth || !video.videoHeight) {
       await new Promise((res) => {
-        const done2 = () => (video.removeEventListener("loadedmetadata", done2), video.removeEventListener("resize", done2), res());
-        video.addEventListener("loadedmetadata", done2);
-        video.addEventListener("resize", done2);
-        setTimeout(done2, 4e3);
+        const done3 = () => (video.removeEventListener("loadedmetadata", done3), video.removeEventListener("resize", done3), res());
+        video.addEventListener("loadedmetadata", done3);
+        video.addEventListener("resize", done3);
+        setTimeout(done3, 4e3);
       });
     }
     overlay.width = video.videoWidth;
@@ -30337,6 +30443,7 @@ ${url}`);
     if (!refiningLock && (how !== "automatic" || lastLockHow !== "automatic")) pinRefs = [], pinTries = 0, pinRefDone = false;
     if (how !== "automatic") rejected = [], redoStreak = 0;
     logLock({ how, secs: /saved setup/.test(how) || !detectStartedAt ? null : Math.round((performance.now() - detectStartedAt) / 100) / 10, confidence: lastLockConf, foulSeen: lastCandidates[0] ? lastCandidates[0].rows.foul !== null : null });
+    if (/^placed by hand/.test(how)) void saveLaneCase("hand-placed", video, c, lastCandidates, how);
     corners = c;
     lastLockHow = how;
     driftRef = null;
@@ -30610,6 +30717,7 @@ ${url}`);
     ctx.restore();
   }
   function enterTap(reason) {
+    void saveLaneCase("gave-up", video, [], lastCandidates, reason);
     mode = "tap";
     corners = [];
     candidate = null;
@@ -30623,6 +30731,7 @@ ${url}`);
     renderScan();
   }
   function enterChoose(list) {
+    void saveLaneCase("asked", video, [], lastCandidates, `${list.length} lanes`);
     mode = "choose";
     chooseList = list;
     candidate = null;
@@ -31100,6 +31209,7 @@ ${url}`);
   function relock(logMiss = true) {
     let traceFrom = null;
     if (logMiss) {
+      if (corners.length === 4) void saveLaneCase("thrown-out", video, corners, lastCandidates, lastLockHow);
       markRedone();
       const now = performance.now();
       redoStreak = now - lastRedoAt < 18e4 ? redoStreak + 1 : 1;
