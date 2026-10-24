@@ -44,6 +44,11 @@
   body.expanded .hud{position:fixed;left:0;right:0;bottom:0;margin:0;z-index:71;border-radius:0;flex-wrap:wrap;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
   body.expanded .scanbox{display:none}
   body.expanded .tabbar{display:none}
+  /* a foldable standing half-open (see fold.ts): the picture in the top half (or the left half when the hinge is upright), the controls in the other half */
+  body.folded:not(.expanded) #tab-live.on{padding-top:var(--pt,0);padding-left:var(--pl,0)}
+  body.folded:not(.expanded) #tab-live.on #stage{position:fixed;left:calc(var(--fl,0px));top:var(--ft,0px);width:var(--fw);height:var(--fh);aspect-ratio:auto;max-height:none;max-width:none;margin:0;border-radius:0 0 18px 18px;z-index:30}
+  body.folded:not(.expanded):has(#tab-live.on) header{display:none}
+  body.folded:not(.expanded) #tab-live.on .scanbox{margin-top:8px}
   #pinstat{font-size:12px;color:var(--dim)}
   .seg{appearance:none;border:0;background:transparent;color:var(--dim);font:600 12px system-ui;padding:7px 12px;cursor:pointer}
   .seg.on{background:rgba(70,230,255,.22);color:#fff}
@@ -261,6 +266,6 @@
   <button class="tb" data-tab="proshop"><svg viewBox="0 0 24 24"><path d="M14.5 5.5a4 4 0 0 0-5 5L4 16l4 4 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5z"/></svg>Pro shop</button>
   <button class="tb" data-tab="learn"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 19V5.5M8.5 7.5h7M8.5 11h5"/></svg>Learn</button>
   <button class="tb" data-tab="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/></svg>Me</button></nav>
-<script src="camera.js?v=mvlilimi"></script>
+<script src="camera.js?v=mvm2djpr"></script>
 </body>
 </html>

@@ -247,8 +247,8 @@
     return { slope, t: se === 0 ? slope === 0 ? 0 : Infinity : slope / se };
   }
   function readLane(all) {
-    const last = all[all.length - 1];
-    const sameBall2 = last?.ballId ? all.filter((s) => s.ballId === last.ballId) : all;
+    const last2 = all[all.length - 1];
+    const sameBall2 = last2?.ballId ? all.filter((s) => s.ballId === last2.ballId) : all;
     const shots = sameBall2.slice(-12);
     const n = shots.length;
     if (n < MIN_SHOTS) {
@@ -378,24 +378,24 @@
       for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
     return d[m][n];
   }
-  function tokenSim(q, t) {
-    if (q === t) return 1;
-    const qq = unconfuse(q);
+  function tokenSim(q2, t) {
+    if (q2 === t) return 1;
+    const qq = unconfuse(q2);
     const tt = unconfuse(t);
     if (qq === tt) return 0.95;
-    if (q.length >= 3 && (t.startsWith(q) || q.startsWith(t))) return 0.8;
+    if (q2.length >= 3 && (t.startsWith(q2) || q2.startsWith(t))) return 0.8;
     const sim = 1 - lev(qq, tt) / Math.max(qq.length, tt.length);
     return sim >= 0.7 && Math.max(qq.length, tt.length) >= 4 ? sim * 0.9 : 0;
   }
   function fuzzyScore(query, target) {
-    const q = tokens(query);
+    const q2 = tokens(query);
     const t = tokens(target);
-    if (!q.length || !t.length) return 0;
+    if (!q2.length || !t.length) return 0;
     const best = (a, b) => a.map((x) => Math.max(...b.map((y) => tokenSim(x, y))));
-    const qs = best(q, t);
-    const ts = best(t, q);
+    const qs = best(q2, t);
+    const ts = best(t, q2);
     const w = (words, s) => words.reduce((acc, x, i) => acc + x.length * s[i], 0) / words.reduce((acc, x) => acc + x.length, 0);
-    return 0.7 * w(q, qs) + 0.3 * w(t, ts);
+    return 0.7 * w(q2, qs) + 0.3 * w(t, ts);
   }
   function searchCatalog(catalog, query, limit = 8) {
     if (!norm(query)) return [];
@@ -1064,8 +1064,8 @@
       entry = f.slope * ENTRY_FT + f.intercept;
     }
     const first = path2[0];
-    const last = path2[path2.length - 1];
-    const exitH = headingDeg(path2, last.y - 10, last.y + 0.01);
+    const last2 = path2[path2.length - 1];
+    const exitH = headingDeg(path2, last2.y - 10, last2.y + 0.01);
     const launch = headingDeg(p, 3, 20);
     const impact = lastY >= ENTRY_FT - 10 ? headingDeg(p, tailFrom, 58) : null;
     const coverage = Math.min(1, (p[p.length - 1].y - p[0].y) / 45);
@@ -1082,25 +1082,25 @@
       samples: p.length,
       confidence,
       release: { board: boardFromRight(first.x), ft: first.y },
-      lastSeen: { board: boardFromRight(last.x), ft: last.y, t: last.t },
+      lastSeen: { board: boardFromRight(last2.x), ft: last2.y, t: last2.t },
       exitHeadingDeg: exitH?.deg ?? null,
-      entryMeasured: last.y >= ENTRY_FT - 2,
-      reachedDeck: last.y >= 60
+      entryMeasured: last2.y >= ENTRY_FT - 2,
+      reachedDeck: last2.y >= 60
     };
   }
   function projectToPins(path2, fromFt = 38) {
     const p = forwardPath(path2).filter((s) => s.y >= 3);
     if (p.length < 8) return [];
-    const last = p[p.length - 1];
-    if (last.y >= ENTRY_FT - 0.5 || last.y < fromFt) return [];
-    const tail = p.filter((s) => s.y >= last.y - 8);
+    const last2 = p[p.length - 1];
+    if (last2.y >= ENTRY_FT - 0.5 || last2.y < fromFt) return [];
+    const tail = p.filter((s) => s.y >= last2.y - 8);
     if (tail.length < 4 || tail[tail.length - 1].y - tail[0].y < 2.5) return [];
     const fx = linearFit(tail.map((s) => s.y), tail.map((s) => s.x));
     const ft = linearFit(tail.map((s) => s.y), tail.map((s) => s.t));
     if (!(ft.slope > 0)) return [];
     const out = [];
-    for (let y = Math.floor(last.y) + 1; y < ENTRY_FT; y += 1) out.push({ t: last.t + (y - last.y) * ft.slope, x: fx.slope * y + fx.intercept, y });
-    out.push({ t: last.t + (ENTRY_FT - last.y) * ft.slope, x: fx.slope * ENTRY_FT + fx.intercept, y: ENTRY_FT });
+    for (let y = Math.floor(last2.y) + 1; y < ENTRY_FT; y += 1) out.push({ t: last2.t + (y - last2.y) * ft.slope, x: fx.slope * y + fx.intercept, y });
+    out.push({ t: last2.t + (ENTRY_FT - last2.y) * ft.slope, x: fx.slope * ENTRY_FT + fx.intercept, y: ENTRY_FT });
     return out;
   }
   function gatePath(p) {
@@ -1125,7 +1125,7 @@
     const med3 = (a) => [...a].sort((x, y) => x - y)[a.length >> 1];
     const xm = p.map((s, i) => {
       const m = Math.max(3, halfAt(s.y, base) - 2);
-      return med3(p.slice(Math.max(0, i - m), Math.min(p.length, i + m + 1)).map((q) => q.x));
+      return med3(p.slice(Math.max(0, i - m), Math.min(p.length, i + m + 1)).map((q2) => q2.x));
     });
     const ym = p.map((_, i) => med3(p.slice(Math.max(0, i - 3), Math.min(p.length, i + 4)).map((s) => s.y)));
     const out = p.map((s, i) => {
@@ -1153,19 +1153,19 @@
     const path2 = forwardPath(rawPath);
     if (path2.length < 6) return null;
     const first = path2[0];
-    const last = path2[path2.length - 1];
-    const span = last.y - first.y;
-    if (span < 5 || last.t - first.t < 0.15) return null;
+    const last2 = path2[path2.length - 1];
+    const span = last2.y - first.y;
+    if (span < 5 || last2.t - first.t < 0.15) return null;
     const fit = linearFit(path2.map((s) => s.t), path2.map((s) => s.y));
     if (!(fit.slope > 0)) return null;
     const speed = fit.slope * (3600 / 5280);
     if (speed < 5 || speed > 40) return null;
     const arrows = interp(path2, ARROWS_FT);
-    const exitH = headingDeg(path2, last.y - 10, last.y + 0.01);
+    const exitH = headingDeg(path2, last2.y - 10, last2.y + 0.01);
     const launch = headingDeg(path2, Math.max(first.y, 3), Math.max(first.y, 3) + 17);
     return {
       speedMph: speed,
-      speedUncertainty: fit.rmse / (last.t - first.t) * (3600 / 5280) * 2,
+      speedUncertainty: fit.rmse / (last2.t - first.t) * (3600 / 5280) * 2,
       boardAtArrows: arrows === null ? null : boardFromRight(arrows),
       breakpointBoard: null,
       breakpointFt: null,
@@ -1175,10 +1175,10 @@
       samples: path2.length,
       confidence: Math.max(0, Math.min(1, span / 45 * (1 - Math.min(1, fit.rmse / 5)))) * 0.6,
       release: { board: boardFromRight(first.x), ft: first.y },
-      lastSeen: { board: boardFromRight(last.x), ft: last.y, t: last.t },
+      lastSeen: { board: boardFromRight(last2.x), ft: last2.y, t: last2.t },
       exitHeadingDeg: exitH?.deg ?? null,
       entryMeasured: false,
-      reachedDeck: last.y >= 60,
+      reachedDeck: last2.y >= 60,
       partial: true
     };
   }
@@ -1521,12 +1521,12 @@
     const p = computeProfile(S.shots);
     const speed = p.stats.launchSpeed;
     const angle = p.stats.entryAngle;
-    const q = S.profile?.quiz;
+    const q2 = S.profile?.quiz;
     const sp = S.profile?.spin;
-    const rev = sp?.rpm ? { rpm: sp.rpm, source: sp.source === "video" ? "measured" : "entered" } : q ? estimateRev({ style: q.style, revTier: q.revTier, revRpm: S.profile?.revRpm ?? q.revRpm }) : S.profile?.revRpm ? { rpm: S.profile.revRpm, source: "entered" } : void 0;
+    const rev = sp?.rpm ? { rpm: sp.rpm, source: sp.source === "video" ? "measured" : "entered" } : q2 ? estimateRev({ style: q2.style, revTier: q2.revTier, revRpm: S.profile?.revRpm ?? q2.revRpm }) : S.profile?.revRpm ? { rpm: S.profile.revRpm, source: "entered" } : void 0;
     return {
       hand: S.profile?.hand ?? "R",
-      style: q?.style,
+      style: q2?.style,
       launchSpeed: speed && speed.n >= 5 ? speed.mean : void 0,
       entryAngle: angle && angle.n >= 5 ? angle.mean : void 0,
       revRpm: rev?.rpm,
@@ -1739,8 +1739,8 @@
     const r = readLane(tracked);
     const el = $("lane-read");
     el.innerHTML = `<div class="lr-head">${esc(r.headline)}</div><span class="badge ${r.confidence}">${r.confidence} confidence \xB7 ${r.shotsUsed} shots</span><ul>${r.points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul><div class="lr-next">Next test: ${esc(r.next)}</div>`;
-    const last = sessionShots().at(-1);
-    const rec2 = recommendBall(r, last?.ballId, ownedBalls().map((b) => ({ id: b.id, name: b.name, catalog: b.specs })));
+    const last2 = sessionShots().at(-1);
+    const rec2 = recommendBall(r, last2?.ballId, ownedBalls().map((b) => ({ id: b.id, name: b.name, catalog: b.specs })));
     const rc = document.createElement("div");
     rc.className = "lr-next rec";
     rc.innerHTML = `Equipment: ${esc(rec2.text)}${rec2.basis.map((l) => `<div class="u">${esc(l)}</div>`).join("")}`;
@@ -1883,8 +1883,8 @@
         i = counts.length;
       }
     }
-    const last = [...frames].reverse().find((f) => f.total !== null);
-    return { frames, total: last?.total ?? 0, complete: replay(rolls).complete };
+    const last2 = [...frames].reverse().find((f) => f.total !== null);
+    return { frames, total: last2?.total ?? 0, complete: replay(rolls).complete };
   }
   function bowlingStats(games2) {
     const complete = games2.filter((g) => replay(g.rolls).complete);
@@ -1969,7 +1969,7 @@
     const queue = [leave[0]];
     while (queue.length) {
       const p = queue.pop();
-      for (const q of leave) if (!seen2.has(q) && touching(p, q)) seen2.add(q), queue.push(q);
+      for (const q2 of leave) if (!seen2.has(q2) && touching(p, q2)) seen2.add(q2), queue.push(q2);
     }
     return seen2.size < leave.length;
   }
@@ -3395,9 +3395,9 @@
         if (val2 > 0.01) any = true;
       }
       if (!any) continue;
-      const q = [P(x0, 0), P(x1, 0), P(x1, end), P(x0, end)];
+      const q2 = [P(x0, 0), P(x1, 0), P(x1, end), P(x0, end)];
       ctx2.beginPath();
-      q.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
+      q2.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
       ctx2.closePath();
       ctx2.fillStyle = g;
       ctx2.fill();
@@ -3621,7 +3621,7 @@
     el.classList.add("on");
     el.dataset.live = "1";
     const peerName = l.peer ? `${esc(l.peer.name)}${l.peer.username ? ` <span class="note">@${esc(l.peer.username)}</span>` : ""}` : "your friend";
-    const last = (a) => a[a.length - 1];
+    const last2 = (a) => a[a.length - 1];
     const fmt4 = (v, d = 1) => v === null || v === void 0 ? "-" : v.toFixed(d);
     const row = (label2, a, b, d = 1) => `<tr><td>${label2}</td><td class="n">${fmt4(a, d)}</td><td class="n">${fmt4(b, d)}</td></tr>`;
     const same = !!myLane && !!l.peerLane && myLane.toLowerCase() === l.peerLane.toLowerCase();
@@ -3633,7 +3633,7 @@
     <div class="card"><div class="stagebox"><canvas id="lv-map" width="360" height="560" style="width:100%;height:auto;aspect-ratio:360/560"></canvas></div>
       <div class="note"><span style="color:#46e6ff">Cyan: you (${l.mine.length})</span> \xB7 <span style="color:#ffd25a">Gold: ${peerName} (${l.theirs.length})</span></div></div>
     <div class="card"><table><tr><th>Latest shot</th><th class="n">You</th><th class="n">${l.peer ? esc(l.peer.name) : "Them"}</th></tr>
-      ${row("Speed (mph)", last(l.mine)?.sp, last(l.theirs)?.sp)}${row("Board at arrows", last(l.mine)?.ar, last(l.theirs)?.ar)}${row("Breakpoint board", last(l.mine)?.bb, last(l.theirs)?.bb)}${row("Breakpoint (ft)", last(l.mine)?.bf, last(l.theirs)?.bf, 0)}${row("Entry board", last(l.mine)?.en, last(l.theirs)?.en)}${row("Entry angle (\xB0)", last(l.mine)?.an, last(l.theirs)?.an)}</table></div>
+      ${row("Speed (mph)", last2(l.mine)?.sp, last2(l.theirs)?.sp)}${row("Board at arrows", last2(l.mine)?.ar, last2(l.theirs)?.ar)}${row("Breakpoint board", last2(l.mine)?.bb, last2(l.theirs)?.bb)}${row("Breakpoint (ft)", last2(l.mine)?.bf, last2(l.theirs)?.bf, 0)}${row("Entry board", last2(l.mine)?.en, last2(l.theirs)?.en)}${row("Entry angle (\xB0)", last2(l.mine)?.an, last2(l.theirs)?.an)}</table></div>
     <div class="chips"><button class="btn ghost" id="lv-save">Save their shots to compare later</button><button class="btn ghost" id="lv-end">End session</button></div><div class="note" id="lv-msg">${l.state === "ended" ? "The connection closed. Your shots are saved on this phone as usual." : ""}</div>`;
     $("lv-close").onclick = () => (el.dataset.live = "", close4());
     $("lv-lane").onchange = (e) => {
@@ -3783,19 +3783,19 @@
     ].filter((a) => a !== null);
   }
   function snapshotFor(l, by = "hdcp") {
-    const last = l.weeks[l.weeks.length - 1];
+    const last2 = l.weeks[l.weeks.length - 1];
     return {
       v: 1,
       t: "board",
       leagueId: l.id,
       name: l.name,
       center: l.center,
-      week: last?.n ?? 0,
-      date: last?.date ?? "",
+      week: last2?.n ?? 0,
+      date: last2?.date ?? "",
       by,
       rows: standings(l, by).map((r) => ({ rank: r.rank, name: r.bowler.name, team: r.bowler.team, games: r.games, avg: r.avg === null ? null : Math.round(r.avg * 10) / 10, hcp: r.hcp, pins: r.pins, hdcpPins: r.hdcpPins, highGame: r.highGame, highSeries: r.highSeries, over: Math.round(r.overAvg), junior: r.bowler.junior })),
       teams: teamStandings(l).map((t) => ({ rank: t.rank, team: t.team, hdcpPins: t.hdcpPins, pins: t.pins })),
-      awards: last ? nightAwards(l, last) : []
+      awards: last2 ? nightAwards(l, last2) : []
     };
   }
   function parseLeaguePayload(json) {
@@ -3948,12 +3948,12 @@
     const drillRuns = inp.drills.filter((d) => d.finishedAt && inP(d.finishedAt, from, now + DAY));
     const weeks = [];
     for (let i = 7; i >= 0; i--) {
-      const start = mondayOf(now - i * 7 * DAY);
-      const a = Date.parse(start);
+      const start2 = mondayOf(now - i * 7 * DAY);
+      const a = Date.parse(start2);
       const b = a + 7 * DAY;
       const g = inp.games.filter((x) => replay(x.rolls).complete && inP(x.at, a, b));
       const totals = g.map((x) => scoreGame(x.rolls).total);
-      weeks.push({ start, games: g.length, avg: totals.length ? Math.round(mean3(totals)) : null, tracked: inp.shots.filter((s) => inP(s.at, a, b)).length });
+      weeks.push({ start: start2, games: g.length, avg: totals.length ? Math.round(mean3(totals)) : null, tracked: inp.shots.filter((s) => inP(s.at, a, b)).length });
     }
     let streak = 0;
     for (let i = weeks.length - 1; i >= 0; i--) {
@@ -4039,7 +4039,7 @@
     });
     const asOf = str2(o.asOf, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) return null;
-    const last = str2(o.lastActive, 10);
+    const last2 = str2(o.lastActive, 10);
     return {
       v: 1,
       t: "progress",
@@ -4062,7 +4062,7 @@
       drills: numOrNull2(o.drills, 0, 500) ?? 0,
       streakWeeks: numOrNull2(o.streakWeeks, 0, 60) ?? 0,
       weeks,
-      lastActive: /^\d{4}-\d{2}-\d{2}$/.test(last) ? last : null,
+      lastActive: /^\d{4}-\d{2}-\d{2}$/.test(last2) ? last2 : null,
       // the highlights are rebuilt from the numbers here, never taken from the link, so a link can't put words in a child's mouth
       highlights: []
     };
@@ -4250,11 +4250,11 @@ Games: ${p.games.join(", ")}`)) return;
     el.classList.add("on");
     const rows2 = standings(l, rankBy);
     const teams = teamStandings(l);
-    const last = l.weeks[l.weeks.length - 1];
-    const nextWeek = (last?.n ?? 0) + 1;
+    const last2 = l.weeks[l.weeks.length - 1];
+    const nextWeek = (last2?.n ?? 0) + 1;
     if (!weekSel || weekSel > nextWeek) weekSel = nextWeek;
     const wk = l.weeks.find((w) => w.n === weekSel);
-    const awards = last ? nightAwards(l, last) : [];
+    const awards = last2 ? nightAwards(l, last2) : [];
     const metric = (r) => rankBy === "scratch" ? `${r.pins}` : rankBy === "improve" ? `${r.overAvg >= 0 ? "+" : ""}${Math.round(r.overAvg)}` : `${r.hdcpPins}`;
     el.innerHTML = `<div class="row"><div><h2 style="margin:0">${esc(l.name)}</h2><div class="note">${esc(l.center ?? "")}${l.center ? " \xB7 " : ""}${l.gamesPerNight} games \xB7 handicap ${l.hcpPct}% of ${l.hcpBase}</div></div><button class="btn ghost" id="lo-close">Close</button></div>
     <div class="chips"><button class="chip" id="lo-list">All leagues</button><button class="chip" id="lo-set">Settings and bowlers</button></div>
@@ -4263,7 +4263,7 @@ Games: ${p.games.join(", ")}`)) return;
     <div class="card">${rows2.some((r) => r.games) ? `<table><tr><th>#</th><th>Bowler</th><th class="n">Avg</th><th class="n">Hcp</th><th class="n">${rankBy === "improve" ? "Over" : "Pins"}</th><th class="n">High</th></tr>${rows2.map((r) => `<tr><td>${r.rank}</td><td>${esc(r.bowler.name)}${r.bowler.team ? `<div class="note">${esc(r.bowler.team)}</div>` : ""}</td><td class="n">${r.avg === null ? "\u2013" : Math.round(r.avg)}</td><td class="n">${r.hcp}</td><td class="n">${metric(r)}</td><td class="n">${r.highGame || "\u2013"}</td></tr>`).join("")}</table>` : `<div class="u">No scores yet. Enter week 1 below, or open the links bowlers send you.</div>`}
       <div class="note">${rankBy === "improve" ? "Pins over average is the total pins above the average each bowler came in with each week: it rewards beating your own number, whatever it is." : rankBy === "scratch" ? "Scratch: pins bowled, no handicap." : "With handicap: pins bowled plus every week's handicap on every game."}</div></div>
     ${teams.length ? `<h3>Teams</h3><div class="card"><table><tr><th>#</th><th>Team</th><th class="n">With hcp</th><th class="n">Scratch</th></tr>${teams.map((t) => `<tr><td>${t.rank}</td><td>${esc(t.team)}<div class="note">${esc(t.members.join(", "))}</div></td><td class="n">${t.hdcpPins}</td><td class="n">${t.pins}</td></tr>`).join("")}</table></div>` : ""}
-    ${awards.length ? `<h3>Week ${last.n}</h3><div class="card">${awards.map((a) => `<div class="row" style="padding:5px 0;border-top:1px solid var(--line)"><div><b>${esc(a.title)}</b><div class="note">${esc(a.detail)}</div></div><div>${esc(a.who)}</div></div>`).join("")}</div>` : ""}
+    ${awards.length ? `<h3>Week ${last2.n}</h3><div class="card">${awards.map((a) => `<div class="row" style="padding:5px 0;border-top:1px solid var(--line)"><div><b>${esc(a.title)}</b><div class="note">${esc(a.detail)}</div></div><div>${esc(a.who)}</div></div>`).join("")}</div>` : ""}
     <h3>Enter a week</h3>
     <div class="card">
       <div class="field"><label>Week</label><select id="lo-week">${Array.from({ length: nextWeek }, (_, i) => `<option value="${i + 1}" ${i + 1 === weekSel ? "selected" : ""}>Week ${i + 1}${l.weeks.some((w) => w.n === i + 1) ? " (entered)" : " (new)"}</option>`).join("")}</select></div>
@@ -4311,7 +4311,7 @@ Games: ${p.games.join(", ")}`)) return;
     };
     const snap = () => snapshotFor(l, rankBy);
     const msg = $("lo-smsg");
-    $("lo-board").onclick = async () => msg.textContent = await shareLink(`${l.name} standings`, `${l.name}${last ? `, after week ${last.n}` : ""}. Open it in LaneIQ to see the standings.`, await linkFor(snap()));
+    $("lo-board").onclick = async () => msg.textContent = await shareLink(`${l.name} standings`, `${l.name}${last2 ? `, after week ${last2.n}` : ""}. Open it in LaneIQ to see the standings.`, await linkFor(snap()));
     $("lo-invite").onclick = async () => msg.textContent = await shareLink(`Join ${l.name}`, `Join ${l.name} on LaneIQ: the rules and the roster are in the link.`, await linkFor(inviteFor(l)));
     $("lo-txt").onclick = async () => {
       const t = boardText(snap());
@@ -4636,9 +4636,9 @@ Friends, live sharing and sharing data are switched off, and anything shared sho
     return { id: rid(), name: cleanName(name, 30) || "My crew", members: [{ ...me3, seen: now.toISOString() }], challenges: [], entries: [], cheers: [], events: [], rsvps: [], createdAt: now.toISOString() };
   }
   function newChallenge(crew, me3, kind2, opts = {}) {
-    const start = opts.start ?? /* @__PURE__ */ new Date();
-    const end = new Date(start.getTime() + ((opts.days ?? 7) - 1) * DAY2);
-    return { id: rid(), crewId: crew.id, crewName: crew.name, kind: kind2, drill: kind2 === "drill" ? opts.drill : void 0, start: isoDay(start), end: isoDay(end), by: me3, vs: opts.vsName ? { name: cleanName(opts.vsName, 30) } : void 0, at: (/* @__PURE__ */ new Date()).toISOString() };
+    const start2 = opts.start ?? /* @__PURE__ */ new Date();
+    const end = new Date(start2.getTime() + ((opts.days ?? 7) - 1) * DAY2);
+    return { id: rid(), crewId: crew.id, crewName: crew.name, kind: kind2, drill: kind2 === "drill" ? opts.drill : void 0, start: isoDay(start2), end: isoDay(end), by: me3, vs: opts.vsName ? { name: cleanName(opts.vsName, 30) } : void 0, at: (/* @__PURE__ */ new Date()).toISOString() };
   }
   function packetFor(crew, me3, now = /* @__PURE__ */ new Date()) {
     const cutoff = isoDay(new Date(now.getTime() - 14 * DAY2));
@@ -13445,16 +13445,16 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
                     return null;
                   }
                   r = rLastLast;
-                  var q = field.zero;
+                  var q2 = field.zero;
                   var denominatorLeadingTerm = rLast.getCoefficient(rLast.degree());
                   var dltInverse = field.inverse(denominatorLeadingTerm);
                   while (r.degree() >= rLast.degree() && !r.isZero()) {
                     var degreeDiff = r.degree() - rLast.degree();
                     var scale2 = field.multiply(r.getCoefficient(r.degree()), dltInverse);
-                    q = q.addOrSubtract(field.buildMonomial(degreeDiff, scale2));
+                    q2 = q2.addOrSubtract(field.buildMonomial(degreeDiff, scale2));
                     r = r.addOrSubtract(rLast.multiplyByMonomial(degreeDiff, scale2));
                   }
-                  t = q.multiplyPoly(tLast).addOrSubtract(tLastLast);
+                  t = q2.multiplyPoly(tLast).addOrSubtract(tLastLast);
                   if (r.degree() >= rLast.degree()) {
                     return null;
                   }
@@ -15145,8 +15145,8 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
                         var endX_1 = x2 - scans[3] - scans[4];
                         var startX_1 = endX_1 - scans[2];
                         var line2 = { startX: startX_1, endX: endX_1, y: y2 };
-                        var matchingQuads = activeFinderPatternQuads.filter(function(q) {
-                          return startX_1 >= q.bottom.startX && startX_1 <= q.bottom.endX || endX_1 >= q.bottom.startX && startX_1 <= q.bottom.endX || startX_1 <= q.bottom.startX && endX_1 >= q.bottom.endX && (scans[2] / (q.bottom.endX - q.bottom.startX) < MAX_QUAD_RATIO && scans[2] / (q.bottom.endX - q.bottom.startX) > MIN_QUAD_RATIO);
+                        var matchingQuads = activeFinderPatternQuads.filter(function(q2) {
+                          return startX_1 >= q2.bottom.startX && startX_1 <= q2.bottom.endX || endX_1 >= q2.bottom.startX && startX_1 <= q2.bottom.endX || startX_1 <= q2.bottom.startX && endX_1 >= q2.bottom.endX && (scans[2] / (q2.bottom.endX - q2.bottom.startX) < MAX_QUAD_RATIO && scans[2] / (q2.bottom.endX - q2.bottom.startX) > MIN_QUAD_RATIO);
                         });
                         if (matchingQuads.length > 0) {
                           matchingQuads[0].bottom = line2;
@@ -15158,8 +15158,8 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
                         var endX_2 = x2 - scans[4];
                         var startX_2 = endX_2 - scans[3];
                         var line2 = { startX: startX_2, y: y2, endX: endX_2 };
-                        var matchingQuads = activeAlignmentPatternQuads.filter(function(q) {
-                          return startX_2 >= q.bottom.startX && startX_2 <= q.bottom.endX || endX_2 >= q.bottom.startX && startX_2 <= q.bottom.endX || startX_2 <= q.bottom.startX && endX_2 >= q.bottom.endX && (scans[2] / (q.bottom.endX - q.bottom.startX) < MAX_QUAD_RATIO && scans[2] / (q.bottom.endX - q.bottom.startX) > MIN_QUAD_RATIO);
+                        var matchingQuads = activeAlignmentPatternQuads.filter(function(q2) {
+                          return startX_2 >= q2.bottom.startX && startX_2 <= q2.bottom.endX || endX_2 >= q2.bottom.startX && startX_2 <= q2.bottom.endX || startX_2 <= q2.bottom.startX && endX_2 >= q2.bottom.endX && (scans[2] / (q2.bottom.endX - q2.bottom.startX) < MAX_QUAD_RATIO && scans[2] / (q2.bottom.endX - q2.bottom.startX) > MIN_QUAD_RATIO);
                         });
                         if (matchingQuads.length > 0) {
                           matchingQuads[0].bottom = line2;
@@ -15172,40 +15172,40 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
                   for (var x = -1; x <= matrix.width; x++) {
                     _loop_2(x);
                   }
-                  finderPatternQuads.push.apply(finderPatternQuads, activeFinderPatternQuads.filter(function(q) {
-                    return q.bottom.y !== y2 && q.bottom.y - q.top.y >= 2;
+                  finderPatternQuads.push.apply(finderPatternQuads, activeFinderPatternQuads.filter(function(q2) {
+                    return q2.bottom.y !== y2 && q2.bottom.y - q2.top.y >= 2;
                   }));
-                  activeFinderPatternQuads = activeFinderPatternQuads.filter(function(q) {
-                    return q.bottom.y === y2;
+                  activeFinderPatternQuads = activeFinderPatternQuads.filter(function(q2) {
+                    return q2.bottom.y === y2;
                   });
-                  alignmentPatternQuads.push.apply(alignmentPatternQuads, activeAlignmentPatternQuads.filter(function(q) {
-                    return q.bottom.y !== y2;
+                  alignmentPatternQuads.push.apply(alignmentPatternQuads, activeAlignmentPatternQuads.filter(function(q2) {
+                    return q2.bottom.y !== y2;
                   }));
-                  activeAlignmentPatternQuads = activeAlignmentPatternQuads.filter(function(q) {
-                    return q.bottom.y === y2;
+                  activeAlignmentPatternQuads = activeAlignmentPatternQuads.filter(function(q2) {
+                    return q2.bottom.y === y2;
                   });
                 };
                 for (var y = 0; y <= matrix.height; y++) {
                   _loop_1(y);
                 }
-                finderPatternQuads.push.apply(finderPatternQuads, activeFinderPatternQuads.filter(function(q) {
-                  return q.bottom.y - q.top.y >= 2;
+                finderPatternQuads.push.apply(finderPatternQuads, activeFinderPatternQuads.filter(function(q2) {
+                  return q2.bottom.y - q2.top.y >= 2;
                 }));
                 alignmentPatternQuads.push.apply(alignmentPatternQuads, activeAlignmentPatternQuads);
-                var finderPatternGroups = finderPatternQuads.filter(function(q) {
-                  return q.bottom.y - q.top.y >= 2;
-                }).map(function(q) {
-                  var x = (q.top.startX + q.top.endX + q.bottom.startX + q.bottom.endX) / 4;
-                  var y2 = (q.top.y + q.bottom.y + 1) / 2;
+                var finderPatternGroups = finderPatternQuads.filter(function(q2) {
+                  return q2.bottom.y - q2.top.y >= 2;
+                }).map(function(q2) {
+                  var x = (q2.top.startX + q2.top.endX + q2.bottom.startX + q2.bottom.endX) / 4;
+                  var y2 = (q2.top.y + q2.bottom.y + 1) / 2;
                   if (!matrix.get(Math.round(x), Math.round(y2))) {
                     return;
                   }
-                  var lengths = [q.top.endX - q.top.startX, q.bottom.endX - q.bottom.startX, q.bottom.y - q.top.y + 1];
+                  var lengths = [q2.top.endX - q2.top.startX, q2.bottom.endX - q2.bottom.startX, q2.bottom.y - q2.top.y + 1];
                   var size = sum2(lengths) / lengths.length;
                   var score = scorePattern({ x: Math.round(x), y: Math.round(y2) }, [1, 1, 3, 1, 1], matrix);
                   return { score, x, y: y2, size };
-                }).filter(function(q) {
-                  return !!q;
+                }).filter(function(q2) {
+                  return !!q2;
                 }).sort(function(a, b) {
                   return a.score - b.score;
                 }).map(function(point, i, finderPatterns) {
@@ -15224,8 +15224,8 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
                   }
                   var score = point.score + otherPoints[0].score + otherPoints[1].score;
                   return { points: [point].concat(otherPoints.slice(0, 2)), score };
-                }).filter(function(q) {
-                  return !!q;
+                }).filter(function(q2) {
+                  return !!q2;
                 }).sort(function(a, b) {
                   return a.score - b.score;
                 });
@@ -15282,13 +15282,13 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
                   x: topLeft.x + correctionToTopLeft * (bottomRightFinderPattern.x - topLeft.x),
                   y: topLeft.y + correctionToTopLeft * (bottomRightFinderPattern.y - topLeft.y)
                 };
-                var alignmentPatterns = alignmentPatternQuads.map(function(q) {
-                  var x = (q.top.startX + q.top.endX + q.bottom.startX + q.bottom.endX) / 4;
-                  var y = (q.top.y + q.bottom.y + 1) / 2;
+                var alignmentPatterns = alignmentPatternQuads.map(function(q2) {
+                  var x = (q2.top.startX + q2.top.endX + q2.bottom.startX + q2.bottom.endX) / 4;
+                  var y = (q2.top.y + q2.bottom.y + 1) / 2;
                   if (!matrix.get(Math.floor(x), Math.floor(y))) {
                     return;
                   }
-                  var lengths = [q.top.endX - q.top.startX, q.bottom.endX - q.bottom.startX, q.bottom.y - q.top.y + 1];
+                  var lengths = [q2.top.endX - q2.top.startX, q2.bottom.endX - q2.bottom.startX, q2.bottom.y - q2.top.y + 1];
                   var size = sum2(lengths) / lengths.length;
                   var sizeScore = scorePattern({ x: Math.floor(x), y: Math.floor(y) }, [1, 1, 1], matrix);
                   var score = sizeScore + distance2({ x, y }, expectedAlignmentPattern);
@@ -16998,10 +16998,10 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
 
   // camera/qr.ts
   function qrCanvas(text, size = 260) {
-    const q = (0, import_qrcode.default)(0, "M");
-    q.addData(text);
-    q.make();
-    const n = q.getModuleCount();
+    const q2 = (0, import_qrcode.default)(0, "M");
+    q2.addData(text);
+    q2.make();
+    const n = q2.getModuleCount();
     const quiet = 4;
     const cell = Math.max(2, Math.floor(size / (n + quiet * 2)));
     const px = cell * (n + quiet * 2);
@@ -17011,7 +17011,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     g.fillStyle = "#fff";
     g.fillRect(0, 0, px, px);
     g.fillStyle = "#000";
-    for (let r = 0; r < n; r++) for (let k2 = 0; k2 < n; k2++) if (q.isDark(r, k2)) g.fillRect((k2 + quiet) * cell, (r + quiet) * cell, cell, cell);
+    for (let r = 0; r < n; r++) for (let k2 = 0; k2 < n; k2++) if (q2.isDark(r, k2)) g.fillRect((k2 + quiet) * cell, (r + quiet) * cell, cell, cell);
     c.style.cssText = `width:${Math.min(size, px)}px;height:${Math.min(size, px)}px;image-rendering:pixelated;border-radius:12px;display:block;margin:0 auto`;
     return c;
   }
@@ -18247,7 +18247,7 @@ ${url}`);
       const a = search(b, predicted - 0.7, predicted + 0.7, 7, sign);
       if (a) ok.push(a);
     }
-    return ok.sort((p, q) => p.board - q.board);
+    return ok.sort((p, q2) => p.board - q2.board);
   }
 
   // camera/lanetrace.ts
@@ -18267,14 +18267,14 @@ ${url}`);
     for (let i = 0; i < n; i++) {
       const x = src[i].x / LANE_BOARDS, y = src[i].y / LANE_LENGTH_FT;
       const u = dst[i].x / sw, v = dst[i].y / sh;
-      const q = wt?.[i] ?? 1;
+      const q2 = wt?.[i] ?? 1;
       const rows2 = [
         [[x, y, 1, 0, 0, 0, -u * x, -u * y], u],
         [[0, 0, 0, x, y, 1, -v * x, -v * y], v]
       ];
       for (const [r, b] of rows2) for (let a = 0; a < 8; a++) {
-        for (let c2 = 0; c2 < 8; c2++) N2[a][c2] += q * r[a] * r[c2];
-        N2[a][8] += q * r[a] * b;
+        for (let c2 = 0; c2 < 8; c2++) N2[a][c2] += q2 * r[a] * r[c2];
+        N2[a][8] += q2 * r[a] * b;
       }
     }
     for (let c2 = 0; c2 < 8; c2++) {
@@ -18422,9 +18422,9 @@ ${url}`);
         g.fillStyle = "rgba(255,255,255,.9)";
         const PINS2 = [[0, 0], [-6, 10.4], [6, 10.4], [-12, 20.8], [0, 20.8], [12, 20.8], [-18, 31.2], [-6, 31.2], [6, 31.2], [18, 31.2]];
         for (const [lat, beh] of PINS2) {
-          const q = P(LANE_BOARDS / 2 + lat / (41.5 / LANE_BOARDS), LANE_LENGTH_FT + beh / 12);
+          const q2 = P(LANE_BOARDS / 2 + lat / (41.5 / LANE_BOARDS), LANE_LENGTH_FT + beh / 12);
           g.beginPath();
-          g.arc(q.x, q.y, 3 * px, 0, 7);
+          g.arc(q2.x, q2.y, 3 * px, 0, 7);
           g.fill();
         }
         const f0 = P(0, 0), f12 = P(LANE_BOARDS, 0);
@@ -18540,9 +18540,9 @@ ${url}`);
         const group = anchors.filter((a) => a.group === mode2);
         let best = null, bd2 = Infinity;
         for (const a of group) {
-          const q = anchorPos(a);
-          if (!q) continue;
-          const d = Math.hypot(q.x - p.x, q.y - p.y);
+          const q2 = anchorPos(a);
+          if (!q2) continue;
+          const d = Math.hypot(q2.x - p.x, q2.y - p.y);
           if (d < bd2) bd2 = d, best = a;
         }
         if (best) {
@@ -18557,16 +18557,16 @@ ${url}`);
       }
       anchors.forEach((a) => a.img = null);
       let bi = -1, bd = reach;
-      c.forEach((q, i) => {
-        const d = Math.hypot(q.x - p.x, q.y - p.y);
+      c.forEach((q2, i) => {
+        const d = Math.hypot(q2.x - p.x, q2.y - p.y);
         if (d < bd) bd = d, bi = i;
       });
       if (bi >= 0) drag2 = { kind: "handle", i: bi };
       else if (inside(p, c)) drag2 = { kind: "all", last: p };
       else {
         let ni = 0, nd = Infinity;
-        c.forEach((q, i) => {
-          const d = Math.hypot(q.x - p.x, q.y - p.y);
+        c.forEach((q2, i) => {
+          const d = Math.hypot(q2.x - p.x, q2.y - p.y);
           if (d < nd) nd = d, ni = i;
         });
         c[ni] = p;
@@ -18581,12 +18581,12 @@ ${url}`);
       const p = pt2(e);
       pointer = p;
       if (drag2.kind === "anchor") {
-        const a = anchors.find((q) => q.id === drag2.id);
+        const a = anchors.find((q2) => q2.id === drag2.id);
         a.img = { x: Math.max(0, Math.min(cv.width, p.x)), y: Math.max(0, Math.min(cv.height, p.y)) };
       } else if (drag2.kind === "handle") c[drag2.i] = { x: Math.max(0, Math.min(cv.width, p.x)), y: Math.max(0, Math.min(cv.height, p.y)) };
       else {
         const dx = p.x - drag2.last.x, dy = p.y - drag2.last.y;
-        c = c.map((q) => ({ x: q.x + dx, y: q.y + dy }));
+        c = c.map((q2) => ({ x: q2.x + dx, y: q2.y + dy }));
         drag2.last = p;
       }
       redraw2();
@@ -18866,9 +18866,9 @@ ${url}`);
   }
   function markRedone() {
     const v = read();
-    const last = v[v.length - 1];
-    if (last && Date.now() - last.at < 12e4 && !last.redone) {
-      last.redone = true;
+    const last2 = v[v.length - 1];
+    if (last2 && Date.now() - last2.at < 12e4 && !last2.redone) {
+      last2.redone = true;
       write(v);
     }
   }
@@ -19050,8 +19050,8 @@ ${url}`);
   var rad = (d) => d * Math.PI / 180;
   var deg = (r) => r * 180 / Math.PI;
   var surfDist = (a, b) => R * Math.acos(clamp(dot(unit(a), unit(b))));
-  function tangentToward(p, q) {
-    const t = sub(q, scale(p, dot(q, p)));
+  function tangentToward(p, q2) {
+    const t = sub(q2, scale(p, dot(q2, p)));
     return unit(norm2(t) < 1e-9 ? orthogonal(p) : t);
   }
   function orthogonal(p) {
@@ -19081,20 +19081,20 @@ ${url}`);
     return { hs, fingers, thumb, middle: sideAt(fingers, -1), ring: sideAt(fingers, 1) };
   }
   function papPoint(pap, hs) {
-    const q = walk(N, UP, pap.up);
+    const q2 = walk(N, UP, pap.up);
     const side = [hs, 0, 0];
-    const p = walk(q, unit(sub(side, scale(q, dot(side, q)))), pap.over);
-    const toQ = Math.abs(pap.over) < 1e-6 ? unit(sub([-hs, 0, 0], scale(p, dot([-hs, 0, 0], p)))) : tangentToward(p, q);
+    const p = walk(q2, unit(sub(side, scale(q2, dot(side, q2)))), pap.over);
+    const toQ = Math.abs(pap.over) < 1e-6 ? unit(sub([-hs, 0, 0], scale(p, dot([-hs, 0, 0], p)))) : tangentToward(p, q2);
     let v = unit(cross(p, toQ));
     if (v[1] < 0) v = scale(v, -1);
-    return { pap: p, q, valUp: v };
+    return { pap: p, q: q2, valUp: v };
   }
   var ang = (inch3) => inch3 / R;
   function solveLayout(input, pap, hand3, grip = DEFAULT_GRIP, flip = false) {
     const problems = [];
     const { hs, fingers, thumb, middle, ring } = gripFrame(grip, hand3);
-    const { pap: P, q, valUp } = papPoint(pap, hs);
-    const toMid = Math.abs(pap.over) < 1e-6 ? unit(sub([-hs, 0, 0], scale(P, dot([-hs, 0, 0], P)))) : tangentToward(P, q);
+    const { pap: P, q: q2, valUp } = papPoint(pap, hs);
+    const toMid = Math.abs(pap.over) < 1e-6 ? unit(sub([-hs, 0, 0], scale(P, dot([-hs, 0, 0], P)))) : tangentToward(P, q2);
     let a = 0;
     let drilling = 0;
     let pinDir = valUp;
@@ -19153,7 +19153,7 @@ ${url}`);
     const pinOver = R * Math.asin(clamp(dot(pin, [hs, 0, 0]) / Math.max(1e-9, Math.cos(Math.asin(clamp(dot(pin, UP)))))));
     const fingerY = grip.noThumb ? 0 : (grip.span + grip.thumbDia / 2 + grip.fingerDia / 2) / 2;
     const pinPlacement = { up: pinUp, over: pinOver, label: classifyPin(pinUp, pinOver, fingerY, grip) };
-    const points = { grip: N, pap: P, pin, psa, inter, valUp, q, thumb, middle, ring, fingers };
+    const points = { grip: N, pap: P, pin, psa, inter, valUp, q: q2, thumb, middle, ring, fingers };
     return { ok: problems.length === 0, problems, points, eq, angleSum: Math.abs(drillSigned) + Math.abs(eq.dual.valAngle), pinPlacement, papToGrip: surfDist(P, N) };
   }
   function classifyPin(up, over, fingerY, grip) {
@@ -19182,8 +19182,8 @@ ${url}`);
   }
   function measureLayout(pin, baseline, pap, hand3, grip = DEFAULT_GRIP) {
     const { hs } = gripFrame(grip, hand3);
-    const { pap: P, q, valUp } = papPoint(pap, hs);
-    const toMid = Math.abs(pap.over) < 1e-6 ? unit(sub([-hs, 0, 0], scale(P, dot([-hs, 0, 0], P)))) : tangentToward(P, q);
+    const { pap: P, q: q2, valUp } = papPoint(pap, hs);
+    const toMid = Math.abs(pap.over) < 1e-6 ? unit(sub([-hs, 0, 0], scale(P, dot([-hs, 0, 0], P)))) : tangentToward(P, q2);
     const a = surfDist(pin, P);
     const toPin = tangentToward(P, pin);
     const valAngle = deg(Math.atan2(dot(toPin, toMid), dot(toPin, valUp)));
@@ -19204,7 +19204,7 @@ ${url}`);
       drilling = outward(toBase) >= outward(mirrored) ? angle : -angle;
       psaToPap = surfDist(psa, P);
     }
-    return { pinToPap: a, valAngle, pinBuffer, pinToGrip: surfDist(pin, N), papToGrip: surfDist(P, N), pinPlacement: { up: pinUp, over: pinOver, label: classifyPin(pinUp, pinOver, fingerY, grip) }, drilling, psaToPap, points: { pap: P, pin, psa, q, valUp } };
+    return { pinToPap: a, valAngle, pinBuffer, pinToGrip: surfDist(pin, N), papToGrip: surfDist(P, N), pinPlacement: { up: pinUp, over: pinOver, label: classifyPin(pinUp, pinOver, fingerY, grip) }, drilling, psaToPap, points: { pap: P, pin, psa, q: q2, valUp } };
   }
   function measureMark(pin, mark, pap, hand3, grip = DEFAULT_GRIP) {
     const { hs } = gripFrame(grip, hand3);
@@ -19241,12 +19241,12 @@ ${url}`);
     const dt = T / n;
     const toBall = (v) => unit(add(add(scale(points.pin, v[0]), scale(points.inter, v[1])), scale(points.psa, v[2])));
     const path2 = [toBall(w)];
-    const start = path2[0];
+    const start2 = path2[0];
     const angle = (a, b) => Math.acos(Math.max(-1, Math.min(1, dot(a, b))));
     const marks = [0.25, 0.5, 0.75, 1].map((f) => Math.round(f * n));
     const checkpoints = [];
     let maxFromStart = 0;
-    const samples = [start];
+    const samples = [start2];
     for (let k2 = 1; k2 <= n; k2++) {
       const k1 = deriv(w, I);
       const k22 = deriv([w[0] + dt / 2 * k1[0], w[1] + dt / 2 * k1[1], w[2] + dt / 2 * k1[2]], I);
@@ -19256,11 +19256,11 @@ ${url}`);
       const p = toBall(w);
       if (k2 % 3 === 0 || k2 === n) path2.push(p);
       samples.push(p);
-      maxFromStart = Math.max(maxFromStart, angle(start, p));
+      maxFromStart = Math.max(maxFromStart, angle(start2, p));
       if (marks.includes(k2)) {
         let span2 = 0;
         for (let a = 0; a < samples.length; a += Math.max(1, Math.floor(samples.length / 60))) for (let b = a; b < samples.length; b += Math.max(1, Math.floor(samples.length / 60))) span2 = Math.max(span2, angle(samples[a], samples[b]));
-        checkpoints.push({ ft: k2 / n * laneFt, revs: k2 / n * revs, axis: p, movedDeg: angle(start, p) * 180 / Math.PI, flareIn: R * span2 });
+        checkpoints.push({ ft: k2 / n * laneFt, revs: k2 / n * revs, axis: p, movedDeg: angle(start2, p) * 180 / Math.PI, flareIn: R * span2 });
       }
     }
     const coarse = Math.max(1, Math.floor(samples.length / 160));
@@ -19490,17 +19490,17 @@ ${url}`);
       const uy = ((a.x * a.x + a.y * a.y) * (c.x - b.x) + (b.x * b.x + b.y * b.y) * (a.x - c.x) + (c.x * c.x + c.y * c.y) * (b.x - a.x)) / d;
       const r = Math.hypot(a.x - ux, a.y - uy);
       if (r < minR || r > maxR) continue;
-      if (inside2.some((q) => Math.hypot(q.x - ux, q.y - uy) > r * 0.85)) continue;
-      if (inside2.length && Math.hypot(inside2.reduce((a2, q) => a2 + q.x, 0) / inside2.length - ux, inside2.reduce((a2, q) => a2 + q.y, 0) / inside2.length - uy) > r * 0.5) continue;
+      if (inside2.some((q2) => Math.hypot(q2.x - ux, q2.y - uy) > r * 0.85)) continue;
+      if (inside2.length && Math.hypot(inside2.reduce((a2, q2) => a2 + q2.x, 0) / inside2.length - ux, inside2.reduce((a2, q2) => a2 + q2.y, 0) / inside2.length - uy) > r * 0.5) continue;
       let n = 0;
       const bins2 = new Uint8Array(24);
-      for (let q = 0; q < edges.length; q += 2) {
-        const p = pt2(edges[q]);
+      for (let q2 = 0; q2 < edges.length; q2 += 2) {
+        const p = pt2(edges[q2]);
         const dist2 = Math.hypot(p.x - ux, p.y - uy);
         if (Math.abs(dist2 - r) > tol) continue;
         const rx = (p.x - ux) / (dist2 || 1), ry = (p.y - uy) / (dist2 || 1);
-        const m = mag[edges[q]] || 1;
-        if (Math.abs((gx[edges[q]] * rx + gy[edges[q]] * ry) / m) > 0.8) {
+        const m = mag[edges[q2]] || 1;
+        if (Math.abs((gx[edges[q2]] * rx + gy[edges[q2]] * ry) / m) > 0.8) {
           n++;
           bins2[Math.min(23, Math.floor((Math.atan2(ry, rx) + Math.PI) / (2 * Math.PI) * 24))] = 1;
         }
@@ -19686,7 +19686,7 @@ ${url}`);
       }
       return { path: path2, score };
     };
-    const starts = [...edge[0].keys()].sort((p, q) => edge[0][q] - edge[0][p]).filter((v, i, arr) => arr.slice(0, i).every((u) => Math.abs(u - v) > 6)).slice(0, 4);
+    const starts = [...edge[0].keys()].sort((p, q2) => edge[0][q2] - edge[0][p]).filter((v, i, arr) => arr.slice(0, i).every((u) => Math.abs(u - v) > 6)).slice(0, 4);
     let top = null;
     for (const s of starts) {
       const b = best(s);
@@ -19749,7 +19749,7 @@ ${url}`);
       return (I[y1 * (sw + 1) + x1] - I[y0 * (sw + 1) + x1] - I[y1 * (sw + 1) + x0] + I[y0 * (sw + 1) + x0]) / ((x1 - x0) * (y1 - y0));
     };
     const clear = (avoidR || ball.r * 0.2) * 1 / k2;
-    const nearAvoid = (x, y) => avoid.some((q) => Math.hypot(q.x / k2 - x, q.y / k2 - y) < clear);
+    const nearAvoid = (x, y) => avoid.some((q2) => Math.hypot(q2.x / k2 - x, q2.y / k2 - y) < clear);
     const dist2 = new Float32Array(sw * sh);
     const sat = new Float32Array(sw * sh);
     const vals = [];
@@ -19792,14 +19792,14 @@ ${url}`);
         const mc = [0, 1, 2].map((j) => ch[j][Math.round(sy / n) * sw + Math.round(sx / n)]);
         const cap = Math.PI * (c.r * 0.13) ** 2;
         const grown = new Uint8Array(sw * sh);
-        const q = [];
+        const q2 = [];
         for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) {
           const i = yy * sw + xx;
-          if (seen2[i] && dist2[i] >= t) grown[i] = 1, q.push(i);
+          if (seen2[i] && dist2[i] >= t) grown[i] = 1, q2.push(i);
         }
         let gn = 0, gx = 0, gy = 0, gx0 = sw, gx1 = 0, gy0 = sh, gy1 = 0, gs = 0;
-        while (q.length && gn < cap * 1.2) {
-          const i = q.pop();
+        while (q2.length && gn < cap * 1.2) {
+          const i = q2.pop();
           const x = i % sw, y = Math.floor(i / sw);
           gn++;
           gx += x;
@@ -19811,7 +19811,7 @@ ${url}`);
           if (y > gy1) gy1 = y;
           for (const j of [i - 1, i + 1, i - sw, i + sw]) {
             if (j < 0 || j >= sw * sh || grown[j]) continue;
-            if (Math.hypot(ch[0][j] - mc[0], ch[1][j] - mc[1], ch[2][j] - mc[2]) < 60) grown[j] = 1, q.push(j);
+            if (Math.hypot(ch[0][j] - mc[0], ch[1][j] - mc[1], ch[2][j] - mc[2]) < 60) grown[j] = 1, q2.push(j);
           }
         }
         if (gn > n && gn < cap * 1.2) {
@@ -20210,13 +20210,13 @@ ${url}`);
       else if (what === "edge") s.circle = { ...s.circle, r: Math.max(20, Math.hypot(p.x - s.circle.x, p.y - s.circle.y)) };
       else {
         const snap = what === "pin" || what === "cg" ? s.marks.find((m) => Math.hypot(m.x - p.x, m.y - p.y) < 14 * (canvas.width / 900)) : void 0;
-        const q = snap ? { x: snap.x, y: snap.y } : p;
-        if (what === "thumb") s.thumb = q;
-        else if (what === "fingerA") s.fingerA = q;
-        else if (what === "fingerB") s.fingerB = q;
-        else if (what === "pin") s.pin = q, s.guessed.pin = false;
-        else if (what === "mb") s.mb = q, s.guessed.mb = false;
-        else s.cg = q, s.guessed.cg = false;
+        const q2 = snap ? { x: snap.x, y: snap.y } : p;
+        if (what === "thumb") s.thumb = q2;
+        else if (what === "fingerA") s.fingerA = q2;
+        else if (what === "fingerB") s.fingerB = q2;
+        else if (what === "pin") s.pin = q2, s.guessed.pin = false;
+        else if (what === "mb") s.mb = q2, s.guessed.mb = false;
+        else s.cg = q2, s.guessed.cg = false;
       }
     };
     canvas.onpointerdown = (e) => {
@@ -20760,8 +20760,8 @@ ${url}`);
     });
     const search = $("lb-search");
     search.addEventListener("input", () => {
-      const q = search.value.trim().toLowerCase();
-      const hits = q.length < 2 ? [] : S.catalog.filter((c) => c.rg && c.differential && `${c.manufacturer} ${c.name}`.toLowerCase().includes(q)).slice(0, 6);
+      const q2 = search.value.trim().toLowerCase();
+      const hits = q2.length < 2 ? [] : S.catalog.filter((c) => c.rg && c.differential && `${c.manufacturer} ${c.name}`.toLowerCase().includes(q2)).slice(0, 6);
       $("lb-hits").innerHTML = hits.map((c) => `<button class="chip" data-k="${esc(c.key)}">${esc(c.manufacturer)} ${esc(c.name)}</button>`).join("");
       $("lb-hits").querySelectorAll("[data-k]").forEach((b) => b.onclick = () => swapBall(fromCatalog(S.catalog.find((c) => c.key === b.dataset.k))));
     });
@@ -20817,15 +20817,15 @@ ${url}`);
     sheet2().querySelectorAll("[data-load]").forEach((b) => b.onclick = () => loadSheet(b.dataset.load));
     sheet2().querySelectorAll("[data-del]").forEach((b) => b.onclick = () => (updateProfile({ sheets: (S.profile?.sheets ?? []).filter((x) => x.id !== b.dataset.del) }), draw2()));
     const canvas = $("lb-canvas");
-    let last = null;
-    canvas.addEventListener("pointerdown", (e) => (last = { x: e.clientX, y: e.clientY }, canvas.setPointerCapture(e.pointerId)));
+    let last2 = null;
+    canvas.addEventListener("pointerdown", (e) => (last2 = { x: e.clientX, y: e.clientY }, canvas.setPointerCapture(e.pointerId)));
     canvas.addEventListener("pointermove", (e) => {
-      if (!last) return;
-      view = mul(mul(rotX((e.clientY - last.y) / 160), rotY((e.clientX - last.x) / 160)), view);
-      last = { x: e.clientX, y: e.clientY };
+      if (!last2) return;
+      view = mul(mul(rotX((e.clientY - last2.y) / 160), rotY((e.clientX - last2.x) / 160)), view);
+      last2 = { x: e.clientX, y: e.clientY };
       update(true);
     });
-    const end = () => last = null;
+    const end = () => last2 = null;
     canvas.addEventListener("pointerup", end);
     canvas.addEventListener("pointercancel", end);
   }
@@ -21003,20 +21003,20 @@ ${url}`);
       for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) off += a[i][j] * a[i][j];
       if (off < 1e-24) break;
       for (let p = 0; p < 2; p++)
-        for (let q = p + 1; q < 3; q++) {
-          if (Math.abs(a[p][q]) < 1e-30) continue;
-          const theta = (a[q][q] - a[p][p]) / (2 * a[p][q]);
+        for (let q2 = p + 1; q2 < 3; q2++) {
+          if (Math.abs(a[p][q2]) < 1e-30) continue;
+          const theta = (a[q2][q2] - a[p][p]) / (2 * a[p][q2]);
           const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
           const c = 1 / Math.sqrt(t * t + 1), s = t * c;
           for (let k2 = 0; k2 < 3; k2++) {
-            const akp = a[k2][p], akq = a[k2][q];
+            const akp = a[k2][p], akq = a[k2][q2];
             a[k2][p] = c * akp - s * akq;
-            a[k2][q] = s * akp + c * akq;
+            a[k2][q2] = s * akp + c * akq;
           }
           for (let k2 = 0; k2 < 3; k2++) {
-            const apk = a[p][k2], aqk = a[q][k2];
+            const apk = a[p][k2], aqk = a[q2][k2];
             a[p][k2] = c * apk - s * aqk;
-            a[q][k2] = s * apk + c * aqk;
+            a[q2][k2] = s * apk + c * aqk;
           }
         }
     }
@@ -21412,32 +21412,32 @@ ${url}`);
       ${THEORY.map((t) => `<div style="padding:6px 0;border-top:1px solid var(--line)"><b>${esc(t.title)}</b> <span class="badge ${t.kind === "disagreement" ? "moderate" : "good"}">${t.kind}</span><div class="note">${esc(t.source)}</div><div class="u">${esc(t.body)}</div></div>`).join("")}</details>`;
   }
   function wireProshopTools(el) {
-    const q = (id) => el.querySelector("#" + id);
-    const sys = q("pt-sys");
+    const q2 = (id) => el.querySelector("#" + id);
+    const sys = q2("pt-sys");
     if (!sys) return;
     const bp = bowlerProfile();
     const labels = { dual: ["Drilling angle \xB0", "Pin to PAP", "VAL angle \xB0"], pinbuffer: ["Pin to PAP", "PSA to PAP", "Pin buffer"], "2ls": ["Pin to PAP", "PSA to PAP", "Pin to center of grip"] };
     const setLabels = () => {
       const l = labels[sys.value];
       ["pt-l1", "pt-l2", "pt-l3"].forEach((id, i) => {
-        const lab2 = q(id);
+        const lab2 = q2(id);
         lab2.firstChild.textContent = l[i] + " ";
       });
     };
     sys.onchange = setLabels;
     const readIn = (id) => {
-      const v = q(id).value;
+      const v = q2(id).value;
       return parseInches(v) ?? Number(v);
     };
-    q("pt-go").onclick = () => {
-      const out = q("pt-out");
+    q2("pt-go").onclick = () => {
+      const out = q2("pt-out");
       const a = readIn("pt-a"), b = readIn("pt-b"), c = readIn("pt-c");
       const over = readIn("pt-over"), up = readIn("pt-up");
       if (![a, b, c, over, up].every(Number.isFinite)) return void (out.innerHTML = `<div class="u">Enter all three layout numbers and the PAP. Fractions like 4 1/2 work.</div>`);
       const input = sys.value === "dual" ? { system: "dual", drilling: a, pinToPap: b, valAngle: c } : sys.value === "pinbuffer" ? { system: "pinbuffer", pinToPap: a, psaToPap: b, pinBuffer: c } : { system: "2ls", pinToPap: a, psaToPap: b, pinToGrip: c };
       const grip = gripNow();
       const solved2 = solveLayout(input, { over, up }, bp.hand, grip);
-      const ballW = num2(q("pt-w")), rg = num2(q("pt-rg")), td = num2(q("pt-td")), idf = num2(q("pt-id"));
+      const ballW = num2(q2("pt-w")), rg = num2(q2("pt-rg")), td = num2(q2("pt-td")), idf = num2(q2("pt-id"));
       const f = checkLayout(input, solved2, { axisTilt: bp.axisTilt, symmetric: idf === 0, grip });
       const e = solved2.eq;
       let drilled = "";
@@ -21457,30 +21457,30 @@ ${url}`);
       <tr><td>Pin Buffer</td><td class="n">${inch2(e.pinbuffer.pinToPap)} \xD7 ${inch2(e.pinbuffer.psaToPap)} \xD7 ${inch2(e.pinbuffer.pinBuffer)}</td></tr>
       <tr><td>2LS</td><td class="n">${inch2(e.ls2.pinToPap)} \xD7 ${inch2(e.ls2.psaToPap)} \xD7 ${inch2(e.ls2.pinToGrip)}</td></tr></table>${drilled}`;
     };
-    q("pt-sgo").onclick = () => {
-      const v = (id) => num2(q(id));
-      const bal = q("pt-bal").checked;
-      const w = checkStaticWeight({ top: v("pt-st"), finger: v("pt-sf"), side: v("pt-ss") }, num2(q("pt-w")) ?? 15, bal);
-      q("pt-sout").innerHTML = `<div class="u">${w.ok ? "Within the USBC limits." : esc(w.problems.join(" "))} Limits: ${w.limits.topBottom} oz top or bottom, ${w.limits.sideFingerThumb} oz side, finger or thumb.</div>${w.notes.map((n) => `<div class="note">${esc(n)}</div>`).join("")}`;
+    q2("pt-sgo").onclick = () => {
+      const v = (id) => num2(q2(id));
+      const bal = q2("pt-bal").checked;
+      const w = checkStaticWeight({ top: v("pt-st"), finger: v("pt-sf"), side: v("pt-ss") }, num2(q2("pt-w")) ?? 15, bal);
+      q2("pt-sout").innerHTML = `<div class="u">${w.ok ? "Within the USBC limits." : esc(w.problems.join(" "))} Limits: ${w.limits.topBottom} oz top or bottom, ${w.limits.sideFingerThumb} oz side, finger or thumb.</div>${w.notes.map((n) => `<div class="note">${esc(n)}</div>`).join("")}`;
     };
-    const sym = q("pt-sym");
+    const sym = q2("pt-sym");
     const showSym = () => {
       const s = SYMPTOMS.find((x) => x.id === sym.value);
-      q("pt-sym-out").innerHTML = `<div class="u">${esc(s.reading)}</div><ol>${s.fixes.map((f) => `<li><span class="badge good">${esc(f.lever)}</span> ${esc(f.text)}</li>`).join("")}</ol><div class="note">Order matters: surface and lane play are free and reversible; layout and equipment are permanent.</div>`;
+      q2("pt-sym-out").innerHTML = `<div class="u">${esc(s.reading)}</div><ol>${s.fixes.map((f) => `<li><span class="badge good">${esc(f.lever)}</span> ${esc(f.text)}</li>`).join("")}</ol><div class="note">Order matters: surface and lane play are free and reversible; layout and equipment are permanent.</div>`;
     };
     sym.onchange = showSym;
     showSym();
-    q("pt-wgo").onclick = () => {
-      const lb = Number(q("pt-body").value);
-      q("pt-wout").textContent = lb > 0 ? (() => {
+    q2("pt-wgo").onclick = () => {
+      const lb = Number(q2("pt-body").value);
+      q2("pt-wout").textContent = lb > 0 ? (() => {
         const w = suggestWeight(lb);
         return `About ${w.lb} lb. ${w.test}`;
       })() : "Enter your body weight.";
     };
-    const fit = q("pt-fit");
+    const fit = q2("pt-fit");
     const showFit = () => {
       const s = FIT_SYMPTOMS.find((x) => x.id === fit.value);
-      q("pt-fit-out").innerHTML = `<div class="u"><b>Likely cause.</b> ${s.causes.map(esc).join(" ")}</div><div class="u"><b>Fix.</b> ${s.fixes.map(esc).join(" ")}</div>`;
+      q2("pt-fit-out").innerHTML = `<div class="u"><b>Likely cause.</b> ${s.causes.map(esc).join(" ")}</div><div class="u"><b>Fix.</b> ${s.fixes.map(esc).join(" ")}</div>`;
     };
     fit.onchange = showFit;
     showFit();
@@ -22369,7 +22369,7 @@ ${url}`);
         const ay = [-r.Pz, 0, r.Px];
         for (let p = 0; p < 3; p++) {
           b[p] += w[i] * (ax[p] * r.vx + ay[p] * r.vy);
-          for (let q = 0; q < 3; q++) A[p][q] += w[i] * (ax[p] * ax[q] + ay[p] * ay[q]);
+          for (let q2 = 0; q2 < 3; q2++) A[p][q2] += w[i] * (ax[p] * ax[q2] + ay[p] * ay[q2]);
         }
       });
       const sol = solve3(A, b);
@@ -22565,16 +22565,16 @@ ${url}`);
       const s = spinFromOmega(o, fps, view3, hand3);
       if (!s) return;
       const lo = Math.max(0, i - half), hi = Math.min(n - 1, i + half);
-      const mags = filled.slice(lo, hi + 1).map((q) => Math.hypot(q.x, q.y, q.z));
+      const mags = filled.slice(lo, hi + 1).map((q2) => Math.hypot(q2.x, q2.y, q2.z));
       const mean11 = mags.reduce((a, b) => a + b, 0) / mags.length;
       const spread = mags.length > 1 ? Math.sqrt(mags.reduce((a, m) => a + (m - mean11) ** 2, 0) / (mags.length - 1)) / (mean11 || 1) : 0.3;
       series.push({ t: (i + 0.5) / fps, rpm: s.rpm, rotation: s.axisRotation, tilt: s.axisTilt, quality: Math.max(0, Math.min(1, s.quality * (1 - spread * 4))) });
     });
     const take = (a) => a.length ? { t: med(a.map((p) => p.t)), rpm: med(a.map((p) => p.rpm)), rotation: med(a.map((p) => p.rotation)), tilt: med(a.map((p) => p.tilt)), quality: med(a.map((p) => p.quality)) } : null;
     const k2 = Math.max(3, Math.floor(series.length / 4));
-    const start = take(series.slice(0, k2));
+    const start2 = take(series.slice(0, k2));
     const end = series.length >= 8 ? take(series.slice(-k2)) : null;
-    if (start && end && end.rpm < start.rpm * 0.7) notes.push(`The rev rate fell ${Math.round((1 - end.rpm / start.rpm) * 100)}% over the clip, which is a lot. Check the ball stayed in frame and the footage is sharp.`);
+    if (start2 && end && end.rpm < start2.rpm * 0.7) notes.push(`The rev rate fell ${Math.round((1 - end.rpm / start2.rpm) * 100)}% over the clip, which is a lot. Check the ball stayed in frame and the footage is sharp.`);
     let pap = null;
     const axisTrack = [];
     let flareTravelIn = null;
@@ -22608,7 +22608,7 @@ ${url}`);
       flareMaxIn = far;
       if (pap.vec[2] < 0.2) notes.push("The axis came out far from the grip's side of the ball. Check the grip holes were marked on the right spots in the first frame.");
     }
-    return { series, start, end, pap, axisTrack, flareTravelIn, flareMaxIn, notes };
+    return { series, start: start2, end, pap, axisTrack, flareTravelIn, flareMaxIn, notes };
   }
 
   // camera/spinlab.ts
@@ -22787,7 +22787,7 @@ ${url}`);
       const e = evalOm(s);
       return { s: e.s, n: e.n };
     })() });
-    cands.sort((p, q) => q.s - p.s);
+    cands.sort((p, q2) => q2.s - p.s);
     const picks = [];
     for (const cd of cands) {
       if (picks.length >= 4) break;
@@ -22809,7 +22809,7 @@ ${url}`);
       }
       return best;
     });
-    refined.sort((p, q) => q.s - p.s);
+    refined.sort((p, q2) => q2.s - p.s);
     const top = refined[0];
     if (!top || top.s < 0.3) return null;
     const second = refined.find((r) => r !== top && Math.hypot(r.om.x - top.om.x, r.om.y - top.om.y, r.om.z - top.om.z) > 0.2);
@@ -23437,8 +23437,8 @@ ${url}`);
         out.innerHTML = `<div class="card"><div class="lr-head">Couldn't measure the spin</div><ul><li>The ball surface didn't have enough visible markings to track. A logo, finger holes or a two-tone ball work best, and a plain glossy ball often can't be measured this way.</li>${r.still >= 4 ? `<li>Consecutive frames look identical: the video may not be a true ${fps} fps recording.</li>` : ""}${r.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>`;
         return;
       }
-      const q = r.start.quality;
-      const label2 = q >= 0.7 ? "good" : q >= 0.4 ? "rough" : "unreliable";
+      const q2 = r.start.quality;
+      const label2 = q2 >= 0.7 ? "good" : q2 >= 0.4 ? "rough" : "unreliable";
       const e = r.end;
       const flare2 = r.pap && r.flareMaxIn !== null;
       out.innerHTML = `<div class="card"><div class="k">Through the release</div>
@@ -23447,13 +23447,13 @@ ${url}`);
         <div class="card"><div class="k">Axis rotation</div><div class="v">${r.start.rotation.toFixed(0)}\xB0</div><div class="u">${e ? `${e.rotation.toFixed(0)}\xB0 at the end` : "0\xB0 = forward roll"}</div></div>
         <div class="card"><div class="k">Axis tilt</div><div class="v">${r.start.tilt.toFixed(0)}\xB0</div><div class="u">${e ? `${e.tilt.toFixed(0)}\xB0 at the end` : "above horizontal"}</div></div>
       </div>
-      <span class="badge ${q >= 0.7 ? "good" : q >= 0.4 ? "moderate" : "tentative"}">${label2} \xB7 quality ${Math.round(q * 100)}%</span>
+      <span class="badge ${q2 >= 0.7 ? "good" : q2 >= 0.4 ? "moderate" : "tentative"}">${label2} \xB7 quality ${Math.round(q2 * 100)}%</span>
       <div class="note">The numbers are the spin right after release, with the change over the clip beside them.</div>
       <div class="k" style="margin-top:10px">Rev rate over the clip</div><canvas id="sl-c1" width="640" height="170" style="width:100%;height:auto"></canvas>
       <div class="k" style="margin-top:6px">Axis rotation <span style="color:#46e6ff">\u2501</span> and tilt <span style="color:#ffd25a">\u2501</span></div><canvas id="sl-c2" width="640" height="170" style="width:100%;height:auto"></canvas>
       <ul>${[...r.notes, `Read ${r.pairs} frame pairs.`, r.still >= 4 ? `Many consecutive frames look identical: the video may not be a true ${fps} fps recording.` : ""].filter(Boolean).map((n) => `<li>${esc(n)}</li>`).join("")}</ul>
-      <div class="chips"><button class="btn" id="sl-save" ${q < 0.3 ? "disabled" : ""}>Use rev rate, rotation and tilt</button></div>
-      ${q < 0.3 ? `<div class="note">Not reliable enough to save. Try a closer, brighter, higher-frame-rate clip.</div>` : ""}</div>
+      <div class="chips"><button class="btn" id="sl-save" ${q2 < 0.3 ? "disabled" : ""}>Use rev rate, rotation and tilt</button></div>
+      ${q2 < 0.3 ? `<div class="note">Not reliable enough to save. Try a closer, brighter, higher-frame-rate clip.</div>` : ""}</div>
     ${flare2 ? `<div class="card"><div class="k">Your PAP and flare, from the video</div>
       <div class="lr-head" style="font-size:22px">PAP \u2248 ${esc(fractionInches(Math.abs(r.pap.over)).replace(/"/g, ""))}${r.pap.over < 0 ? " (other side)" : ""} over, ${esc(fractionInches(Math.abs(r.pap.up)).replace(/"/g, ""))} ${r.pap.up < 0 ? "down" : "up"}</div>
       <div class="u">The axis travelled <b>${r.flareTravelIn.toFixed(1)}"</b> across the ball during the clip, reaching <b>${r.flareMaxIn.toFixed(1)}"</b> from where it started. That's the flare: the oil rings are circles around this path.</div>
@@ -23881,10 +23881,10 @@ ${url}`);
       ctx2.lineJoin = "round";
       ctx2.lineCap = "round";
       const poly2 = (pts, fill, stroke, lw = 1) => {
-        const q = pts.map((p) => proj(cam, p));
-        if (q.some((x) => !x)) return;
+        const q2 = pts.map((p) => proj(cam, p));
+        if (q2.some((x) => !x)) return;
         ctx2.beginPath();
-        q.forEach((p, i) => i ? ctx2.lineTo(p[0], p[1]) : ctx2.moveTo(p[0], p[1]));
+        q2.forEach((p, i) => i ? ctx2.lineTo(p[0], p[1]) : ctx2.moveTo(p[0], p[1]));
         ctx2.closePath();
         ctx2.fillStyle = fill;
         ctx2.fill();
@@ -24089,8 +24089,8 @@ ${url}`);
     });
   }
   function smoothTrack(p, w = 2) {
-    return p.map((q, i) => {
-      if (!q) return null;
+    return p.map((q2, i) => {
+      if (!q2) return null;
       const xs = [];
       const ys = [];
       for (let k2 = Math.max(0, i - w); k2 <= Math.min(p.length - 1, i + w); k2++)
@@ -24172,9 +24172,9 @@ ${url}`);
     }
     return out;
   }
-  var pct = (v, q) => {
+  var pct = (v, q2) => {
     const s = v.filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
-    return s.length ? s[Math.min(s.length - 1, Math.floor(q * s.length))] : NaN;
+    return s.length ? s[Math.min(s.length - 1, Math.floor(q2 * s.length))] : NaN;
   };
   function readApproach(frames, oIn) {
     const notes = [];
@@ -24278,14 +24278,14 @@ ${url}`);
       if (settle) {
         const ref = hipT[settle.i];
         const footRef = slideT[settle.i];
-        let last = settle.t;
+        let last2 = settle.t;
         for (const { t, i } of after) {
           if (t < settle.t) continue;
           const sc = Math.max(1, scale2[i]);
           if (dist(hipT[i], ref) / sc > 0.45 || footRef && slideT[i] && dist(slideT[i], footRef) / sc > 0.6) break;
-          last = t;
+          last2 = t;
         }
-        heldS = last - slideEnd;
+        heldS = last2 - slideEnd;
         const clipEnd = after[after.length - 1].t;
         if (clipEnd - slideEnd < POST_S && heldS >= clipEnd - slideEnd - 0.06) notes.push("The clip ends before a full second at the line, so the hold is a minimum.");
       }
@@ -24489,8 +24489,8 @@ ${url}`);
       if (s.cal.length === 4) {
         const H3 = solveHomography(s.cal, [{ x: 0, y: 0 }, { x: LANE_BOARDS, y: 0 }, { x: LANE_BOARDS, y: LANE_LENGTH_FT }, { x: 0, y: LANE_LENGTH_FT }]);
         toLane = (p) => {
-          const q = applyHomography(H3, p);
-          return Number.isFinite(q.x) && Number.isFinite(q.y) ? q : null;
+          const q2 = applyHomography(H3, p);
+          return Number.isFinite(q2.x) && Number.isFinite(q2.y) ? q2 : null;
         };
       }
       lastFrames = frames;
@@ -24589,11 +24589,11 @@ ${url}`);
       const p = s.pts.map(P);
       g.beginPath();
       if (s.tool === "circle" && p.length >= 2) g.arc(p[0].x, p[0].y, Math.hypot(p[1].x - p[0].x, p[1].y - p[0].y), 0, Math.PI * 2);
-      else p.forEach((q, i) => i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y));
+      else p.forEach((q2, i) => i ? g.lineTo(q2.x, q2.y) : g.moveTo(q2.x, q2.y));
       g.stroke();
-      for (const q of s.tool === "free" ? [] : p) {
+      for (const q2 of s.tool === "free" ? [] : p) {
         g.beginPath();
-        g.arc(q.x, q.y, 4 * dpr, 0, Math.PI * 2);
+        g.arc(q2.x, q2.y, 4 * dpr, 0, Math.PI * 2);
         g.fill();
       }
       if (s.tool === "angle" && s.pts.length === 3) {
@@ -24645,9 +24645,9 @@ ${url}`);
       const P = (x, y) => applyHomography(Hinv2, { x, y });
       const view3 = { ctx: g, width: s.shot.vw, P };
       const t = s.v.currentTime + s.shot.recStartT;
-      const last = s.shot.path[s.shot.path.length - 1]?.t ?? 0;
-      strokeTrail(view3, s.shot.path.filter((p) => p.t <= t).map((p) => P(p.x, p.y)), 1, t < last);
-      if (s.shot.proj?.length && t > last) strokeProjected(view3, [s.shot.path[s.shot.path.length - 1], ...s.shot.proj.filter((p) => p.t <= t)].map((p) => P(p.x, p.y)), 1);
+      const last2 = s.shot.path[s.shot.path.length - 1]?.t ?? 0;
+      strokeTrail(view3, s.shot.path.filter((p) => p.t <= t).map((p) => P(p.x, p.y)), 1, t < last2);
+      if (s.shot.proj?.length && t > last2) strokeProjected(view3, [s.shot.path[s.shot.path.length - 1], ...s.shot.proj.filter((p) => p.t <= t)].map((p) => P(p.x, p.y)), 1);
     }
     const [a, b] = sides2;
     if (a?.v && b?.v && !a.v.paused) {
@@ -24909,8 +24909,8 @@ ${url}`);
   };
   var dirWord = (b) => b > 0 ? "left" : "right";
   function adviseMove(recent, hand3, plan, lane) {
-    const last = recent[recent.length - 1];
-    const sameBall2 = last?.ballId ? recent.filter((s) => s.ballId === last.ballId) : recent;
+    const last2 = recent[recent.length - 1];
+    const sameBall2 = last2?.ballId ? recent.filter((s) => s.ballId === last2.ballId) : recent;
     const window2 = sameBall2.slice(-6);
     const base = { kind: "insufficient", headline: "", feet: 0, eyes: 0, from: { stand: null, arrows: null }, to: { stand: null, arrows: null }, why: [], shotsUsed: 0 };
     const stands = window2.map((s) => s.plan?.stand ?? s.body?.startBoard ?? null).filter((x) => x !== null);
@@ -25549,14 +25549,14 @@ ${url}`);
     for (let k2 = 0; k2 < heads.length; k2++) {
       const num5 = Number(heads[k2][1]);
       const gen = Number(heads[k2][2]);
-      const start = heads[k2].index + heads[k2][0].length;
+      const start2 = heads[k2].index + heads[k2][0].length;
       const stop = k2 + 1 < heads.length ? heads[k2 + 1].index : s.length;
-      const body = s.slice(start, stop);
+      const body = s.slice(start2, stop);
       const sm = /stream\r?\n/.exec(body);
       const dict = sm ? body.slice(0, sm.index) : body.slice(0, body.indexOf("endobj") >= 0 ? body.indexOf("endobj") : body.length);
       let raw = null;
       if (sm) {
-        const a = start + sm.index + sm[0].length;
+        const a = start2 + sm.index + sm[0].length;
         const e = s.lastIndexOf("endstream", stop);
         if (e > a) {
           raw = buf.subarray(a, e);
@@ -25924,7 +25924,7 @@ ${url}`);
     if (!el) return;
     const t = S.target;
     const mem = S.where.center && S.where.lane ? memoryFor(S.shots, S.where.center, S.where.lane, S.sessionId) : null;
-    const last = mem?.sessions[0];
+    const last2 = mem?.sessions[0];
     const best = mem?.best;
     const lineOf = (x) => [x.stand !== null ? `stood on ${x.stand.toFixed(0)}` : "", x.arrows !== null ? `crossed the arrows on ${x.arrows.toFixed(0)}` : ""].filter(Boolean).join(", ");
     el.innerHTML = `<div class="card"><div class="row"><div><div class="k">My target</div><div class="lr-head" style="font-size:16px">${t ? `${t.stand !== void 0 ? `Stand ${t.stand} \xB7 ` : ""}aim ${t.arrows} at the arrows${t.breakpoint !== void 0 ? ` \xB7 break at ${t.breakpoint}` : ""}` : "No target set"}</div></div><button class="chip" id="tn-edit">${t ? "Change" : "Set target"}</button></div>
@@ -25933,10 +25933,10 @@ ${url}`);
       const p = activePattern();
       return p ? `<div class="note">Oil: <b>${esc(p.name)}</b>, ${p.lengthFt} ft${p.volumeMl !== void 0 ? `, ${p.volumeMl} mL` : ""}${p.ratio !== void 0 ? `, ${p.ratio}:1` : ""}. Rule of 31: break near board ${ruleOf31(p.lengthFt)}. ${p.rows?.length ? "Drawn on the lane from the sheet's load table." : "Shape on the lane is estimated."}</div>` : `<div class="note">Add tonight's oil pattern (Target, then My patterns) to see the oil drawn on your lane.</div>`;
     })()}
-    ${last ? `<div class="lr-next"><b>Last time on this pair</b> (${esc(day2(last.date))}): ${esc(lineOf(last) || "no line recorded")}${last.ballIds.length ? ` with the ${esc(last.ballIds.map(ballName2).join(", "))}` : ""}${last.pocketPct !== null ? `, ${Math.round(last.pocketPct)}% in the pocket` : ""}${last.strikePct !== null ? `, ${Math.round(last.strikePct)}% strikes` : ""}.${best && best !== last ? `<div class="u">Best here: ${esc(day2(best.date))}, ${esc(lineOf(best))}, ${Math.round(best.pocketPct)}% in the pocket.</div>` : ""}${(best ?? last).arrows !== null ? `<div class="chips"><button class="chip" id="tn-use">Start on that line</button></div>` : ""}</div>` : ""}</div>`;
+    ${last2 ? `<div class="lr-next"><b>Last time on this pair</b> (${esc(day2(last2.date))}): ${esc(lineOf(last2) || "no line recorded")}${last2.ballIds.length ? ` with the ${esc(last2.ballIds.map(ballName2).join(", "))}` : ""}${last2.pocketPct !== null ? `, ${Math.round(last2.pocketPct)}% in the pocket` : ""}${last2.strikePct !== null ? `, ${Math.round(last2.strikePct)}% strikes` : ""}.${best && best !== last2 ? `<div class="u">Best here: ${esc(day2(best.date))}, ${esc(lineOf(best))}, ${Math.round(best.pocketPct)}% in the pocket.</div>` : ""}${(best ?? last2).arrows !== null ? `<div class="chips"><button class="chip" id="tn-use">Start on that line</button></div>` : ""}</div>` : ""}</div>`;
     $("tn-edit").onclick = () => openTarget();
     $("tn-use")?.addEventListener("click", () => {
-      const src = best ?? last;
+      const src = best ?? last2;
       openTarget({ stand: src.stand !== null ? Math.round(src.stand) : void 0, arrows: Math.round(src.arrows) });
     });
   }
@@ -26140,7 +26140,7 @@ ${url}`);
             return { x: ox + p.x * k2 * sc, y: oy + p.y * k2 * sc };
           };
           const view3 = { ctx: g, width: 1900, P };
-          const last = s.path[s.path.length - 1]?.t ?? 0;
+          const last2 = s.path[s.path.length - 1]?.t ?? 0;
           const began = performance.now();
           const limit = (PRE + POST + 4) * 1e3;
           while (!v.ended && v.currentTime < rel + POST && performance.now() - began < limit) {
@@ -26148,8 +26148,8 @@ ${url}`);
             g.fillRect(0, 0, W, H);
             g.drawImage(v, ox, oy, vw * sc, vh * sc);
             const t = v.currentTime + s.recStartT;
-            if (Hinv2) strokeTrail(view3, s.path.filter((p) => p.t <= t).map((p) => P(p.x, p.y)), 1, t < last);
-            if (Hinv2 && s.proj?.length && t > last) strokeProjected(view3, [s.path[s.path.length - 1], ...s.proj.filter((p) => p.t <= t)].map((p) => P(p.x, p.y)), 1);
+            if (Hinv2) strokeTrail(view3, s.path.filter((p) => p.t <= t).map((p) => P(p.x, p.y)), 1, t < last2);
+            if (Hinv2 && s.proj?.length && t > last2) strokeProjected(view3, [s.path[s.path.length - 1], ...s.proj.filter((p) => p.t <= t)].map((p) => P(p.x, p.y)), 1);
             const grad = g.createLinearGradient(0, H - 260, 0, H);
             grad.addColorStop(0, "rgba(0,0,0,0)");
             grad.addColorStop(1, "rgba(0,0,0,.8)");
@@ -26266,8 +26266,8 @@ ${url}`);
   var specLine2 = (b) => [b.rg && `RG ${b.rg.value}`, b.differential && `diff ${b.differential.value}`, b.coverstock?.value ?? b.coverstockType?.value, b.core?.value].filter(Boolean).join(" \xB7 ");
   var badge = (ok, text, warn = false) => `<span class="badge ${ok ? "good" : warn ? "low" : "moderate"}">${esc(text)}</span>`;
   function lastSession(shots) {
-    const last = shots[shots.length - 1];
-    return last ? shots.filter((s) => s.sessionId === last.sessionId) : [];
+    const last2 = shots[shots.length - 1];
+    return last2 ? shots.filter((s) => s.sessionId === last2.sessionId) : [];
   }
   function bodySummary(shots) {
     const bodies = shots.map((s) => s.body).filter((b) => !!b);
@@ -26456,9 +26456,9 @@ ${url}`);
     <div class="chips" id="ln-cats">${cats.map((c) => `<button class="chip ${learnCat === c ? "sel" : ""}" data-c="${esc(c)}">${c === "all" ? "All" : esc(c)}</button>`).join("")}</div>
     <div id="ln-list"></div>`;
     const paint2 = () => {
-      const q = learnQuery.trim().toLowerCase();
-      const items = GLOSSARY.filter((t) => (learnCat === "all" || t.cat === learnCat) && (!q || t.term.toLowerCase().includes(q) || (t.aka ?? []).some((a) => a.toLowerCase().includes(q)) || t.def.toLowerCase().includes(q)));
-      items.sort((a, b) => Number(b.term.toLowerCase() === q) - Number(a.term.toLowerCase() === q));
+      const q2 = learnQuery.trim().toLowerCase();
+      const items = GLOSSARY.filter((t) => (learnCat === "all" || t.cat === learnCat) && (!q2 || t.term.toLowerCase().includes(q2) || (t.aka ?? []).some((a) => a.toLowerCase().includes(q2)) || t.def.toLowerCase().includes(q2)));
+      items.sort((a, b) => Number(b.term.toLowerCase() === q2) - Number(a.term.toLowerCase() === q2));
       $("ln-list").innerHTML = items.length ? items.map((t) => `<div class="card" style="margin-top:10px"><div class="k">${esc(t.cat)}</div><div class="lr-head" style="font-size:17px">${esc(t.term)}</div>${t.aka?.length ? `<div class="note">Also called: ${esc(t.aka.join(", "))}</div>` : ""}<div style="margin-top:6px;line-height:1.45">${esc(t.def)}</div>${t.app ? `<div class="note" style="margin-top:8px"><b>In LaneIQ:</b> ${esc(t.app)}</div>` : ""}</div>`).join("") : `<div class="note" style="margin-top:12px">No word matches that. Try a shorter search.</div>`;
     };
     paint2();
@@ -26502,9 +26502,9 @@ ${url}`);
   }
   function meHub() {
     const mine = S.shots;
-    const last = mine[mine.length - 1];
+    const last2 = mine[mine.length - 1];
     const tile = (tab, title, line2) => `<button class="card" data-mypage="${tab}" style="text-align:left;cursor:pointer;color:inherit;font:inherit;width:100%"><div class="lr-head" style="font-size:16px">${title}</div><div class="note">${esc(line2)}</div></button>`;
-    return `<div id="me-hub" class="grid">${tile("shots", "My shots", mine.length ? `${mine.length} shot${mine.length === 1 ? "" : "s"} with video \xB7 last ${when3(last.at)}` : "Replays, lane view, top-down and 3D")}${tile("score", "My scores", "Scorecard, spare coach and statistics")}${tile("coach", "My coach", "What to work on, a move to try, ball advice, drills")}${tile("insights", "My insights", "Averages, common errors, plan, shot map, skills")}</div>`;
+    return `<div id="me-hub" class="grid">${tile("shots", "My shots", mine.length ? `${mine.length} shot${mine.length === 1 ? "" : "s"} with video \xB7 last ${when3(last2.at)}` : "Replays, lane view, top-down and 3D")}${tile("score", "My scores", "Scorecard, spare coach and statistics")}${tile("coach", "My coach", "What to work on, a move to try, ball advice, drills")}${tile("insights", "My insights", "Averages, common errors, plan, shot map, skills")}</div>`;
   }
   var communityView = "friends";
   function renderCommunity() {
@@ -26693,7 +26693,7 @@ ${url}`);
       const Hinv2 = solveHomography([{ x: 0, y: 0 }, { x: LANE_BOARDS, y: 0 }, { x: LANE_BOARDS, y: LANE_LENGTH_FT }, { x: 0, y: LANE_LENGTH_FT }], s.cal);
       const P = (x, y) => applyHomography(Hinv2, { x, y });
       const view3 = { ctx: cx, width: s.vw, P };
-      const last = s.path[s.path.length - 1]?.t ?? 0;
+      const last2 = s.path[s.path.length - 1]?.t ?? 0;
       const pat = patternById(s.pattern);
       const oilMap = pat && oilOn() ? mapOf(pat) : null;
       const oilCv = oilMap ? bakeOil(view3, s.vw, s.vh, oilMap) : null;
@@ -26704,9 +26704,9 @@ ${url}`);
           if (oilCv) cx.drawImage(oilCv, 0, 0);
           const t = v.currentTime + s.recStartT;
           const upto = s.path.filter((p) => p.t <= t).map((p) => P(p.x, p.y));
-          strokeTrail(view3, upto, 1, t < last);
-          if (s.proj?.length && t > last) strokeProjected(view3, [s.path[s.path.length - 1], ...s.proj.filter((p) => p.t <= t)].map((p) => P(p.x, p.y)), 1);
-          if (t >= last) drawShotMarkers(view3, s.a);
+          strokeTrail(view3, upto, 1, t < last2);
+          if (s.proj?.length && t > last2) strokeProjected(view3, [s.path[s.path.length - 1], ...s.proj.filter((p) => p.t <= t)].map((p) => P(p.x, p.y)), 1);
+          if (t >= last2) drawShotMarkers(view3, s.a);
         }
         reviewRaf = requestAnimationFrame(loop);
       };
@@ -27128,9 +27128,9 @@ ${url}`);
     el.querySelectorAll("[data-sw]").forEach((b) => b.onclick = () => (setCurrentProfile(b.dataset.sw), location.reload()));
     el.querySelectorAll("[data-rm]").forEach(
       (b) => b.onclick = async () => {
-        const x = profs.find((q) => q.id === b.dataset.rm);
+        const x = profs.find((q2) => q2.id === b.dataset.rm);
         if (!confirm(`Delete ${x.name} and all their shots, videos and plan from this phone? This can't be undone.`)) return;
-        saveProfiles(profs.filter((q) => q.id !== x.id));
+        saveProfiles(profs.filter((q2) => q2.id !== x.id));
         await deleteProfileData(x.id);
         location.reload();
       }
@@ -27191,6 +27191,7 @@ ${url}`);
     { part: LIVE, tab: "live", sel: "#status", title: "It finds the lane by itself", text: "The app scans for your lane, votes over several looks, and locks the lane from the foul line to the head pin, even from off to the side. When several lanes are in view it numbers them for you to tap. This line always says what it is doing: scanning, locked, ball detected, shot captured." },
     { part: LIVE, tab: "live", sel: "#tracebtn, #reset", title: "If the lock is off, fix it", text: "Trace my lane freezes the picture so you can drag four numbered dots onto the lane, use Snap to edges, then mark the arrows and place the head pin, the 7 and the 10, with a magnifier under your finger. The yellow rings are the real arrows the app read off your lane. Re-lock throws a bad lock away and starts again." },
     { part: LIVE, tab: "live", sel: "#viewtoggle", title: "Lane view, Raw and 3D", text: "Once the camera runs, Lane view draws the lane grid, the arrows, the oil and the ball's path over the picture; Raw is the plain video; 3D is a model of the lane. Expand makes the picture as big as the screen, and you can pinch or scroll to zoom and drag to pan." },
+    { part: LIVE, tab: "live", sel: "#stage", title: "Foldable phones", text: "If your phone folds, stand it half-open like a small laptop: the app notices the fold and puts the camera view in the top half (the left half if the hinge is upright), with the status and buttons in the other half. Phones that don't report a fold are never affected. If yours doesn't switch by itself, add ?fold to the address." },
     { part: LIVE, tab: "live", sel: "#startstop", title: "Start and Stop: just your shots", text: "In league the camera sees everyone's ball. Tap Stop and nothing is followed, recorded or saved (the lane stays locked); tap Start on your turn." },
     { part: LIVE, tab: "live", sel: "#oneshot", title: "One shot at a time", text: "League mode: the app starts stopped and stops by itself after each of your shots, so you only tap Start when it is your turn and only your shots are kept." },
     { part: LIVE, tab: "live", sel: "#target-btn", title: "Target: where you stand and aim", text: "Say where your slide foot starts and which board you aim at. Every shot is then graded against it, so the app can tell a missed shot from a good shot on the wrong line. You also type your centre and lane here, and pick tonight's oil pattern." },
@@ -27288,7 +27289,7 @@ ${url}`);
     document.body.append(root);
     const spot = root.querySelector("#tour-spot");
     const card = root.querySelector("#tour-card");
-    const q = (id) => root.querySelector(id);
+    const q2 = (id) => root.querySelector(id);
     const visible = (e) => e.offsetParent !== null || getComputedStyle(e).position === "fixed";
     const find = (sel2) => {
       if (sel2.startsWith("@")) {
@@ -27322,13 +27323,13 @@ ${url}`);
     const show = () => {
       const s = STEPS[i];
       showTab(s.tab);
-      q("#tour-n").textContent = `${i + 1} of ${STEPS.length}`;
-      q("#tour-jump").value = s.part;
-      q("#tour-t").textContent = s.title;
-      q("#tour-x").textContent = s.text;
+      q2("#tour-n").textContent = `${i + 1} of ${STEPS.length}`;
+      q2("#tour-jump").value = s.part;
+      q2("#tour-t").textContent = s.title;
+      q2("#tour-x").textContent = s.text;
       card.scrollTop = 0;
-      q("#tour-back").style.visibility = i === 0 ? "hidden" : "visible";
-      q("#tour-next").textContent = i === STEPS.length - 1 ? "Done" : "Next";
+      q2("#tour-back").style.visibility = i === 0 ? "hidden" : "visible";
+      q2("#tour-next").textContent = i === STEPS.length - 1 ? "Done" : "Next";
       requestAnimationFrame(() => requestAnimationFrame(place));
       setTimeout(place, 350);
     };
@@ -27343,10 +27344,10 @@ ${url}`);
       onDone2?.();
     };
     window.addEventListener("resize", place);
-    q("#tour-next").onclick = () => i === STEPS.length - 1 ? finish2() : (i++, show());
-    q("#tour-back").onclick = () => i > 0 ? (i--, show()) : void 0;
-    q("#tour-skip").onclick = finish2;
-    q("#tour-jump").onchange = (e) => {
+    q2("#tour-next").onclick = () => i === STEPS.length - 1 ? finish2() : (i++, show());
+    q2("#tour-back").onclick = () => i > 0 ? (i--, show()) : void 0;
+    q2("#tour-skip").onclick = finish2;
+    q2("#tour-jump").onchange = (e) => {
       const p = e.target.value;
       i = Math.max(0, STEPS.findIndex((s) => s.part === p));
       show();
@@ -27576,7 +27577,7 @@ ${url}`);
   }
   function localFit(p, rob, t0, k2, self2, degree) {
     const n = p.length;
-    const d = p.map((q) => Math.abs(q.t - t0));
+    const d = p.map((q2) => Math.abs(q2.t - t0));
     const h = [...d].sort((a, b) => a - b)[Math.min(n - 1, k2 - 1)] * 1.0001 + 1e-9;
     const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
     const B = [0, 0, 0];
@@ -27632,7 +27633,7 @@ ${url}`);
           hat[i] = f.hat;
         }
         if (!ok) break;
-        const z = points.map((q, i) => (q.v - fit[i]) / q.s);
+        const z = points.map((q2, i) => (q2.v - fit[i]) / q2.s);
         const scale2 = Math.max(0.6, 1.4826 * median8(z.map(Math.abs)));
         rob = z.map((v) => bisquare(v / (4.685 * scale2)));
         if (rob.filter((r) => r > 0.05).length < Math.max(5, n * 0.5)) rob = rob.map((r) => Math.max(r, 0.05));
@@ -27646,16 +27647,16 @@ ${url}`);
         den++;
       }
       const score = den ? num5 / den : Infinity;
-      const z2 = points.map((q, i) => rob[i] > 0.05 ? (q.v - fit[i]) / q.s : 0);
+      const z2 = points.map((q2, i) => rob[i] > 0.05 ? (q2.v - fit[i]) / q2.s : 0);
       const chi = Math.sqrt(z2.reduce((s, v) => s + v * v, 0) / Math.max(1, rob.filter((r) => r > 0.05).length));
       if (!best || score < best.score) best = { score, res: { fit, slope, trust: rob, chi, span } };
     }
     return best ? best.res : null;
   }
   function refineRoll(samples, sigma, extraSigma = { x: 0.15, y: 0.1 }) {
-    const s = [...samples].sort((a, b) => a.t - b.t).filter((q) => Number.isFinite(q.t) && Number.isFinite(q.x) && Number.isFinite(q.y));
+    const s = [...samples].sort((a, b) => a.t - b.t).filter((q2) => Number.isFinite(q2.t) && Number.isFinite(q2.x) && Number.isFinite(q2.y));
     const u = [];
-    for (const q of s) if (!u.length || q.t > u[u.length - 1].t + 1e-6) u.push(q);
+    for (const q2 of s) if (!u.length || q2.t > u[u.length - 1].t + 1e-6) u.push(q2);
     const med3 = (i) => median8([u[Math.max(0, i - 1)].y, u[i].y, u[Math.min(u.length - 1, i + 1)].y]);
     let top = -Infinity;
     for (let i = 0; i < u.length; i++) {
@@ -27667,12 +27668,12 @@ ${url}`);
     }
     if (u.length < 8) return null;
     const t0 = u[0].t;
-    const sg = u.map((q) => {
-      const g = sigma ? sigma(q.x, q.y) : { sx: 0.5, sy: 0.5 };
+    const sg = u.map((q2) => {
+      const g = sigma ? sigma(q2.x, q2.y) : { sx: 0.5, sy: 0.5 };
       return { sx: Math.hypot(g.sx, extraSigma.x), sy: Math.hypot(g.sy, extraSigma.y) };
     });
-    const px = u.map((q, i) => ({ t: q.t - t0, v: q.x, s: sg[i].sx }));
-    const py = u.map((q, i) => ({ t: q.t - t0, v: q.y, s: sg[i].sy }));
+    const px = u.map((q2, i) => ({ t: q2.t - t0, v: q2.x, s: sg[i].sx }));
+    const py = u.map((q2, i) => ({ t: q2.t - t0, v: q2.y, s: sg[i].sy }));
     const fy = robustSmooth(py, [0.5, 0.7, 1], 2);
     const fx = robustSmooth(px, [0.2, 0.3, 0.45, 0.65], 2);
     if (!fx || !fy) return null;
@@ -27707,11 +27708,11 @@ ${url}`);
       const zb = solve32(A, [0, 1, 0]);
       const zc = solve32(A, [0, 0, 1]);
       if (co && zb && zc && tb - ta > 0.3) {
-        const q = (t) => co[0] + co[1] * (t - tc) + co[2] * (t - tc) ** 2;
+        const q2 = (t) => co[0] + co[1] * (t - tc) + co[2] * (t - tc) ** 2;
         let chi2 = 0;
         win.forEach((_, k2) => chi2 += w[k2] * (Y[k2] - (co[0] + co[1] * X[k2][1] + co[2] * X[k2][2])) ** 2);
         const infl = Math.max(1, chi2 / Math.max(1, win.length - 3));
-        const dist2 = q(tb) - q(ta);
+        const dist2 = q2(tb) - q2(ta);
         speedMph = dist2 / (tb - ta) * (3600 / 5280);
         speedSe = Math.sqrt(infl * zb[1]) * (3600 / 5280);
       }
@@ -27829,8 +27830,8 @@ ${url}`);
           const v = this.cost(dx, dy, cap);
           if (v < best) best = v, bx = dx, by = dy;
         }
-      const sub3 = (p, q, t) => {
-        const d = p - 2 * q + t;
+      const sub3 = (p, q2, t) => {
+        const d = p - 2 * q2 + t;
         return d > 1e-9 ? Math.max(-0.5, Math.min(0.5, (p - t) / (2 * d))) : 0;
       };
       let fx = bx, fy = by;
@@ -28009,7 +28010,7 @@ ${url}`);
       const floorV = Math.max(10, best * 0.15);
       const cells = [];
       for (let i = 0; i < acc.length; i++) if (acc[i] >= floorV) cells.push(i);
-      cells.sort((p, q) => acc[q] - acc[p]);
+      cells.sort((p, q2) => acc[q2] - acc[p]);
       const out = [];
       const taken = [];
       for (const c of cells.slice(0, 8e3)) {
@@ -28093,7 +28094,7 @@ ${url}`);
         b = (sw * sxy - sy2 * sx2) / den;
         a = (sx2 - b * sy2) / sw;
         const res = pts.map((p) => Math.abs(p.x - (a + b * p.y)));
-        const med3 = [...res].sort((p, q) => p - q)[Math.floor(res.length / 2)];
+        const med3 = [...res].sort((p, q2) => p - q2)[Math.floor(res.length / 2)];
         const lim = Math.max(1.5, 2.5 * med3);
         inl = pts.filter((_, k2) => res[k2] <= lim);
         if (inl.length < 30) return [];
@@ -28177,7 +28178,7 @@ ${url}`);
       diag2.pairs = cands.length;
       if (!cands.length) diag2.hint = "I see edges, but nothing that looks like a bright lane between two dark gutters yet.";
     }
-    cands.sort((p, q) => q.base - p.base);
+    cands.sort((p, q2) => q2.base - p.base);
     const distinct = [];
     for (const c of cands) {
       const cb = (xAt(c.L, c.b) + xAt(c.R, c.b)) / 2;
@@ -28201,7 +28202,7 @@ ${url}`);
       const r = geometry(c);
       if (r) results.push(r);
     }
-    const sorted2 = results.sort((p, q) => q.confidence - p.confidence).slice(0, maxCandidates);
+    const sorted2 = results.sort((p, q2) => q2.confidence - p.confidence).slice(0, maxCandidates);
     if (diag2 && sorted2.length) diag2.hint = "";
     return sorted2;
     function geometry(c) {
@@ -28239,9 +28240,9 @@ ${url}`);
       const localMax = (arr, min, k2, from = yStart + 1, to = h - 4) => {
         const out = [];
         for (let y = Math.max(from, yStart + 1); y < to; y++) if (arr[y] >= min && arr[y] >= arr[y - 1] && arr[y] >= arr[y + 1]) out.push(y);
-        return out.sort((p, q) => arr[q] - arr[p]).slice(0, k2);
+        return out.sort((p, q2) => arr[q2] - arr[p]).slice(0, k2);
       };
-      const topRows = (arr) => Array.from({ length: h }, (_, y) => y).filter((y) => y >= yStart && y < h - 4).sort((p, q) => arr[q] - arr[p]).slice(0, 6).map((y) => `${y}:${arr[y].toFixed(2)}`).join(" ");
+      const topRows = (arr) => Array.from({ length: h }, (_, y) => y).filter((y) => y >= yStart && y < h - 4).sort((p, q2) => arr[q2] - arr[p]).slice(0, 6).map((y) => `${y}:${arr[y].toFixed(2)}`).join(" ");
       const prow = new Float32Array(h).fill(NaN);
       const plow = new Float32Array(h).fill(NaN);
       const phigh = new Float32Array(h).fill(NaN);
@@ -28253,7 +28254,7 @@ ${url}`);
         if (b2 - a < 3) continue;
         const vals = [];
         for (let x = a; x <= b2; x++) vals.push(sm[y * w + x]);
-        vals.sort((p, q) => p - q);
+        vals.sort((p, q2) => p - q2);
         prow[y] = vals[vals.length >> 1];
         plow[y] = vals[vals.length >> 2];
         phigh[y] = vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.9))];
@@ -28285,7 +28286,7 @@ ${url}`);
         const peaks = (arr, min, k2, from, to) => {
           const out = [];
           for (let y = Math.max(from, yStart + 12); y < Math.min(to, h - 13); y++) if (arr[y] >= min && arr[y] >= arr[y - 1] && arr[y] >= arr[y + 1]) out.push(y);
-          return out.sort((p, q) => arr[q] - arr[p]).slice(0, k2);
+          return out.sort((p, q2) => arr[q2] - arr[p]).slice(0, k2);
         };
         for (const y of peaks(dip, 2.5, 8, Math.floor(t + h * 0.05), h - 4)) if (!foulCands.some((c2) => Math.abs(c2 - y) <= 2)) foulCands.push(y);
         for (const y of peaks(stp, 6, 6, Math.floor(t - pitBefore), Math.floor(t + pitAfter))) if (!pitCands.some((c2) => Math.abs(c2 - y) <= 2)) pitCands.push(y);
@@ -28752,8 +28753,8 @@ ${url}`);
       const full = proj.length ? [...live2, ...proj] : live2;
       const t30 = (live2.find((p) => p.y >= 30) ?? live2[live2.length - 1]).t;
       const ballAt = (rel, path2) => {
-        const q = interp2(path2, rel);
-        return q ? ballInPicture(P, q.x, q.y) : null;
+        const q2 = interp2(path2, rel);
+        return q2 ? ballInPicture(P, q2.x, q2.y) : null;
       };
       const sc = Math.min(1, 960 / vw);
       const sw = Math.round(vw * sc), sh = Math.round(vh * sc);
@@ -28878,6 +28879,64 @@ ${url}`);
     waiting3.set(shot.id, job);
     return job;
   }
+
+  // camera/fold.ts
+  var q = new URLSearchParams(location.search);
+  var forced = q.has("fold") ? q.get("fold") !== "0" : null;
+  function folded() {
+    if (forced !== null) return forced;
+    try {
+      const p = navigator.devicePosture;
+      if (p?.type === "folded") return true;
+      if (matchMedia("(device-posture: folded)").matches) return true;
+      if (matchMedia("(vertical-viewport-segments: 2)").matches || matchMedia("(horizontal-viewport-segments: 2)").matches) return true;
+    } catch {
+    }
+    return false;
+  }
+  var last = "";
+  function refreshFold() {
+    const b = document.body;
+    if (!b) return;
+    const on3 = folded();
+    b.classList.toggle("folded", on3);
+    const stage = document.getElementById("stage");
+    if (!on3 || !stage) {
+      if (last) {
+        for (const v of ["--fw", "--fh", "--fl", "--ft", "--pt", "--pl"]) b.style.removeProperty(v);
+        last = "";
+      }
+      return;
+    }
+    const W2 = innerWidth, H3 = innerHeight;
+    const portrait = H3 >= W2;
+    const rw = portrait ? W2 : Math.floor(W2 / 2), rh = portrait ? Math.floor(H3 / 2) : H3;
+    const par = parseFloat(stage.style.getPropertyValue("--par")) || 16 / 9;
+    const w = Math.floor(Math.min(rw, rh * par)), h = Math.floor(w / par);
+    const vals = { "--fw": `${w}px`, "--fh": `${h}px`, "--fl": `${Math.floor((rw - w) / 2)}px`, "--ft": `${Math.floor((rh - h) / 2)}px`, "--pt": portrait ? `${rh}px` : "0px", "--pl": portrait ? "0px" : `${rw}px` };
+    const key2 = JSON.stringify(vals);
+    if (key2 === last) return;
+    last = key2;
+    for (const [k2, v] of Object.entries(vals)) b.style.setProperty(k2, v);
+  }
+  function start() {
+    refreshFold();
+    const refresh2 = () => refreshFold();
+    addEventListener("resize", refresh2);
+    addEventListener("orientationchange", refresh2);
+    try {
+      navigator.devicePosture?.addEventListener("change", refresh2);
+      for (const m of ["(device-posture: folded)", "(vertical-viewport-segments: 2)", "(horizontal-viewport-segments: 2)"]) matchMedia(m).addEventListener("change", refresh2);
+    } catch {
+    }
+    const mo = new MutationObserver(refresh2);
+    const stage = document.getElementById("stage");
+    if (stage) mo.observe(stage, { attributes: true, attributeFilter: ["style", "class"] });
+    const live2 = document.getElementById("tab-live");
+    if (live2) mo.observe(live2, { attributes: true, attributeFilter: ["class"] });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
 
   // camera/camera.ts
   init_db();
@@ -29045,11 +29104,11 @@ ${url}`);
           if (x > x1) x1 = x;
           if (y < y0) y0 = y;
           if (y > y1) y1 = y;
-          for (const q of [k2 - 1, k2 + 1, k2 - w, k2 + w]) {
-            if (q < 0 || q >= fg.length || !fg[q] || seen2[q]) continue;
-            if (q === k2 - 1 && x === 0 || q === k2 + 1 && x === w - 1) continue;
-            seen2[q] = 1;
-            stack.push(q);
+          for (const q2 of [k2 - 1, k2 + 1, k2 - w, k2 + w]) {
+            if (q2 < 0 || q2 >= fg.length || !fg[q2] || seen2[q2]) continue;
+            if (q2 === k2 - 1 && x === 0 || q2 === k2 + 1 && x === w - 1) continue;
+            seen2[q2] = 1;
+            stack.push(q2);
           }
         }
         out.push({ x: sx / n, y: sy / n, area: n, w: x1 - x0 + 1, h: y1 - y0 + 1, c: chroma ? sc / n : 128 });
@@ -29153,8 +29212,8 @@ ${url}`);
         }
         st2.cands++;
         const blue = (128 - b.c) / 0.6;
-        const q = Math.abs(Math.log(ratio)) + Math.abs(Math.log(Math.max(0.3, Math.min(3, aspect)))) * 0.6 + Math.abs(fill - 0.78) * 1.5 - 0.5 * Math.max(0, Math.min(1, (blue - 15) / 60));
-        cands.push({ ...b, y: b.y, lx: l.x, ly: l.y, er, q, by: cy });
+        const q2 = Math.abs(Math.log(ratio)) + Math.abs(Math.log(Math.max(0.3, Math.min(3, aspect)))) * 0.6 + Math.abs(fill - 0.78) * 1.5 - 0.5 * Math.max(0, Math.min(1, (blue - 15) / 60));
+        cands.push({ ...b, y: b.y, lx: l.x, ly: l.y, er, q: q2, by: cy });
       }
       this.lastCands = cands.map((c) => ({ lx: c.lx, ly: c.ly, q: c.q }));
       const used = /* @__PURE__ */ new Set();
@@ -30075,19 +30134,19 @@ ${url}`);
     }
     const p = tracePath(frames);
     const first = p?.[0];
-    const last = p?.[p.length - 1];
-    const mph = first && last ? (last.y - first.y) / Math.max(1e-6, last.t - first.t) * (3600 / 5280) : 0;
-    if (!p || !first || !last || mph < 8) {
+    const last2 = p?.[p.length - 1];
+    const mph = first && last2 ? (last2.y - first.y) / Math.max(1e-6, last2.t - first.t) * (3600 / 5280) : 0;
+    if (!p || !first || !last2 || mph < 8) {
       histActive = false;
       return;
     }
     if (!histActive) {
       histActive = true;
-      logTrack("ball found by looking back", { points: p.length, mph: +mph.toFixed(1), fromFt: +first.y.toFixed(1), toFt: +last.y.toFixed(1) });
+      logTrack("ball found by looking back", { points: p.length, mph: +mph.toFixed(1), fromFt: +first.y.toFixed(1), toFt: +last2.y.toFixed(1) });
       ballArrived(media);
     }
     histTrail = p.map((s) => laneToPx(s.x, s.y));
-    if (media - last.t > 0.8 || last.y >= 56) {
+    if (media - last2.t > 0.8 || last2.y >= 56) {
       histActive = false;
       void finish();
     }
@@ -30251,7 +30310,7 @@ ${url}`);
     frame2.width = W2;
     frame2.height = Hh;
     frame2.getContext("2d").drawImage(video, 0, 0);
-    const start = from ?? (H2 && corners.length === 4 ? corners.map((p) => ({ ...p })) : null) ?? lastCandidates[0]?.corners ?? [
+    const start2 = from ?? (H2 && corners.length === 4 ? corners.map((p) => ({ ...p })) : null) ?? lastCandidates[0]?.corners ?? [
       { x: W2 * 0.22, y: Hh * 0.92 },
       { x: W2 * 0.78, y: Hh * 0.92 },
       { x: W2 * 0.55, y: Hh * 0.36 },
@@ -30269,7 +30328,7 @@ ${url}`);
     $("manualbtn").classList.add("hide");
     openLaneTrace({
       frame: frame2,
-      start,
+      start: start2,
       snap: (c) => {
         const k2 = Math.min(1, 640 / Math.max(W2, Hh));
         const tmp = document.createElement("canvas");
@@ -31043,13 +31102,13 @@ ${url}`);
     $("pinstat").textContent = seen2 >= 8 ? `Pins: ready (${seen2} of 10 seen)` : seen2 > 0 ? `Pins: only ${seen2} of 10 stand out, so pinfall may be missed. Zoom in on them.` : "Pins: can't tell them from the deck. Zoom in on them or add light.";
     deckCand = cur2;
   }
-  function pinfallNow(start, full, now) {
-    if (start && readPins(start, now).readable >= 5 && !(full && pinsReadable(full) && readPins(full, start).down >= 5)) {
-      const r = readPins(start, now);
+  function pinfallNow(start2, full, now) {
+    if (start2 && readPins(start2, now).readable >= 5 && !(full && pinsReadable(full) && readPins(full, start2).down >= 5)) {
+      const r = readPins(start2, now);
       return { down: r.down, standing: full ? readPins(full, now).standing : r.standing };
     }
-    if (full && start) {
-      const before = readPins(full, start).standing;
+    if (full && start2) {
+      const before = readPins(full, start2).standing;
       const after = readPins(full, now).standing;
       return { down: after.filter((s, i) => before[i] === true && s === false).length, standing: after };
     }
@@ -31096,14 +31155,14 @@ ${url}`);
     ctx.restore();
   }
   var sleep4 = (ms) => new Promise((r) => setTimeout(r, ms));
-  async function readPinfall(shot, start, full) {
-    if (!start && !full) return;
+  async function readPinfall(shot, start2, full) {
+    if (!start2 && !full) return;
     const counts = [];
     const stands = [];
     for (const wait of [900, 400, 400, 400, 400, 400]) {
       await sleep4(wait);
       const cur2 = lookAtPins();
-      const r = cur2 ? pinfallNow(start, full, cur2) : null;
+      const r = cur2 ? pinfallNow(start2, full, cur2) : null;
       counts.push(r ? r.down : null);
       stands.push(r ? r.standing : []);
       if (counts.length >= 2 && counts[counts.length - 1] !== null && counts[counts.length - 1] === counts[counts.length - 2]) break;
