@@ -97,135 +97,82 @@
     }
   });
 
-  // core/src/terms.ts
-  function missSide(miss, hand3) {
-    const high = miss > 0;
-    return hand3 === "R" === high ? "left" : "right";
+  // core/src/tiles.ts
+  function angleSe(seA, seB, ft) {
+    return Math.atan(Math.hypot(seA, seB) * BOARD_IN / (ft * 12)) * 180 / Math.PI;
   }
-  function zoneText(zone, miss, hand3) {
-    if (!zone || miss === null) return "";
-    if (zone === "pocket") return ZONE_LABEL.pocket;
-    return `${ZONE_LABEL[zone]}, ${Math.abs(miss).toFixed(1)} boards ${missSide(miss, hand3)} of the pocket`;
+  function windowSpeedSe(totalSe, totalFt, windowFt) {
+    return totalSe * Math.min(8, Math.pow(totalFt / Math.max(windowFt, 1), 1.5));
   }
-  var ZONE_LABEL, GLOSSARY;
-  var init_terms = __esm({
-    "core/src/terms.ts"() {
-      ZONE_LABEL = {
-        pocket: "Pocket hit",
-        high: "High hit",
-        light: "Light hit",
-        "very-high": "Brooklyn",
-        "very-light": "Very light hit"
-      };
-      GLOSSARY = [
-        // ---- the lane ----
-        { term: "Approach", cat: "The lane", def: "The floor behind the foul line where you walk and slide. By the USBC rules it must be at least 15 feet long, level, and at least as wide as the lane." },
-        { term: "Foul line", cat: "The lane", def: "The line between the approach and the lane, 3/8 to 1 inch wide. Touching or crossing it as you deliver is a foul, and the ball scores nothing." },
-        { term: "Boards", cat: "The lane", def: "The 39 strips that run down the lane, each about an inch wide. Bowlers count them from the right gutter (board 1) to the left gutter (board 39), as you look down the lane. The centre is board 20.", app: "Every board number in LaneIQ counts from the right gutter." },
-        { term: "Gutters", cat: "The lane", aka: ["channels"], def: "The channels on each side of the lane. A ball that goes in one scores only what it knocked down before." },
-        { term: "Arrows", cat: "The lane", aka: ["targets", "darts"], def: "The small markings down the lane that you aim at. The USBC rules allow up to seven, 12 to 16 feet past the foul line, equally spaced, each at most 1 1/4 inch wide and 6 inches long. Most houses put them on boards 5, 10, 15, 20, 25, 30 and 35 in a V shape, but the exact distance differs from house to house.", app: 'LaneIQ looks for the arrows on your lane instead of drawing them from a model. "Arrows board" is the board your ball crossed at about 15 feet.' },
-        { term: "Dots", cat: "The lane", aka: ["approach guides", "range dots"], def: "Round markings you use to line up your feet and your target. On the approach the rules allow up to seven at 2 to 6 inches, 3 to 4 feet, 6 to 7 feet, 9 to 10 feet, 11 to 12 feet and 14 to 15 feet from the foul line; on the lane up to ten guides sit 6 to 8 feet past it." },
-        { term: "Range finders", cat: "The lane", def: "Markings 33 to 44 feet down the lane (up to four, none wider than a board or longer than 36 inches) used to aim further down the lane than the arrows." },
-        { term: "Head pin", cat: "The lane", aka: ["1-pin"], def: "The front pin of the triangle. It is 60 feet, give or take half an inch, from the foul line to the centre of its spot. The pins are numbered 1 to 10 from the front, left to right, row by row; the pins stand 12 inches apart." },
-        { term: "Pin deck", cat: "The lane", def: "The area where the ten pins stand, beyond the end of the lane. Past it is the pit.", app: "LaneIQ puts the far end of the lane lock on the head pin line, 60 feet from the foul line." },
-        { term: "Pocket", cat: "The lane", def: "The best place to hit the pins: between the 1-pin and the pin beside it on your strong side. That is the 1-3 pocket for a right-hander and the 1-2 pocket for a left-hander.", app: "The pocket is board 17.5 for a right-hander and board 22.5 for a left-hander (counted from the right). Set your hand in your profile so this is right for you." },
-        // ---- your shot ----
-        { term: "Launch speed", cat: "Your shot", aka: ["ball speed"], def: "How fast the ball is travelling soon after you release it, in miles per hour.", app: "Measured over the first stretch the camera sees, roughly 3 to 20 feet." },
-        { term: "Launch angle", cat: "Your shot", def: "The direction the ball is heading in the first part of its path, measured in degrees from straight down the lane.", app: "+ means drifting right, \u2212 left." },
-        { term: "Starting board", cat: "Your shot", aka: ["start position"], def: "The board the ball is on soon after release, close to your foul-line position." },
-        { term: "Line", cat: "Your shot", aka: ["ball path", "shot path"], def: "The path the ball takes down the lane, usually described by the board it crosses at the arrows, its breakpoint and where it reaches the pins." },
-        { term: "Breakpoint", cat: "Your shot", def: "The point where the ball finishes going outward and starts turning back toward the pocket: the board it is on, and how many feet down the lane that is.", app: "LaneIQ finds it as the point farthest from the centre of the lane between 15 and 55 feet." },
-        { term: "Hook", cat: "Your shot", def: 'The sideways move of the ball as it turns toward the pocket. People also use "hook" for how much a ball reacts.', app: "In LaneIQ, Hook is the number of boards between the breakpoint and the entry point." },
-        { term: "Mark", cat: "Your shot", aka: ["target", "spot"], def: "The board you aim at, usually an arrow. Hitting your mark means the ball rolled over it. Coaches separate a missed mark (the shot) from a hit mark that still misses the pocket (the line).", app: "Set your mark with Target on the Live screen. A shot within a board of it at the arrows counts as on the mark." },
-        { term: "Laydown point", cat: "Your shot", aka: ["laydown"], def: "Where the ball first touches the lane after you let it go, usually a few boards to the bowling-hand side of your slide foot. A laydown that wanders moves the whole shot." },
-        { term: "Slide", cat: "Your shot", def: "The last step of the approach, where the foot opposite your bowling hand glides to a stop at the line as the ball is released." },
-        { term: "Drift", cat: "Your shot", def: "How far you walk sideways during the approach: the board your slide foot finishes on minus the board it started on. A little drift is common; what matters is that it is the same every time.", app: "Read from your clip: your slide foot is placed on the approach through the lane lock." },
-        { term: "Timing", cat: "Your shot", def: "How your swing lines up with your feet. A common teaching point: the ball should be near the top of the backswing as the slide begins. Earlier than that is early timing (the ball is ahead of the feet); later is late timing.", app: "Read from your clip: when your bowling wrist is highest in the swing, against when your slide begins. Within 0.1 s is on time." },
-        { term: "Posting the shot", cat: "Your shot", aka: ["holding the finish", "post"], def: "Staying balanced at the foul line after the release, holding your finish until the ball is well down the lane. It shows the shot was in balance.", app: "Read from your clip: held for a second or more counts as posted." },
-        { term: "Tempo", cat: "Your shot", def: "The pace of the approach. Repeating the same tempo helps you repeat the same speed.", app: "Seconds from your first step to the release, read from your clip." },
-        { term: "Adjustment", cat: "Your shot", aka: ["move", "2-and-1"], def: "Changing where you stand and aim when the ball keeps missing the pocket the same way. The usual rule: move your feet and your target the same way, toward the side the ball missed, feet about twice as far as the target (2 boards and 1, say). Small misses get small moves; judge a couple of shots before moving again.", app: "The Move Advisor works the move out after each shot, only when the misses are one-sided and you're hitting your mark." },
-        { term: "Entry board", cat: "Your shot", def: "The board the ball is on when it reaches the pins, at about 59.5 feet.", app: 'LaneIQ only gives an entry board when the ball was seen right up to the pins. If the camera lost the ball earlier, the "At the pins" tile shows the board where it was last seen and how far down the lane that was, and nothing is guessed past it.' },
-        { term: "Entry angle", cat: "Your shot", aka: ["angle of entry", "impact angle"], def: "The angle at which the ball arrives at the pocket. A steeper entry angle gives the ball more room to carry the pins through the pocket.", app: "Measured over the last stretch of the path the camera saw." },
-        { term: "Speed loss", cat: "Your shot", def: "How much slower the ball is at the pins than at release, as a percentage. A ball that slows a lot has used up energy by hooking and rolling early." },
-        { term: "Rev rate", cat: "Your shot", aka: ["revs", "RPM"], def: "How many times the ball turns each minute.", app: "LaneIQ's setup question groups it as low (under 300), medium (300 to 400), high (400 to 500) and very high (over 500). It is read from a slow-motion video of the release in the Spin lab: at 30 or 60 frames a second a hook ball turns too far between frames to be read." },
-        { term: "Axis rotation", cat: "Your shot", def: "How far the ball's spin axis is turned sideways, seen from above. It, with axis tilt, says which way the spin axis points.", app: "In LaneIQ, 0\xB0 is a straight forward roll. Coaches use different zero points, so compare numbers only within the app." },
-        { term: "Axis tilt", cat: "Your shot", def: "How far the spin axis is tilted up from horizontal, seen from behind the ball. With axis rotation it says which way the spin axis points.", app: "Measured in degrees above horizontal." },
-        { term: "PAP", cat: "Your shot", aka: ["positive axis point"], def: "The point on the ball where your spin axis comes out at release. A ball is drilled relative to your PAP.", app: "Estimated in the Arsenal tab from three photos of the flare rings, or from a slow-motion video in the Spin lab." },
-        { term: "Track", cat: "Your shot", def: "The band of oil rings the ball leaves on its surface as it rolls. Its position on the ball and how wide it is show how the ball is being thrown." },
-        { term: "Flare", cat: "Your shot", def: "How far the track moves across the ball's surface as it travels. More flare gives the ball fresh dry surface to grip with, so more hook." },
-        // ---- the hit ----
-        { term: "Strike", cat: "The hit", def: "All ten pins knocked down by the first ball of a frame." },
-        { term: "Spare", cat: "The hit", def: "All the remaining pins knocked down by the second ball of a frame." },
-        { term: "Open frame", cat: "The hit", def: "A frame with neither a strike nor a spare." },
-        { term: "Leave", cat: "The hit", def: "The pins still standing after your first ball, such as the 10-pin or the 4-7-10." },
-        { term: "Split", cat: "The hit", def: "A leave where the head pin is down and the standing pins have a gap between them, for example the 7-10 or the 5-10. Splits are hard to convert." },
-        { term: "Pocket hit", cat: "The hit", def: "The ball enters in the pocket. A good pocket hit with a good entry angle is what makes strikes.", app: "Within one board of the pocket." },
-        { term: "High hit", cat: "The hit", def: "The ball enters too far toward the middle of the head pin, so it hits the head pin too full. For a right-hander that is left of the 1-3 pocket; for a left-hander it is right of the 1-2 pocket.", app: "1 to 2.5 boards from the pocket toward the head pin. LaneIQ says which side, in boards, so you can check it against what you saw." },
-        { term: "Light hit", cat: "The hit", aka: ["thin hit"], def: "The ball enters too far to the gutter side of the pocket, so it hits the head pin too thinly. For a right-hander that is right of the 1-3 pocket; for a left-hander it is left of the 1-2 pocket.", app: "1 to 2.5 boards from the pocket toward the gutter." },
-        { term: "Brooklyn", cat: "The hit", def: 'A ball that crosses over to the far side of the head pin: for a right-hander it hits left of the 1-pin, for a left-hander right of it. It can still strike (a "Brooklyn strike"), but it is usually a miss.', app: "More than 2.5 boards high, which is past the centre of the head pin." },
-        { term: "Very light hit", cat: "The hit", def: "A ball that misses the head pin side of the pocket by a wide margin, hitting the pins well to the gutter side.", app: "More than 2.5 boards to the gutter side of the pocket." },
-        { term: "Tap", cat: "The hit", def: "A good pocket hit that leaves a pin standing that looked as though it should have fallen." },
-        // ---- scoring ----
-        { term: "Frame", cat: "Scoring", def: "One turn at the pins: up to two balls (three in the tenth). A game is ten frames." },
-        { term: "Turkey", cat: "Scoring", def: "Three strikes in a row." },
-        { term: "Average", cat: "Scoring", def: "Your total pinfall divided by your games bowled." },
-        { term: "Spare conversion", cat: "Scoring", def: "The share of your spare chances that you make. Single-pin spares are the ones to get nearly every time." },
-        // ---- the ball ----
-        { term: "Coverstock", cat: "The ball", def: "The outer shell of the ball, which meets the lane. Plastic (polyester) is the least grippy and is used for spares; urethane is in between; reactive resin is the strongest, in solid, pearl and hybrid forms. Solid reactive covers usually grip earlier; pearls usually skid longer and then turn sharper." },
-        { term: "Core", cat: "The ball", def: "The weight block inside the ball. Its shape decides how the ball stores and releases energy. Symmetric cores are the same all round; asymmetric cores have a mass bias." },
-        { term: "RG", cat: "The ball", aka: ["radius of gyration"], def: "How far the ball's weight sits from its centre. A lower RG gets the ball revving up earlier; a higher RG holds energy for later." },
-        { term: "Differential", cat: "The ball", aka: ["diff"], def: "The difference between the ball's highest and lowest RG. A higher differential means more flare potential." },
-        { term: "Mass bias", cat: "The ball", aka: ["MB"], def: "On an asymmetric core, the mark that shows where the core's extra weight sits. With the CG mark it lets a driller place the core relative to your PAP." },
-        { term: "Pin", cat: "The ball", def: "A coloured dot on the ball that marks the top of the core. Layouts are described by where the pin sits relative to your PAP." },
-        { term: "Surface", cat: "The ball", aka: ["grit", "polish"], def: "How rough or shiny the ball's cover is. A lower grit number (such as 500) is rougher and grips earlier; higher grits and polish skid longer and save energy for the back end of the lane." },
-        // ---- layout and drilling ----
-        { term: "Layout", cat: "Layout and drilling", def: "Where the grip holes are drilled relative to the ball's core, pin and your PAP. The same ball reacts differently with different layouts." },
-        { term: "Span", cat: "Layout and drilling", def: "The distance between your thumb and finger holes, which sets how the ball fits your hand." },
-        { term: "Pin to PAP", cat: "Layout and drilling", def: "The distance from the pin to your PAP. Closer gives an earlier, smoother, less flaring move; farther keeps more flare potential for a later, stronger move." },
-        { term: "Drilling angle", cat: "Layout and drilling", def: "In the Dual Angle system, an angle from 10 to 90 degrees that sets how soon the ball rolls." },
-        { term: "VAL angle", cat: "Layout and drilling", def: "In the Dual Angle system, an angle from 20 to 70 degrees that sets how fast the ball changes from skid to hook. The drilling angle plus the VAL angle is the angle sum: 30 is the fastest transition and 160 the slowest." },
-        { term: "Pin buffer", cat: "Layout and drilling", def: "In the Pin Buffer system, the distance from the pin to the VAL. About 1 to 2 inches gives a faster transition, 4 to 5 slower." },
-        // ---- oil and the lane ----
-        { term: "Oil pattern", cat: "Oil and the lane", def: "The way oil is laid on the lane: how far it goes down the lane (length), how much there is (volume), and how it is shaped across the boards. Centres post the pattern sheet their lane machine runs.", app: "Add your centre's sheet under My patterns (a PDF, a screenshot or a photo) and the oil is drawn on your lane in the Live view." },
-        { term: "Pattern length", cat: "Oil and the lane", def: "How many feet down the lane the oil goes. Roughly: 37 feet and under is short, 38 to 41 medium, 42 and over long. Longer patterns ask for a stronger ball and more hook." },
-        { term: "Volume", cat: "Oil and the lane", aka: ["oil volume"], def: "The total oil on the lane, in millilitres (mL). More oil means less friction, so the ball skids farther before it hooks." },
-        { term: "Ratio", cat: "Oil and the lane", aka: ["oil ratio"], def: "How much more oil is in the middle of the lane than on the outside boards, written as N:1. A big ratio (a house shot, often 5:1 or more) pushes a missed ball back toward the pocket; USBC sport patterns are 3:1 or less." },
-        { term: "Rule of 31", cat: "Oil and the lane", def: "Kegel's rule of thumb for a starting line: subtract 31 from the pattern length to get the board to have the ball on at the breakpoint (a 41 ft pattern: board 10). A starting point to adjust from, not a rule.", app: "Shown as a gold ring on the lane where the oil ends." },
-        { term: "Brush drop", cat: "Oil and the lane", aka: ["reverse brush drop"], def: "Where the lane machine's buffer brush drops back onto the lane on its way back to the foul line. Oil gets moved around past it, so the back of the pattern is usually lighter than the front." },
-        { term: "Loads", cat: "Oil and the lane", aka: ["load table"], def: "The lane machine's instructions on a pattern sheet: for each part of the lane, which boards get oil (e.g. 2L to 2R), how many passes (loads), how many microlitres per board, and over what distance.", app: "When a sheet has the load table, LaneIQ reads it and draws the oil on each board exactly as the machine lays it, foot by foot." },
-        { term: "House shot", cat: "Oil and the lane", def: "The usual league pattern: more oil in the middle and much less outside, so a ball thrown a little off line still gets pushed back toward the pocket." },
-        { term: "Sport pattern", cat: "Oil and the lane", def: "A flatter pattern with less difference between the middle and the outside, so misses are punished more." },
-        { term: "Reading the lane", cat: "Oil and the lane", def: 'Seeing how the ball reacts and choosing your ball, line or speed to match. A ball that hooks earlier than before is "reading" the lane sooner.' },
-        { term: "Breakdown", cat: "Oil and the lane", def: "Oil wearing thin where balls travel, so the ball starts reading the lane earlier there." },
-        { term: "Carrydown", cat: "Oil and the lane", def: "Oil being pushed down the lane by balls, so the ball skids farther than it did earlier." },
-        { term: "Transition", cat: "Oil and the lane", def: "The lane changing as the oil breaks down and carries down during play, so your line has to move.", app: "LaneIQ watches your breakpoint distance over several shots with the same ball before it calls a transition." },
-        { term: "Backend", cat: "Oil and the lane", def: "The last part of the lane, beyond the oil, where the ball makes its move toward the pins. A strong backend is a sharp, late move." },
-        { term: "Skid, hook, roll", cat: "Oil and the lane", def: "The three phases of a ball's path: it skids on the oil, turns (hooks) as it meets friction, then rolls forward as it reaches the pins." },
-        // ---- styles ----
-        { term: "Stroker", cat: "Styles", def: "A bowler with a smooth, accurate delivery, usually with lower rev rates and a steady hand position." },
-        { term: "Cranker", cat: "Styles", def: "A bowler who puts a lot of revs and side rotation on the ball for a big hook." },
-        { term: "Tweener", cat: "Styles", def: "A bowler between a stroker and a cranker." },
-        { term: "Two-handed", cat: "Styles", def: "A delivery with no thumb in the ball, the second hand supporting it through the swing, usually with high revs." },
-        // ---- LaneIQ ----
-        { term: "Lane lock", cat: "LaneIQ", def: "The outline of your lane that the app has found in the picture, from the foul line to the head pin. Every distance and board is worked out from it.", app: "If the lines are not on your lane, tap Fix my lane." },
-        { term: "Fix my lane", cat: "LaneIQ", def: "Freezes the picture so you can drag four numbered dots onto the lane, use Snap to edges, then place the head pin, 7 and 10 pins." },
-        { term: "At the pins", cat: "LaneIQ", def: "The board where the camera last saw the ball, and how many feet down the lane that was. It is what the camera saw, not a prediction." },
-        { term: "Partial", cat: "LaneIQ", def: "A shot the camera saw only part of. The part it saw is recorded; what it did not see is left empty." },
-        { term: "One shot at a time", cat: "LaneIQ", def: "League mode. The app starts stopped and stops by itself after each of your shots, so you tap Start only on your own turn." },
-        { term: "Miss Finder", cat: "LaneIQ", def: "Ranks what goes with where your ball meets the pins: speed, your aim, where the ball lands, your drift and timing, how far into the session you are. The percentage is how much of the spread in your misses goes with that one thing. It shows what goes together, not proof of cause, so what it suggests is something to test, ideally with your coach." },
-        { term: "Plan vs execution", cat: "LaneIQ", def: "Every shot is graded against the target you set. Missing the mark is execution; hitting it and still missing the pocket the same way is the line. The way to work on each is different, which is a good thing to talk over with your coach." },
-        { term: "Move Advisor", cat: "LaneIQ", def: "A move to try, in boards, worked out after each shot from your last few with the same ball. It stays quiet when the misses go both ways or you're missing your mark, because a move would only chase them. It is a starting point to talk over with your coach, not an instruction." },
-        { term: "Ball Advisor", cat: "LaneIQ", def: "Judges each of your balls from your own shots with it. It calls a ball too strong or too weak only when where it hits AND the shape of its reaction (breakpoint and entry angle) agree, then suggests what to try from your bag or what to ask your pro shop about: current, USBC-approved balls on the app's motion index. Your pro shop operator has the final say on fit, layout and surface." },
-        { term: "Voice caddie", cat: "LaneIQ", def: "Says the speed, the arrows board, the breakpoint, the pocket and your next move out loud after each shot, using your phone's own speech. Turn it on with Voice on the Live screen." },
-        { term: "Handicap", cat: "Scoring", def: "Pins a league adds to a bowler's score so bowlers of different skill can compete. Usually a percent of the gap between a base score (often 200 to 220) and the bowler's average, rounded down: (210 \u2212 150) \xD7 90% = 54 pins a game. Each league sets its own base and percent.", app: "League night uses the league's own base, percent and cap, and the average from before each week." },
-        { term: "Entering average", cat: "Scoring", aka: ["book average"], def: "A bowler's average coming into a league season, used for handicap until they have bowled enough games for their real average to count." },
-        { term: "Pins over average", cat: "Scoring", def: "How many pins a bowler bowled above the average they came in with that week. It rewards beating your own number, whatever it is.", app: "One of the three ways League night ranks, next to handicap and scratch. Junior progress cards use the same idea: growth against your own earlier weeks." },
-        { term: "Profile card", cat: "LaneIQ", def: "A summary of your own game that you can send a friend: your hand and style, and the groups of numbers you choose (speed and rev rate, entry angle and pocket rate, average and strikes, ball names). It travels in a friend-request link or alongside it, shows no video or location, and a friend keeps only the latest one you sent.", app: "Add a friend: scan a QR code in person or send one link. A friend's page shows their card next to yours with what the gaps might mean." },
-        { term: "Crew", cat: "LaneIQ", def: "Friends anywhere who bowl together without being in the same place. A crew runs challenges (inside the crew, or against another crew), plans bowl nights, and sends each other cheers. There is no chat and no comments, so it stays friendly.", app: "Crews are shared by link: nothing is uploaded, and an update merges into every member's copy. Not available on a junior profile." },
-        { term: "Crew challenge", cat: "LaneIQ", def: "A short contest for a crew, usually a week: pins over your own average (the default, so every bowler can win), best game, most strikes, most days bowled, or a practice drill. Against another crew, each crew scores the average of the bowlers who took part, so a bigger crew has no advantage.", app: "Your result goes up from your own finished games. It runs on the honour system, which is right for friends." },
-        { term: "Progress card", cat: "LaneIQ", def: "A short summary of a young bowler's last month, sent to a parent or coach: average, high game, spares, pocket hits and what improved, always against the bowler's own earlier weeks, never other children. It holds no video, location or full name." },
-        { term: "Bowler DNA", cat: "LaneIQ", def: "A shareable card with your speed, rev rate, axis, PAP, entry angle, pocket and strike rate, each marked measured or entered." }
-      ];
+  function readoutTiles(a, m, spin, profile) {
+    const p = a.precision;
+    const sBoard = (k2) => p && Number.isFinite(p[k2]) ? Math.max(0.05, p[k2]) : null;
+    const near = sBoard("boardNear"), mid2 = sBoard("boardMid"), far = sBoard("boardFar");
+    const spd = a.speedUncertainty;
+    const totalFt = a.lastSeen && a.release ? Math.max(20, a.lastSeen.ft - a.release.ft) : 55;
+    const tiles = [];
+    tiles.push(
+      a.release ? { id: "foul", label: "Foul line", value: n1(a.release.board), unit: "board", pm: near !== null ? pmTxt(near, " bd") : "", note: "where it was first seen, at the release", source: "measured" } : none("foul", "Foul line", "release not seen")
+    );
+    tiles.push(
+      a.boardAtArrows !== null ? { id: "arrows", label: "Arrows", value: n1(a.boardAtArrows), unit: "board", pm: near !== null ? pmTxt(near, " bd") : "", note: "board at 15 ft", source: "measured" } : none("arrows", "Arrows", "not read")
+    );
+    tiles.push(
+      a.breakpointBoard !== null ? { id: "bp", label: "Breakpoint", value: n1(a.breakpointBoard), unit: "board", pm: mid2 !== null ? pmTxt(mid2, " bd") : "", note: a.breakpointFt !== null ? `at ${a.breakpointFt.toFixed(0)} ft` : "", source: "measured" } : none("bp", "Breakpoint", "not found")
+    );
+    tiles.push(
+      a.entryMeasured && a.entryBoard !== null ? { id: "entry", label: "Entry board", value: n1(a.entryBoard), unit: "board", pm: far !== null ? pmTxt(far, " bd") : "", note: "at 59.5 ft, seen", source: "measured" } : a.lastSeen ? { id: "entry", label: "Last seen", value: n1(a.lastSeen.board), unit: "board", pm: far !== null ? pmTxt(far, " bd") : "", note: `${a.lastSeen.ft.toFixed(0)} ft down; not seen at the pins`, source: "measured" } : none("entry", "Entry board", "not seen")
+    );
+    tiles.push(
+      m?.breakpointFt != null && m.hookBoards != null && a.entryBoard !== null ? { id: "hook", label: "Hook", value: n1(m.hookBoards), unit: "boards", pm: mid2 !== null && far !== null ? pmTxt(Math.hypot(mid2, far), " bd") : "", note: "breakpoint to entry", source: a.entryMeasured ? "measured" : "estimated" } : none("hook", "Hook", "needs the breakpoint and the pins")
+    );
+    tiles.push(
+      a.launchAngleDeg !== null ? { id: "launch-a", label: "Launch angle", value: sgn(a.launchAngleDeg), unit: "\xB0", pm: near !== null && mid2 !== null ? pmTxt(angleSe(near, mid2, 17), "\xB0 est.") : "", note: "+ = drifting right", source: "measured" } : none("launch-a", "Launch angle", "not read")
+    );
+    tiles.push(
+      a.impactAngleDeg !== null ? { id: "entry-a", label: "Entry angle", value: sgn(a.impactAngleDeg), unit: "\xB0", pm: mid2 !== null && far !== null ? pmTxt(angleSe(mid2, far, 18), "\xB0 est.") : "", note: a.entryMeasured ? "heading at the pins" : "heading over the last stretch seen", source: a.entryMeasured ? "measured" : "estimated" } : none("entry-a", "Entry angle", "not read")
+    );
+    const seL = m?.launchSpeed != null ? windowSpeedSe(spd, totalFt, 17) : null;
+    const seE = m?.entrySpeed != null ? windowSpeedSe(spd, totalFt, 18) : null;
+    tiles.push(
+      m?.launchSpeed != null ? { id: "launch-s", label: "Launch speed", value: n1(m.launchSpeed), unit: "mph", pm: seL !== null ? pmTxt(seL, " mph est.") : "", note: "3 to 20 ft", source: "measured" } : none("launch-s", "Launch speed", "not read")
+    );
+    tiles.push(
+      m?.entrySpeed != null ? { id: "impact-s", label: "Impact speed", value: n1(m.entrySpeed), unit: "mph", pm: seE !== null ? pmTxt(seE, " mph est.") : "", note: "40 to 58 ft", source: a.entryMeasured ? "measured" : "estimated" } : none("impact-s", "Impact speed", "needs the ball seen near the pins")
+    );
+    tiles.push(
+      m?.speedLossPct != null && m.launchSpeed != null && m.entrySpeed != null && seL !== null && seE !== null ? (() => {
+        const mphLoss = m.launchSpeed - m.entrySpeed;
+        const se = Math.hypot(seL, seE);
+        return { id: "loss", label: "Speed loss", value: n1(m.speedLossPct, 0), unit: "%", pm: pmTxt(se / m.launchSpeed * 100, "% est.", 0), note: `${mphLoss.toFixed(1)} mph, launch to impact`, source: "estimated" };
+      })() : none("loss", "Speed loss", "needs both speeds")
+    );
+    const clipOk = spin && (spin.status === "measured" || spin.status === "rough") && spin.rpm !== null;
+    const rough = clipOk && spin.status === "rough";
+    const fromClip = (v, id, label2, unit4, note, prof) => {
+      if (clipOk && v !== null) {
+        const pm = `${Math.round(spin.confidence * 100)}% confidence`;
+        return { id, label: label2, value: String(Math.round(v)), unit: unit4, pm, note: rough ? `${note}, rough read` : `${note}, from this shot's clip (${spin.fps} fps)`, source: rough ? "estimated" : "measured" };
+      }
+      if (prof !== void 0) return { id, label: label2, value: String(Math.round(prof)), unit: unit4, pm: "", note: profile.source === "entered" ? "entered by you, not measured on this shot" : "from your Spin lab video", source: profile.source === "entered" ? "entered" : "estimated" };
+      return none(id, label2, spin && spin.status !== "measured" ? "this clip is too coarse; film slow-motion in Spin lab" : "reads from the saved clip");
+    };
+    tiles.push(fromClip(clipOk ? spin.rpm : null, "rev", "Rev rate", "rpm", "", profile?.rpm));
+    tiles.push(fromClip(clipOk ? spin.axisRotation : null, "rot", "Axis rotation", "\xB0", "0\xB0 = forward roll", profile?.axisRotation));
+    tiles.push(fromClip(clipOk ? spin.axisTilt : null, "tilt", "Axis tilt", "\xB0", "above horizontal", profile?.axisTilt));
+    tiles.push(
+      m?.pocketMiss != null ? { id: "pocket", label: "Pocket", value: sgn(m.pocketMiss), unit: "boards", pm: far !== null ? pmTxt(far, " bd") : "", note: m.zone ? { pocket: "In the pocket", high: "High", light: "Light", "very-high": "Very high", "very-light": "Very light" }[m.zone] : "+ high, \u2212 light", source: a.entryMeasured ? "measured" : "estimated" } : none("pocket", "Pocket", "needs the pins")
+    );
+    return tiles;
+  }
+  var BOARD_IN, n1, sgn, none, pmTxt;
+  var init_tiles = __esm({
+    "core/src/tiles.ts"() {
+      BOARD_IN = 1.064;
+      n1 = (v, d = 1) => v.toFixed(d);
+      sgn = (v, d = 1) => `${v > 0 ? "+" : ""}${v.toFixed(d)}`;
+      none = (id, label2, note) => ({ id, label: label2, value: "n/a", unit: "", pm: "", note, source: "none" });
+      pmTxt = (v, unit4, d = 1) => v < 5e-3 ? "" : `\xB1 ${v < 0.1 ? v.toFixed(2) : v.toFixed(d)}${unit4}`;
     }
   });
 
@@ -1023,7 +970,7 @@
     const w = path2.filter((s) => s.y >= y0 && s.y <= y1);
     if (w.length < 4 || w[w.length - 1].y - w[0].y < 4) return null;
     const f = linearFit(w.map((s) => s.y), w.map((s) => s.x));
-    return { deg: Math.atan(f.slope * BOARD_IN / 12) * 180 / Math.PI, slopeBoardsPerFt: f.slope };
+    return { deg: Math.atan(f.slope * BOARD_IN2 / 12) * 180 / Math.PI, slopeBoardsPerFt: f.slope };
   }
   function forwardPath(path2) {
     const sorted2 = [...path2].sort((a, b) => a.t - b.t);
@@ -1182,7 +1129,7 @@
       partial: true
     };
   }
-  var LANE_BOARDS, LANE_LENGTH_FT, ARROWS_FT, boardFromRight, boardToX, ENTRY_FT, BOARD_IN, halfAt;
+  var LANE_BOARDS, LANE_LENGTH_FT, ARROWS_FT, boardFromRight, boardToX, ENTRY_FT, BOARD_IN2, halfAt;
   var init_vision = __esm({
     "core/src/vision.ts"() {
       LANE_BOARDS = 39;
@@ -1191,7 +1138,7 @@
       boardFromRight = (xBoards) => LANE_BOARDS + 0.5 - xBoards;
       boardToX = (board) => LANE_BOARDS + 0.5 - board;
       ENTRY_FT = 59.5;
-      BOARD_IN = 41.5 / LANE_BOARDS;
+      BOARD_IN2 = 41.5 / LANE_BOARDS;
       halfAt = (y, base) => Math.max(base, Math.round(base + 5 * (1 - Math.min(1, Math.max(0, y - 6) / 16))));
     }
   });
@@ -1617,22 +1564,47 @@
       );
     });
   }
+  function paintTiles(s) {
+    const profSpin = S.profile?.spin;
+    const mk = (x) => readoutTiles(x.a, x.m, x.spin, profSpin ? { rpm: profSpin.rpm, axisRotation: profSpin.axisRotation, axisTilt: profSpin.axisTilt, source: profSpin.source === "video" ? "video" : "entered" } : null);
+    const tiles = mk(s);
+    const sess = sessionShots();
+    const i = sess.findIndex((x) => x.id === s.id);
+    const prev = i > 0 ? Object.fromEntries(mk(sess[i - 1]).map((t) => [t.id, t])) : null;
+    const by = Object.fromEntries(tiles.map((t) => [t.id, t]));
+    $("tiles").innerHTML = `<div class="tgrid">` + GROUPS.map(([g, ids]) => `<div class="tgroup">${g}</div>` + ids.map((id) => {
+      const t = by[id];
+      const d = prev?.[id] && t.source !== "none" && prev[id].source !== "none" && prev[id].label === t.label ? num2(t.value) - num2(prev[id].value) : NaN;
+      const dl = Number.isFinite(d) && Math.abs(d) >= 0.05 ? `<div class="dl" title="change from the shot before">${d > 0 ? "\u25B2" : "\u25BC"} ${Math.abs(d).toFixed(Math.abs(d) < 10 ? 1 : 0)}</div>` : "";
+      return `<div class="card tile ${t.source}">${dl}<div class="k" data-src="${t.source}">${esc(t.label)}</div><div class="v">${esc(t.value)}${t.unit ? `<small>${esc(t.unit)}</small>` : ""}</div><div class="pm">${esc(t.pm)}</div><div class="u">${esc(t.note)}</div></div>`;
+    }).join("")).join("") + `</div>`;
+  }
+  function paintStrip() {
+    const el = $("strip");
+    const sess = sessionShots();
+    el.innerHTML = sess.map((x, n) => `<button class="chip ${shown?.id === x.id ? "sel" : ""}" data-id="${x.id}">#${n + 1} \xB7 ${x.a.speedMph.toFixed(1)}${x.result?.pinsDown === 10 ? " \xB7 X" : x.result ? ` \xB7 ${x.result.pinsDown}` : ""}</button>`).join("");
+    el.querySelectorAll("button").forEach((b) => {
+      b.onclick = () => {
+        const x = sess.find((y) => y.id === b.dataset.id);
+        if (!x) return;
+        setCards(x);
+        renderResult(x);
+        renderBall(x);
+      };
+    });
+    el.scrollLeft = el.scrollWidth;
+  }
+  function refreshTiles(s) {
+    if (shown?.id === s.id) paintTiles(s);
+  }
   function setCards(s) {
     const a = s.a;
     const m = s.m;
+    shown = s;
     setText("c-speed", a.speedMph.toFixed(1));
-    setText("c-speed-u", `\xB1 ${a.speedUncertainty < 0.1 ? a.speedUncertainty.toFixed(2) : a.speedUncertainty.toFixed(1)} mph`);
-    setText("c-arrows", f1(a.boardAtArrows));
-    setText("c-bp", f1(a.breakpointBoard));
-    setText("c-bp-u", a.breakpointFt === null ? "" : `at ${a.breakpointFt.toFixed(0)} ft`);
-    setText("c-entry", a.entryMeasured ? f1(a.entryBoard) : a.lastSeen ? f1(a.lastSeen.board) : "n/a");
-    setText("c-entry-u", a.entryMeasured ? "board at 59.5 ft (seen)" : a.lastSeen ? `board where it was last seen, ${a.lastSeen.ft.toFixed(0)} ft down` : "");
-    setText("c-launch", a.launchAngleDeg === null ? "n/a" : `${a.launchAngleDeg.toFixed(1)}\xB0`);
-    setText("c-impact", a.impactAngleDeg === null ? "n/a" : `${a.impactAngleDeg.toFixed(1)}\xB0`);
-    setText("c-loss", m.speedLossPct === null ? "n/a" : `${m.speedLossPct.toFixed(0)}%`);
-    setText("c-hook", f1(m.hookBoards));
-    setText("c-miss", m.pocketMiss === null ? "n/a" : `${m.pocketMiss > 0 ? "+" : ""}${m.pocketMiss.toFixed(1)}`);
-    setText("c-miss-u", m.zone ? ZONE_TEXT[m.zone] : "+ high, \u2212 light");
+    setText("c-speed-u", a.speedUncertainty < 5e-3 ? "" : `\xB1 ${a.speedUncertainty < 0.1 ? a.speedUncertainty.toFixed(2) : a.speedUncertainty.toFixed(1)} mph`);
+    paintTiles(s);
+    paintStrip();
     $("c-conf").style.width = `${Math.round(a.confidence * 100)}%`;
     setText("c-conf-t", a.partial ? `partial: the camera saw ${a.lastSeen && a.release ? Math.round(a.lastSeen.ft - a.release.ft) : "part of"} ft of the roll \xB7 ${a.samples} pts` : `${Math.round(a.confidence * 100)}% confidence \xB7 ${a.samples} pts${a.precision && Number.isFinite(a.precision.boardMid) ? ` \xB7 board reads within \xB1${Math.max(0.05, a.precision.boardMid).toFixed(2)} mid-lane` : ""}`);
     document.querySelectorAll("#tab-live .card").forEach((el) => {
@@ -1660,6 +1632,7 @@
         s.result = { pinsDown: Number(b.dataset.n) };
         await updateShot(s);
         renderResult(s);
+        paintStrip();
       };
     });
   }
@@ -1776,10 +1749,10 @@
       }
     }
   }
-  var $, esc, setText, f1, guesses, sessionShots, enrollHandler, onEnroll, scanHandler, onScan, ZONE_TEXT, resultExtra, afterShot, onAfterShot, beforeSave, onBeforeSave;
+  var $, esc, setText, f1, guesses, sessionShots, enrollHandler, onEnroll, scanHandler, onScan, shown, GROUPS, num2, resultExtra, afterShot, onAfterShot, beforeSave, onBeforeSave;
   var init_live = __esm({
     "camera/live.ts"() {
-      init_terms();
+      init_tiles();
       init_ballid();
       init_lanereads();
       init_recommend();
@@ -1795,7 +1768,12 @@
       onEnroll = (fn) => enrollHandler = fn;
       scanHandler = null;
       onScan = (fn) => scanHandler = fn;
-      ZONE_TEXT = { ...ZONE_LABEL, pocket: "In the pocket" };
+      GROUPS = [
+        ["Position", ["foul", "arrows", "bp", "entry", "hook", "pocket"]],
+        ["Angle and speed", ["launch-a", "entry-a", "launch-s", "impact-s", "loss"]],
+        ["Spin", ["rev", "rot", "tilt"]]
+      ];
+      num2 = (v) => v === "n/a" ? NaN : parseFloat(v);
       resultExtra = null;
       afterShot = [];
       onAfterShot = (fn) => afterShot.push(fn);
@@ -1965,6 +1943,138 @@
       ALL_PINS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       minus = (a, b) => a.filter((p) => !b.includes(p));
       key = (pins) => pins.slice().sort((a, b) => a - b).join("-");
+    }
+  });
+
+  // core/src/terms.ts
+  function missSide(miss, hand3) {
+    const high = miss > 0;
+    return hand3 === "R" === high ? "left" : "right";
+  }
+  function zoneText(zone, miss, hand3) {
+    if (!zone || miss === null) return "";
+    if (zone === "pocket") return ZONE_LABEL.pocket;
+    return `${ZONE_LABEL[zone]}, ${Math.abs(miss).toFixed(1)} boards ${missSide(miss, hand3)} of the pocket`;
+  }
+  var ZONE_LABEL, GLOSSARY;
+  var init_terms = __esm({
+    "core/src/terms.ts"() {
+      ZONE_LABEL = {
+        pocket: "Pocket hit",
+        high: "High hit",
+        light: "Light hit",
+        "very-high": "Brooklyn",
+        "very-light": "Very light hit"
+      };
+      GLOSSARY = [
+        // ---- the lane ----
+        { term: "Approach", cat: "The lane", def: "The floor behind the foul line where you walk and slide. By the USBC rules it must be at least 15 feet long, level, and at least as wide as the lane." },
+        { term: "Foul line", cat: "The lane", def: "The line between the approach and the lane, 3/8 to 1 inch wide. Touching or crossing it as you deliver is a foul, and the ball scores nothing." },
+        { term: "Boards", cat: "The lane", def: "The 39 strips that run down the lane, each about an inch wide. Bowlers count them from the right gutter (board 1) to the left gutter (board 39), as you look down the lane. The centre is board 20.", app: "Every board number in LaneIQ counts from the right gutter." },
+        { term: "Gutters", cat: "The lane", aka: ["channels"], def: "The channels on each side of the lane. A ball that goes in one scores only what it knocked down before." },
+        { term: "Arrows", cat: "The lane", aka: ["targets", "darts"], def: "The small markings down the lane that you aim at. The USBC rules allow up to seven, 12 to 16 feet past the foul line, equally spaced, each at most 1 1/4 inch wide and 6 inches long. Most houses put them on boards 5, 10, 15, 20, 25, 30 and 35 in a V shape, but the exact distance differs from house to house.", app: 'LaneIQ looks for the arrows on your lane instead of drawing them from a model. "Arrows board" is the board your ball crossed at about 15 feet.' },
+        { term: "Dots", cat: "The lane", aka: ["approach guides", "range dots"], def: "Round markings you use to line up your feet and your target. On the approach the rules allow up to seven at 2 to 6 inches, 3 to 4 feet, 6 to 7 feet, 9 to 10 feet, 11 to 12 feet and 14 to 15 feet from the foul line; on the lane up to ten guides sit 6 to 8 feet past it." },
+        { term: "Range finders", cat: "The lane", def: "Markings 33 to 44 feet down the lane (up to four, none wider than a board or longer than 36 inches) used to aim further down the lane than the arrows." },
+        { term: "Head pin", cat: "The lane", aka: ["1-pin"], def: "The front pin of the triangle. It is 60 feet, give or take half an inch, from the foul line to the centre of its spot. The pins are numbered 1 to 10 from the front, left to right, row by row; the pins stand 12 inches apart." },
+        { term: "Pin deck", cat: "The lane", def: "The area where the ten pins stand, beyond the end of the lane. Past it is the pit.", app: "LaneIQ puts the far end of the lane lock on the head pin line, 60 feet from the foul line." },
+        { term: "Pocket", cat: "The lane", def: "The best place to hit the pins: between the 1-pin and the pin beside it on your strong side. That is the 1-3 pocket for a right-hander and the 1-2 pocket for a left-hander.", app: "The pocket is board 17.5 for a right-hander and board 22.5 for a left-hander (counted from the right). Set your hand in your profile so this is right for you." },
+        // ---- your shot ----
+        { term: "Launch speed", cat: "Your shot", aka: ["ball speed"], def: "How fast the ball is travelling soon after you release it, in miles per hour.", app: "Measured over the first stretch the camera sees, roughly 3 to 20 feet." },
+        { term: "Launch angle", cat: "Your shot", def: "The direction the ball is heading in the first part of its path, measured in degrees from straight down the lane.", app: "+ means drifting right, \u2212 left." },
+        { term: "Starting board", cat: "Your shot", aka: ["start position"], def: "The board the ball is on soon after release, close to your foul-line position." },
+        { term: "Line", cat: "Your shot", aka: ["ball path", "shot path"], def: "The path the ball takes down the lane, usually described by the board it crosses at the arrows, its breakpoint and where it reaches the pins." },
+        { term: "Breakpoint", cat: "Your shot", def: "The point where the ball finishes going outward and starts turning back toward the pocket: the board it is on, and how many feet down the lane that is.", app: "LaneIQ finds it as the point farthest from the centre of the lane between 15 and 55 feet." },
+        { term: "Hook", cat: "Your shot", def: 'The sideways move of the ball as it turns toward the pocket. People also use "hook" for how much a ball reacts.', app: "In LaneIQ, Hook is the number of boards between the breakpoint and the entry point." },
+        { term: "Mark", cat: "Your shot", aka: ["target", "spot"], def: "The board you aim at, usually an arrow. Hitting your mark means the ball rolled over it. Coaches separate a missed mark (the shot) from a hit mark that still misses the pocket (the line).", app: "Set your mark with Target on the Live screen. A shot within a board of it at the arrows counts as on the mark." },
+        { term: "Laydown point", cat: "Your shot", aka: ["laydown"], def: "Where the ball first touches the lane after you let it go, usually a few boards to the bowling-hand side of your slide foot. A laydown that wanders moves the whole shot." },
+        { term: "Slide", cat: "Your shot", def: "The last step of the approach, where the foot opposite your bowling hand glides to a stop at the line as the ball is released." },
+        { term: "Drift", cat: "Your shot", def: "How far you walk sideways during the approach: the board your slide foot finishes on minus the board it started on. A little drift is common; what matters is that it is the same every time.", app: "Read from your clip: your slide foot is placed on the approach through the lane lock." },
+        { term: "Timing", cat: "Your shot", def: "How your swing lines up with your feet. A common teaching point: the ball should be near the top of the backswing as the slide begins. Earlier than that is early timing (the ball is ahead of the feet); later is late timing.", app: "Read from your clip: when your bowling wrist is highest in the swing, against when your slide begins. Within 0.1 s is on time." },
+        { term: "Posting the shot", cat: "Your shot", aka: ["holding the finish", "post"], def: "Staying balanced at the foul line after the release, holding your finish until the ball is well down the lane. It shows the shot was in balance.", app: "Read from your clip: held for a second or more counts as posted." },
+        { term: "Tempo", cat: "Your shot", def: "The pace of the approach. Repeating the same tempo helps you repeat the same speed.", app: "Seconds from your first step to the release, read from your clip." },
+        { term: "Adjustment", cat: "Your shot", aka: ["move", "2-and-1"], def: "Changing where you stand and aim when the ball keeps missing the pocket the same way. The usual rule: move your feet and your target the same way, toward the side the ball missed, feet about twice as far as the target (2 boards and 1, say). Small misses get small moves; judge a couple of shots before moving again.", app: "The Move Advisor works the move out after each shot, only when the misses are one-sided and you're hitting your mark." },
+        { term: "Entry board", cat: "Your shot", def: "The board the ball is on when it reaches the pins, at about 59.5 feet.", app: 'LaneIQ only gives an entry board when the ball was seen right up to the pins. If the camera lost the ball earlier, the "At the pins" tile shows the board where it was last seen and how far down the lane that was, and nothing is guessed past it.' },
+        { term: "Entry angle", cat: "Your shot", aka: ["angle of entry", "impact angle"], def: "The angle at which the ball arrives at the pocket. A steeper entry angle gives the ball more room to carry the pins through the pocket.", app: "Measured over the last stretch of the path the camera saw." },
+        { term: "Speed loss", cat: "Your shot", def: "How much slower the ball is at the pins than at release, as a percentage. A ball that slows a lot has used up energy by hooking and rolling early." },
+        { term: "Rev rate", cat: "Your shot", aka: ["revs", "RPM"], def: "How many times the ball turns each minute.", app: "LaneIQ's setup question groups it as low (under 300), medium (300 to 400), high (400 to 500) and very high (over 500). It is read from a slow-motion video of the release in the Spin lab: at 30 or 60 frames a second a hook ball turns too far between frames to be read." },
+        { term: "Axis rotation", cat: "Your shot", def: "How far the ball's spin axis is turned sideways, seen from above. It, with axis tilt, says which way the spin axis points.", app: "In LaneIQ, 0\xB0 is a straight forward roll. Coaches use different zero points, so compare numbers only within the app." },
+        { term: "Axis tilt", cat: "Your shot", def: "How far the spin axis is tilted up from horizontal, seen from behind the ball. With axis rotation it says which way the spin axis points.", app: "Measured in degrees above horizontal." },
+        { term: "PAP", cat: "Your shot", aka: ["positive axis point"], def: "The point on the ball where your spin axis comes out at release. A ball is drilled relative to your PAP.", app: "Estimated in the Arsenal tab from three photos of the flare rings, or from a slow-motion video in the Spin lab." },
+        { term: "Track", cat: "Your shot", def: "The band of oil rings the ball leaves on its surface as it rolls. Its position on the ball and how wide it is show how the ball is being thrown." },
+        { term: "Flare", cat: "Your shot", def: "How far the track moves across the ball's surface as it travels. More flare gives the ball fresh dry surface to grip with, so more hook." },
+        // ---- the hit ----
+        { term: "Strike", cat: "The hit", def: "All ten pins knocked down by the first ball of a frame." },
+        { term: "Spare", cat: "The hit", def: "All the remaining pins knocked down by the second ball of a frame." },
+        { term: "Open frame", cat: "The hit", def: "A frame with neither a strike nor a spare." },
+        { term: "Leave", cat: "The hit", def: "The pins still standing after your first ball, such as the 10-pin or the 4-7-10." },
+        { term: "Split", cat: "The hit", def: "A leave where the head pin is down and the standing pins have a gap between them, for example the 7-10 or the 5-10. Splits are hard to convert." },
+        { term: "Pocket hit", cat: "The hit", def: "The ball enters in the pocket. A good pocket hit with a good entry angle is what makes strikes.", app: "Within one board of the pocket." },
+        { term: "High hit", cat: "The hit", def: "The ball enters too far toward the middle of the head pin, so it hits the head pin too full. For a right-hander that is left of the 1-3 pocket; for a left-hander it is right of the 1-2 pocket.", app: "1 to 2.5 boards from the pocket toward the head pin. LaneIQ says which side, in boards, so you can check it against what you saw." },
+        { term: "Light hit", cat: "The hit", aka: ["thin hit"], def: "The ball enters too far to the gutter side of the pocket, so it hits the head pin too thinly. For a right-hander that is right of the 1-3 pocket; for a left-hander it is left of the 1-2 pocket.", app: "1 to 2.5 boards from the pocket toward the gutter." },
+        { term: "Brooklyn", cat: "The hit", def: 'A ball that crosses over to the far side of the head pin: for a right-hander it hits left of the 1-pin, for a left-hander right of it. It can still strike (a "Brooklyn strike"), but it is usually a miss.', app: "More than 2.5 boards high, which is past the centre of the head pin." },
+        { term: "Very light hit", cat: "The hit", def: "A ball that misses the head pin side of the pocket by a wide margin, hitting the pins well to the gutter side.", app: "More than 2.5 boards to the gutter side of the pocket." },
+        { term: "Tap", cat: "The hit", def: "A good pocket hit that leaves a pin standing that looked as though it should have fallen." },
+        // ---- scoring ----
+        { term: "Frame", cat: "Scoring", def: "One turn at the pins: up to two balls (three in the tenth). A game is ten frames." },
+        { term: "Turkey", cat: "Scoring", def: "Three strikes in a row." },
+        { term: "Average", cat: "Scoring", def: "Your total pinfall divided by your games bowled." },
+        { term: "Spare conversion", cat: "Scoring", def: "The share of your spare chances that you make. Single-pin spares are the ones to get nearly every time." },
+        // ---- the ball ----
+        { term: "Coverstock", cat: "The ball", def: "The outer shell of the ball, which meets the lane. Plastic (polyester) is the least grippy and is used for spares; urethane is in between; reactive resin is the strongest, in solid, pearl and hybrid forms. Solid reactive covers usually grip earlier; pearls usually skid longer and then turn sharper." },
+        { term: "Core", cat: "The ball", def: "The weight block inside the ball. Its shape decides how the ball stores and releases energy. Symmetric cores are the same all round; asymmetric cores have a mass bias." },
+        { term: "RG", cat: "The ball", aka: ["radius of gyration"], def: "How far the ball's weight sits from its centre. A lower RG gets the ball revving up earlier; a higher RG holds energy for later." },
+        { term: "Differential", cat: "The ball", aka: ["diff"], def: "The difference between the ball's highest and lowest RG. A higher differential means more flare potential." },
+        { term: "Mass bias", cat: "The ball", aka: ["MB"], def: "On an asymmetric core, the mark that shows where the core's extra weight sits. With the CG mark it lets a driller place the core relative to your PAP." },
+        { term: "Pin", cat: "The ball", def: "A coloured dot on the ball that marks the top of the core. Layouts are described by where the pin sits relative to your PAP." },
+        { term: "Surface", cat: "The ball", aka: ["grit", "polish"], def: "How rough or shiny the ball's cover is. A lower grit number (such as 500) is rougher and grips earlier; higher grits and polish skid longer and save energy for the back end of the lane." },
+        // ---- layout and drilling ----
+        { term: "Layout", cat: "Layout and drilling", def: "Where the grip holes are drilled relative to the ball's core, pin and your PAP. The same ball reacts differently with different layouts." },
+        { term: "Span", cat: "Layout and drilling", def: "The distance between your thumb and finger holes, which sets how the ball fits your hand." },
+        { term: "Pin to PAP", cat: "Layout and drilling", def: "The distance from the pin to your PAP. Closer gives an earlier, smoother, less flaring move; farther keeps more flare potential for a later, stronger move." },
+        { term: "Drilling angle", cat: "Layout and drilling", def: "In the Dual Angle system, an angle from 10 to 90 degrees that sets how soon the ball rolls." },
+        { term: "VAL angle", cat: "Layout and drilling", def: "In the Dual Angle system, an angle from 20 to 70 degrees that sets how fast the ball changes from skid to hook. The drilling angle plus the VAL angle is the angle sum: 30 is the fastest transition and 160 the slowest." },
+        { term: "Pin buffer", cat: "Layout and drilling", def: "In the Pin Buffer system, the distance from the pin to the VAL. About 1 to 2 inches gives a faster transition, 4 to 5 slower." },
+        // ---- oil and the lane ----
+        { term: "Oil pattern", cat: "Oil and the lane", def: "The way oil is laid on the lane: how far it goes down the lane (length), how much there is (volume), and how it is shaped across the boards. Centres post the pattern sheet their lane machine runs.", app: "Add your centre's sheet under My patterns (a PDF, a screenshot or a photo) and the oil is drawn on your lane in the Live view." },
+        { term: "Pattern length", cat: "Oil and the lane", def: "How many feet down the lane the oil goes. Roughly: 37 feet and under is short, 38 to 41 medium, 42 and over long. Longer patterns ask for a stronger ball and more hook." },
+        { term: "Volume", cat: "Oil and the lane", aka: ["oil volume"], def: "The total oil on the lane, in millilitres (mL). More oil means less friction, so the ball skids farther before it hooks." },
+        { term: "Ratio", cat: "Oil and the lane", aka: ["oil ratio"], def: "How much more oil is in the middle of the lane than on the outside boards, written as N:1. A big ratio (a house shot, often 5:1 or more) pushes a missed ball back toward the pocket; USBC sport patterns are 3:1 or less." },
+        { term: "Rule of 31", cat: "Oil and the lane", def: "Kegel's rule of thumb for a starting line: subtract 31 from the pattern length to get the board to have the ball on at the breakpoint (a 41 ft pattern: board 10). A starting point to adjust from, not a rule.", app: "Shown as a gold ring on the lane where the oil ends." },
+        { term: "Brush drop", cat: "Oil and the lane", aka: ["reverse brush drop"], def: "Where the lane machine's buffer brush drops back onto the lane on its way back to the foul line. Oil gets moved around past it, so the back of the pattern is usually lighter than the front." },
+        { term: "Loads", cat: "Oil and the lane", aka: ["load table"], def: "The lane machine's instructions on a pattern sheet: for each part of the lane, which boards get oil (e.g. 2L to 2R), how many passes (loads), how many microlitres per board, and over what distance.", app: "When a sheet has the load table, LaneIQ reads it and draws the oil on each board exactly as the machine lays it, foot by foot." },
+        { term: "House shot", cat: "Oil and the lane", def: "The usual league pattern: more oil in the middle and much less outside, so a ball thrown a little off line still gets pushed back toward the pocket." },
+        { term: "Sport pattern", cat: "Oil and the lane", def: "A flatter pattern with less difference between the middle and the outside, so misses are punished more." },
+        { term: "Reading the lane", cat: "Oil and the lane", def: 'Seeing how the ball reacts and choosing your ball, line or speed to match. A ball that hooks earlier than before is "reading" the lane sooner.' },
+        { term: "Breakdown", cat: "Oil and the lane", def: "Oil wearing thin where balls travel, so the ball starts reading the lane earlier there." },
+        { term: "Carrydown", cat: "Oil and the lane", def: "Oil being pushed down the lane by balls, so the ball skids farther than it did earlier." },
+        { term: "Transition", cat: "Oil and the lane", def: "The lane changing as the oil breaks down and carries down during play, so your line has to move.", app: "LaneIQ watches your breakpoint distance over several shots with the same ball before it calls a transition." },
+        { term: "Backend", cat: "Oil and the lane", def: "The last part of the lane, beyond the oil, where the ball makes its move toward the pins. A strong backend is a sharp, late move." },
+        { term: "Skid, hook, roll", cat: "Oil and the lane", def: "The three phases of a ball's path: it skids on the oil, turns (hooks) as it meets friction, then rolls forward as it reaches the pins." },
+        // ---- styles ----
+        { term: "Stroker", cat: "Styles", def: "A bowler with a smooth, accurate delivery, usually with lower rev rates and a steady hand position." },
+        { term: "Cranker", cat: "Styles", def: "A bowler who puts a lot of revs and side rotation on the ball for a big hook." },
+        { term: "Tweener", cat: "Styles", def: "A bowler between a stroker and a cranker." },
+        { term: "Two-handed", cat: "Styles", def: "A delivery with no thumb in the ball, the second hand supporting it through the swing, usually with high revs." },
+        // ---- LaneIQ ----
+        { term: "Lane lock", cat: "LaneIQ", def: "The outline of your lane that the app has found in the picture, from the foul line to the head pin. Every distance and board is worked out from it.", app: "If the lines are not on your lane, tap Fix my lane." },
+        { term: "Fix my lane", cat: "LaneIQ", def: "Freezes the picture so you can drag four numbered dots onto the lane, use Snap to edges, then place the head pin, 7 and 10 pins." },
+        { term: "At the pins", cat: "LaneIQ", def: "The board where the camera last saw the ball, and how many feet down the lane that was. It is what the camera saw, not a prediction." },
+        { term: "Partial", cat: "LaneIQ", def: "A shot the camera saw only part of. The part it saw is recorded; what it did not see is left empty." },
+        { term: "One shot at a time", cat: "LaneIQ", def: "League mode. The app starts stopped and stops by itself after each of your shots, so you tap Start only on your own turn." },
+        { term: "Miss Finder", cat: "LaneIQ", def: "Ranks what goes with where your ball meets the pins: speed, your aim, where the ball lands, your drift and timing, how far into the session you are. The percentage is how much of the spread in your misses goes with that one thing. It shows what goes together, not proof of cause, so what it suggests is something to test, ideally with your coach." },
+        { term: "Plan vs execution", cat: "LaneIQ", def: "Every shot is graded against the target you set. Missing the mark is execution; hitting it and still missing the pocket the same way is the line. The way to work on each is different, which is a good thing to talk over with your coach." },
+        { term: "Move Advisor", cat: "LaneIQ", def: "A move to try, in boards, worked out after each shot from your last few with the same ball. It stays quiet when the misses go both ways or you're missing your mark, because a move would only chase them. It is a starting point to talk over with your coach, not an instruction." },
+        { term: "Ball Advisor", cat: "LaneIQ", def: "Judges each of your balls from your own shots with it. It calls a ball too strong or too weak only when where it hits AND the shape of its reaction (breakpoint and entry angle) agree, then suggests what to try from your bag or what to ask your pro shop about: current, USBC-approved balls on the app's motion index. Your pro shop operator has the final say on fit, layout and surface." },
+        { term: "Voice caddie", cat: "LaneIQ", def: "Says the speed, the arrows board, the breakpoint, the pocket and your next move out loud after each shot, using your phone's own speech. Turn it on with Voice on the Live screen." },
+        { term: "Handicap", cat: "Scoring", def: "Pins a league adds to a bowler's score so bowlers of different skill can compete. Usually a percent of the gap between a base score (often 200 to 220) and the bowler's average, rounded down: (210 \u2212 150) \xD7 90% = 54 pins a game. Each league sets its own base and percent.", app: "League night uses the league's own base, percent and cap, and the average from before each week." },
+        { term: "Entering average", cat: "Scoring", aka: ["book average"], def: "A bowler's average coming into a league season, used for handicap until they have bowled enough games for their real average to count." },
+        { term: "Pins over average", cat: "Scoring", def: "How many pins a bowler bowled above the average they came in with that week. It rewards beating your own number, whatever it is.", app: "One of the three ways League night ranks, next to handicap and scratch. Junior progress cards use the same idea: growth against your own earlier weeks." },
+        { term: "Profile card", cat: "LaneIQ", def: "A summary of your own game that you can send a friend: your hand and style, and the groups of numbers you choose (speed and rev rate, entry angle and pocket rate, average and strikes, ball names). It travels in a friend-request link or alongside it, shows no video or location, and a friend keeps only the latest one you sent.", app: "Add a friend: scan a QR code in person or send one link. A friend's page shows their card next to yours with what the gaps might mean." },
+        { term: "Crew", cat: "LaneIQ", def: "Friends anywhere who bowl together without being in the same place. A crew runs challenges (inside the crew, or against another crew), plans bowl nights, and sends each other cheers. There is no chat and no comments, so it stays friendly.", app: "Crews are shared by link: nothing is uploaded, and an update merges into every member's copy. Not available on a junior profile." },
+        { term: "Crew challenge", cat: "LaneIQ", def: "A short contest for a crew, usually a week: pins over your own average (the default, so every bowler can win), best game, most strikes, most days bowled, or a practice drill. Against another crew, each crew scores the average of the bowlers who took part, so a bigger crew has no advantage.", app: "Your result goes up from your own finished games. It runs on the honour system, which is right for friends." },
+        { term: "Progress card", cat: "LaneIQ", def: "A short summary of a young bowler's last month, sent to a parent or coach: average, high game, spares, pocket hits and what improved, always against the bowler's own earlier weeks, never other children. It holds no video, location or full name." },
+        { term: "Bowler DNA", cat: "LaneIQ", def: "A shareable card with your speed, rev rate, axis, PAP, entry angle, pocket and strike rate, each marked measured or entered." }
+      ];
     }
   });
 
@@ -2950,21 +3060,21 @@
     const t = text.replace(/\s+/g, "").replace(/µ/g, "u").replace(/->/g, "\u2192");
     const notes = [];
     const out = { rows: [], tableOk: false, notes };
-    const num5 = (re) => {
+    const num6 = (re) => {
       const m = re.exec(t);
       return m ? Number(m[1]) : void 0;
     };
     const n = /(\d{2})FEET([\d.]+)mL([\d.]+):1([\d.]+)mL(\d{2})FEET([\d.]+)mL/i.exec(t);
     if (n) [out.lengthFt, out.volumeMl, out.ratio, out.forwardMl, out.brushDropFt, out.reverseMl] = n.slice(1, 7).map(Number);
-    out.lengthFt ??= num5(/OilPatternDistance:?(\d{2})(?!\d)/i) ?? num5(/Distance:?(\d{2})(?:Feet|ft)/i);
-    out.volumeMl ??= num5(/VolumeOilTotal:?([\d.]+)mL/i) ?? num5(/(?:Total)?Volume:?([\d.]+)mL/i);
-    out.forwardMl ??= num5(/ForwardOilTotal:?([\d.]+)mL/i);
-    out.reverseMl ??= num5(/ReverseOilTotal:?([\d.]+)mL/i);
-    out.brushDropFt ??= num5(/ReverseBrushDrop:?(\d{2})/i);
-    out.ratio ??= num5(/(?:Pattern)?Ratio:?([\d.]+):1/i);
-    out.lengthFt ??= num5(/(\d{2})(?:FEET|FT)/i);
-    out.volumeMl ??= num5(/(\d{2}(?:\.\d+)?)mL/i);
-    out.ratio ??= num5(/(\d{1,2}(?:\.\d+)?):1(?!\d)/);
+    out.lengthFt ??= num6(/OilPatternDistance:?(\d{2})(?!\d)/i) ?? num6(/Distance:?(\d{2})(?:Feet|ft)/i);
+    out.volumeMl ??= num6(/VolumeOilTotal:?([\d.]+)mL/i) ?? num6(/(?:Total)?Volume:?([\d.]+)mL/i);
+    out.forwardMl ??= num6(/ForwardOilTotal:?([\d.]+)mL/i);
+    out.reverseMl ??= num6(/ReverseOilTotal:?([\d.]+)mL/i);
+    out.brushDropFt ??= num6(/ReverseBrushDrop:?(\d{2})/i);
+    out.ratio ??= num6(/(?:Pattern)?Ratio:?([\d.]+):1/i);
+    out.lengthFt ??= num6(/(\d{2})(?:FEET|FT)/i);
+    out.volumeMl ??= num6(/(\d{2}(?:\.\d+)?)mL/i);
+    out.ratio ??= num6(/(\d{1,2}(?:\.\d+)?):1(?!\d)/);
     if (out.lengthFt !== void 0 && !(out.lengthFt >= 20 && out.lengthFt <= 55)) out.lengthFt = void 0;
     if (out.volumeMl !== void 0 && !(out.volumeMl >= 8 && out.volumeMl <= 45)) out.volumeMl = void 0;
     if (out.ratio !== void 0 && !(out.ratio >= 1 && out.ratio <= 15)) out.ratio = void 0;
@@ -3386,12 +3496,12 @@
       const x1 = x0 + 1;
       const xc = x0 + 0.5;
       const n0 = P(xc, 0);
-      const n1 = P(xc, end);
-      const ax = n1.x - n0.x;
-      const ay = n1.y - n0.y;
+      const n12 = P(xc, end);
+      const ax = n12.x - n0.x;
+      const ay = n12.y - n0.y;
       const len2 = ax * ax + ay * ay;
       if (len2 < 1) continue;
-      const g = ctx2.createLinearGradient(n0.x, n0.y, n1.x, n1.y);
+      const g = ctx2.createLinearGradient(n0.x, n0.y, n12.x, n12.y);
       let any = false;
       for (let f = 0; f <= end; f += 2) {
         const val2 = (oil.cells[b - 1][Math.min(f, 59)] + (oil.cells[b - 1][Math.min(f + 1, 59)] ?? 0)) / 2 / oil.max;
@@ -4215,12 +4325,12 @@ Games: ${p.games.join(", ")}`)) return;
     <div class="chips"><button class="btn" id="le-save">${l ? "Save" : "Start the league"}</button></div><div class="note" id="le-err"></div>`;
     $("le-back").onclick = () => l ? openLeague(l.id) : openLeagues();
     $("le-save").onclick = async () => {
-      const num5 = (id) => {
+      const num6 = (id) => {
         const v = parseFloat($(id).value);
         return Number.isFinite(v) ? v : void 0;
       };
       const name = $("le-name").value.trim();
-      const gpn = num5("le-gpn"), est = num5("le-est"), base = num5("le-base"), pct4 = num5("le-pct"), cap = num5("le-cap");
+      const gpn = num6("le-gpn"), est = num6("le-est"), base = num6("le-base"), pct4 = num6("le-pct"), cap = num6("le-cap");
       const err = $("le-err");
       if (!name) return void (err.textContent = "Give the league a name.");
       if (!gpn || gpn < 1 || gpn > 6) return void (err.textContent = "Games a night: 1 to 6.");
@@ -5235,17 +5345,17 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       hand: o.hand,
       style,
       asOf,
-      shots: num3(o.shots, 0, 1e5) ?? 0,
-      speedMph: num3(o.speedMph, 3, 40),
-      speedSteady: num3(o.speedSteady, 0, 20),
-      entryAngle: num3(o.entryAngle, 0, 20),
-      breakpointFt: num3(o.breakpointFt, 0, 60),
-      pocketPct: num3(o.pocketPct, 0, 100),
-      strikePct: num3(o.strikePct, 0, 100),
-      avg: num3(o.avg, 0, 300),
-      high: num3(o.high, 0, 300),
-      games: num3(o.games, 0, 5e3),
-      revRpm: num3(o.revRpm, 50, 700),
+      shots: num4(o.shots, 0, 1e5) ?? 0,
+      speedMph: num4(o.speedMph, 3, 40),
+      speedSteady: num4(o.speedSteady, 0, 20),
+      entryAngle: num4(o.entryAngle, 0, 20),
+      breakpointFt: num4(o.breakpointFt, 0, 60),
+      pocketPct: num4(o.pocketPct, 0, 100),
+      strikePct: num4(o.strikePct, 0, 100),
+      avg: num4(o.avg, 0, 300),
+      high: num4(o.high, 0, 300),
+      games: num4(o.games, 0, 5e3),
+      revRpm: num4(o.revRpm, 50, 700),
       balls: balls?.length ? balls : void 0
     };
   }
@@ -5270,7 +5380,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     else if (!notes.length) notes.push("Your numbers are close. A friend with a similar game is a good person to swap what's working with.");
     return { lines, notes };
   }
-  var DEFAULT_SHARE, r1, str4, num3, ROWS, styleName, QUICK_MESSAGES;
+  var DEFAULT_SHARE, r1, str4, num4, ROWS, styleName, QUICK_MESSAGES;
   var init_profilecard = __esm({
     "core/src/profilecard.ts"() {
       init_coach();
@@ -5279,7 +5389,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       DEFAULT_SHARE = { speed: true, accuracy: true, scores: true, balls: true };
       r1 = (n) => Math.round(n * 10) / 10;
       str4 = (v, max) => typeof v === "string" ? v.replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
-      num3 = (v, lo, hi) => typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi ? v : void 0;
+      num4 = (v, lo, hi) => typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi ? v : void 0;
       ROWS = [
         { label: "Average", unit: "", key: "avg", digits: 0 },
         { label: "High game", unit: "", key: "high", digits: 0 },
@@ -6117,33 +6227,33 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
                 var characterCountSize = [10, 12, 14][size];
                 var length = stream2.readBits(characterCountSize);
                 while (length >= 3) {
-                  var num5 = stream2.readBits(10);
-                  if (num5 >= 1e3) {
+                  var num6 = stream2.readBits(10);
+                  if (num6 >= 1e3) {
                     throw new Error("Invalid numeric value above 999");
                   }
-                  var a = Math.floor(num5 / 100);
-                  var b = Math.floor(num5 / 10) % 10;
-                  var c = num5 % 10;
+                  var a = Math.floor(num6 / 100);
+                  var b = Math.floor(num6 / 10) % 10;
+                  var c = num6 % 10;
                   bytes.push(48 + a, 48 + b, 48 + c);
                   text += a.toString() + b.toString() + c.toString();
                   length -= 3;
                 }
                 if (length === 2) {
-                  var num5 = stream2.readBits(7);
-                  if (num5 >= 100) {
+                  var num6 = stream2.readBits(7);
+                  if (num6 >= 100) {
                     throw new Error("Invalid numeric value above 99");
                   }
-                  var a = Math.floor(num5 / 10);
-                  var b = num5 % 10;
+                  var a = Math.floor(num6 / 10);
+                  var b = num6 % 10;
                   bytes.push(48 + a, 48 + b);
                   text += a.toString() + b.toString();
                 } else if (length === 1) {
-                  var num5 = stream2.readBits(4);
-                  if (num5 >= 10) {
+                  var num6 = stream2.readBits(4);
+                  if (num6 >= 10) {
                     throw new Error("Invalid numeric value above 9");
                   }
-                  bytes.push(48 + num5);
-                  text += num5.toString();
+                  bytes.push(48 + num6);
+                  text += num6.toString();
                 }
                 return { bytes, text };
               }
@@ -16190,18 +16300,18 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
           };
           return _this;
         })();
-        function qrPolynomial(num5, shift) {
-          if (typeof num5.length == "undefined") {
-            throw num5.length + "/" + shift;
+        function qrPolynomial(num6, shift) {
+          if (typeof num6.length == "undefined") {
+            throw num6.length + "/" + shift;
           }
           var _num = (function() {
             var offset = 0;
-            while (offset < num5.length && num5[offset] == 0) {
+            while (offset < num6.length && num6[offset] == 0) {
               offset += 1;
             }
-            var _num2 = new Array(num5.length - offset + shift);
-            for (var i = 0; i < num5.length - offset; i += 1) {
-              _num2[i] = num5[i + offset];
+            var _num2 = new Array(num6.length - offset + shift);
+            for (var i = 0; i < num6.length - offset; i += 1) {
+              _num2[i] = num6[i + offset];
             }
             return _num2;
           })();
@@ -16213,27 +16323,27 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
             return _num.length;
           };
           _this.multiply = function(e) {
-            var num6 = new Array(_this.getLength() + e.getLength() - 1);
+            var num7 = new Array(_this.getLength() + e.getLength() - 1);
             for (var i = 0; i < _this.getLength(); i += 1) {
               for (var j = 0; j < e.getLength(); j += 1) {
-                num6[i + j] ^= QRMath.gexp(QRMath.glog(_this.getAt(i)) + QRMath.glog(e.getAt(j)));
+                num7[i + j] ^= QRMath.gexp(QRMath.glog(_this.getAt(i)) + QRMath.glog(e.getAt(j)));
               }
             }
-            return qrPolynomial(num6, 0);
+            return qrPolynomial(num7, 0);
           };
           _this.mod = function(e) {
             if (_this.getLength() - e.getLength() < 0) {
               return _this;
             }
             var ratio = QRMath.glog(_this.getAt(0)) - QRMath.glog(e.getAt(0));
-            var num6 = new Array(_this.getLength());
+            var num7 = new Array(_this.getLength());
             for (var i = 0; i < _this.getLength(); i += 1) {
-              num6[i] = _this.getAt(i);
+              num7[i] = _this.getAt(i);
             }
             for (var i = 0; i < e.getLength(); i += 1) {
-              num6[i] ^= QRMath.gexp(QRMath.glog(e.getAt(i)) + ratio);
+              num7[i] ^= QRMath.gexp(QRMath.glog(e.getAt(i)) + ratio);
             }
-            return qrPolynomial(num6, 0).mod(e);
+            return qrPolynomial(num7, 0).mod(e);
           };
           return _this;
         }
@@ -16496,9 +16606,9 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
             var bufIndex = Math.floor(index / 8);
             return (_buffer[bufIndex] >>> 7 - index % 8 & 1) == 1;
           };
-          _this.put = function(num5, length) {
+          _this.put = function(num6, length) {
             for (var i = 0; i < length; i += 1) {
-              _this.putBit((num5 >>> length - i - 1 & 1) == 1);
+              _this.putBit((num6 >>> length - i - 1 & 1) == 1);
             }
           };
           _this.getLengthInBits = function() {
@@ -16542,11 +16652,11 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
             }
           };
           var strToNum = function(s) {
-            var num5 = 0;
+            var num6 = 0;
             for (var i = 0; i < s.length; i += 1) {
-              num5 = num5 * 10 + chatToNum(s.charAt(i));
+              num6 = num6 * 10 + chatToNum(s.charAt(i));
             }
-            return num5;
+            return num6;
           };
           var chatToNum = function(c) {
             if ("0" <= c && c <= "9") {
@@ -18924,9 +19034,9 @@ ${url}`);
   function watchForUpdates(show, idle = () => false) {
     const mine = runningVersion();
     if (!mine) return;
-    let shown = false;
+    let shown2 = false;
     const check = async () => {
-      if (shown || !navigator.onLine) return;
+      if (shown2 || !navigator.onLine) return;
       try {
         const r = await fetch(`version.json?t=${Date.now()}`, { cache: "no-store" });
         if (!r.ok) return;
@@ -18945,7 +19055,7 @@ ${url}`);
             location.reload();
             return;
           }
-          shown = true;
+          shown2 = true;
           show("A newer version of LaneIQ is ready.", () => location.reload());
         }
       } catch {
@@ -19083,7 +19193,7 @@ ${url}`);
     const thumb = grip.noThumb ? null : walk(N, scale(UP, -1), half);
     const side = [hs, 0, 0];
     const lateral = (grip.bridge + grip.fingerDia) / 2;
-    const sideAt = (p, sgn) => walk(p, unit(sub(side, scale(p, dot(side, p)))), sgn * lateral);
+    const sideAt = (p, sgn2) => walk(p, unit(sub(side, scale(p, dot(side, p)))), sgn2 * lateral);
     return { hs, fingers, thumb, middle: sideAt(fingers, -1), ring: sideAt(fingers, 1) };
   }
   function papPoint(pap, hs) {
@@ -21350,7 +21460,7 @@ ${url}`);
   init_live();
   init_state();
   var inch2 = (v) => fractionInches(v);
-  var num2 = (el) => el && el.value.trim() !== "" ? Number(el.value) : void 0;
+  var num3 = (el) => el && el.value.trim() !== "" ? Number(el.value) : void 0;
   function gripNow() {
     const f = S.profile?.fit;
     const st2 = bowlerProfile().style;
@@ -21443,7 +21553,7 @@ ${url}`);
       const input = sys.value === "dual" ? { system: "dual", drilling: a, pinToPap: b, valAngle: c } : sys.value === "pinbuffer" ? { system: "pinbuffer", pinToPap: a, psaToPap: b, pinBuffer: c } : { system: "2ls", pinToPap: a, psaToPap: b, pinToGrip: c };
       const grip = gripNow();
       const solved2 = solveLayout(input, { over, up }, bp.hand, grip);
-      const ballW = num2(q2("pt-w")), rg = num2(q2("pt-rg")), td = num2(q2("pt-td")), idf = num2(q2("pt-id"));
+      const ballW = num3(q2("pt-w")), rg = num3(q2("pt-rg")), td = num3(q2("pt-td")), idf = num3(q2("pt-id"));
       const f = checkLayout(input, solved2, { axisTilt: bp.axisTilt, symmetric: idf === 0, grip });
       const e = solved2.eq;
       let drilled = "";
@@ -21464,9 +21574,9 @@ ${url}`);
       <tr><td>2LS</td><td class="n">${inch2(e.ls2.pinToPap)} \xD7 ${inch2(e.ls2.psaToPap)} \xD7 ${inch2(e.ls2.pinToGrip)}</td></tr></table>${drilled}`;
     };
     q2("pt-sgo").onclick = () => {
-      const v = (id) => num2(q2(id));
+      const v = (id) => num3(q2(id));
       const bal = q2("pt-bal").checked;
-      const w = checkStaticWeight({ top: v("pt-st"), finger: v("pt-sf"), side: v("pt-ss") }, num2(q2("pt-w")) ?? 15, bal);
+      const w = checkStaticWeight({ top: v("pt-st"), finger: v("pt-sf"), side: v("pt-ss") }, num3(q2("pt-w")) ?? 15, bal);
       q2("pt-sout").innerHTML = `<div class="u">${w.ok ? "Within the USBC limits." : esc(w.problems.join(" "))} Limits: ${w.limits.topBottom} oz top or bottom, ${w.limits.sideFingerThumb} oz side, finger or thumb.</div>${w.notes.map((n) => `<div class="note">${esc(n)}</div>`).join("")}`;
     };
     const sym = q2("pt-sym");
@@ -22623,7 +22733,7 @@ ${url}`);
 
   // core/src/clipspin.ts
   init_vision();
-  var BOARD_IN2 = 1.0625;
+  var BOARD_IN3 = 1.0625;
   var BALL_DIAMETER_IN = 8.5;
   var med2 = (v) => v.length ? [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)] : NaN;
   function laneToPicture(cal) {
@@ -22632,14 +22742,14 @@ ${url}`);
     return (x, y) => applyHomography(Hinv2, { x, y });
   }
   function ballInPicture(P, x, y) {
-    const half = BALL_DIAMETER_IN / 2 / BOARD_IN2;
+    const half = BALL_DIAMETER_IN / 2 / BOARD_IN3;
     const a = P(x - half, y), b = P(x + half, y), c = P(x, y);
     const r = Math.hypot(b.x - a.x, b.y - a.y) / 2;
     return { cx: c.x, cy: c.y - r * 0.95, r };
   }
   function laneBasis(cal, vw, vh) {
     if (cal.length !== 4) return null;
-    const lane = [{ x: 0, y: 0 }, { x: LANE_BOARDS * BOARD_IN2, y: 0 }, { x: LANE_BOARDS * BOARD_IN2, y: LANE_LENGTH_FT * 12 }, { x: 0, y: LANE_LENGTH_FT * 12 }];
+    const lane = [{ x: 0, y: 0 }, { x: LANE_BOARDS * BOARD_IN3, y: 0 }, { x: LANE_BOARDS * BOARD_IN3, y: LANE_LENGTH_FT * 12 }, { x: 0, y: LANE_LENGTH_FT * 12 }];
     const H3 = solveHomography(lane, cal);
     const cx = vw / 2, cy = vh / 2;
     const col = (j) => [H3[j], H3[3 + j], H3[6 + j]];
@@ -22834,7 +22944,7 @@ ${url}`);
   var MIN_BALL_PX = 26;
   var FAST_RPM = 500;
   var fpsNeeded = (rpm = FAST_RPM) => Math.ceil(rpm / 60 * 360 / GOOD_DEG_PER_FRAME / 60) * 60;
-  var none = (fps, reasons, advice, status2, extra = {}) => ({
+  var none2 = (fps, reasons, advice, status2, extra = {}) => ({
     status: status2,
     rpm: null,
     axisRotation: null,
@@ -22862,7 +22972,7 @@ ${url}`);
   async function analyzeClipSpin(frames, fps, rs, basis, hand3, pause = async () => {
   }, debug) {
     const pitch = basis ? basis.pitchDeg : null;
-    if (frames.length < 5) return none(fps, [`The ball is in only ${frames.length} frame${frames.length === 1 ? "" : "s"} of the clip.`], null, "none", { cameraPitchDeg: pitch });
+    if (frames.length < 5) return none2(fps, [`The ball is in only ${frames.length} frame${frames.length === 1 ? "" : "s"} of the clip.`], null, "none", { cameraPitchDeg: pitch });
     let ballPx = med2(frames.map((f) => f.ballPx));
     const base = { fps, ballPx, t0: frames[0].t, t1: frames[frames.length - 1].t, cameraPitchDeg: pitch };
     const held = [];
@@ -22875,13 +22985,13 @@ ${url}`);
     const sc = med2(held.map((h) => h.score));
     const useable = held.filter((h) => h.score >= Math.max(3, sc * 0.5));
     debug?.(held.map((h) => ({ t: h.t, crop: h.g, circle: h.c, score: h.score, kept: useable.includes(h) })));
-    if (useable.length < 5) return none(fps, ["The ball's outline couldn't be found in enough frames."], null, "none", base);
+    if (useable.length < 5) return none2(fps, ["The ball's outline couldn't be found in enough frames."], null, "none", base);
     ballPx = med2(useable.map((h) => h.px));
     base.ballPx = ballPx;
     const texture = med2(useable.map((h) => markStrength(h.g, h.c)));
     base.texture = texture;
     if (ballPx < MIN_BALL_PX)
-      return none(fps, [`The ball is only about ${Math.round(ballPx)} pixels across in the clip; the surface can't be followed under about ${MIN_BALL_PX}.`], `Move closer or zoom in so the ball fills at least ${MIN_BALL_PX * 2} pixels at the start of the roll, or ${SLOW_ADVICE.charAt(0).toLowerCase() + SLOW_ADVICE.slice(1)}`, "too-coarse", base);
+      return none2(fps, [`The ball is only about ${Math.round(ballPx)} pixels across in the clip; the surface can't be followed under about ${MIN_BALL_PX}.`], `Move closer or zoom in so the ball fills at least ${MIN_BALL_PX * 2} pixels at the start of the roll, or ${SLOW_ADVICE.charAt(0).toLowerCase() + SLOW_ADVICE.slice(1)}`, "too-coarse", base);
     const cenC = { cx: useable[0].g.w / 2, cy: useable[0].g.h / 2, r: rs };
     const aligned = useable.map((h) => ({ t: h.t, g: normalized(h.g, h.c, rs) }));
     const omegas = [];
@@ -22955,7 +23065,7 @@ ${url}`);
     const consistency = stride > 1 ? steady : agreeOf >= 2 ? agreeN / agreeOf : null;
     const out = { ...base, pairsRead: read2, pairsTried: tried, consistency, cameraPitchDeg: pitch, t0: aligned[0].t, t1: aligned[aligned.length - 1].t };
     if (read2 < 4 || tried === 0)
-      return none(fps, [`Only ${read2} of ${tried} frame pairs had enough surface detail to follow. A plain ball with no logo, or a clip too soft to show one, can't be read this way.`], SLOW_ADVICE, "too-coarse", out);
+      return none2(fps, [`Only ${read2} of ${tried} frame pairs had enough surface detail to follow. A plain ball with no logo, or a clip too soft to show one, can't be read this way.`], SLOW_ADVICE, "too-coarse", out);
     const magMed = med2(mags);
     const deg2 = magMed * 180 / Math.PI;
     const spread = mags.length > 2 ? Math.sqrt(mags.reduce((a, m) => a + (m - magMed) ** 2, 0) / mags.length) / (magMed || 1) : 1;
@@ -22977,13 +23087,13 @@ ${url}`);
     }
     if (coarse) {
       advice = `${fps.toFixed(0)} fps is too coarse for this ball. To follow about ${FAST_RPM} rpm the camera needs at least ${fpsNeeded()} fps. ${SLOW_ADVICE}`;
-      return none(fps, reasons, advice, "too-coarse", { ...out, degPerFrame: deg2, rpm: null });
+      return none2(fps, reasons, advice, "too-coarse", { ...out, degPerFrame: deg2, rpm: null });
     }
     const med3 = (k2) => med2(omegas.filter((o) => !!o).map((o) => o[k2]));
     const om = { x: med3("x"), y: med3("y"), z: med3("z") };
     const lane = basis ? omegaInLane(om, basis) : om;
     const s = spinFromOmega(lane, fps, "behind", hand3);
-    if (!s) return none(fps, ["The rotation came out as zero."], SLOW_ADVICE, "too-coarse", out);
+    if (!s) return none2(fps, ["The rotation came out as zero."], SLOW_ADVICE, "too-coarse", out);
     const caveats = [...s.notes];
     if (!basis) caveats.push("The lane lock can't say how far the camera tilts down, so axis tilt assumes it looks level down the lane and is off by roughly that tilt.");
     else if (basis.agree < 0.6) caveats.push("The camera tilt taken from the lane lock is shaky, so axis tilt could be off by a few degrees.");
@@ -22991,9 +23101,9 @@ ${url}`);
     const sizeF = Math.min(1, ballPx / 60);
     const confidence = Math.max(0, Math.min(1, s.quality * usedFrac * (consistency ?? 0.6) * (1 - Math.min(0.8, spread)) * (0.5 + 0.5 * sizeF) * (deg2 < MAX_DEG_PER_FRAME * 0.7 ? 1 : 0.8) * Math.min(1, inl / Math.max(1, read2) / 120 + 0.4)));
     const status2 = confidence >= 0.55 ? "measured" : confidence >= 0.3 ? "rough" : "too-coarse";
-    if (status2 === "too-coarse") return none(fps, [...reasons, `Confidence only ${Math.round(confidence * 100)}%.`], SLOW_ADVICE, "too-coarse", { ...out, degPerFrame: deg2 });
+    if (status2 === "too-coarse") return none2(fps, [...reasons, `Confidence only ${Math.round(confidence * 100)}%.`], SLOW_ADVICE, "too-coarse", { ...out, degPerFrame: deg2 });
     void rpmNow;
-    return { ...none(fps, [...reasons, ...caveats], null, status2, out), status: status2, rpm: s.rpm, axisRotation: s.axisRotation, axisTilt: s.axisTilt, confidence, degPerFrame: deg2 };
+    return { ...none2(fps, [...reasons, ...caveats], null, status2, out), status: status2, rpm: s.rpm, axisRotation: s.axisRotation, axisTilt: s.axisTilt, confidence, degPerFrame: deg2 };
   }
 
   // camera/clipspin.ts
@@ -23134,6 +23244,7 @@ ${url}`);
   }
 
   // camera/spinqueue.ts
+  init_live();
   init_state();
   var waiting = /* @__PURE__ */ new Map();
   var chain = Promise.resolve();
@@ -23153,6 +23264,10 @@ ${url}`);
           const r = await measureShotSpin(shot, blob, hand3, opts.onProgress);
           shot.spin = r;
           await updateShot(shot);
+          try {
+            refreshTiles(shot);
+          } catch {
+          }
           resolve(r);
         } catch {
           resolve(void 0);
@@ -23564,7 +23679,7 @@ ${url}`);
     return `${whole || !frac ? whole : ""}${whole && frac ? " " : ""}${frac}`.trim() || "0";
   }
   var txt = (s, max) => typeof s === "string" ? s.replace(/\s+/g, " ").trim().slice(0, max) : "";
-  var num4 = (v, lo, hi) => {
+  var num5 = (v, lo, hi) => {
     const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
     return Number.isFinite(n) && n >= lo && n <= hi ? n : void 0;
   };
@@ -23577,12 +23692,12 @@ ${url}`);
     const set = (k2, v) => {
       if (v !== void 0 && v !== "") out[k2] = v;
     };
-    set("drilling", num4(l.drilling, 0, 180));
-    set("pinToPap", num4(l.pinToPap, 0, 12));
-    set("valAngle", num4(l.valAngle, 0, 180));
-    set("psaToPap", num4(l.psaToPap, 0, 12));
-    set("pinBuffer", num4(l.pinBuffer, 0, 12));
-    set("pinToGrip", num4(l.pinToGrip, 0, 12));
+    set("drilling", num5(l.drilling, 0, 180));
+    set("pinToPap", num5(l.pinToPap, 0, 12));
+    set("valAngle", num5(l.valAngle, 0, 180));
+    set("psaToPap", num5(l.psaToPap, 0, 12));
+    set("pinBuffer", num5(l.pinBuffer, 0, 12));
+    set("pinToGrip", num5(l.pinToGrip, 0, 12));
     set("pap", txt(l.pap, 60));
     set("text", txt(l.text, 160));
     set("surface", txt(l.surface, 80));
@@ -25467,8 +25582,8 @@ ${url}`);
     if (R2 >= 3) for (let i = 0; i < 50; i++) h = md5(h.subarray(0, n));
     return { key: h.subarray(0, n), aes: /\/CFM\s*\/AESV2/.test(dict), n };
   }
-  async function decryptStream(d, enc, num5, gen) {
-    const ext = Uint8Array.from([num5 & 255, num5 >> 8 & 255, num5 >> 16 & 255, gen & 255, gen >> 8 & 255]);
+  async function decryptStream(d, enc, num6, gen) {
+    const ext = Uint8Array.from([num6 & 255, num6 >> 8 & 255, num6 >> 16 & 255, gen & 255, gen >> 8 & 255]);
     const k2 = md5(concat(enc.key, ext, enc.aes ? fromLatin1("sAlT") : new Uint8Array(0))).subarray(0, Math.min(enc.n + 5, 16));
     if (!enc.aes) return rc4(k2, d);
     const subtle = globalThis.crypto?.subtle;
@@ -25553,7 +25668,7 @@ ${url}`);
     const heads = [...s.matchAll(/(?:^|[\r\n\s])(\d+)\s+(\d+)\s+obj\b/g)];
     const streamOf = async (o) => o?.raw ? /\/Filter/.test(o.dict) ? inflate(o.raw) : o.raw : null;
     for (let k2 = 0; k2 < heads.length; k2++) {
-      const num5 = Number(heads[k2][1]);
+      const num6 = Number(heads[k2][1]);
       const gen = Number(heads[k2][2]);
       const start2 = heads[k2].index + heads[k2][0].length;
       const stop = k2 + 1 < heads.length ? heads[k2 + 1].index : s.length;
@@ -25568,14 +25683,14 @@ ${url}`);
           raw = buf.subarray(a, e);
           if (enc && !/\/Type\s*\/XRef/.test(dict)) {
             try {
-              raw = await decryptStream(raw, enc, num5, gen);
+              raw = await decryptStream(raw, enc, num6, gen);
             } catch {
               raw = null;
             }
           }
         }
       }
-      objs.set(num5, { dict, raw });
+      objs.set(num6, { dict, raw });
     }
     for (const [, o] of [...objs]) {
       if (!/\/Type\s*\/ObjStm/.test(o.dict)) continue;
@@ -25586,10 +25701,10 @@ ${url}`);
       const text = latin1(data);
       const nums3 = (text.slice(0, first).match(/\d+/g) ?? []).map(Number);
       for (let k2 = 0; k2 < n; k2++) {
-        const num5 = nums3[2 * k2];
+        const num6 = nums3[2 * k2];
         const off = nums3[2 * k2 + 1];
         const nxt = k2 + 1 < n ? nums3[2 * k2 + 3] : text.length - first;
-        objs.set(num5, { dict: text.slice(first + off, first + nxt), raw: null });
+        objs.set(num6, { dict: text.slice(first + off, first + nxt), raw: null });
       }
     }
     const ref = (str5, key2) => {
@@ -25788,26 +25903,26 @@ ${url}`);
     </div>
     <div class="card"><div class="k">The oil, from above</div><div style="display:flex;gap:12px;align-items:flex-start"><canvas id="pe-prev" width="180" height="315" style="width:120px;height:210px;border-radius:10px;flex:none"></canvas><div class="note" id="pe-desc"></div></div></div>
     <div class="chips"><button class="btn" id="pe-save">${existing ? "Save" : "Save pattern"}</button></div><div class="note" id="pe-err"></div>`;
-    const num5 = (id) => {
+    const num6 = (id) => {
       const v = parseFloat($(id).value);
       return Number.isFinite(v) ? v : void 0;
     };
     const build = () => {
-      const len = num5("pe-len");
+      const len = num6("pe-len");
       if (len === void 0 || len < 20 || len > 55) return null;
       const nm = $("pe-name").value.trim() || `${len} ft pattern`;
-      const ratio = num5("pe-ratio");
+      const ratio = num6("pe-ratio");
       return {
         id: existing?.id ?? newId(),
         key: nm.toLowerCase(),
         name: nm,
         series: "mine",
         lengthFt: Math.round(len),
-        volumeMl: num5("pe-vol"),
+        volumeMl: num6("pe-vol"),
         ratio: ratio !== void 0 && ratio >= 1 && ratio <= 15 ? ratio : void 0,
-        forwardMl: num5("pe-fwd"),
-        reverseMl: num5("pe-rev"),
-        brushDropFt: num5("pe-drop"),
+        forwardMl: num6("pe-fwd"),
+        reverseMl: num6("pe-rev"),
+        brushDropFt: num6("pe-drop"),
         // the load table is only kept while the length still matches the sheet it came from
         rows: r.tableOk && Math.round(len) === r.lengthFt ? r.rows : existing?.rows && Math.round(len) === existing.lengthFt ? existing.rows : void 0,
         from,
@@ -25865,7 +25980,7 @@ ${url}`);
       <div class="field"><label>Oil pattern tonight</label><div class="chips" style="margin:0;align-items:center"><select id="tg-pat" style="flex:1;min-width:0"><option value="">None / not known</option>${S.myPatterns.map((p) => `<option value="${esc(p.id)}" ${S.where.patternId === p.id ? "selected" : ""}>${esc(p.name)} \xB7 ${p.lengthFt} ft</option>`).join("")}</select><button class="chip" id="tg-pats">My patterns</button></div></div>
       <div class="note">Used to remember how each pair played for you, and to draw the oil on your lane. It stays on this phone.</div></div>
     <div class="chips"><button class="btn" id="tg-save">Save target</button>${S.target ? `<button class="btn ghost" id="tg-clear">No target</button>` : ""}</div>`;
-    const num5 = (id) => {
+    const num6 = (id) => {
       const v = parseFloat($(id).value);
       return Number.isFinite(v) ? Math.max(1, Math.min(39, v)) : void 0;
     };
@@ -25885,9 +26000,9 @@ ${url}`);
       renderTonight();
     });
     $("tg-save").onclick = async () => {
-      const arrows = num5("tg-arrows");
+      const arrows = num6("tg-arrows");
       if (arrows === void 0) return void $("tg-arrows").focus();
-      S.target = { arrows, stand: num5("tg-stand"), breakpoint: num5("tg-bp"), at: (/* @__PURE__ */ new Date()).toISOString() };
+      S.target = { arrows, stand: num6("tg-stand"), breakpoint: num6("tg-bp"), at: (/* @__PURE__ */ new Date()).toISOString() };
       S.where = { center: $("tg-center").value.trim(), lane: $("tg-lane").value.trim(), patternId: $("tg-pat").value };
       await saveCoach();
       el.classList.remove("on");
@@ -26517,8 +26632,8 @@ ${url}`);
     const el = $("community-page");
     const p = S.profile;
     const views = [["friends", "Friends"], ["league", "League"], ["crews", "Crews"], ["family", "Family and coaches"]];
-    const shown = views.filter(([v]) => !(p?.junior && (v === "friends" || v === "crews")));
-    if (!shown.some(([v]) => v === communityView)) communityView = shown[0][0];
+    const shown2 = views.filter(([v]) => !(p?.junior && (v === "friends" || v === "crews")));
+    if (!shown2.some(([v]) => v === communityView)) communityView = shown2[0][0];
     const body = {
       friends: p ? p.junior ? `<div class="card"><div class="k">Friends and sharing</div><div class="note">Friends, profile cards, shared sessions and live sync are switched off on a junior profile. A parent or the bowler can still send a progress card from Family and coaches.</div></div>` : friendsViewHtml() : "",
       league: p ? `<div class="card"><div class="k">League night</div><div class="note">Keep a league's standings: handicap, averages, teams and the night's awards. Bowlers send their night as a link; you send the standings back as a link, a picture or text.</div><div class="chips"><button class="btn" id="me-league">League night</button></div></div>` : "",
@@ -26526,7 +26641,7 @@ ${url}`);
       family: p ? `<div class="card"><div class="k">Juniors, parents and coaches</div><div class="note">${p.junior ? `This is a junior profile (${esc(p.junior.display)}). Make a progress card for a parent or coach, or see your group.` : "Make a junior profile, send a parent or coach a progress card, or keep a group as a youth coach."}</div><div class="chips"><button class="btn" id="me-junior">Open</button></div></div>` : ""
     };
     el.innerHTML = `<h2>Community</h2>
-    <div class="chips" id="cm-seg" style="margin:0 0 10px">${shown.map(([v, label2]) => `<button class="chip ${v === communityView ? "sel" : ""}" data-v="${v}">${label2}</button>`).join("")}</div>
+    <div class="chips" id="cm-seg" style="margin:0 0 10px">${shown2.map(([v, label2]) => `<button class="chip ${v === communityView ? "sel" : ""}" data-v="${v}">${label2}</button>`).join("")}</div>
     ${body[communityView]}`;
     el.querySelectorAll("#cm-seg [data-v]").forEach((b) => b.onclick = () => (communityView = b.dataset.v, renderCommunity()));
     if (communityView === "friends" && p && !p.junior) wireFriendsView(renderCommunity);
@@ -26902,9 +27017,9 @@ ${url}`);
       const b = S.arsenal.find((x) => x.id === card.dataset.ball);
       safely(() => wireBallNotes(card, b));
       card.querySelector("[data-act=save]")?.addEventListener("click", async () => {
-        const num5 = (f) => parseFloat(card.querySelector(`[data-f=${f}]`).value);
-        const rg = num5("rg");
-        const diff = num5("diff");
+        const num6 = (f) => parseFloat(card.querySelector(`[data-f=${f}]`).value);
+        const rg = num6("rg");
+        const diff = num6("diff");
         b.rg = Number.isFinite(rg) ? rg : void 0;
         b.diff = Number.isFinite(diff) ? diff : void 0;
         b.cover = card.querySelector("[data-f=cover]").value || void 0;
@@ -27155,11 +27270,11 @@ ${url}`);
     $("me-new").onclick = () => showQuiz("add", () => {
     });
     $("sp-save")?.addEventListener("click", () => {
-      const num5 = (id) => {
+      const num6 = (id) => {
         const v = parseFloat($(id).value);
         return Number.isFinite(v) ? v : void 0;
       };
-      updateProfile({ spin: { rpm: num5("sp-rpm"), axisRotation: num5("sp-rot"), axisTilt: num5("sp-tilt"), pap: $("sp-pap").value.trim() || void 0, source: "entered", at: (/* @__PURE__ */ new Date()).toISOString() } });
+      updateProfile({ spin: { rpm: num6("sp-rpm"), axisRotation: num6("sp-rot"), axisTilt: num6("sp-tilt"), pap: $("sp-pap").value.trim() || void 0, source: "entered", at: (/* @__PURE__ */ new Date()).toISOString() } });
     });
     $("sp-lab")?.addEventListener("click", () => openSpinLab(() => renderMe()));
     $("sp-pap")?.addEventListener("click", () => openPapScan());
@@ -27212,7 +27327,7 @@ ${url}`);
     { part: LIVE, tab: "live", sel: "#tonight", title: "Tonight's card", text: 'Shows your target, the centre and lanes, and "Last time on this pair": where you stood, what you aimed at and how it went the last time you bowled on these lanes, with a button to start on that line.' },
     { part: LIVE, tab: "live", sel: "#oil-btn", title: "Oil on your lane", text: "Once you pick a pattern, the oil is shaded on the lane in the camera view, with a gold line where it ends and the rule-of-31 board for your breakpoint. When your pattern sheet has a load table, it is drawn exactly as the lane machine lays it. This switch turns it on or off." },
     { part: LIVE, tab: "live", sel: "#voice-btn", title: "Voice caddie", text: "After each shot the phone says the speed, the board at the arrows, the breakpoint, whether you hit the pocket, and a move to try, using your phone's own voice, so you don't have to look. It works offline." },
-    { part: LIVE, tab: "live", sel: ".grid", title: "Every shot, measured", text: "After each ball: speed, the board at the arrows (from the real arrows on your lane), breakpoint board and distance, the board where the ball was last seen, launch angle, entry angle, speed loss, hook and where you hit the pocket. Only what the camera saw is shown: nothing is guessed past it." },
+    { part: LIVE, tab: "live", sel: ".grid", title: "Every shot, measured", text: "After each ball: speed, the boards at the foul line, arrows, breakpoint and pins, launch and entry angle, launch and impact speed, speed loss, hook, rev rate, axis rotation and tilt, and where you hit the pocket. Each number carries how far off it could be, or how sure the reader was, and is marked when it was entered or estimated instead of measured. Tap a shot in the strip to bring its numbers back; \u25B2 \u25BC show the change from the shot before." },
     { part: LIVE, tab: "live", sel: "#result-card", title: "Pins are read from the camera", text: "The pins that fell are read from the deck and go straight on your scorecard. If it ever gets one wrong, tap the right number and the app learns from it." },
     { part: LIVE, tab: "live", sel: "#ball-row", title: "Which ball was that?", text: 'The app recognizes your balls from how they look. Add a ball by name, "Show me this ball" so it can name it from shot one, or scan one from a photo. Tap to correct it: the ball is what Ball advice judges.' },
     { part: LIVE, tab: "live", sel: "#lane-read", title: "Lane read", text: "After a few shots with the same ball it tells you if the lane looks stable, drying out so the ball reads earlier, or oil carrying down so it skids farther, and one change to test." },
@@ -27403,15 +27518,15 @@ ${url}`);
   };
   function pinSnap(rgba, w, h, c) {
     const out = c.map((p) => ({ ...p }));
-    const none2 = { corners: out, moved: 0, found: false };
+    const none3 = { corners: out, moved: 0, found: false };
     const farY = (c[2].y + c[3].y) / 2, nearY = (c[0].y + c[1].y) / 2;
     const len = Math.abs(nearY - farY);
     const dir = Math.sign(nearY - farY) || 1;
-    if (len < 40) return none2;
+    if (len < 40) return none3;
     const xa = Math.min(c[2].x, c[3].x), xb = Math.max(c[2].x, c[3].x);
     const pad = (xb - xa) * 0.12;
     const x0 = Math.max(0, Math.round(xa + pad)), x1 = Math.min(w - 1, Math.round(xb - pad));
-    if (x1 - x0 < 8) return none2;
+    if (x1 - x0 < 8) return none3;
     const reach = 0.14 * len;
     const y0 = Math.max(0, Math.round(farY - dir * reach - (dir > 0 ? 0 : 0)));
     const rows2 = [];
@@ -27423,21 +27538,21 @@ ${url}`);
       rows2.push({ y, f: n / (x1 - x0 + 1) });
     }
     void y0;
-    if (rows2.length < 10) return none2;
+    if (rows2.length < 10) return none3;
     rows2.sort((a, b) => dir > 0 ? a.y - b.y : b.y - a.y);
     const f = rows2.map((r, i2) => (rows2[Math.max(0, i2 - 1)].f + r.f + rows2[Math.min(rows2.length - 1, i2 + 1)].f) / 3);
     let i = 0;
     while (i < f.length && f[i] < 0.55) i++;
-    if (i >= f.length) return none2;
+    if (i >= f.length) return none3;
     let peak = f[i], j = i;
     while (j < f.length && f[j] >= 0.5 * peak) {
       peak = Math.max(peak, f[j]);
       j++;
     }
-    if (j >= f.length) return none2;
+    if (j >= f.length) return none3;
     const baseY = rows2[j - 1].y;
     const moved = (baseY - farY) * dir * -1;
-    if (Math.abs(baseY - farY) > reach) return none2;
+    if (Math.abs(baseY - farY) > reach) return none3;
     const slide = (near, far) => {
       const dy = far.y - near.y;
       if (Math.abs(dy) < 1e-6) return far;
@@ -27653,14 +27768,14 @@ ${url}`);
         if (rob.filter((r) => r > 0.05).length < Math.max(5, n * 0.5)) rob = rob.map((r) => Math.max(r, 0.05));
       }
       if (!ok) continue;
-      let num5 = 0, den = 0;
+      let num6 = 0, den = 0;
       for (let i = 0; i < n; i++) {
         if (rob[i] <= 0.05) continue;
         const loo = (points[i].v - fit[i]) / (1 - hat[i]) / points[i].s;
-        num5 += Math.min(loo * loo, 36);
+        num6 += Math.min(loo * loo, 36);
         den++;
       }
-      const score = den ? num5 / den : Infinity;
+      const score = den ? num6 / den : Infinity;
       const z2 = points.map((q2, i) => rob[i] > 0.05 ? (q2.v - fit[i]) / q2.s : 0);
       const chi = Math.sqrt(z2.reduce((s, v) => s + v * v, 0) / Math.max(1, rob.filter((r) => r > 0.05).length));
       if (!best || score < best.score) best = { score, res: { fit, slope, trust: rob, chi, span } };
@@ -27954,8 +28069,8 @@ ${url}`);
         edges.push(i);
         if (seed) continue;
         const acc = gx[i] > 0 ? accL : accR;
-        const sgn = gx[i] > 0 ? 1 : -1;
-        void sgn;
+        const sgn2 = gx[i] > 0 ? 1 : -1;
+        void sgn2;
         const phiE = Math.atan(-gy[i] / gx[i]);
         const k0 = Math.max(0, Math.ceil((phiE - WIN + PHI_MAX) / DPHI));
         const k1 = Math.min(NPHI - 1, Math.floor((phiE + WIN + PHI_MAX) / DPHI));
@@ -29400,8 +29515,8 @@ ${url}`);
         }
       return c ? s / c : Infinity;
     };
-    const none2 = score(0, 0);
-    let best = none2;
+    const none3 = score(0, 0);
+    let best = none3;
     let bdx = 0;
     let bdy = 0;
     for (let dy = -range; dy <= range; dy++)
@@ -29410,7 +29525,7 @@ ${url}`);
         const v = score(dx, dy);
         if (v < best) best = v, bdx = dx, bdy = dy;
       }
-    return { dx: bdx, dy: bdy, best, none: none2, energy, atLimit: Math.max(Math.abs(bdx), Math.abs(bdy)) >= range };
+    return { dx: bdx, dy: bdy, best, none: none3, energy, atLimit: Math.max(Math.abs(bdx), Math.abs(bdy)) >= range };
   }
 
   // core/src/pins.ts
