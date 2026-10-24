@@ -1579,7 +1579,13 @@
       };
       listeners = /* @__PURE__ */ new Set();
       onChange = (fn) => (listeners.add(fn), () => listeners.delete(fn));
-      changed = () => listeners.forEach((fn) => fn());
+      changed = () => listeners.forEach((fn) => {
+        try {
+          fn();
+        } catch (e) {
+          console.error(e);
+        }
+      });
       shotListeners = [];
       insightShots = () => S.insightsSince ? S.shots.filter((s) => s.at > S.insightsSince) : S.shots;
       insightGames = (games2) => S.insightsSince ? games2.filter((g) => Date.parse(g.at) > Date.parse(S.insightsSince)) : games2;
@@ -26849,6 +26855,14 @@ ${url}`);
     const found = S.myPatterns.find((p) => p.id === effectivePattern());
     return found ?? customPattern(custom.len, custom.vol || void 0, custom.ratio || void 0, custom.name || "Custom pattern");
   }
+  function safely(fn) {
+    try {
+      return fn();
+    } catch (e) {
+      console.error(e);
+      return "";
+    }
+  }
   function renderArsenal() {
     const el = $("arsenal-page");
     const owned = ownedBalls();
@@ -26869,7 +26883,7 @@ ${url}`);
           <div class="u">${b.exemplars.length} look${b.exemplars.length === 1 ? "" : "s"} learned${idx !== null ? ` \xB7 motion index ${idx.toFixed(2)}` : ""}${o.observed ? ` \xB7 ${o.observed.shots} shots, ${f1(o.observed.entryAngle)}\xB0 entry, breakpoint ${f1(o.observed.breakpointFt, 0)} ft` : ""}</div>
           ${b.catalogKey ? "" : `<div class="two"><div class="field"><label>RG</label><input data-f="rg" inputmode="decimal" value="${b.rg ?? ""}" placeholder="2.50"></div><div class="field"><label>Differential</label><input data-f="diff" inputmode="decimal" value="${b.diff ?? ""}" placeholder="0.045"></div></div>
           <div class="field"><label>Cover</label><select data-f="cover"><option value="">choose\u2026</option>${["solid", "hybrid", "pearl", "urethane", "plastic"].map((c) => `<option ${b.cover === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>`}
-          ${ballNotesHtml(b)}
+          ${safely(() => ballNotesHtml(b))}
           <div class="chips">${b.catalogKey ? "" : `<button class="chip" data-act="save">Save specs</button>`}<button class="chip danger" data-act="del">Remove</button></div></div>`;
     }).join("")}
     <div class="card"><div class="k">Add a ball</div><div class="chips"><input id="ab-name" class="ballinput" placeholder="${S.catalog.length ? `Search ${S.catalog.length} catalog balls or type a name` : "Ball name"}"><button class="chip add" id="ab-add">+ Add</button><button class="chip add" id="ab-scan">+ Scan a ball (photo)</button></div></div>
@@ -26886,7 +26900,7 @@ ${url}`);
     <div id="lineup"></div>`;
     el.querySelectorAll("[data-ball]").forEach((card) => {
       const b = S.arsenal.find((x) => x.id === card.dataset.ball);
-      wireBallNotes(card, b);
+      safely(() => wireBallNotes(card, b));
       card.querySelector("[data-act=save]")?.addEventListener("click", async () => {
         const num5 = (f) => parseFloat(card.querySelector(`[data-f=${f}]`).value);
         const rg = num5("rg");
@@ -28935,8 +28949,15 @@ ${url}`);
     const live2 = document.getElementById("tab-live");
     if (live2) mo.observe(live2, { attributes: true, attributeFilter: ["class"] });
   }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
-  else start();
+  var safeStart = () => {
+    try {
+      start();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", safeStart);
+  else safeStart();
 
   // camera/camera.ts
   init_db();
@@ -29528,13 +29549,34 @@ ${url}`);
     if (typeof video.requestVideoFrameCallback === "function") video.requestVideoFrameCallback((n, m) => onFrame(n, m));
     else requestAnimationFrame((t) => onFrame(t, { mediaTime: video.currentTime }));
   }
+  var fastCam = () => /[?&]fast\b/.test(location.search) || (() => {
+    try {
+      return localStorage.getItem("laneiq.fastcam") === "1";
+    } catch {
+      return false;
+    }
+  })();
+  var safeCam = false;
+  var CAM_FLAG = "laneiq.camStart";
+  function camGuardStart() {
+    try {
+      const t = Number(localStorage.getItem(CAM_FLAG) || 0);
+      safeCam = t > 0 && Date.now() - t < 15 * 60 * 1e3;
+      localStorage.setItem(CAM_FLAG, String(Date.now()));
+    } catch {
+    }
+  }
+  function camGuardOk() {
+    try {
+      localStorage.removeItem(CAM_FLAG);
+    } catch {
+    }
+  }
+  addEventListener("pagehide", camGuardOk);
   async function openCamera() {
+    camGuardStart();
     const sz = (w, h) => ({ width: { ideal: w }, height: { ideal: h } });
-    const tries = [
-      // a phone whose browser offers 120 (many Android phones do; iPhone Safari does not, whatever the Camera app can do) is asked first: spin is read from the turn
-      // of the ball's surface between frames, and it needs about 120 a second
-      { ...sz(1920, 1080), frameRate: { exact: 120 } },
-      { ...sz(1280, 720), frameRate: { exact: 120 } },
+    const tries = safeCam ? [{ ...sz(1280, 720), frameRate: { ideal: 30, max: 30 } }, { frameRate: { ideal: 30, max: 30 } }, {}] : [
       { ...sz(1920, 1080), frameRate: { exact: 60 } },
       { ...sz(1280, 720), frameRate: { exact: 60 } },
       { ...sz(1920, 1080), frameRate: { min: 50, ideal: 60 } },
@@ -29577,7 +29619,7 @@ ${url}`);
         }
       }
     } else capFps = track.getCapabilities?.()?.frameRate?.max ?? bestFps;
-    if (capFps >= 100) {
+    if (capFps >= 100 && fastCam() && !safeCam) {
       for (const f of [Math.min(capFps, 240), 120]) {
         try {
           await track.applyConstraints({ frameRate: { exact: f } });
@@ -29594,6 +29636,7 @@ ${url}`);
   var deliv = { n: 0, t0: 0, fps: 0 };
   async function startCamera() {
     stream = await openCamera();
+    setTimeout(camGuardOk, 6e3);
     video.srcObject = stream;
     await video.play();
     if (!video.videoWidth || !video.videoHeight) {
@@ -29621,6 +29664,7 @@ ${url}`);
     const fps = stream.getVideoTracks()[0].getSettings().frameRate;
     setText("fps", fps ? `${Math.round(fps)} FPS${fps >= 100 ? " \xB7 spin ready" : ""}` : "LIVE");
     cameraFps = fps ? Math.round(fps) : 0;
+    if (safeCam) setTimeout(() => status.textContent = "The last camera start didn't finish, so the camera is in safe mode (a plain 30 fps picture). It goes back to normal after one steady start.", 900);
     const saved = savedCalibration();
     if (saved) {
       applyCalibration(saved, "your saved setup, verifying");
@@ -30957,6 +31001,7 @@ ${url}`);
     }
   })();
   var skipCount = 0;
+  var lastOvDraw = 0;
   var lastFrameT = -1;
   var lastPres = -1;
   var lastNow = 0;
@@ -30992,7 +31037,7 @@ ${url}`);
     if (tracing) return;
     const now = performance.now();
     diagTick(now, !!(H2 && laneMask && armed && !enrolling), !!lastBlob);
-    drawOverlay(now);
+    if (cameraFps <= 90 || now - lastOvDraw > 15) lastOvDraw = now, drawOverlay(now);
     enrollTick(now);
     if (!H2) autoDetectTick(now);
     else if (armed) driftCheck(now), pinWatch(now), pinRefineTick(now), arrowTick(now), resetWatch(now);
