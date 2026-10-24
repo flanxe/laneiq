@@ -19009,7 +19009,7 @@ ${url}`);
     const m = s.length >> 1;
     return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
   };
-  var LaneVoter = class {
+  var LaneVoter = class _LaneVoter {
     votes = [];
     scans = [];
     keepMs;
@@ -19037,7 +19037,15 @@ ${url}`);
       const dx = 0.05 * w, dy = 0.04 * h;
       return Math.abs(a[1].x - b[1].x) <= dx && Math.abs(a[2].x - b[2].x) <= dx && Math.abs((a[0].y + a[1].y) / 2 - (b[0].y + b[1].y) / 2) <= dy && Math.abs((a[2].y + a[3].y) / 2 - (b[2].y + b[3].y) / 2) <= dy * 2;
     }
-    groups(w, h) {
+    /**
+     * How much a lane counts as the bowler's own: the lane in the middle of the picture, or (when the bowler tapped their lane before) the lane in that same place.
+     * A neighbouring lane can look bigger than yours, so size alone does not decide.
+     */
+    static weight(mid2, prefer) {
+      const d = Math.abs(mid2 - (prefer ?? 0.5));
+      return 1 / (1 + (d / 0.15) ** 2);
+    }
+    groups(w, h, prefer = null) {
       const gs = [];
       for (const v of this.votes) {
         const g = gs.find((g2) => this.same(g2[0].corners, v.corners, w, h));
@@ -19049,17 +19057,19 @@ ${url}`);
         const ar = area(corners2);
         const fy = g.map((v) => (v.corners[2].y + v.corners[3].y) / 2);
         const fm = median3(fy);
-        return { votes: g.length, corners: corners2, share: g.length / Math.max(1, this.scans.length), area: ar, score: g.length * ar, farSpread: median3(fy.map((y) => Math.abs(y - fm))) };
+        const mid2 = (corners2[0].x + corners2[1].x) / 2 / w;
+        return { votes: g.length, corners: corners2, share: g.length / Math.max(1, this.scans.length), area: ar, score: g.length * ar * _LaneVoter.weight(mid2, prefer), farSpread: median3(fy.map((y) => Math.abs(y - fm))), mid: mid2 };
       }).sort((a, b) => b.score - a.score);
     }
     /** lock: the lane to take (or null yet); choices: more than one lane keeps turning up and the bowler should say which */
-    result(w, h) {
-      const gs = this.groups(w, h);
+    result(w, h, prefer = null) {
+      const gs = this.groups(w, h, prefer);
       if (!gs.length) return { lock: null, choices: [], top: 0 };
       const [a, b] = gs;
+      const real = gs.filter((g) => g.votes >= this.minVotes);
+      if (real.length > 1 && Math.abs(a.mid - (prefer ?? 0.5)) > 0.2) return { lock: null, choices: real.slice(0, 3).map((g) => g.corners), top: a.votes };
       if (a.votes >= this.minVotes && this.scans.length >= 4 && this.scans[this.scans.length - 1] - this.scans[0] >= 3e3 && a.share >= 0.6 && a.farSpread <= 0.02 * h && (!b || a.score >= this.margin * b.score)) return { lock: a.corners, choices: [], top: a.votes };
       if (a.votes >= this.minVotes && (!b || a.score >= this.margin * b.score)) return { lock: null, choices: [], top: a.votes };
-      const real = gs.filter((g) => g.votes >= this.minVotes);
       return { lock: null, choices: real.length > 1 ? real.slice(0, 3).map((g) => g.corners) : [], top: a.votes };
     }
   };
@@ -30221,6 +30231,8 @@ ${url}`);
   function rememberedLane() {
     try {
       const v = Number(localStorage.getItem("laneiq.pickedLane"));
+      const at3 = Number(localStorage.getItem("laneiq.pickedLaneAt") || 0);
+      if (at3 && Date.now() - at3 > 8 * 3600 * 1e3) return null;
       return Number.isFinite(v) && v > 0 ? v : null;
     } catch {
       return null;
@@ -30235,7 +30247,7 @@ ${url}`);
     detectNow();
     if (rejected.length) lastCandidates = lastCandidates.filter((d2) => !rejected.some((r) => detectionsAgree(r, d2.corners, video.videoWidth * 0.05)));
     voter.add(lastCandidates.filter(solid), now);
-    const vr = voter.result(video.videoWidth, video.videoHeight);
+    const vr = voter.result(video.videoWidth, video.videoHeight, rememberedLane());
     if (vr.lock) {
       let c = vr.lock;
       if (lastRgba) {
@@ -30508,6 +30520,7 @@ ${url}`);
       if (hit) {
         try {
           localStorage.setItem("laneiq.pickedLane", String((hit[0].x + hit[1].x) / 2 / video.videoWidth));
+          localStorage.setItem("laneiq.pickedLaneAt", String(Date.now()));
         } catch {
         }
         applyCalibration(hit, "you picked it");
