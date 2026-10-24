@@ -1775,7 +1775,7 @@
   }
   function setReady(ready) {
     const el = $("ready");
-    el.textContent = ready ? "READY" : "NOT READY";
+    el.textContent = ready ? "\u2713 LANE LOCKED" : "NOT LOCKED";
     el.classList.toggle("go", ready);
   }
   function attachSuggest(input) {
@@ -3611,6 +3611,78 @@
         ctx2.stroke();
       }
     });
+    ctx2.restore();
+  }
+  function drawLockFrame(v, since) {
+    const { ctx: ctx2, P } = v;
+    const s = k(v);
+    const q2 = [P(0, 0), P(LANE_BOARDS, 0), P(LANE_BOARDS, DECK_END_FT), P(0, DECK_END_FT)];
+    const W2 = ctx2.canvas.width, Hh = ctx2.canvas.height;
+    const path2 = () => {
+      ctx2.beginPath();
+      q2.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
+      ctx2.closePath();
+    };
+    ctx2.save();
+    ctx2.beginPath();
+    ctx2.rect(-W2, -Hh, W2 * 3, Hh * 3);
+    q2.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
+    ctx2.closePath();
+    ctx2.fillStyle = "rgba(4,8,16,.42)";
+    ctx2.fill("evenodd");
+    const fresh2 = Math.max(0, 1 - since / 1500);
+    const pulse = fresh2 ? 0.5 + 0.5 * Math.sin(since / 90) : 0;
+    path2();
+    ctx2.lineJoin = "round";
+    ctx2.strokeStyle = `rgba(90,255,176,${0.85 + 0.15 * pulse})`;
+    ctx2.lineWidth = (3.5 + 4 * fresh2 * pulse) * s;
+    ctx2.shadowColor = "#5affb0";
+    ctx2.shadowBlur = glowEnabled() ? (14 + 22 * fresh2) * s : 0;
+    ctx2.stroke();
+    ctx2.shadowBlur = 0;
+    ctx2.strokeStyle = "#ffffff";
+    ctx2.lineWidth = 4 * s;
+    ctx2.lineCap = "round";
+    q2.forEach((c, i) => {
+      const a = q2[(i + 3) % 4], b = q2[(i + 1) % 4];
+      const toward = (t) => {
+        const d = Math.hypot(t.x - c.x, t.y - c.y) || 1;
+        const n = Math.min(34 * s, d * 0.2);
+        return { x: c.x + (t.x - c.x) / d * n, y: c.y + (t.y - c.y) / d * n };
+      };
+      const pa = toward(a), pb = toward(b);
+      ctx2.beginPath();
+      ctx2.moveTo(pa.x, pa.y);
+      ctx2.lineTo(c.x, c.y);
+      ctx2.lineTo(pb.x, pb.y);
+      ctx2.stroke();
+    });
+    if (fresh2) {
+      const sweep = Math.min(1, since / 700);
+      ctx2.globalAlpha = 0.55 * (1 - sweep * 0.6);
+      ctx2.strokeStyle = "#5affb0";
+      ctx2.lineWidth = 5 * s;
+      ctx2.beginPath();
+      ctx2.moveTo(P(0, LANE_LENGTH_FT * sweep).x, P(0, LANE_LENGTH_FT * sweep).y);
+      ctx2.lineTo(P(LANE_BOARDS, LANE_LENGTH_FT * sweep).x, P(LANE_BOARDS, LANE_LENGTH_FT * sweep).y);
+      ctx2.stroke();
+      ctx2.globalAlpha = Math.min(1, fresh2 * 2);
+      const cx = (q2[0].x + q2[1].x + q2[2].x + q2[3].x) / 4, cy = (q2[0].y + q2[1].y + q2[2].y + q2[3].y) / 4;
+      const text = "\u2713 LANE LOCKED";
+      ctx2.font = `800 ${46 * s}px system-ui, -apple-system, sans-serif`;
+      ctx2.textAlign = "center";
+      ctx2.textBaseline = "middle";
+      const w = ctx2.measureText(text).width + 56 * s, h = 80 * s;
+      ctx2.fillStyle = "rgba(6,16,12,.82)";
+      ctx2.beginPath();
+      ctx2.roundRect(cx - w / 2, cy - h / 2, w, h, 40 * s);
+      ctx2.fill();
+      ctx2.strokeStyle = "#5affb0";
+      ctx2.lineWidth = 3 * s;
+      ctx2.stroke();
+      ctx2.fillStyle = "#5affb0";
+      ctx2.fillText(text, cx, cy + 2 * s);
+    }
     ctx2.restore();
   }
   function line(v, a, b) {
@@ -18350,6 +18422,7 @@ ${url}`);
         "Share a session as a picture from the debrief (not on junior profiles). Your last session also sits at the top of the Me tab.",
         "Clean up your stats: tick shots that came from another bowler or a neighbouring lane in a session and remove them, so they do not count in your averages.",
         "The lane lock now favours the lane in the middle of the picture, or the lane you tapped earlier this evening, and asks you to tap yours when it cannot tell. The camera no longer grabs a bigger neighbouring lane.",
+        "A much clearer lane lock: the lane is outlined in bright green with white corner brackets and the rest of the picture is dimmed, a green sweep and a LANE LOCKED banner flash the moment it locks (with a short buzz on phones that allow it), and the pill at the top turns solid green. If you see no green outline, it is not locked.",
         "If something goes wrong the app now says so in plain words, records it in Copy diagnostics, and keeps your data safe. The tab bar is labelled for screen readers."
       ]
     },
@@ -29570,7 +29643,7 @@ ${url}`);
       <li><b>Distance:</b> about 10 to 20 feet behind the foul line works best. If the lane looks thin, move closer or lower. Don't zoom in; the normal 1&times; camera is what the app expects.</li>
       <li><b>Light:</b> even lighting is best. Avoid pointing into bright lights or the shiny reflections on the lane, and wipe the lens.</li>
       <li><b>Clear the view.</b> Nobody standing in front of the lens or on the lane while it locks. It takes a second or two.</li>
-      <li><b>Then leave it.</b> Once it says READY, don't bump the phone. It re-checks every few seconds and re-locks on its own if it moves. Put it in the same spot next time and it's ready straight away.</li>
+      <li><b>Then leave it.</b> Once the lane lights up green and says LANE LOCKED, don't bump the phone. It re-checks every few seconds and re-locks on its own if it moves. Put it in the same spot next time and it's ready straight away.</li>
     </ol></div>
 
     <div class="card"><div class="k">What the checklist means</div><ul>
@@ -30257,6 +30330,7 @@ ${url}`);
   var laneNo = "";
   var calKey = () => laneNo ? `laneiq.calibration.${laneNo}` : "laneiq.calibration";
   var lastLockConf = null;
+  var lockedAt = 0;
   function applyCalibration(c, how) {
     arrowsRead = [];
     arrowTries = 0;
@@ -30279,6 +30353,11 @@ ${url}`);
     candidate = null;
     setStep(4);
     setReady(true);
+    lockedAt = performance.now();
+    try {
+      navigator.vibrate?.([30, 40, 30]);
+    } catch {
+    }
     status.textContent = `Lane locked (${how}). Ready: just bowl. If the lines are not on your lane, tap Fix my lane.`;
     if (!shotsOn) status.textContent = "Lane locked. League mode: tap Start when it is your turn.";
     paintStartStop();
@@ -31380,6 +31459,7 @@ ${url}`);
       ctx.restore();
     }
     if (!H2 || !Hinv) return;
+    drawLockFrame(v, performance.now() - lockedAt);
     drawLaneGrid(v);
     drawOilLayer(v, overlay.width, overlay.height, corners.map((p) => `${Math.round(p.x / 3)},${Math.round(p.y / 3)}`).join(";"));
     for (const a of arrowsRead) {
@@ -31941,6 +32021,11 @@ ${url}`);
     Hinv = solveHomography(LANE_CORNERS, corners);
     setStep(4);
     setReady(true);
+    lockedAt = performance.now();
+    try {
+      navigator.vibrate?.([30, 40, 30]);
+    } catch {
+    }
     status.textContent = "Demo: simulated shots on a mock lane";
     changed();
     let t0d = performance.now();
