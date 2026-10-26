@@ -79,7 +79,25 @@
   .sess{display:block;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer;margin-bottom:8px;transition:transform .15s,border-color .15s}.sess:active{transform:scale(.98);border-color:var(--cy)}.sess-day{font-weight:700;font-size:16px}.sess-go{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--cy);font-weight:600;font-size:14px}
   .deb-hero{text-align:center;padding:22px 0 14px;animation:debIn .5s ease both}.deb-big{font-size:96px;font-weight:800;line-height:1;color:var(--cy);font-variant-numeric:tabular-nums;text-shadow:0 0 40px rgba(70,230,255,.35)}.deb-unit{color:var(--dim);font-size:16px;margin-top:4px}.deb-sub{color:var(--txt);margin-top:10px;font-size:14px}.deb-best{border-color:rgba(255,210,90,.4);color:var(--gold);font-weight:600;display:grid;gap:4px}
   .drow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}.drow:last-child{border-bottom:0}.drow>div:first-child{flex:1}.dval{font-weight:700;font-variant-numeric:tabular-nums}.dval small{color:var(--dim);font-weight:500}.dnote{flex-basis:100%;margin:-4px 0 0}.dsel{cursor:pointer}.dsel input{width:20px;height:20px;accent-color:var(--cy)}.dnum{color:var(--dim);width:22px;font-variant-numeric:tabular-nums}
-  @keyframes debIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}@media (prefers-reduced-motion:reduce){.deb-hero{animation:none}.sess{transition:none}}
+  /* polish: comfortable tap targets, readable tab labels, visible keyboard focus, calm motion for people who ask for it */
+  .btn{min-height:44px}.btn.ghost{min-height:44px}.chip{min-height:40px}.seg{min-height:34px}
+  select,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]){min-height:44px}
+  summary{cursor:pointer;padding:10px 0;min-height:24px}
+  :focus-visible{outline:2px solid var(--cy);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}  /* feel: no tap delay or grey flash, a press you can see, screens that ease in instead of snapping */
+  html{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+  button,.chip,.btn,.seg,.tb,select,summary,label.chip,label.btn,a,.card.shot,button.card{touch-action:manipulation}
+  button,.chip,.btn,.seg,.tb{-webkit-user-select:none;user-select:none;transition:transform .12s ease,filter .12s ease,background-color .15s ease,border-color .15s ease}
+  button:active:not(:disabled),.chip:active,.btn:active,.seg:active{transform:scale(.96);filter:brightness(1.18)}
+  .tb:active{transform:scale(.9)}
+  button.card:active,.card.shot:active{transform:scale(.985)}
+  button:disabled,.btn:disabled,.chip:disabled{opacity:.45;cursor:default}
+  .sheet.on{animation:sheetIn .22s ease-out}
+  @keyframes sheetIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .tab.on{animation:tabIn .16s ease-out}
+  @keyframes tabIn{from{opacity:0}to{opacity:1}}
+  .sheet{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .sheet video{background:#000}  @keyframes debIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}@media (prefers-reduced-motion:reduce){.deb-hero{animation:none}.sess{transition:none}}
   .strip{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none}.strip::-webkit-scrollbar{display:none}.strip .chip{flex:0 0 auto;white-space:nowrap}.strip .chip.sel{border-color:var(--cy);color:#fff}
   .tgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}@media(min-width:700px){.tgrid{grid-template-columns:repeat(3,1fr)}}
   .tile .v small{font-size:13px;color:var(--dim);font-weight:600;margin-left:3px}.tile .pm{font-size:12px;color:var(--cy);min-height:15px;font-variant-numeric:tabular-nums}.tile .dl{position:absolute;right:12px;top:12px;font-size:11px;font-weight:700;color:var(--dim)}.tile.none .v{color:var(--dim);font-size:22px}.tile.entered .k::after,.tile.estimated .k::after{content:" · " attr(data-src);text-transform:none;letter-spacing:0;font-weight:600}
@@ -120,7 +138,7 @@
   .card li{margin:5px 0}
   .lr-next{margin-top:8px;padding:10px 12px;border-radius:12px;background:rgba(70,230,255,.08);border:1px solid rgba(70,230,255,.25)}
   .tabbar{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-around;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:rgba(8,12,20,.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--line);z-index:20}
-  .tb{appearance:none;border:0;background:none;color:var(--dim);font:600 10.5px system-ui;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;cursor:pointer;min-width:0;flex:1}
+  .tb{appearance:none;border:0;background:none;color:var(--dim);font:600 11px system-ui;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;cursor:pointer;min-width:0;flex:1}
   .tb svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .tb.on{color:var(--cy)}
   .shot{display:flex;gap:12px;align-items:center;cursor:pointer}
@@ -162,7 +180,7 @@
   #report .card::after{display:none}
   #report .k,#report .u,#report .note,#report td,#report th{color:#444}
   #report h2,#report h3,#report b,#report li{color:#111}
-  @media print{body>*:not(#report){display:none!important}.sheet#report{position:static!important;display:block!important;overflow:visible}.noprint{display:none!important}}
+  @media print{#report{background:#fff!important;color:#111!important}#report .card{background:#fff!important;border:1px solid #bbb!important;color:#111!important;box-shadow:none!important;break-inside:avoid}#report .note,#report .u,#report .k,#report td{color:#222!important}body>*:not(#report){display:none!important}.sheet#report{position:static!important;display:block!important;overflow:visible}.noprint{display:none!important}}
   .suggest{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px}
   .hide{display:none!important}
 </style>
@@ -184,8 +202,9 @@
       <h1>Point. Lock. Bowl.</h1>
       <div style="display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:300px">
         <button class="btn" id="start" style="width:100%;padding:14px">Start camera</button>
+        <label class="chip" style="cursor:pointer">Or analyze a recorded video<input id="start-video" type="file" accept="video/*" style="display:none"></label>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center"><span id="whatsnew"></span><button class="chip" id="guide-open">How to get a lock</button><button class="chip" id="tour-open">Take the tour</button></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center"><span id="whatsnew"></span><button class="chip" id="spin-mode">Spin mode</button><button class="chip" id="guide-open">How to get a lock</button><button class="chip" id="tour-open">Take the tour</button></div>
       <div id="ver" class="note" style="font-size:10px;opacity:.5;line-height:1"></div>
     </div>
   </div>
@@ -267,11 +286,11 @@
 <div class="sheet" id="crews"></div>
 
 <nav class="tabbar" aria-label="Main">
-  <button class="tb on" data-tab="live"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/></svg>Live</button>
+  <button class="tb on" data-tab="live"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/></svg><span id="tb-live-label">Live</span></button>
   <button class="tb" data-tab="community"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 19c.6-3.4 3-5 6-5s5.4 1.6 6 5M15.5 14.2c2.6-.3 4.9.9 5.5 4.3"/></svg>Community</button>
   <button class="tb" data-tab="proshop"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14.5 5.5a4 4 0 0 0-5 5L4 16l4 4 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5z"/></svg>Pro shop</button>
   <button class="tb" data-tab="learn"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 19V5.5M8.5 7.5h7M8.5 11h5"/></svg>Learn</button>
   <button class="tb" data-tab="me"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/></svg>Me</button></nav>
-<script src="camera.js?v=mvmx0zdn"></script>
+<script src="camera.js?v=mvpbmh1k"></script>
 </body>
 </html>
