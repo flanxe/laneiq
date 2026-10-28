@@ -2643,14 +2643,14 @@
         if (rob.filter((r) => r > 0.05).length < Math.max(5, n * 0.5)) rob = rob.map((r) => Math.max(r, 0.05));
       }
       if (!ok) continue;
-      let num10 = 0, den = 0;
+      let num11 = 0, den = 0;
       for (let i = 0; i < n; i++) {
         if (rob[i] <= 0.05) continue;
         const loo = (points[i].v - fit[i]) / (1 - hat[i]) / points[i].s;
-        num10 += Math.min(loo * loo, 36);
+        num11 += Math.min(loo * loo, 36);
         den++;
       }
-      const score = den ? num10 / den : Infinity;
+      const score = den ? num11 / den : Infinity;
       const z2 = points.map((q2, i) => rob[i] > 0.05 ? (q2.v - fit[i]) / q2.s : 0);
       const chi = Math.sqrt(z2.reduce((s, v) => s + v * v, 0) / Math.max(1, rob.filter((r) => r > 0.05).length));
       if (!best2 || score < best2.score) best2 = { score, res: { fit, slope, trust: rob, chi, span } };
@@ -3279,7 +3279,7 @@
     S.profile = p;
     if (!p) return;
     setCurrentProfile(id);
-    S.shots = (await dbAll(id, "shots")).sort((a, b) => a.at.localeCompare(b.at));
+    S.shots = (await dbAll(id, "shots")).filter((s) => s && typeof s.at === "string" && s.m && Array.isArray(s.path)).sort((a, b) => a.at.localeCompare(b.at));
     recomputeMetrics();
     S.arsenal = await dbGet(id, "meta", "arsenal") ?? [];
     S.plan = await dbGet(id, "meta", "plan") ?? null;
@@ -4386,9 +4386,9 @@
   });
 
   // core/src/outlook.ts
-  function pocketOutlook(cur2, session, all) {
+  function pocketOutlook(cur2, session2, all) {
     const out = { next: null, strike: null, lines: [] };
-    const same = session.filter((s) => (cur2.ballId ? s.ballId === cur2.ballId : true) && s.m.pocketMiss !== null).slice(-OUTLOOK_RECENT);
+    const same = session2.filter((s) => (cur2.ballId ? s.ballId === cur2.ballId : true) && s.m.pocketMiss !== null).slice(-OUTLOOK_RECENT);
     if (same.length >= OUTLOOK_MIN_RECENT) {
       const v = same.map((s) => s.m.pocketMiss);
       const miss = median3(v);
@@ -6839,10 +6839,10 @@
     const M = ball.weightLb;
     const p = solved2.points;
     const e1 = unit(p.pin), e3 = unit(p.psa), e2 = unit(p.inter);
-    const r12 = ball.rg, r2 = ball.rg + intDiff, r3 = ball.rg + ball.totalDiff;
-    const profile = ballProfile(M, (r12 * r12 + r2 * r2 + r3 * r3) / 3);
+    const r13 = ball.rg, r2 = ball.rg + intDiff, r3 = ball.rg + ball.totalDiff;
+    const profile = ballProfile(M, (r13 * r13 + r2 * r2 + r3 * r3) / 3);
     let I = zero();
-    I = addM(I, outer(e1, e1), M * r12 * r12);
+    I = addM(I, outer(e1, e1), M * r13 * r13);
     I = addM(I, outer(e2, e2), M * r2 * r2);
     I = addM(I, outer(e3, e3), M * r3 * r3);
     const fingerDepth = opt.fingerDepth ?? 2.25, thumbDepth = opt.thumbDepth ?? 2.75;
@@ -7908,21 +7908,21 @@ Shop notes: ${c.shopNotes}` : ""
     const t = text.replace(/\s+/g, "").replace(/µ/g, "u").replace(/->/g, "\u2192");
     const notes = [];
     const out = { rows: [], tableOk: false, notes };
-    const num10 = (re) => {
+    const num11 = (re) => {
       const m = re.exec(t);
       return m ? Number(m[1]) : void 0;
     };
     const n = /(\d{2})FEET([\d.]+)mL([\d.]+):1([\d.]+)mL(\d{2})FEET([\d.]+)mL/i.exec(t);
     if (n) [out.lengthFt, out.volumeMl, out.ratio, out.forwardMl, out.brushDropFt, out.reverseMl] = n.slice(1, 7).map(Number);
-    out.lengthFt ??= num10(/OilPatternDistance:?(\d{2})(?!\d)/i) ?? num10(/Distance:?(\d{2})(?:Feet|ft)/i);
-    out.volumeMl ??= num10(/VolumeOilTotal:?([\d.]+)mL/i) ?? num10(/(?:Total)?Volume:?([\d.]+)mL/i);
-    out.forwardMl ??= num10(/ForwardOilTotal:?([\d.]+)mL/i);
-    out.reverseMl ??= num10(/ReverseOilTotal:?([\d.]+)mL/i);
-    out.brushDropFt ??= num10(/ReverseBrushDrop:?(\d{2})/i);
-    out.ratio ??= num10(/(?:Pattern)?Ratio:?([\d.]+):1/i);
-    out.lengthFt ??= num10(/(\d{2})(?:FEET|FT)/i);
-    out.volumeMl ??= num10(/(\d{2}(?:\.\d+)?)mL/i);
-    out.ratio ??= num10(/(\d{1,2}(?:\.\d+)?):1(?!\d)/);
+    out.lengthFt ??= num11(/OilPatternDistance:?(\d{2})(?!\d)/i) ?? num11(/Distance:?(\d{2})(?:Feet|ft)/i);
+    out.volumeMl ??= num11(/VolumeOilTotal:?([\d.]+)mL/i) ?? num11(/(?:Total)?Volume:?([\d.]+)mL/i);
+    out.forwardMl ??= num11(/ForwardOilTotal:?([\d.]+)mL/i);
+    out.reverseMl ??= num11(/ReverseOilTotal:?([\d.]+)mL/i);
+    out.brushDropFt ??= num11(/ReverseBrushDrop:?(\d{2})/i);
+    out.ratio ??= num11(/(?:Pattern)?Ratio:?([\d.]+):1/i);
+    out.lengthFt ??= num11(/(\d{2})(?:FEET|FT)/i);
+    out.volumeMl ??= num11(/(\d{2}(?:\.\d+)?)mL/i);
+    out.ratio ??= num11(/(\d{1,2}(?:\.\d+)?):1(?!\d)/);
     if (out.lengthFt !== void 0 && !(out.lengthFt >= 20 && out.lengthFt <= 55)) out.lengthFt = void 0;
     if (out.volumeMl !== void 0 && !(out.volumeMl >= 8 && out.volumeMl <= 45)) out.volumeMl = void 0;
     if (out.ratio !== void 0 && !(out.ratio >= 1 && out.ratio <= 15)) out.ratio = void 0;
@@ -8416,12 +8416,12 @@ Shop notes: ${c.shopNotes}` : ""
       const x1 = x0 + 1;
       const xc = x0 + 0.5;
       const n0 = P(xc, 0);
-      const n12 = P(xc, end);
-      const ax = n12.x - n0.x;
-      const ay = n12.y - n0.y;
+      const n13 = P(xc, end);
+      const ax = n13.x - n0.x;
+      const ay = n13.y - n0.y;
       const len2 = ax * ax + ay * ay;
       if (len2 < 1) continue;
-      const g = ctx2.createLinearGradient(n0.x, n0.y, n12.x, n12.y);
+      const g = ctx2.createLinearGradient(n0.x, n0.y, n13.x, n13.y);
       let any = false;
       for (let f2 = 0; f2 <= end; f2 += 2) {
         const val2 = (oil.cells[b - 1][Math.min(f2, 59)] + (oil.cells[b - 1][Math.min(f2 + 1, 59)] ?? 0)) / 2 / oil.max;
@@ -10111,6 +10111,10 @@ Shop notes: ${c.shopNotes}` : ""
     });
     void checkUnlocks();
   }
+  function cardRolls() {
+    const g = games[games.length - 1];
+    return g && g.rolls.length ? g.rolls : null;
+  }
   function cameraSuggestion() {
     const used = new Set(games.flatMap((g) => g.rolls.map((r) => r.shotId)).filter(Boolean));
     const s = [...S.shots].reverse().find((x) => x.result?.auto && !used.has(x.id));
@@ -10465,12 +10469,12 @@ Games: ${p.games.join(", ")}`)) return;
     <div class="chips"><button class="btn" id="le-save">${l ? "Save" : "Start the league"}</button></div><div class="note" id="le-err"></div>`;
     $("le-back").onclick = () => l ? openLeague(l.id) : openLeagues();
     $("le-save").onclick = async () => {
-      const num10 = (id) => {
+      const num11 = (id) => {
         const v = parseFloat($(id).value);
         return Number.isFinite(v) ? v : void 0;
       };
       const name = $("le-name").value.trim();
-      const gpn = num10("le-gpn"), est = num10("le-est"), base2 = num10("le-base"), pct5 = num10("le-pct"), cap = num10("le-cap");
+      const gpn = num11("le-gpn"), est = num11("le-est"), base2 = num11("le-base"), pct5 = num11("le-pct"), cap = num11("le-cap");
       const err = $("le-err");
       if (!name) return void (err.textContent = "Give the league a name.");
       if (!gpn || gpn < 1 || gpn > 6) return void (err.textContent = "Games a night: 1 to 6.");
@@ -12370,33 +12374,33 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
                 var characterCountSize = [10, 12, 14][size];
                 var length = stream2.readBits(characterCountSize);
                 while (length >= 3) {
-                  var num10 = stream2.readBits(10);
-                  if (num10 >= 1e3) {
+                  var num11 = stream2.readBits(10);
+                  if (num11 >= 1e3) {
                     throw new Error("Invalid numeric value above 999");
                   }
-                  var a = Math.floor(num10 / 100);
-                  var b = Math.floor(num10 / 10) % 10;
-                  var c = num10 % 10;
+                  var a = Math.floor(num11 / 100);
+                  var b = Math.floor(num11 / 10) % 10;
+                  var c = num11 % 10;
                   bytes.push(48 + a, 48 + b, 48 + c);
                   text += a.toString() + b.toString() + c.toString();
                   length -= 3;
                 }
                 if (length === 2) {
-                  var num10 = stream2.readBits(7);
-                  if (num10 >= 100) {
+                  var num11 = stream2.readBits(7);
+                  if (num11 >= 100) {
                     throw new Error("Invalid numeric value above 99");
                   }
-                  var a = Math.floor(num10 / 10);
-                  var b = num10 % 10;
+                  var a = Math.floor(num11 / 10);
+                  var b = num11 % 10;
                   bytes.push(48 + a, 48 + b);
                   text += a.toString() + b.toString();
                 } else if (length === 1) {
-                  var num10 = stream2.readBits(4);
-                  if (num10 >= 10) {
+                  var num11 = stream2.readBits(4);
+                  if (num11 >= 10) {
                     throw new Error("Invalid numeric value above 9");
                   }
-                  bytes.push(48 + num10);
-                  text += num10.toString();
+                  bytes.push(48 + num11);
+                  text += num11.toString();
                 }
                 return { bytes, text };
               }
@@ -22021,7 +22025,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
             var size = _this.getModuleCount() * cellSize + margin * 2;
             var min = margin;
             var max = size - margin;
-            var y, x, r12, r2, p;
+            var y, x, r13, r2, p;
             var blocks = {
               "\u2588\u2588": "\u2588",
               "\u2588 ": "\u2580",
@@ -22036,11 +22040,11 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
             };
             var ascii = "";
             for (y = 0; y < size; y += 2) {
-              r12 = Math.floor((y - min) / cellSize);
+              r13 = Math.floor((y - min) / cellSize);
               r2 = Math.floor((y + 1 - min) / cellSize);
               for (x = 0; x < size; x += 1) {
                 p = "\u2588";
-                if (min <= x && x < max && min <= y && y < max && _this.isDark(r12, Math.floor((x - min) / cellSize))) {
+                if (min <= x && x < max && min <= y && y < max && _this.isDark(r13, Math.floor((x - min) / cellSize))) {
                   p = " ";
                 }
                 if (min <= x && x < max && min <= y + 1 && y + 1 < max && _this.isDark(r2, Math.floor((x - min) / cellSize))) {
@@ -22443,18 +22447,18 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
           };
           return _this;
         })();
-        function qrPolynomial(num10, shift) {
-          if (typeof num10.length == "undefined") {
-            throw num10.length + "/" + shift;
+        function qrPolynomial(num11, shift) {
+          if (typeof num11.length == "undefined") {
+            throw num11.length + "/" + shift;
           }
           var _num = (function() {
             var offset = 0;
-            while (offset < num10.length && num10[offset] == 0) {
+            while (offset < num11.length && num11[offset] == 0) {
               offset += 1;
             }
-            var _num2 = new Array(num10.length - offset + shift);
-            for (var i = 0; i < num10.length - offset; i += 1) {
-              _num2[i] = num10[i + offset];
+            var _num2 = new Array(num11.length - offset + shift);
+            for (var i = 0; i < num11.length - offset; i += 1) {
+              _num2[i] = num11[i + offset];
             }
             return _num2;
           })();
@@ -22466,27 +22470,27 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
             return _num.length;
           };
           _this.multiply = function(e) {
-            var num11 = new Array(_this.getLength() + e.getLength() - 1);
+            var num12 = new Array(_this.getLength() + e.getLength() - 1);
             for (var i = 0; i < _this.getLength(); i += 1) {
               for (var j = 0; j < e.getLength(); j += 1) {
-                num11[i + j] ^= QRMath.gexp(QRMath.glog(_this.getAt(i)) + QRMath.glog(e.getAt(j)));
+                num12[i + j] ^= QRMath.gexp(QRMath.glog(_this.getAt(i)) + QRMath.glog(e.getAt(j)));
               }
             }
-            return qrPolynomial(num11, 0);
+            return qrPolynomial(num12, 0);
           };
           _this.mod = function(e) {
             if (_this.getLength() - e.getLength() < 0) {
               return _this;
             }
             var ratio = QRMath.glog(_this.getAt(0)) - QRMath.glog(e.getAt(0));
-            var num11 = new Array(_this.getLength());
+            var num12 = new Array(_this.getLength());
             for (var i = 0; i < _this.getLength(); i += 1) {
-              num11[i] = _this.getAt(i);
+              num12[i] = _this.getAt(i);
             }
             for (var i = 0; i < e.getLength(); i += 1) {
-              num11[i] ^= QRMath.gexp(QRMath.glog(e.getAt(i)) + ratio);
+              num12[i] ^= QRMath.gexp(QRMath.glog(e.getAt(i)) + ratio);
             }
-            return qrPolynomial(num11, 0).mod(e);
+            return qrPolynomial(num12, 0).mod(e);
           };
           return _this;
         }
@@ -22749,9 +22753,9 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
             var bufIndex = Math.floor(index / 8);
             return (_buffer[bufIndex] >>> 7 - index % 8 & 1) == 1;
           };
-          _this.put = function(num10, length) {
+          _this.put = function(num11, length) {
             for (var i = 0; i < length; i += 1) {
-              _this.putBit((num10 >>> length - i - 1 & 1) == 1);
+              _this.putBit((num11 >>> length - i - 1 & 1) == 1);
             }
           };
           _this.getLengthInBits = function() {
@@ -22795,11 +22799,11 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
             }
           };
           var strToNum = function(s) {
-            var num10 = 0;
+            var num11 = 0;
             for (var i = 0; i < s.length; i += 1) {
-              num10 = num10 * 10 + chatToNum(s.charAt(i));
+              num11 = num11 * 10 + chatToNum(s.charAt(i));
             }
-            return num10;
+            return num11;
           };
           var chatToNum = function(c) {
             if ("0" <= c && c <= "9") {
@@ -23735,3269 +23739,212 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     }
   });
 
-  // camera/multiviewui.ts
-  var multiviewui_exports = {};
-  __export(multiviewui_exports, {
-    paintViews: () => paintViews
-  });
-  async function paintViews(shot, player, host2) {
-    const views = cleanViews(shot.views);
-    if (!views.length) return void (host2.innerHTML = "");
-    host2.innerHTML = `<h3>Other angles</h3>${views.map((v) => `<div class="card" data-view="${esc2(v.id)}"><div class="row"><div class="lr-head">${esc2(v.label)}</div><span class="note">clocks within about ${Math.max(1, v.uncertaintyMs)} ms</span></div>
-    <div class="stagebox"><video playsinline muted preload="auto" style="width:100%;border-radius:10px;background:#000"></video></div>
-    <div class="chips" role="group" aria-label="Line this angle up"><span class="note">Out of step?</span><button class="chip" data-n="-1">&minus;1 s</button><button class="chip" data-n="-0.1">&minus;0.1</button><span class="note nv" aria-live="polite">${v.nudgeSec ? (v.nudgeSec > 0 ? "+" : "") + v.nudgeSec.toFixed(2) + " s" : "0"}</span><button class="chip" data-n="0.1">+0.1</button><button class="chip" data-n="1">+1 s</button></div></div>`).join("")}
-    <div class="note">Press play on the main replay and every angle follows. If an angle is a little early or late, nudge it; it's remembered for this shot.</div>`;
-    const urls = [];
-    const track = [];
-    for (const v of views) {
-      const card2 = host2.querySelector(`[data-view="${CSS.escape(v.id)}"]`);
-      const el = card2?.querySelector("video");
-      const blob = await loadClip(v.clipKey).catch(() => void 0);
-      if (!card2 || !el) continue;
-      if (!blob) {
-        card2.querySelector(".stagebox").innerHTML = `<div class="note">This angle's clip couldn't be loaded.</div>`;
-        continue;
-      }
-      const url = URL.createObjectURL(blob.type ? blob : new Blob([blob], { type: v.mime || "video/mp4" }));
-      urls.push(url);
-      el.src = url;
-      track.push({ v, el });
-      card2.querySelectorAll("[data-n]").forEach((b) => b.onclick = async () => {
-        v.nudgeSec = Math.max(-5, Math.min(5, Math.round((v.nudgeSec + Number(b.dataset.n)) * 100) / 100));
-        shot.views = views;
-        await updateShot(shot);
-        const n = card2.querySelector(".nv");
-        if (n) n.textContent = v.nudgeSec ? (v.nudgeSec > 0 ? "+" : "") + v.nudgeSec.toFixed(2) + " s" : "0";
-        follow(true);
-      });
-    }
-    const target = (t) => viewTime(player.currentTime + shot.recStartT, t.v.offsetSec, t.v.nudgeSec);
-    const follow = (hard = false) => {
-      for (const t of track) {
-        const want = target(t);
-        const dur = Number.isFinite(t.el.duration) ? t.el.duration : Infinity;
-        if (want < 0 || want > dur) {
-          if (!t.el.paused) t.el.pause();
-          if (hard || Math.abs(t.el.currentTime - Math.max(0, Math.min(dur === Infinity ? 0 : dur, want))) > 0.05) t.el.currentTime = Math.max(0, Math.min(Number.isFinite(dur) ? dur : 0, want));
-          continue;
-        }
-        if (hard || Math.abs(t.el.currentTime - want) > 0.15) t.el.currentTime = want;
-        t.el.playbackRate = player.playbackRate;
-        if (!player.paused && t.el.paused) void t.el.play().catch(() => {
-        });
-        if (player.paused && !t.el.paused) t.el.pause();
-      }
-    };
-    player.addEventListener("play", () => follow(true));
-    player.addEventListener("pause", () => follow(true));
-    player.addEventListener("seeked", () => follow(true));
-    player.addEventListener("ratechange", () => follow());
-    player.addEventListener("timeupdate", () => follow());
-    follow(true);
-    void mainTime;
-    window.addEventListener("pagehide", () => urls.forEach((u) => URL.revokeObjectURL(u)), { once: true });
-  }
-  var init_multiviewui = __esm({
-    "camera/multiviewui.ts"() {
-      init_camsync();
-      init_live();
-      init_state();
-    }
-  });
-
-  // camera/camlink.ts
-  var camlink_exports = {};
-  __export(camlink_exports, {
-    camRecordCancel: () => camRecordCancel,
-    camRecordStart: () => camRecordStart,
-    camRecordStop: () => camRecordStop,
-    cameraCount: () => cameraCount,
-    joinCameraFrom: () => joinCameraFrom,
-    noteFrame: () => noteFrame,
-    openCameras: () => openCameras,
-    wallOfMedia: () => wallOfMedia
-  });
-  function noteFrame(wall, media) {
-    lastWall = wall;
-    lastMedia = media;
-  }
-  async function gathered2(pc) {
-    if (pc.iceGatheringState !== "complete")
-      await new Promise((res) => {
-        const done3 = () => pc.iceGatheringState === "complete" && (pc.removeEventListener("icegatheringstatechange", done3), res());
-        pc.addEventListener("icegatheringstatechange", done3);
-        setTimeout(res, 5e3);
-      });
-    return pc.localDescription.sdp;
-  }
-  function startPings(l) {
-    let n = 0;
-    const burst = () => {
-      if (l.state !== "connected") return;
-      l.samples = [];
-      for (let i = 0; i < 16; i++) setTimeout(() => send2(l, { t: "ping", n: n++, t0: performance.now() }), i * 90);
-    };
-    burst();
-    l.timer = window.setInterval(burst, 45e3);
-  }
-  function onPrimaryMessage(l, e) {
-    if (typeof e.data !== "string") {
-      l.asm?.add(e.data);
-      return;
-    }
-    try {
-      const m = JSON.parse(e.data);
-      if (m.t === "hello") {
-        l.label = String(m.label ?? "Camera").slice(0, 30);
-        l.device = String(m.device ?? "").slice(0, 40);
-      } else if (m.t === "pong" && typeof m.t0 === "number") {
-        l.samples.push({ t0: m.t0, t1: Number(m.t1), t2: Number(m.t2), t3: performance.now() });
-        const o = estimateOffset(l.samples);
-        if (o) l.offset = o;
-      } else if (m.t === "clip") {
-        const meta = parseClipMeta(m);
-        l.asm = meta ? new ClipAssembler(meta) : null;
-      } else if (m.t === "clipend" && l.asm?.done) {
-        const meta = l.asm.meta, blob = l.asm.blob();
-        l.asm = null;
-        const r = recs.get(meta.rec);
-        if (blob && r) {
-          r.got.push({ link: l, blob, startMs: meta.startMs });
-          l.last = `received ${(blob.size / 1e6).toFixed(1)} MB`;
-          void tryAttach(meta.rec);
-        }
-      } else if (m.t === "nocam") {
-        l.last = `can't record: ${String(m.reason ?? "").slice(0, 80)}`;
-      }
-      renderPanel();
-    } catch {
-    }
-  }
-  function camRecordStart(rec2) {
-    const r = { sent: /* @__PURE__ */ new Set(), got: [], done: false };
-    for (const l of connected()) {
-      send2(l, { t: "rec", rec: rec2 });
-      r.sent.add(l.id);
-    }
-    if (r.sent.size) recs.set(rec2, r);
-  }
-  function camRecordStop(rec2, shot, releaseWall) {
-    const r = recs.get(rec2);
-    if (!r) return;
-    r.shot = shot;
-    r.releaseWall = releaseWall;
-    for (const l of links) if (r.sent.has(l.id)) send2(l, { t: "stop", rec: rec2, tail: 250 });
-    void tryAttach(rec2);
-    setTimeout(() => recs.delete(rec2), 12e4);
-  }
-  function camRecordCancel(rec2) {
-    const r = recs.get(rec2);
-    if (!r) return;
-    for (const l of links) if (r.sent.has(l.id)) send2(l, { t: "cancel", rec: rec2 });
-    recs.delete(rec2);
-  }
-  async function tryAttach(recId2) {
-    const r = recs.get(recId2);
-    if (!r?.shot || r.releaseWall === void 0) return;
-    const shot = r.shot;
-    while (r.got.length) {
-      const c = r.got.shift();
-      const off = c.link.offset;
-      if (!off) {
-        notify(`The ${c.link.label} clip arrived before its clock was lined up, so it can't be placed on the shot. It will work next time.`);
-        continue;
-      }
-      const view3 = { id: newId(), label: c.link.label, clipKey: `${shot.id}~${c.link.id}`, offsetSec: clipOffsetSec(c.startMs, off, r.releaseWall), nudgeSec: 0, uncertaintyMs: Math.round(off.uncertaintyMs), bytes: c.blob.size, mime: c.blob.type || "video/mp4" };
-      try {
-        await saveClip(view3.clipKey, c.blob);
-        shot.views = cleanViews([...(shot.views ?? []).filter((v) => v.clipKey !== view3.clipKey), view3]);
-        await updateShot(shot);
-        c.link.last = `added to your last shot (clocks within about ${view3.uncertaintyMs} ms)`;
-        notify(`${view3.label} added to that shot.`);
-        logTrack("extra camera clip attached", { label: view3.label, bytes: c.blob.size, offsetSec: +view3.offsetSec.toFixed(3), uncertaintyMs: view3.uncertaintyMs });
-      } catch (e) {
-        logTrack("extra camera clip not saved", { error: String(e) });
-      }
-    }
-    renderPanel();
-  }
-  function newLink() {
-    const pc = new RTCPeerConnection({ iceServers: ICE2 });
-    const l = { id: newId().slice(0, 8), pc, dc: null, label: "Camera", device: "", state: "waiting", samples: [], offset: null, asm: null, last: "", timer: 0 };
-    pc.onconnectionstatechange = () => {
-      if (["failed", "disconnected", "closed"].includes(pc.connectionState) && l.state === "connected") {
-        l.state = "ended";
-        clearInterval(l.timer);
-        renderPanel();
-      }
-    };
-    links.push(l);
-    return l;
-  }
-  function wirePrimary(l, dc) {
-    l.dc = dc;
-    dc.binaryType = "arraybuffer";
-    dc.onopen = () => {
-      l.state = "connected";
-      send2(l, { t: "hi", name: S.profile?.name ?? "LaneIQ" });
-      startPings(l);
-      renderPanel();
-    };
-    dc.onclose = () => {
-      l.state = "ended";
-      clearInterval(l.timer);
-      renderPanel();
-    };
-    dc.onmessage = (e) => onPrimaryMessage(l, e);
-  }
-  function openCameras() {
-    const el = sheet8();
-    el.classList.add("on");
-    el.dataset.cams = "1";
-    renderPanel();
-  }
-  function renderPanel() {
-    const el = sheet8();
-    if (!el.classList.contains("on") || el.dataset.cams !== "1") return;
-    const live3 = links.filter((l) => l.state !== "ended");
-    el.innerHTML = `<div class="row"><h2>Extra cameras</h2><button class="btn ghost" id="cl-close">Close</button></div>
-    <div class="note">Link an iPad or a second phone at another angle. While they're linked, they record every throw together with this camera, send the clips back, and every shot's replay shows all the angles in step. They connect directly to this phone: nothing goes through a server. Keep them on the same Wi-Fi or hotspot, with the app open and the screen on.</div>
-    ${live3.length ? live3.map((l) => `<div class="card"><div class="row"><div class="lr-head">${esc2(l.label)}${l.device ? ` <span class="note">${esc2(l.device)}</span>` : ""}</div><span class="badge ${l.state === "connected" ? "good" : "tentative"}">${l.state === "connected" ? "connected" : "connecting\u2026"}</span></div>
-      <div class="note">${l.offset ? `Clocks lined up to within about ${Math.max(1, Math.round(l.offset.uncertaintyMs))} ms (${l.offset.n} checks).` : l.state === "connected" ? "Lining up clocks\u2026" : "Waiting for it to join."}${l.last ? ` Last: ${esc2(l.last)}.` : ""}</div>
-      <div class="chips"><button class="btn ghost danger" data-rm="${esc2(l.id)}">Disconnect</button></div></div>`).join("") : `<div class="card"><div class="u">No extra cameras linked.</div></div>`}
-    <div class="chips"><button class="btn" id="cl-add">Add a camera</button></div>
-    <div class="note">The extra camera's video isn't analysed yet: you get it synced in the replay. Tracking, speed and spin still come from this camera. Put it where it sees something this one can't, such as a close-up of the release or the approach from the side.</div>`;
-    $("cl-close").onclick = () => {
-      el.dataset.cams = "";
-      closeSheet();
-    };
-    $("cl-add").onclick = () => void hostLink();
-    el.querySelectorAll("[data-rm]").forEach((b) => b.onclick = () => {
-      const l = links.find((x) => x.id === b.dataset.rm);
-      if (l) {
-        send2(l, { t: "bye" });
-        l.pc.close();
-        l.state = "ended";
-        clearInterval(l.timer);
-      }
-      renderPanel();
-    });
-  }
-  async function hostLink() {
-    const el = sheet8();
-    el.dataset.cams = "";
-    el.innerHTML = `<div class="row"><h2>Starting\u2026</h2></div><div class="note">Getting your connection ready. Keep the app open.</div>`;
-    const l = newLink();
-    wirePrimary(l, l.pc.createDataChannel("laneiq-cam"));
-    await l.pc.setLocalDescription(await l.pc.createOffer());
-    const offer = await packText(JSON.stringify({ v: 1, sdp: await gathered2(l.pc), name: S.profile?.name ?? "LaneIQ" }));
-    const link = `${appLink()}/#cam=${offer}`;
-    if (location.search.includes("camtest")) globalThis.__camLink = link;
-    el.innerHTML = `<div class="row"><h2>Add a camera</h2><button class="btn ghost" id="cl-cancel">Cancel</button></div>
-    <div class="card"><div class="k">1. Open this on the other device</div><div class="u">On the iPad or phone, open LaneIQ (add it to the home screen first if you like), then open this link there. AirDrop, a message or an email to yourself all work.</div><div class="chips"><button class="btn" id="cl-send">Send the link</button></div><div class="note" id="cl-sent"></div></div>
-    <div class="card"><div class="k">2. Paste its reply</div><div class="u">The other device shows a reply code. Paste it here.</div><div class="field"><input id="cl-reply" placeholder="Paste the reply code"></div><div class="chips"><button class="btn" id="cl-connect">Connect</button></div><div class="note" id="cl-msg"></div></div>`;
-    $("cl-cancel").onclick = () => {
-      l.pc.close();
-      l.state = "ended";
-      openCameras();
-    };
-    $("cl-send").onclick = async () => ($("cl-sent").textContent = await shareLink("Add this device as a camera", "Open this in LaneIQ on the device you want to use as an extra camera.", link), void 0);
-    $("cl-connect").onclick = async () => {
-      const code2 = $("cl-reply").value.trim().replace(/^CAM-/, "");
-      const json = code2 ? await unpackText(code2) : null;
-      let ans = null;
-      try {
-        ans = json ? JSON.parse(json) : null;
-      } catch {
-      }
-      if (!ans?.sdp) return void ($("cl-msg").textContent = "That reply code isn't right. Ask the other device to show it again.");
-      try {
-        await l.pc.setRemoteDescription({ type: "answer", sdp: ans.sdp });
-        $("cl-msg").textContent = "Connecting\u2026";
-        const wait = setInterval(() => {
-          if (l.state === "connected") {
-            clearInterval(wait);
-            el.dataset.cams = "1";
-            renderPanel();
-          }
-          if (l.state === "ended") clearInterval(wait);
-        }, 400);
-      } catch {
-        $("cl-msg").textContent = "Couldn't use that reply. Start again.";
-      }
-    };
-  }
-  async function joinCameraFrom(code2) {
-    const json = await unpackText(code2);
-    let offer = null;
-    try {
-      offer = json ? JSON.parse(json) : null;
-    } catch {
-    }
-    const el = sheet8();
-    el.classList.add("on");
-    if (!offer?.sdp) {
-      el.innerHTML = `<div class="row"><h2>Extra camera</h2><button class="btn ghost" id="cx-close">Close</button></div><div class="card"><div class="u">That link is damaged or isn't a LaneIQ camera link.</div></div>`;
-      $("cx-close").onclick = closeSheet;
-      return;
-    }
-    const from = String(offer.name ?? "LaneIQ").slice(0, 40);
-    el.innerHTML = `<div class="row"><h2>Use this as an extra camera?</h2><button class="btn ghost" id="cx-close">Not now</button></div>
-    <div class="card"><div class="u">${esc2(from)}'s lane camera wants to use this device as another angle. It will record each throw and send the clip to that phone. Nothing leaves your devices.</div>
-    <div class="field"><label for="cx-label">What is this angle?</label><select id="cx-label">${LABELS.map((x) => `<option>${esc2(x)}</option>`).join("")}</select></div>
-    <div class="chips"><button class="btn" id="cx-yes">Use this device</button></div></div>`;
-    $("cx-close").onclick = closeSheet;
-    $("cx-yes").onclick = async () => {
-      const label2 = $("cx-label").value;
-      el.innerHTML = `<div class="row"><h2>Connecting\u2026</h2></div><div class="note">Getting your reply ready. Keep the app open.</div>`;
-      const pc = new RTCPeerConnection({ iceServers: ICE2 });
-      pc.ondatachannel = (e) => startExtra(pc, e.channel, label2);
-      await pc.setRemoteDescription({ type: "offer", sdp: offer.sdp });
-      await pc.setLocalDescription(await pc.createAnswer());
-      const reply = await packText(JSON.stringify({ v: 1, sdp: await gathered2(pc) }));
-      if (location.search.includes("camtest")) globalThis.__camReply = reply;
-      el.innerHTML = `<div class="row"><h2>Send this reply back</h2><button class="btn ghost" id="cx-close">Cancel</button></div>
-      <div class="card"><div class="u">Send this code to the lane camera and paste it in its Extra cameras screen. Keep this screen open until it connects.</div><div class="u" style="word-break:break-all;user-select:all;max-height:6em;overflow:auto">${esc2(reply)}</div><div class="chips"><button class="btn" id="cx-copy">Copy and share</button></div><div class="note" id="cx-sent"></div></div>`;
-      $("cx-close").onclick = () => {
-        pc.close();
-        closeSheet();
-      };
-      $("cx-copy").onclick = async () => {
-        try {
-          await navigator.clipboard.writeText(reply);
-        } catch {
-        }
-        const nav = navigator;
-        try {
-          if (nav.share) await nav.share({ title: "LaneIQ camera reply", text: reply });
-        } catch {
-        }
-        $("cx-sent").textContent = "Reply copied. Paste it into a message to the lane camera.";
-      };
-    };
-  }
-  function pickMime() {
-    for (const m of ["video/mp4", "video/webm;codecs=vp9", "video/webm"]) if (window.MediaRecorder?.isTypeSupported?.(m)) return m;
-    return void 0;
-  }
-  async function startExtra(pc, dc, label2) {
-    dc.binaryType = "arraybuffer";
-    const ex = { pc, dc, stream: null, cur: null, label: label2 };
-    extra = ex;
-    const ov = document.createElement("div");
-    ov.id = "camx";
-    ov.style.cssText = "position:fixed;inset:0;z-index:99999;background:#000;display:flex;flex-direction:column";
-    ov.innerHTML = `<video id="camx-v" playsinline muted autoplay style="flex:1;width:100%;object-fit:contain;background:#000"></video>
-    <div style="padding:10px 14px;background:rgba(5,7,13,.92);color:#e8f0ff;font:600 14px system-ui"><div id="camx-s">Starting the camera\u2026</div><div class="note" style="color:#9fb0cc;font-weight:500;margin-top:2px">${esc2(label2)} \xB7 recording starts and stops by itself when the lane camera does. Keep this screen on.</div><button id="camx-x" style="margin-top:8px;padding:8px 14px;border-radius:10px;border:0;background:#2a3350;color:#fff;font:600 14px system-ui">Disconnect</button></div>`;
-    document.body.appendChild(ov);
-    const status2 = (m) => {
-      const s = document.getElementById("camx-s");
-      if (s) s.textContent = m;
-    };
-    const finish2 = () => {
-      try {
-        dc.close();
-        pc.close();
-      } catch {
-      }
-      ex.stream?.getTracks().forEach((t) => t.stop());
-      try {
-        wake?.release();
-      } catch {
-      }
-      ov.remove();
-      extra = null;
-    };
-    document.getElementById("camx-x").onclick = finish2;
-    dc.onclose = () => {
-      status2("Disconnected.");
-      setTimeout(finish2, 1500);
-    };
-    let wake = null;
-    try {
-      wake = await navigator.wakeLock?.request("screen") ?? null;
-    } catch {
-    }
-    try {
-      ex.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } }, audio: false });
-      const v = document.getElementById("camx-v");
-      v.srcObject = ex.stream;
-      await v.play().catch(() => {
-      });
-      status2("Connected. Waiting for the next throw.");
-    } catch (e) {
-      status2("This device's camera isn't available. Allow the camera for LaneIQ and link again.");
-      dc.send(JSON.stringify({ t: "nocam", reason: e instanceof Error ? e.message : "camera unavailable" }));
-    }
-    const hello = () => dc.send(JSON.stringify({ t: "hello", label: label2, device: /iPad/.test(navigator.userAgent) || navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1 ? "iPad" : /iPhone/.test(navigator.userAgent) ? "iPhone" : "device" }));
-    if (dc.readyState === "open") hello();
-    else dc.onopen = hello;
-    const startRec = (rec2) => {
-      if (!ex.stream || !window.MediaRecorder) return;
-      stopCur(true);
-      const mime = pickMime();
-      const mr = new MediaRecorder(ex.stream, mime ? { mimeType: mime, videoBitsPerSecond: 8e6 } : void 0);
-      const chunks = [];
-      const cur2 = { rec: rec2, mr, chunks, startMs: performance.now(), kill: window.setTimeout(() => stopCur(true), 12e4) };
-      mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-      mr.onstart = () => cur2.startMs = performance.now();
-      mr.start(1e3);
-      ex.cur = cur2;
-      status2("Recording this throw\u2026");
-    };
-    const stopCur = (discard) => {
-      const c = ex.cur;
-      if (!c) return;
-      ex.cur = null;
-      clearTimeout(c.kill);
-      if (discard) {
-        try {
-          c.mr.ondataavailable = null;
-          c.mr.state !== "inactive" && c.mr.stop();
-        } catch {
-        }
-      }
-    };
-    const finishRec = (rec2, tail) => {
-      const c = ex.cur;
-      if (!c || c.rec !== rec2) return;
-      ex.cur = null;
-      clearTimeout(c.kill);
-      c.mr.onstop = async () => {
-        const blob = new Blob(c.chunks, { type: c.mr.mimeType || "video/mp4" });
-        if (!blob.size) return status2("Nothing was recorded.");
-        status2(`Sending the clip (${(blob.size / 1e6).toFixed(1)} MB)\u2026`);
-        try {
-          dc.send(JSON.stringify({ t: "clip", rec: rec2, size: blob.size, mime: blob.type, startMs: c.startMs }));
-          const buf = await blob.arrayBuffer();
-          for (let i = 0; i < buf.byteLength; i += CHUNK) {
-            while (dc.bufferedAmount > 1e6) await new Promise((r) => setTimeout(r, 20));
-            dc.send(buf.slice(i, i + CHUNK));
-          }
-          dc.send(JSON.stringify({ t: "clipend", rec: rec2 }));
-          status2("Sent. Waiting for the next throw.");
-        } catch {
-          status2("Couldn't send the clip. Check the connection.");
-        }
-      };
-      setTimeout(() => c.mr.state !== "inactive" && c.mr.stop(), Math.max(0, Math.min(2e3, tail)));
-    };
-    dc.onmessage = (e) => {
-      if (typeof e.data !== "string") return;
-      try {
-        const m = JSON.parse(e.data);
-        if (m.t === "ping") dc.send(JSON.stringify({ t: "pong", n: m.n, t0: m.t0, t1: performance.now(), t2: performance.now() }));
-        else if (m.t === "rec") startRec(String(m.rec).slice(0, 40));
-        else if (m.t === "stop") finishRec(String(m.rec).slice(0, 40), Number(m.tail) || 250);
-        else if (m.t === "cancel") {
-          stopCur(true);
-          status2("Connected. Waiting for the next throw.");
-        } else if (m.t === "bye") finish2();
-      } catch {
-      }
-    };
-  }
-  var ICE2, sheet8, closeSheet, LABELS, lastWall, lastMedia, wallOfMedia, links, recs, connected, cameraCount, send2, extra;
-  var init_camlink = __esm({
-    "camera/camlink.ts"() {
-      init_camsync();
-      init_db();
-      init_health();
-      init_live();
-      init_friends();
-      init_state();
-      init_toast();
-      ICE2 = [{ urls: "stun:stun.l.google.com:19302" }];
-      sheet8 = () => $("friends");
-      closeSheet = () => (sheet8().classList.remove("on"), sheet8().innerHTML = "");
-      LABELS = ["Close-up of the release", "Side view", "Approach from behind", "Pins end", "Other angle"];
-      lastWall = 0;
-      lastMedia = 0;
-      wallOfMedia = (media) => lastWall + (media - lastMedia) * 1e3;
-      links = [];
-      recs = /* @__PURE__ */ new Map();
-      connected = () => links.filter((l) => l.state === "connected" && l.dc?.readyState === "open");
-      cameraCount = () => connected().length;
-      send2 = (l, m) => {
-        if (l.dc?.readyState === "open") l.dc.send(JSON.stringify(m));
-      };
-      if (typeof location !== "undefined" && location.search.includes("camtest")) globalThis.__cam = { camRecordStart, camRecordStop, links, wallOfMedia, perf: () => performance.now(), ui: () => Promise.resolve().then(() => (init_multiviewui(), multiviewui_exports)), state: () => Promise.resolve().then(() => (init_state(), state_exports)) };
-      extra = null;
-    }
-  });
-
-  // core/src/coachplan.ts
-  function cleanStep(s) {
-    if (!s || typeof s !== "object") return null;
-    const drill = typeof s.drill === "string" && DRILL_IDS.has(s.drill) ? s.drill : void 0;
-    const def = drill ? DRILLS2.find((d) => d.id === drill) : null;
-    const title = clean4(s.title, PLAN_LIMITS.title) || def?.name || "";
-    if (!title) return null;
-    const board = def?.needs.includes("board") ? num6(s.board, 1, 39) : void 0;
-    const mph = def?.needs.includes("mph") ? num6(s.mph, 5, 25) : void 0;
-    return { ...drill ? { drill } : {}, title, detail: clean4(s.detail, PLAN_LIMITS.detail), minutes: Math.round(num6(s.minutes, 1, PLAN_LIMITS.maxMinutes) ?? 5), ...board !== void 0 ? { board: Math.round(board) } : {}, ...mph !== void 0 ? { mph: Math.round(mph * 10) / 10 } : {} };
-  }
-  function newPlan(from, title, note, steps, now = /* @__PURE__ */ new Date(), id = Math.random().toString(36).slice(2, 10)) {
-    const cleaned = steps.map(cleanStep).filter((s) => !!s).slice(0, PLAN_LIMITS.steps);
-    const name = clean4(from, PLAN_LIMITS.name);
-    const t = clean4(title, PLAN_LIMITS.title);
-    if (!cleaned.length || !name || !t) return null;
-    return { v: 1, t: "plan", id: clean4(id, 16) || "plan", from: name, title: t, note: clean4(note, PLAN_LIMITS.note), steps: cleaned, at: now.toISOString() };
-  }
-  function parsePlan(json) {
-    let j;
-    try {
-      j = JSON.parse(json);
-    } catch {
-      return null;
-    }
-    if (!j || typeof j !== "object") return null;
-    const o = j;
-    if (o.v !== 1 || o.t !== "plan" || !Array.isArray(o.steps)) return null;
-    const at4 = typeof o.at === "string" && !Number.isNaN(Date.parse(o.at)) ? new Date(o.at) : /* @__PURE__ */ new Date();
-    return newPlan(clean4(o.from, PLAN_LIMITS.name), clean4(o.title, PLAN_LIMITS.title), clean4(o.note, PLAN_LIMITS.note), o.steps, at4, clean4(o.id, 16));
-  }
-  var PLAN_LIMITS, clean4, num6, DRILL_IDS, planMinutes;
-  var init_coachplan = __esm({
-    "core/src/coachplan.ts"() {
-      init_drills();
-      PLAN_LIMITS = { title: 60, note: 400, detail: 240, name: 40, steps: 8, maxMinutes: 60 };
-      clean4 = (s, max) => typeof s === "string" ? s.replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
-      num6 = (n, lo, hi) => typeof n === "number" && Number.isFinite(n) && n >= lo && n <= hi ? n : void 0;
-      DRILL_IDS = new Set(DRILLS2.map((d) => d.id));
-      planMinutes = (p) => p.steps.reduce((a, s) => a + s.minutes, 0);
-    }
-  });
-
-  // core/src/training.ts
-  function dailyPlan(day6, where, focus) {
-    const n = dayNumber(day6);
-    const axes = focus.length ? focus : ["arrows", "pocket"];
-    const first = axes[0], second = axes[1] ?? axes[0];
-    const steps = [WARMUP];
-    if (where === "lane") {
-      steps.push({ id: "drill1", title: `Drill: ${first}`, detail: "", minutes: 8, drill: DRILL_FOR[first] });
-      const d2 = DRILL_FOR[second] !== DRILL_FOR[first] ? DRILL_FOR[second] : ["speed-lock", "arrow-sniper", "pocket-hunter", "speed-ladder"].filter((d) => d !== DRILL_FOR[first])[n % 3];
-      steps.push({ id: "drill2", title: "Second drill", detail: "", minutes: 8, drill: d2 });
-      steps.push({ id: "spares", title: "Spare ladder", detail: "Ten shots at single pins with your spare ball, working the 10 pin and the 7 pin first. Count how many you make.", minutes: 8 });
-    } else {
-      const h = HOME_FOCUS[first];
-      steps.push({ id: "home1", title: h.title, detail: h.detail, minutes: 6 });
-      if (second !== first) {
-        const h2 = HOME_FOCUS[second];
-        steps.push({ id: "home2", title: h2.title, detail: h2.detail, minutes: 6 });
-      }
-      steps.push({ ...STUDY[n % STUDY.length] });
-    }
-    steps.push(REFLECT);
-    return { day: day6, where, steps, minutes: steps.reduce((a, s) => a + s.minutes, 0), focus: axes };
-  }
-  function markStep(log, day6, id, done3) {
-    const rest = log.filter((d) => d.day !== day6);
-    const cur2 = new Set(log.find((d) => d.day === day6)?.done ?? []);
-    if (done3) cur2.add(id);
-    else cur2.delete(id);
-    return cur2.size ? [...rest, { day: day6, done: [...cur2] }].sort((a, b) => a.day.localeCompare(b.day)) : rest;
-  }
-  function trainStats(log, today3) {
-    const days = new Set(log.filter(trained).map((d) => d.day));
-    const trainedToday = days.has(today3);
-    let streak = 0;
-    for (let d = trainedToday ? today3 : addDays(today3, -1); days.has(d); d = addDays(d, -1)) streak++;
-    let best2 = 0, run = 0, prev = null;
-    for (const d of [...days].sort()) {
-      run = prev && addDays(prev, 1) === d ? run + 1 : 1;
-      best2 = Math.max(best2, run);
-      prev = d;
-    }
-    let last7 = 0;
-    for (let i = 0; i < 7; i++) if (days.has(addDays(today3, -i))) last7++;
-    return { streak, best: best2, days: days.size, last7, trainedToday };
-  }
-  var MIN_STEPS_FOR_A_DAY, dayKey, dayNumber, addDays, DRILL_FOR, HOME_FOCUS, STUDY, WARMUP, REFLECT, trained;
-  var init_training = __esm({
-    "core/src/training.ts"() {
-      MIN_STEPS_FOR_A_DAY = 2;
-      dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      dayNumber = (key3) => Math.floor(Date.UTC(+key3.slice(0, 4), +key3.slice(5, 7) - 1, +key3.slice(8, 10)) / 864e5);
-      addDays = (key3, n) => dayKey(new Date(+key3.slice(0, 4), +key3.slice(5, 7) - 1, +key3.slice(8, 10) + n));
-      DRILL_FOR = {
-        strikes: "pocket-hunter",
-        singles: "corner-pins",
-        closed: "corner-pins",
-        firstBall: "pocket-hunter",
-        pocket: "pocket-hunter",
-        entry: "pocket-hunter",
-        arrows: "arrow-sniper",
-        start: "arrow-sniper",
-        speed: "speed-lock"
-      };
-      HOME_FOCUS = {
-        arrows: { title: "Shadow approach: same target", detail: "12 slow swings with no ball. Same start spot, same slide, and hold the finish for two seconds. Does your slide foot end on the same board each time?" },
-        start: { title: "Shadow approach: same start", detail: "Tape or mark your start spot. 12 slow swings from it, then check your slide ends in the same place each time." },
-        speed: { title: "Shadow approach: same tempo", detail: "12 swings counting your steps out loud at one steady tempo. Then 3 slower and 3 faster, and come back to the middle tempo without drifting." },
-        pocket: { title: "Say your adjustment", detail: "Pick a pattern in Patterns. For each of three imaginary misses (high, light, at the pocket), say out loud where you would move your feet or your target." },
-        entry: { title: "Say your adjustment", detail: "Pick a pattern in Patterns. Say where the ball should start to hook and what you would change if it hooked early or late." },
-        strikes: { title: "Pocket picture", detail: "Pick a pattern in Patterns and talk through where you stand, where you look, and where the ball should enter the pocket." },
-        firstBall: { title: "Repeat your line", detail: "Shadow 12 swings to the same target in your head, and say aloud which board you start on and which board you cross at the arrows." },
-        singles: { title: "Spare systems out loud", detail: "Pick the 10, 7, 5 and 6 pins. For each say where you stand with the 3-6-9 system (same target as your strike shot, feet moved 3, 6 or 9 boards) and why." },
-        closed: { title: "Make the makeable", detail: "Pick five common leaves. For each say whether it is makeable, which pin is the key pin, and where you would stand." }
-      };
-      STUDY = [
-        { id: "study-patterns", title: "Read one oil pattern", detail: "Open Patterns, pick one, and say in a sentence where the oil is thin and where it is heavy.", minutes: 4, link: "patterns" },
-        { id: "study-debrief", title: "Review your last session", detail: "Open your last debrief and find the one number that moved the most. Write down why you think it moved.", minutes: 4, link: "debrief" },
-        { id: "study-leaves", title: "Name five leaves", detail: "Pick five leaves (for example the 10, the 7, the 4-6, the 5-7, the 2-4-5). For each, name the key pin and the side you would play from.", minutes: 3 }
-      ];
-      WARMUP = { id: "warm", title: "Warm up", detail: "Five minutes of easy movement: shoulder circles, gentle wrist and forearm stretches, hip and hamstring stretches. Keep it comfortable and stop if anything hurts.", minutes: 5 };
-      REFLECT = { id: "reflect", title: "One line to keep", detail: "Write what worked today in one line in your session note.", minutes: 1 };
-      trained = (d) => d.done.length >= MIN_STEPS_FOR_A_DAY;
-    }
-  });
-
-  // core/src/pdftext.ts
-  function md5(msg) {
-    const len = msg.length;
-    const padLen = (len + 8 >> 6) * 64 + 64;
-    const m = new Uint8Array(padLen);
-    m.set(msg);
-    m[len] = 128;
-    const bits = len * 8;
-    for (let i = 0; i < 8; i++) m[padLen - 8 + i] = Math.floor(bits / 2 ** (8 * i)) & 255;
-    let a0 = 1732584193, b0 = 4023233417, c0 = 2562383102, d0 = 271733878;
-    const w = new Uint32Array(16);
-    for (let off = 0; off < padLen; off += 64) {
-      for (let i = 0; i < 16; i++) w[i] = m[off + 4 * i] | m[off + 4 * i + 1] << 8 | m[off + 4 * i + 2] << 16 | m[off + 4 * i + 3] << 24;
-      let A = a0, B = b0, C2 = c0, D = d0;
-      for (let i = 0; i < 64; i++) {
-        let F, g;
-        if (i < 16) F = B & C2 | ~B & D, g = i;
-        else if (i < 32) F = D & B | ~D & C2, g = (5 * i + 1) % 16;
-        else if (i < 48) F = B ^ C2 ^ D, g = (3 * i + 5) % 16;
-        else F = C2 ^ (B | ~D), g = 7 * i % 16;
-        const tmp = D;
-        D = C2;
-        C2 = B;
-        const x = A + F + K[i] + w[g] >>> 0;
-        B = B + (x << SH[i] | x >>> 32 - SH[i]) >>> 0;
-        A = tmp;
-      }
-      a0 = a0 + A >>> 0;
-      b0 = b0 + B >>> 0;
-      c0 = c0 + C2 >>> 0;
-      d0 = d0 + D >>> 0;
-    }
-    const out = new Uint8Array(16);
-    [a0, b0, c0, d0].forEach((v, i) => {
-      for (let k2 = 0; k2 < 4; k2++) out[4 * i + k2] = v >>> 8 * k2 & 255;
-    });
-    return out;
-  }
-  function rc4(key3, data) {
-    const S3 = Array.from({ length: 256 }, (_, i) => i);
-    let j = 0;
-    for (let i = 0; i < 256; i++) {
-      j = j + S3[i] + key3[i % key3.length] & 255;
-      [S3[i], S3[j]] = [S3[j], S3[i]];
-    }
-    const out = new Uint8Array(data.length);
-    let a = 0, b = 0;
-    for (let k2 = 0; k2 < data.length; k2++) {
-      a = a + 1 & 255;
-      b = b + S3[a] & 255;
-      [S3[a], S3[b]] = [S3[b], S3[a]];
-      out[k2] = data[k2] ^ S3[S3[a] + S3[b] & 255];
-    }
-    return out;
-  }
-  function strAfter(s, key3) {
-    const i = s.indexOf(key3);
-    if (i < 0) return null;
-    let p = i + key3.length;
-    while (/\s/.test(s[p])) p++;
-    if (s[p] === "<") return fromHex(s.slice(p + 1, s.indexOf(">", p)));
-    if (s[p] !== "(") return null;
+  // core/src/display.ts
+  function packPath(path2, n = 48) {
+    if (!path2.length) return [];
+    const step = Math.max(1, Math.ceil(path2.length / n));
     const out = [];
-    let depth = 1;
-    for (p++; p < s.length && depth > 0; p++) {
-      const c = s[p];
-      if (c === "\\") {
-        const n = s[++p];
-        if (/[0-7]/.test(n)) {
-          let o = n;
-          while (o.length < 3 && /[0-7]/.test(s[p + 1])) o += s[++p];
-          out.push(parseInt(o, 8) & 255);
-        } else out.push({ n: 10, r: 13, t: 9, b: 8, f: 12 }[n] ?? n.charCodeAt(0));
-      } else if (c === "(") depth++, out.push(40);
-      else if (c === ")") {
-        if (--depth > 0) out.push(41);
-      } else out.push(c.charCodeAt(0));
-    }
-    return Uint8Array.from(out);
-  }
-  function setupDecrypt(s) {
-    const e = /\/Encrypt\s+(\d+)\s+\d+\s+R/.exec(s);
-    let dict;
-    if (e) {
-      const at4 = s.search(new RegExp(`\\b${e[1]}\\s+0\\s+obj`));
-      dict = s.slice(at4, s.indexOf("endobj", at4));
-    } else {
-      const at4 = s.indexOf("/Encrypt");
-      dict = s.slice(at4, at4 + 2e3);
-    }
-    const V = Number(/\/V\s+(\d)/.exec(dict)?.[1] ?? 0);
-    const R3 = Number(/\/R\s+(\d)/.exec(dict)?.[1] ?? 0);
-    if (V >= 5 || R3 >= 5) return { key: new Uint8Array(0), aes: false, n: 0, unsupported: true };
-    const n = V === 1 ? 5 : Number(/\/Length\s+(\d+)/.exec(dict)?.[1] ?? 40) / 8;
-    const O = strAfter(dict, "/O") ?? new Uint8Array(0);
-    const P = Number(/\/P\s+(-?\d+)/.exec(dict)?.[1]);
-    const idm = /\/ID\s*\[\s*<([0-9A-Fa-f]+)>/.exec(s);
-    const id0 = idm ? fromHex(idm[1]) : strAfter(s, "/ID[") ?? new Uint8Array(0);
-    const p4 = new Uint8Array(4);
-    new DataView(p4.buffer).setInt32(0, P, true);
-    let h = md5(concat(PAD, O, p4, id0, /\/EncryptMetadata\s+false/.test(dict) && R3 >= 4 ? fromHex("FFFFFFFF") : new Uint8Array(0)));
-    if (R3 >= 3) for (let i = 0; i < 50; i++) h = md5(h.subarray(0, n));
-    return { key: h.subarray(0, n), aes: /\/CFM\s*\/AESV2/.test(dict), n };
-  }
-  async function decryptStream(d, enc, num10, gen) {
-    const ext = Uint8Array.from([num10 & 255, num10 >> 8 & 255, num10 >> 16 & 255, gen & 255, gen >> 8 & 255]);
-    const k2 = md5(concat(enc.key, ext, enc.aes ? fromLatin1("sAlT") : new Uint8Array(0))).subarray(0, Math.min(enc.n + 5, 16));
-    if (!enc.aes) return rc4(k2, d);
-    const subtle = globalThis.crypto?.subtle;
-    if (!subtle || d.length < 32) throw new Error("no AES");
-    const key3 = await subtle.importKey("raw", k2, { name: "AES-CBC" }, false, ["decrypt"]);
-    const body = d.subarray(16, 16 + Math.floor((d.length - 16) / 16) * 16);
-    return new Uint8Array(await subtle.decrypt({ name: "AES-CBC", iv: d.subarray(0, 16) }, key3, body));
-  }
-  async function inflate(d) {
-    try {
-      const DS = globalThis.DecompressionStream;
-      if (!DS) return null;
-      const stream2 = new Blob([d]).stream().pipeThrough(new DS("deflate"));
-      const reader = stream2.getReader();
-      const parts = [];
-      for (; ; ) {
-        try {
-          const { done: done3, value } = await reader.read();
-          if (done3) break;
-          parts.push(value);
-        } catch {
-          break;
-        }
-      }
-      return parts.length ? concat(...parts) : null;
-    } catch {
-      return null;
-    }
-  }
-  function parseCMap(txt3) {
-    const map = /* @__PURE__ */ new Map();
-    let width = 1;
-    const u16 = (h) => {
-      const b = fromHex(h);
-      let s = "";
-      for (let i = 0; i + 1 < b.length; i += 2) s += String.fromCharCode(b[i] << 8 | b[i + 1]);
-      return s;
-    };
-    for (const blk of txt3.matchAll(/beginbfchar([\s\S]*?)endbfchar/g))
-      for (const m of blk[1].matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g)) {
-        width = Math.max(width, m[1].length / 2);
-        map.set(parseInt(m[1], 16), u16(m[2]));
-      }
-    for (const blk of txt3.matchAll(/beginbfrange([\s\S]*?)endbfrange/g))
-      for (const m of blk[1].matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*(?:<([0-9A-Fa-f]+)>|\[([^\]]*)\])/g)) {
-        width = Math.max(width, m[1].length / 2);
-        const lo = parseInt(m[1], 16);
-        const hi = parseInt(m[2], 16);
-        if (m[3] !== void 0) {
-          const base2 = u16(m[3]);
-          for (let c = lo; c <= hi && c - lo < 5e3; c++) map.set(c, base2.slice(0, -1) + String.fromCharCode(base2.charCodeAt(base2.length - 1) + (c - lo)));
-        } else [...m[4].matchAll(/<([0-9A-Fa-f]+)>/g)].map((x) => u16(x[1])).forEach((v, k2) => map.set(lo + k2, v));
-      }
-    return { map, width };
-  }
-  async function pdfText(buf) {
-    const s = latin1(buf);
-    if (!s.startsWith("%PDF")) return null;
-    const enc = s.includes("/Encrypt") ? setupDecrypt(s) : null;
-    if (enc?.unsupported) return null;
-    const objs = /* @__PURE__ */ new Map();
-    const heads = [...s.matchAll(/(?:^|[\r\n\s])(\d+)\s+(\d+)\s+obj\b/g)];
-    const streamOf = async (o) => o?.raw ? /\/Filter/.test(o.dict) ? inflate(o.raw) : o.raw : null;
-    for (let k2 = 0; k2 < heads.length; k2++) {
-      const num10 = Number(heads[k2][1]);
-      const gen = Number(heads[k2][2]);
-      const start2 = heads[k2].index + heads[k2][0].length;
-      const stop = k2 + 1 < heads.length ? heads[k2 + 1].index : s.length;
-      const body = s.slice(start2, stop);
-      const sm = /stream\r?\n/.exec(body);
-      const dict = sm ? body.slice(0, sm.index) : body.slice(0, body.indexOf("endobj") >= 0 ? body.indexOf("endobj") : body.length);
-      let raw = null;
-      if (sm) {
-        const a = start2 + sm.index + sm[0].length;
-        const e = s.lastIndexOf("endstream", stop);
-        if (e > a) {
-          raw = buf.subarray(a, e);
-          if (enc && !/\/Type\s*\/XRef/.test(dict)) {
-            try {
-              raw = await decryptStream(raw, enc, num10, gen);
-            } catch {
-              raw = null;
-            }
-          }
-        }
-      }
-      objs.set(num10, { dict, raw });
-    }
-    for (const [, o] of [...objs]) {
-      if (!/\/Type\s*\/ObjStm/.test(o.dict)) continue;
-      const data = await streamOf(o);
-      if (!data) continue;
-      const n = Number(/\/N\s+(\d+)/.exec(o.dict)?.[1]);
-      const first = Number(/\/First\s+(\d+)/.exec(o.dict)?.[1]);
-      const text = latin1(data);
-      const nums4 = (text.slice(0, first).match(/\d+/g) ?? []).map(Number);
-      for (let k2 = 0; k2 < n; k2++) {
-        const num10 = nums4[2 * k2];
-        const off = nums4[2 * k2 + 1];
-        const nxt = k2 + 1 < n ? nums4[2 * k2 + 3] : text.length - first;
-        objs.set(num10, { dict: text.slice(first + off, first + nxt), raw: null });
-      }
-    }
-    const ref = (str5, key3) => {
-      const m = new RegExp(`${key3}\\s+(\\d+)\\s+\\d+\\s+R`).exec(str5);
-      return m ? Number(m[1]) : null;
-    };
-    const cmapCache = /* @__PURE__ */ new Map();
-    const cmapOf = async (fontNum) => {
-      if (cmapCache.has(fontNum)) return cmapCache.get(fontNum);
-      const f2 = objs.get(fontNum);
-      const tu = f2 ? ref(f2.dict, "/ToUnicode") : null;
-      const data = tu !== null ? await streamOf(objs.get(tu)) : null;
-      const c = data ? parseCMap(latin1(data)) : null;
-      cmapCache.set(fontNum, c);
-      return c;
-    };
-    const resourcesOf = (dict) => {
-      let d = dict;
-      for (let hop = 0; hop < 6 && d; hop++) {
-        const r = ref(d, "/Resources");
-        if (r !== null) return objs.get(r)?.dict ?? "";
-        const i = d.indexOf("/Resources");
-        if (i >= 0) return d.slice(i, i + 4e3);
-        const par = ref(d, "/Parent");
-        d = par !== null ? objs.get(par)?.dict : void 0;
-      }
-      return "";
-    };
-    const fontsOf = (res) => {
-      const out2 = /* @__PURE__ */ new Map();
-      let fd = res;
-      const r = ref(res, "/Font");
-      if (r !== null) fd = objs.get(r)?.dict ?? "";
-      else {
-        const i = res.indexOf("/Font");
-        fd = i >= 0 ? res.slice(i, i + 3e3) : "";
-      }
-      for (const m of fd.matchAll(/\/([^\s/<>\[\]()]+)\s+(\d+)\s+\d+\s+R/g)) out2.set(m[1], Number(m[2]));
-      return out2;
-    };
-    const decodeStr = (bytes, cm) => {
-      if (!cm) return latin1(bytes);
-      let out2 = "";
-      if (cm.width >= 2) for (let i = 0; i + 1 < bytes.length; i += 2) out2 += cm.map.get(bytes[i] << 8 | bytes[i + 1]) ?? "";
-      else for (const b of bytes) out2 += cm.map.get(b) ?? String.fromCharCode(b);
-      return out2;
-    };
-    let out = "";
-    const draw3 = async (data, fonts) => {
-      let cur2 = null;
-      for (const m of latin1(data).matchAll(/\/([^\s/<>\[\]()]+)\s+[\d.]+\s+Tf|\[((?:[^\]\\]|\\.)*)\]\s*TJ|\(((?:[^)\\]|\\.)*)\)\s*(?:Tj|'|")|<([0-9A-Fa-f\s]+)>\s*(?:Tj|'|")/g)) {
-        if (m[1] !== void 0) {
-          const fn = fonts.get(m[1]);
-          cur2 = fn !== void 0 ? await cmapOf(fn) : null;
-          continue;
-        }
-        if (m[2] !== void 0) {
-          for (const x of m[2].matchAll(/\(((?:[^)\\]|\\.)*)\)|<([0-9A-Fa-f\s]+)>|(-?[\d.]+)/g)) {
-            if (x[3] !== void 0) {
-              if (Number(x[3]) < -250) out += " ";
-              continue;
-            }
-            out += decodeStr(x[1] !== void 0 ? unescapeLit(x[1]) : fromHex(x[2]), cur2);
-          }
-        } else out += decodeStr(m[3] !== void 0 ? unescapeLit(m[3]) : fromHex(m[4]), cur2);
-        out += " ";
-      }
-    };
-    for (const [, o] of objs) {
-      if (/\/Type\s*\/Page\b(?!s)/.test(o.dict)) {
-        const fonts = fontsOf(resourcesOf(o.dict));
-        const cm = o.dict.indexOf("/Contents");
-        const cstr = cm >= 0 ? o.dict.slice(cm, cm + 600) : "";
-        const list = /\/Contents\s*\[([^\]]*)\]/.exec(cstr);
-        const nums4 = list ? [...list[1].matchAll(/(\d+)\s+\d+\s+R/g)].map((m) => Number(m[1])) : [ref(cstr, "/Contents")].filter((x) => x !== null);
-        for (const n of nums4) {
-          const data = await streamOf(objs.get(n));
-          if (data) await draw3(data, fonts);
-        }
-      } else if (/\/Subtype\s*\/Form\b/.test(o.dict)) {
-        const data = await streamOf(o);
-        if (data) await draw3(data, fontsOf(resourcesOf(o.dict)));
-      }
-    }
-    return out.replace(/\s+/g, " ");
-  }
-  var latin1, fromLatin1, fromHex, concat, K, SH, PAD, unescapeLit, tidy;
-  var init_pdftext = __esm({
-    "core/src/pdftext.ts"() {
-      latin1 = (b) => {
-        let s = "";
-        for (let i = 0; i < b.length; i += 8192) s += String.fromCharCode(...b.subarray(i, i + 8192));
-        return s;
-      };
-      fromLatin1 = (s) => Uint8Array.from(s, (c) => c.charCodeAt(0) & 255);
-      fromHex = (h) => {
-        const clean7 = h.replace(/[^0-9A-Fa-f]/g, "");
-        const even = clean7.length % 2 ? clean7 + "0" : clean7;
-        const out = new Uint8Array(even.length / 2);
-        for (let i = 0; i < out.length; i++) out[i] = parseInt(even.slice(2 * i, 2 * i + 2), 16);
-        return out;
-      };
-      concat = (...parts) => {
-        const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
-        let o = 0;
-        for (const p of parts) {
-          out.set(p, o);
-          o += p.length;
-        }
-        return out;
-      };
-      K = Array.from({ length: 64 }, (_, i) => Math.floor(Math.abs(Math.sin(i + 1)) * 2 ** 32) >>> 0);
-      SH = [7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21];
-      PAD = fromHex("28BF4E5E4E758A4164004E56FFFA01082E2E00B6D0683E802F0CA9FE6453697A");
-      unescapeLit = (str5) => {
-        const out = [];
-        for (let p = 0; p < str5.length; p++) {
-          const c = str5[p];
-          if (c !== "\\") {
-            out.push(c.charCodeAt(0) & 255);
-            continue;
-          }
-          const n = str5[++p];
-          if (n === void 0) break;
-          if (/[0-7]/.test(n)) {
-            let o = n;
-            while (o.length < 3 && /[0-7]/.test(str5[p + 1] ?? "")) o += str5[++p];
-            out.push(parseInt(o, 8) & 255);
-          } else if (n === "\r" || n === "\n") {
-            if (n === "\r" && str5[p + 1] === "\n") p++;
-          } else out.push({ n: 10, r: 13, t: 9, b: 8, f: 12 }[n] ?? n.charCodeAt(0));
-        }
-        return Uint8Array.from(out);
-      };
-      tidy = (t) => t.replace(/ ?([.:]) ?/g, "$1 ").replace(/(\w) (?=\w)/g, "$1").replace(/(\d)[.] ?(\d)/g, "$1.$2");
-    }
-  });
-
-  // camera/oilview.ts
-  function setOilOn(v) {
-    on = v;
-    try {
-      localStorage.setItem(KEY4, v ? "1" : "0");
-    } catch {
-    }
-  }
-  function mapOf(p) {
-    const k2 = `${p.id}|${p.lengthFt}|${p.ratio ?? ""}|${p.rows?.length ?? 0}`;
-    let m = maps.get(k2);
-    if (!m) {
-      m = oilMapFor(p);
-      maps.set(k2, m);
-    }
-    return m;
-  }
-  function bakeOil(v, w, h, map) {
-    const c = document.createElement("canvas");
-    c.width = w;
-    c.height = h;
-    drawOil({ ctx: c.getContext("2d"), width: v.width, P: v.P }, map);
-    return c;
-  }
-  function drawOilLayer(v, w, h, lockKey) {
-    const p = activePattern();
-    if (!on || !p) return;
-    const key3 = `${lockKey}|${w}x${h}|${p.id}|${p.lengthFt}|${p.rows?.length ?? 0}|${p.ratio ?? ""}`;
-    if (!cache || cache.key !== key3) {
-      const c = cache?.canvas ?? document.createElement("canvas");
-      c.width = w;
-      c.height = h;
-      const g = c.getContext("2d");
-      g.clearRect(0, 0, w, h);
-      drawOil({ ctx: g, width: v.width, P: v.P }, mapOf(p));
-      cache = { key: key3, canvas: c };
-    }
-    v.ctx.drawImage(cache.canvas, 0, 0);
-  }
-  var KEY4, on, oilOn, patternById, activePattern, maps, cache;
-  var init_oilview = __esm({
-    "camera/oilview.ts"() {
-      init_oilsheet();
-      init_render();
-      init_state();
-      KEY4 = "laneiq.oilOn";
-      on = (() => {
-        try {
-          return localStorage.getItem(KEY4) !== "0";
-        } catch {
-          return true;
-        }
-      })();
-      oilOn = () => on;
-      patternById = (id) => id ? S.myPatterns.find((p) => p.id === id) ?? null : null;
-      activePattern = () => patternById(S.where.patternId);
-      maps = /* @__PURE__ */ new Map();
-      cache = null;
-    }
-  });
-
-  // camera/scanlab.ts
-  function loadTesseract() {
-    tess ??= new Promise((res, rej) => {
-      if (window.Tesseract) return res(window.Tesseract);
-      const s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
-      s.onload = () => window.Tesseract ? res(window.Tesseract) : rej(new Error("failed"));
-      s.onerror = () => {
-        tess = null;
-        rej(new Error("offline"));
-      };
-      document.head.append(s);
-    });
-    return tess;
-  }
-  function prepare(src, c, channel, invert) {
-    const out = document.createElement("canvas");
-    const size = 720;
-    out.width = out.height = size;
-    const o = out.getContext("2d", { willReadFrequently: true });
-    o.drawImage(src, c.cx - c.r, c.cy - c.r, c.r * 2, c.r * 2, 0, 0, size, size);
-    const img = o.getImageData(0, 0, size, size);
-    const g = new Uint8ClampedArray(size * size);
-    for (let i = 0; i < g.length; i++) g[i] = channel === "r" ? img.data[i * 4] : channel === "g" ? img.data[i * 4 + 1] : channel === "b" ? img.data[i * 4 + 2] : 0.299 * img.data[i * 4] + 0.587 * img.data[i * 4 + 1] + 0.114 * img.data[i * 4 + 2];
-    const sorted2 = Uint8ClampedArray.from(g).sort();
-    const lo = sorted2[Math.floor(sorted2.length * 0.02)];
-    const hi = sorted2[Math.floor(sorted2.length * 0.98)] || 255;
-    for (let i = 0; i < g.length; i++) {
-      let v = Math.max(0, Math.min(255, (g[i] - lo) / Math.max(1, hi - lo) * 255));
-      if (invert) v = 255 - v;
-      img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v;
-    }
-    o.putImageData(img, 0, 0);
+    for (let i = 0; i < path2.length; i += step) out.push(r12(path2[i].x), r12(path2[i].y));
+    const last3 = path2[path2.length - 1];
+    if ((path2.length - 1) % step !== 0) out.push(r12(last3.x), r12(last3.y));
     return out;
   }
-  async function readText(src, c, progress3) {
-    const T = await loadTesseract();
-    const words = /* @__PURE__ */ new Map();
-    const runs = [["lum", false], ["lum", true], ["r", false], ["r", true], ["b", false], ["b", true], ["g", false], ["g", true]];
-    let done3 = 0;
-    for (const [ch, inv] of runs) {
-      progress3(done3++, runs.length);
-      const { data } = await T.recognize(prepare(src, c, ch, inv), "eng");
-      for (const w of data.words) {
-        const clean7 = w.text.replace(/[^A-Za-z0-9]/g, "");
-        if (w.confidence > 40 && clean7.length >= 2 && /[A-Za-z]/.test(clean7)) words.set(clean7.toUpperCase(), Math.max(words.get(clean7.toUpperCase()) ?? 0, w.confidence));
-      }
+  function summarise(s, n, withPath) {
+    const m = s.m;
+    const clip = s.spin && (s.spin.status === "measured" || s.spin.status === "rough") && s.spin.rpm !== null ? s.spin : null;
+    const meas2 = (clipV, infV, infPm, unit5) => clip && clipV !== null && clipV !== void 0 ? { v: Math.round(clipV), pm: `${Math.round(clip.confidence * 100)}% sure`, src: "measured" } : infV !== void 0 ? { v: Math.round(infV), pm: infPm ? `\xB1 ${infPm}${unit5}` : "", src: "inferred" } : null;
+    return {
+      n,
+      at: s.at,
+      speed: num6(m.launchSpeed) === null ? null : r12(m.launchSpeed),
+      arrows: num6(m.arrowsBoard) === null ? null : r12(m.arrowsBoard),
+      breakpointBoard: num6(m.breakpointBoard) === null ? null : r12(m.breakpointBoard),
+      breakpointFt: num6(m.breakpointFt) === null ? null : Math.round(m.breakpointFt),
+      entryBoard: num6(m.entryBoard) === null ? null : r12(m.entryBoard),
+      entryAngle: num6(m.entryAngle) === null ? null : r12(m.entryAngle),
+      pocketMiss: num6(m.pocketMiss) === null ? null : r12(m.pocketMiss),
+      zone: m.zone ?? null,
+      pinsDown: num6(s.result?.pinsDown),
+      leave: (s.result?.leave ?? []).filter((p) => p >= 1 && p <= 10).slice(0, 10),
+      rev: meas2(clip?.rpm, s.inf?.revRpm, s.inf ? String(s.inf.revPm) : "", " rpm"),
+      rotation: meas2(clip?.axisRotation, s.inf?.rotationDeg, s.inf ? String(s.inf.rotationPm) : "", "\xB0"),
+      tilt: clip && clip.axisTilt !== null ? { v: Math.round(clip.axisTilt), pm: `${Math.round(clip.confidence * 100)}% sure`, src: "measured" } : s.inf ? { v: Math.round(s.inf.tiltDeg), pm: "", src: "entered" } : null,
+      path: withPath ? packPath(s.path) : []
+    };
+  }
+  function buildSnapshot(i) {
+    const shots = i.shots.slice(-40);
+    const total2 = i.shots.length;
+    const sums = shots.map((s, k2) => summarise(s, total2 - shots.length + k2 + 1, k2 === shots.length - 1));
+    const withZone = shots.filter((s) => s.m.zone);
+    const speeds2 = shots.map((s) => num6(s.m.launchSpeed)).filter((v) => v !== null);
+    const done3 = shots.filter((s) => s.result?.pinsDown !== void 0);
+    let card2 = null;
+    if (i.rolls && i.rolls.length) {
+      const sc = scoreGame(i.rolls), rp = replay(i.rolls);
+      card2 = { frames: sc.frames.map((f2) => ({ marks: f2.marks, total: f2.total })), total: sc.total, frame: rp.frame, ball: rp.ball, standing: rp.standing, complete: rp.complete };
     }
-    return [...words.entries()].sort((a, b) => b[1] - a[1]).map(([w]) => w).join(" ");
-  }
-  function openScanLab(onAdded) {
-    const el = $("scanlab");
-    el.classList.add("on");
-    const stream2 = document.getElementById("v");
-    const live3 = stream2.videoWidth > 0 && !stream2.paused;
-    let circle = null;
-    let tap = 0;
-    const work2 = document.createElement("canvas");
-    let sig = null;
-    el.innerHTML = `
-    <div class="row"><h2>Scan a ball</h2><button class="btn ghost" id="sc-close">Close</button></div>
-    <div class="note">Take a clear photo of the ball with its logo facing the camera, in even light. The app compares what it sees with the balls you've taught it and with ${S.catalog.length} catalog balls. Reading the name needs a one-time download; you can always type the name instead.</div>
-    <div class="card">
-      <div class="chips"><label class="chip add" style="cursor:pointer">Take or choose a photo<input id="sc-file" type="file" accept="image/*" capture="environment" style="display:none"></label>${live3 ? `<button class="chip add" id="sc-live">Use the live camera</button>` : ""}</div>
-    </div>
-    <div id="sc-work" class="hide">
-      <div class="card"><div class="stagebox" style="position:relative"><canvas id="sc-cv" style="width:100%;height:auto;display:block"></canvas></div>
-        <div class="note" id="sc-hint">Tap the center of the ball, then tap its edge. Skip this to use the middle of the photo.</div>
-        <div class="field"><label>Name on the ball (read it, or type what you see)</label><input id="sc-text" placeholder="e.g. Ion Max" autocomplete="off"></div>
-        <div class="chips"><button class="btn ghost" id="sc-ocr">Read the name from the photo</button><button class="btn" id="sc-go">Identify</button></div>
-        <div class="note" id="sc-ocr-note"></div></div>
-      <div id="sc-out"></div>
-    </div>`;
-    const cv = $("sc-cv");
-    const cx = cv.getContext("2d", { willReadFrequently: true });
-    const base2 = () => circle ?? { cx: work2.width / 2, cy: work2.height / 2, r: Math.min(work2.width, work2.height) * 0.38 };
-    const redraw2 = () => {
-      cv.width = work2.width;
-      cv.height = work2.height;
-      cx.drawImage(work2, 0, 0);
-      const c = base2();
-      cx.strokeStyle = "#46e6ff";
-      cx.lineWidth = Math.max(2, work2.width / 250);
-      cx.setLineDash([10, 8]);
-      cx.beginPath();
-      cx.arc(c.cx, c.cy, Math.max(c.r, 4), 0, 7);
-      cx.stroke();
-      cx.setLineDash([]);
-    };
-    const show = (img, w, h) => {
-      const s = Math.min(1, 1200 / Math.max(w, h));
-      work2.width = Math.round(w * s);
-      work2.height = Math.round(h * s);
-      work2.getContext("2d").drawImage(img, 0, 0, work2.width, work2.height);
-      circle = null;
-      tap = 0;
-      $("sc-work").classList.remove("hide");
-      $("sc-out").innerHTML = "";
-      redraw2();
-    };
-    $("sc-close").onclick = () => (el.classList.remove("on"), el.innerHTML = "");
-    $("sc-file").onchange = (e) => {
-      const f2 = e.target.files?.[0];
-      if (!f2) return;
-      const img = new Image();
-      img.onload = () => (show(img, img.naturalWidth, img.naturalHeight), URL.revokeObjectURL(img.src));
-      img.src = URL.createObjectURL(f2);
-    };
-    $("sc-live")?.addEventListener("click", () => show(stream2, stream2.videoWidth, stream2.videoHeight));
-    cv.addEventListener("pointerdown", (e) => {
-      const r = cv.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width * cv.width;
-      const y = (e.clientY - r.top) / r.height * cv.height;
-      if (tap % 2 === 0) {
-        circle = { cx: x, cy: y, r: 0 };
-        $("sc-hint").textContent = "Now tap the edge of the ball.";
-      } else {
-        circle.r = Math.max(20, Math.hypot(x - circle.cx, y - circle.cy));
-        $("sc-hint").textContent = "Ball marked. Read the name, type it, or tap Identify.";
-      }
-      tap++;
-      redraw2();
-    });
-    const signature = () => {
-      const c = base2();
-      const k2 = 32;
-      const t = document.createElement("canvas");
-      t.width = t.height = k2;
-      const tc = t.getContext("2d", { willReadFrequently: true });
-      tc.drawImage(work2, c.cx - c.r * 0.8, c.cy - c.r * 0.8, c.r * 1.6, c.r * 1.6, 0, 0, k2, k2);
-      return normalize(signatureCounts(tc.getImageData(0, 0, k2, k2).data, k2));
-    };
-    $("sc-ocr").onclick = async () => {
-      const note = $("sc-ocr-note");
-      note.textContent = "Reading the name\u2026 (the first time this downloads a small text reader)";
-      try {
-        const text = await readText(work2, base2(), (d, n) => note.textContent = `Reading the name\u2026 (${d + 1}/${n})`);
-        $("sc-text").value = text;
-        note.textContent = text ? "Read these words. Correct them if they're wrong, then tap Identify." : "Couldn't read any text. Try a closer photo with the logo facing you, or type the name.";
-      } catch {
-        note.textContent = "The text reader needs an internet connection the first time. Type the name instead, or connect and try again.";
-      }
-    };
-    $("sc-go").onclick = () => {
-      sig = signature();
-      const text = $("sc-text").value.trim();
-      const out = $("sc-out");
-      const mine = identifyInArsenal(sig, S.arsenal);
-      const myBall = mine && mine.confidence >= 0.45 ? S.arsenal.find((b) => b.id === mine.ballId) : void 0;
-      const found = identifyFromCatalog({ text: text || void 0, sig, catalog: S.catalog }, 6);
-      out.innerHTML = `
-      ${myBall ? `<div class="card"><div class="k">Looks like a ball you already have</div><div class="lr-head">${esc2(myBall.name)}</div><div class="u">${Math.round(mine.confidence * 100)}% match to the looks you've taught it.</div></div>` : ""}
-      <div class="card"><div class="k">${text ? "Best matches in the catalog" : "Possible matches from colors alone"}</div>
-        ${found.length ? found.map((f2, i) => card2(f2, i)).join("") : `<div class="u">No confident match. Type the name printed on the ball and tap Identify again.</div>`}
-        ${text ? "" : `<div class="note">Colors alone are weak evidence. Add the name on the ball for a real answer.</div>`}</div>`;
-      out.querySelectorAll("[data-add]").forEach(
-        (b) => b.onclick = async () => {
-          const ball = found[Number(b.dataset.add)].ball;
-          const mineAlready = S.arsenal.find((x) => x.catalogKey === ball.key);
-          if (mineAlready) mineAlready.exemplars = [...mineAlready.exemplars, sig].slice(-12);
-          else {
-            const nb = { id: Math.random().toString(36).slice(2, 9), name: `${ball.manufacturer} ${ball.name}`, exemplars: [sig], catalogKey: ball.key };
-            S.arsenal.push(nb);
-          }
-          await saveArsenal();
-          onAdded();
-          $("sc-close").click();
-        }
-      );
-    };
-    function card2(f2, i) {
-      const b = f2.ball;
-      const inArsenal = S.arsenal.some((x) => x.catalogKey === b.key);
-      return `<div style="padding:10px 0;border-top:1px solid var(--line)"><div class="row"><b>${esc2(b.manufacturer)} ${esc2(b.name)}</b><span class="badge ${f2.confidence === "strong" ? "good" : f2.confidence === "likely" ? "moderate" : "tentative"}">${f2.confidence}</span></div>
-      <div class="u">${esc2(specLine(b))}</div><div class="note">${esc2(f2.evidence.join(" \xB7 "))}</div>
-      <div class="chips"><button class="chip" data-add="${i}">${inArsenal ? "Teach it this look" : "This is my ball: add it"}</button></div></div>`;
-    }
-  }
-  var tess, specLine;
-  var init_scanlab = __esm({
-    "camera/scanlab.ts"() {
-      init_ballid();
-      init_identify();
-      init_live();
-      init_state();
-      tess = null;
-      specLine = (b) => [b.rg && `RG ${b.rg.value}`, b.differential && `diff ${b.differential.value}`, b.coverstock?.value, b.core?.value, b.coreSymmetry?.value, b.colorway?.value].filter(Boolean).join(" \xB7 ");
-    }
-  });
-
-  // camera/patternsheet.ts
-  function close8() {
-    sheet9().classList.remove("on");
-    sheet9().innerHTML = "";
-    onDone?.();
-  }
-  function preview(canvas, p) {
-    drawTopDown(canvas.getContext("2d"), canvas.width, canvas.height, [], void 0, mapOf(p));
-  }
-  function openPatterns(done3) {
-    onDone = done3 ?? null;
-    const el = sheet9();
-    el.classList.add("on");
-    const list = S.myPatterns;
-    el.innerHTML = `<div class="row"><h2>My oil patterns</h2><button class="btn ghost" id="mp-close">Close</button></div>
-    <div class="note">Add the pattern your centre posts: the PDF of the sheet, a screenshot, or a photo of the printed one. It's read on your phone, you check the numbers, and nothing is uploaded. Sheets with a load table (most from Kegel lane machines) show exactly where the oil is; for the others the shape is estimated from the length and ratio, and says so.</div>
-    <div class="chips"><label class="btn" style="display:inline-block;cursor:pointer">Add from a sheet<input id="mp-file" type="file" accept="application/pdf,image/*" style="display:none"></label><button class="btn ghost" id="mp-type">Type it in</button></div>
-    <div class="note" id="mp-prog"></div>
-    ${list.length ? "" : `<div class="card"><div class="u">No patterns yet. Ask the front desk for tonight's pattern sheet, or look for it on the centre's website or the board by the lanes.</div></div>`}
-    ${list.map(
-      (p) => `<div class="card" data-p="${p.id}"><div style="display:flex;gap:12px"><canvas width="96" height="168" style="width:72px;height:126px;border-radius:8px;flex:none" data-prev="${p.id}"></canvas><div style="flex:1;min-width:0">
-          <div class="row"><b>${esc2(p.name)}</b>${S.where.patternId === p.id ? `<span class="badge good">tonight</span>` : ""}</div>
-          <div class="u">${esc2(describe(p))}</div>
-          <div class="note">${p.rows?.length ? `Oil map from the sheet's load table (${p.rows.length} rows)` : "Oil shape estimated from the length and ratio"} \xB7 rule of 31: board ${ruleOf31(p.lengthFt)} \xB7 ${p.from === "pdf" ? "from a PDF" : p.from === "photo" ? "from a photo" : "typed in"}</div>
-          <div class="chips">${S.where.patternId === p.id ? `<button class="chip" data-act="off">Not tonight</button>` : `<button class="chip sel" data-act="use">Use tonight</button>`}<button class="chip" data-act="edit">Edit</button><button class="chip danger" data-act="del">Delete</button></div></div></div></div>`
-    ).join("")}`;
-    $("mp-close").onclick = close8;
-    $("mp-type").onclick = () => openEditor2({ rows: [], tableOk: false, notes: [] }, "typed", "");
-    $("mp-file").onchange = async (e) => {
-      const f2 = e.target.files?.[0];
-      if (!f2) return;
-      const prog = $("mp-prog");
-      try {
-        const read2 = await readFile(f2, (m) => prog.textContent = m);
-        openEditor2(read2.sheet, read2.from, f2.name.replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ").trim());
-      } catch (err) {
-        prog.textContent = `Couldn't read that file: ${err instanceof Error ? err.message : String(err)}. You can type the numbers in instead.`;
-      }
-    };
-    el.querySelectorAll("canvas[data-prev]").forEach((c) => {
-      const p = S.myPatterns.find((x) => x.id === c.dataset.prev);
-      if (p) preview(c, p);
-    });
-    el.querySelectorAll("[data-p]").forEach((card2) => {
-      const p = S.myPatterns.find((x) => x.id === card2.dataset.p);
-      card2.querySelector("[data-act=use]")?.addEventListener("click", async () => {
-        S.where = { ...S.where, patternId: p.id };
-        await saveCoach();
-        openPatterns(done3);
-      });
-      card2.querySelector("[data-act=off]")?.addEventListener("click", async () => {
-        S.where = { ...S.where, patternId: "" };
-        await saveCoach();
-        openPatterns(done3);
-      });
-      card2.querySelector("[data-act=edit]")?.addEventListener("click", () => openEditor2({ rows: p.rows ?? [], tableOk: !!p.rows?.length, notes: [], lengthFt: p.lengthFt, volumeMl: p.volumeMl, ratio: p.ratio, forwardMl: p.forwardMl, reverseMl: p.reverseMl, brushDropFt: p.brushDropFt }, p.from, p.name, p));
-      card2.querySelector("[data-act=del]")?.addEventListener("click", async () => {
-        if (!confirm(`Delete ${p.name}?`)) return;
-        S.myPatterns = S.myPatterns.filter((x) => x.id !== p.id);
-        if (S.where.patternId === p.id) S.where = { ...S.where, patternId: "" };
-        await saveCoach();
-        openPatterns(done3);
-      });
-    });
-  }
-  async function readFile(f2, progress3) {
-    const isPdf = f2.type === "application/pdf" || /\.pdf$/i.test(f2.name);
-    if (isPdf) {
-      progress3("Reading the sheet\u2026");
-      const text2 = await pdfText(new Uint8Array(await f2.arrayBuffer()));
-      if (text2 === null) throw new Error("this PDF uses a protection the reader can't open");
-      return { sheet: readSheetText(tidy(text2)), from: "pdf" };
-    }
-    progress3("Loading the text reader (first time only)\u2026");
-    const T = await loadTesseract();
-    progress3("Reading the photo\u2026");
-    const img = await createImageBitmap(f2);
-    const scale2 = Math.min(1, 2200 / Math.max(img.width, img.height));
-    const c = document.createElement("canvas");
-    c.width = Math.round(img.width * scale2);
-    c.height = Math.round(img.height * scale2);
-    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-    const { data } = await T.recognize(c, "eng");
-    const text = data.text ?? data.words.map((w) => w.text).join(" ");
-    progress3("");
-    return { sheet: readSheetText(text), from: "photo" };
-  }
-  function openEditor2(r, from, name, existing) {
-    const el = sheet9();
-    el.classList.add("on");
-    const field = (id, label2, v, hint) => `<div class="field"><label>${label2}</label><input id="${id}" inputmode="decimal" value="${v ?? ""}" placeholder="${hint}"></div>`;
-    el.innerHTML = `<div class="row"><h2>${existing ? "Edit pattern" : "Check the pattern"}</h2><button class="btn ghost" id="pe-back">Back</button></div>
-    <div class="note">${from === "typed" ? "Type the numbers from the sheet." : `Read from your ${from === "pdf" ? "PDF" : "photo"}. Check each number against the sheet and fix any that are wrong.`}${r.notes.length ? " " + esc2(r.notes.join(" ")) : ""}</div>
-    ${r.tableOk ? `<div class="card" style="border-color:var(--mint)"><div class="u">Load table read: ${r.rows.length} rows, and they add up to the sheet's totals. The oil on your lane will be drawn from it, board by board.</div></div>` : ""}
-    <div class="card">
-      <div class="field"><label>Name</label><input id="pe-name" value="${esc2(name)}" placeholder="e.g. Main Street house shot"></div>
-      <div class="two">${field("pe-len", "Length (ft)", r.lengthFt, "e.g. 41")}${field("pe-vol", "Volume (mL)", r.volumeMl, "e.g. 24.5")}</div>
-      <div class="two">${field("pe-ratio", "Ratio (the N of N:1)", r.ratio, "e.g. 4")}${field("pe-drop", "Brush drop (ft)", r.brushDropFt, "optional")}</div>
-      <div class="two">${field("pe-fwd", "Forward oil (mL)", r.forwardMl, "optional")}${field("pe-rev", "Reverse oil (mL)", r.reverseMl, "optional")}</div>
-    </div>
-    <div class="card"><div class="k">The oil, from above</div><div style="display:flex;gap:12px;align-items:flex-start"><canvas id="pe-prev" width="180" height="315" style="width:120px;height:210px;border-radius:10px;flex:none"></canvas><div class="note" id="pe-desc"></div></div></div>
-    <div class="chips"><button class="btn" id="pe-save">${existing ? "Save" : "Save pattern"}</button></div><div class="note" id="pe-err"></div>`;
-    const num10 = (id) => {
-      const v = parseFloat($(id).value);
-      return Number.isFinite(v) ? v : void 0;
-    };
-    const build = () => {
-      const len = num10("pe-len");
-      if (len === void 0 || len < 20 || len > 55) return null;
-      const nm = $("pe-name").value.trim() || `${len} ft pattern`;
-      const ratio = num10("pe-ratio");
-      return {
-        id: existing?.id ?? newId(),
-        key: nm.toLowerCase(),
-        name: nm,
-        series: "mine",
-        lengthFt: Math.round(len),
-        volumeMl: num10("pe-vol"),
-        ratio: ratio !== void 0 && ratio >= 1 && ratio <= 15 ? ratio : void 0,
-        forwardMl: num10("pe-fwd"),
-        reverseMl: num10("pe-rev"),
-        brushDropFt: num10("pe-drop"),
-        // the load table is only kept while the length still matches the sheet it came from
-        rows: r.tableOk && Math.round(len) === r.lengthFt ? r.rows : existing?.rows && Math.round(len) === existing.lengthFt ? existing.rows : void 0,
-        from,
-        addedAt: existing?.addedAt ?? (/* @__PURE__ */ new Date()).toISOString(),
-        source: { kind: "user", url: "the bowler's own pattern sheet", retrievedOn: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10) }
-      };
-    };
-    const repaint = () => {
-      const p = build();
-      const c = $("pe-prev");
-      const desc = $("pe-desc");
-      if (!p) {
-        c.getContext("2d").clearRect(0, 0, c.width, c.height);
-        desc.textContent = "Enter the length (20 to 55 ft) to see the oil.";
-        return;
-      }
-      preview(c, p);
-      desc.textContent = `${p.rows?.length ? "Drawn from the sheet's load table: each board's oil, foot by foot." : `Estimated shape: full oil across the middle, the outside boards at 1/${p.ratio ?? 3} of it${p.ratio === void 0 ? " (no ratio given, so 3:1 is assumed)" : ""}, tapering off over the last part.`} The gold line is where the oil ends. Kegel's rule of 31 puts a starting breakpoint near board ${ruleOf31(p.lengthFt)} (${p.lengthFt} \u2212 31).`;
-    };
-    el.querySelectorAll("input").forEach((i) => i.addEventListener("input", repaint));
-    repaint();
-    $("pe-back").onclick = () => openPatterns(onDone ?? void 0);
-    $("pe-save").onclick = async () => {
-      const p = build();
-      if (!p) return void ($("pe-err").textContent = "The length must be between 20 and 55 feet.");
-      S.myPatterns = existing ? S.myPatterns.map((x) => x.id === p.id ? p : x) : [...S.myPatterns, p];
-      if (!existing && !S.where.patternId) S.where = { ...S.where, patternId: p.id };
-      await saveCoach();
-      openPatterns(onDone ?? void 0);
-    };
-  }
-  var sheet9, onDone, describe;
-  var init_patternsheet = __esm({
-    "camera/patternsheet.ts"() {
-      init_pdftext();
-      init_oilsheet();
-      init_patterns();
-      init_live();
-      init_state();
-      init_render();
-      init_oilview();
-      init_scanlab();
-      init_db();
-      sheet9 = () => $("coachsheet");
-      onDone = null;
-      describe = (p) => [`${p.lengthFt} ft (${lengthClass(p.lengthFt)})`, p.volumeMl !== void 0 ? `${p.volumeMl} mL` : "", p.ratio !== void 0 ? `${p.ratio}:1` : ""].filter(Boolean).join(" \xB7 ");
-    }
-  });
-
-  // camera/trainingui.ts
-  var trainingui_exports = {};
-  __export(trainingui_exports, {
-    openTraining: () => openTraining,
-    trainingTileHtml: () => trainingTileHtml,
-    wireTrainingTile: () => wireTrainingTile
-  });
-  function trainingTileHtml() {
-    if (!S.profile) return "";
-    const st2 = trainStats(S.training, dayKey(/* @__PURE__ */ new Date()));
-    const line2 = st2.streak ? `${st2.streak} day${st2.streak === 1 ? "" : "s"} in a row${st2.trainedToday ? "" : ", keep it going today"}` : "A short routine for today, at home or at the lane";
-    return `<button class="card" data-training="1" style="text-align:left;cursor:pointer;color:inherit;font:inherit;width:100%;grid-column:1/-1"><div class="note">Today's training</div><div class="lr-head" style="font-size:17px">${esc2(line2)}</div></button>`;
-  }
-  function wireTrainingTile(root) {
-    root.querySelectorAll("[data-training]").forEach((b) => b.onclick = () => void openTraining());
-  }
-  async function openTraining() {
-    bump("training");
-    const el = $("review");
-    const keep = el.classList.contains("on") ? el.scrollTop : 0;
-    el.classList.add("on");
-    const games2 = await loadGames();
-    const focus = focusList(skillsProfile(games2, S.shots)).slice(0, 2).map((f2) => f2.axis.id);
-    const today3 = dayKey(/* @__PURE__ */ new Date());
-    const where = getWhere();
-    const cp = S.coachPlan;
-    const over = {};
-    const plan = cp ? (() => {
-      const steps = cp.steps.map((s, i) => {
-        over[`c${i}`] = { board: s.board, mph: s.mph };
-        return { id: `c${i}`, title: s.title, detail: s.detail, minutes: s.minutes, drill: s.drill };
-      });
-      return { day: today3, where, steps, minutes: steps.reduce((a, s) => a + s.minutes, 0), focus: [] };
-    })() : dailyPlan(today3, where, focus);
-    const done3 = new Set(S.training.find((d) => d.day === today3)?.done ?? []);
-    for (const s of plan.steps) if (s.drill && drillDone(s.drill, today3)) done3.add(s.id);
-    const st2 = trainStats(S.training, today3);
-    const stepHtml = (s) => {
-      const d = s.drill ? DRILLS2.find((x) => x.id === s.drill) : null;
-      const title = cp ? s.title : d ? d.name : s.title;
-      const detail2 = cp ? s.detail : d ? d.blurb : s.detail;
-      const on3 = done3.has(s.id);
-      return `<div class="drow"><div><b>${esc2(title)}</b> <small>${s.minutes} min</small></div><div class="dval"><button class="chip" data-step="${esc2(s.id)}" aria-pressed="${on3}" style="${on3 ? "background:#5affb0;color:#06101c" : ""}">${on3 ? "Done \u2713" : "Mark done"}</button></div><div class="note dnote">${esc2(detail2)}${d ? ` Scored by the camera.` : ""}${s.link === "patterns" ? ` <button class="chip" data-pat="1">Open Patterns</button>` : ""}${d ? ` <button class="chip" data-start="${d.id}" data-stepid="${esc2(s.id)}" ${S.drill ? "disabled" : ""}>Start drill</button>` : ""}</div></div>`;
-    };
-    const days = [...Array(14)].map((_, i) => addDays(today3, i - 13));
-    const trainedDays = new Set(S.training.filter((d) => d.done.length >= 2).map((d) => d.day));
-    const strip = days.map((d) => `<div title="${esc2(d)}" style="flex:1;height:22px;border-radius:4px;background:${trainedDays.has(d) ? "#5affb0" : "rgba(255,255,255,.1)"}"></div>`).join("");
-    el.innerHTML = `
-    <div class="row"><h2>Today's training</h2><button class="btn ghost" id="tr-close">Close</button></div>
-    <div class="deb-hero"><div class="deb-big">${st2.streak}</div><div class="deb-unit">day${st2.streak === 1 ? "" : "s"} in a row</div><div class="deb-sub">best ${st2.best} \xB7 ${st2.last7} of the last 7 days \xB7 ${st2.days} day${st2.days === 1 ? "" : "s"} trained</div></div>
-    ${cp ? `<div class="card"><div class="k">Plan from ${esc2(cp.from)}</div><div class="lr-head" style="font-size:17px">${esc2(cp.title)}</div>${cp.note ? `<div class="u">${esc2(cp.note)}</div>` : ""}<div class="chips"><button class="chip" id="tr-mine">Use my own routine instead</button></div></div>` : ""}
-    <div class="chips" role="group" aria-label="Where are you training today" style="${cp ? "display:none" : ""}"><button class="chip" data-where="home" aria-pressed="${where === "home"}" style="${where === "home" ? "background:#46e6ff;color:#06101c" : ""}">At home</button><button class="chip" data-where="lane" aria-pressed="${where === "lane"}" style="${where === "lane" ? "background:#46e6ff;color:#06101c" : ""}">At a lane</button></div>
-    <div class="card">
-      <div class="note">${plan.minutes} minutes \xB7 ${cp ? `your coach's plan` : `built around ${focus.length ? esc2(focusNames(focus)) : "target control and the pocket (play some games and shots and it follows what you need)"}`}.</div>
-      ${plan.steps.map(stepHtml).join("")}
-      <div class="note" id="tr-msg">${done3.size >= 2 ? "Today counts. Nice." : "Finish any two steps and today counts toward your streak."}</div>
-    </div>
-    <h3>Last 14 days</h3>
-    <div class="card"><div role="img" aria-label="${trainedDays.size ? `Trained on ${days.filter((d) => trainedDays.has(d)).length} of the last 14 days` : "No training days yet"}" style="display:flex;gap:3px">${strip}</div><div class="note">A day counts when you finish two or more steps. Drills scored by the camera tick themselves off.</div></div>
-    ${can(S.profile?.role, "coachPlans") ? `<div class="chips"><button class="chip" id="tr-write">Write a plan for a bowler</button></div>` : `<div class="note">A coach's plan arrives as a link. Coaches and pro shops can write plans: switch your account type under Me.</div>`}
-    <div class="note">Training is practice, not medical advice. Warm up gently and stop if anything hurts. Your coach has the final say on what to work on.</div>`;
-    el.scrollTop = keep;
-    $("tr-close").onclick = () => {
-      el.classList.remove("on");
-      el.innerHTML = "";
-    };
-    el.querySelectorAll("[data-where]").forEach(
-      (b) => b.onclick = () => {
-        try {
-          localStorage.setItem(WHERE_KEY, b.dataset.where);
-        } catch {
-        }
-        void openTraining();
-      }
-    );
-    el.querySelectorAll("[data-step]").forEach(
-      (b) => b.onclick = async () => {
-        S.training = markStep(S.training, today3, b.dataset.step, b.getAttribute("aria-pressed") !== "true");
-        await saveCoach();
-        void openTraining();
-      }
-    );
-    $("tr-mine")?.addEventListener("click", async () => {
-      S.coachPlan = null;
-      await saveCoach();
-      void openTraining();
-    });
-    $("tr-write")?.addEventListener("click", async () => (await Promise.resolve().then(() => (init_coachplanui(), coachplanui_exports))).openPlanWriter());
-    el.querySelector("[data-pat]")?.addEventListener("click", () => openPatterns());
-    el.querySelectorAll("[data-start]").forEach(
-      (b) => b.onclick = async () => {
-        const id = b.dataset.start;
-        const sp = S.shots.filter((s) => typeof s.m.arrowsBoard === "number").map((s) => s.m.arrowsBoard).sort((a, c) => a - c);
-        const sm = S.shots.map((s) => s.m.launchSpeed).filter((v) => typeof v === "number").sort((a, c) => a - c);
-        const ov = over[b.dataset.stepid ?? ""] ?? {};
-        const board = ov.board ?? (sp.length ? Math.round(sp[sp.length >> 1]) : void 0), mph = ov.mph ?? (sm.length ? Math.round(sm[sm.length >> 1] * 10) / 10 : void 0);
-        const def = DRILLS2.find((x) => x.id === id);
-        if (def.needs.includes("board") && board === void 0 || def.needs.includes("mph") && mph === void 0) return void ($("tr-msg").textContent = "Bowl a few tracked shots first so the drill knows your usual board and speed.");
-        S.drill = { id, startedAt: (/* @__PURE__ */ new Date()).toISOString(), hand: S.profile?.hand ?? "R", board: def.needs.includes("board") ? board : void 0, mph: def.needs.includes("mph") ? mph : void 0, results: [] };
-        await saveCoach();
-        el.querySelectorAll("[data-start]").forEach((x) => x.disabled = true);
-        $("tr-msg").textContent = "Started. Open the camera and bowl: every shot is scored by itself.";
-      }
-    );
-  }
-  var WHERE_KEY, getWhere, drillDone, AXIS_NAME, focusNames;
-  var init_trainingui = __esm({
-    "camera/trainingui.ts"() {
-      init_health();
-      init_drills();
-      init_editions();
-      init_skills();
-      init_training();
-      init_live();
-      init_scorecard();
-      init_state();
-      init_patternsheet();
-      WHERE_KEY = "laneiq.trainWhere";
-      getWhere = () => {
-        try {
-          return localStorage.getItem(WHERE_KEY) === "lane" ? "lane" : "home";
-        } catch {
-          return "home";
-        }
-      };
-      drillDone = (id, day6) => S.drills.some((r) => r.id === id && r.finishedAt && dayKey(new Date(r.finishedAt)) === day6);
-      AXIS_NAME = { strikes: "strikes", singles: "single-pin spares", closed: "closed frames", firstBall: "first-ball pins", pocket: "pocket hits", entry: "entry angle", arrows: "target control", start: "start position", speed: "speed control" };
-      focusNames = (f2) => f2.map((x) => AXIS_NAME[x] ?? x).join(" and ");
-    }
-  });
-
-  // camera/coachplanui.ts
-  var coachplanui_exports = {};
-  __export(coachplanui_exports, {
-    handlePlanLink: () => handlePlanLink,
-    openPlanWriter: () => openPlanWriter
-  });
-  async function handlePlanLink(value) {
-    const json = await unpackText(value);
-    const p = json ? parsePlan(json) : null;
-    if (!p) return void notify("That plan link is damaged or isn't from LaneIQ.");
-    const el = sheet10();
-    el.classList.add("on");
-    el.innerHTML = `<div class="row"><h2>A plan from ${esc2(p.from)}</h2><button class="btn ghost" id="cp-no">Not now</button></div>
-    <div class="card"><div class="lr-head">${esc2(p.title)}</div>${p.note ? `<div class="u">${esc2(p.note)}</div>` : ""}<div class="note">${p.steps.length} step${p.steps.length === 1 ? "" : "s"} \xB7 about ${planMinutes(p)} minutes</div>
-    ${p.steps.map((s) => `<div class="drow"><div><b>${esc2(s.title)}</b> <small>${s.minutes} min</small></div><div class="note dnote">${esc2(s.detail)}${s.drill ? ` Scored by the camera${s.board !== void 0 ? `, board ${s.board}` : ""}${s.mph !== void 0 ? `, ${s.mph} mph` : ""}.` : ""}</div></div>`).join("")}</div>
-    <div class="note">${S.coachPlan ? `This replaces the plan you have now (${esc2(S.coachPlan.title)} from ${esc2(S.coachPlan.from)}). ` : ""}It becomes your Today's training; you can go back to your own routine any time. Nothing about you is sent back to ${esc2(p.from)}.</div>
-    <div class="chips"><button class="btn" id="cp-yes">Use this plan</button></div>`;
-    const close15 = () => (el.classList.remove("on"), el.innerHTML = "");
-    $("cp-no").onclick = close15;
-    $("cp-yes").onclick = async () => {
-      S.coachPlan = p;
-      await saveCoach();
-      close15();
-      notify(`Plan from ${p.from} is now your Today's training.`);
-      const { openTraining: openTraining2 } = await Promise.resolve().then(() => (init_trainingui(), trainingui_exports));
-      void openTraining2();
-    };
-  }
-  function openPlanWriter() {
-    bump("plan-writer");
-    const el = sheet10();
-    el.classList.add("on");
-    const row4 = (i) => `<div class="card" data-row="${i}"><div class="k">Step ${i + 1}</div>
-    <div class="field"><label for="pw-d${i}">What</label><select id="pw-d${i}">${DRILL_OPTS}</select></div>
-    <div class="field"><label for="pw-t${i}">Title</label><input id="pw-t${i}" maxlength="${PLAN_LIMITS.title}" placeholder="e.g. Same feet, same target" autocomplete="off"></div>
-    <div class="field"><label for="pw-x${i}">Instruction for the bowler</label><input id="pw-x${i}" maxlength="${PLAN_LIMITS.detail}" autocomplete="off"></div>
-    <div class="two"><div class="field"><label for="pw-m${i}">Minutes</label><input id="pw-m${i}" inputmode="numeric" value="8"></div><div class="field"><label for="pw-v${i}">Board or mph (for drills that use one)</label><input id="pw-v${i}" inputmode="decimal" placeholder="optional"></div></div></div>`;
-    el.innerHTML = `<div class="row"><h2>Write a plan</h2><button class="btn ghost" id="pw-close">Close</button></div>
-    <div class="note">For a coach or a pro shop to send a bowler. The bowler gets it as their Today's training. Camera-scored drills use the board or speed you set, or the bowler's own usual one if you leave it blank. You have the final say on what they work on.</div>
-    <div class="card"><div class="field"><label for="pw-from">Your name</label><input id="pw-from" maxlength="${PLAN_LIMITS.name}" value="${esc2(S.profile?.name ?? "")}" autocomplete="off"></div>
-    <div class="field"><label for="pw-title">Plan title</label><input id="pw-title" maxlength="${PLAN_LIMITS.title}" placeholder="e.g. Week 1: repeat your line" autocomplete="off"></div>
-    <div class="field"><label for="pw-note">A note for the bowler (optional)</label><input id="pw-note" maxlength="${PLAN_LIMITS.note}" autocomplete="off"></div></div>
-    ${[0, 1, 2, 3].map(row4).join("")}
-    <div class="note">Leave a step's title and instruction blank to skip it. Up to ${PLAN_LIMITS.steps} steps; four rows are shown.</div>
-    <div class="chips"><button class="btn" id="pw-send">Make the link</button></div><div class="note" id="pw-msg" aria-live="polite"></div>`;
-    $("pw-close").onclick = () => (el.classList.remove("on"), el.innerHTML = "");
-    $("pw-send").onclick = async () => {
-      const val2 = (id) => $(id).value;
-      const steps = [];
-      for (let i = 0; i < 4; i++) {
-        const drill = val2(`pw-d${i}`);
-        const title = val2(`pw-t${i}`), detail2 = val2(`pw-x${i}`);
-        if (!drill && !title.trim() && !detail2.trim()) continue;
-        const v = Number(val2(`pw-v${i}`));
-        const def = drill ? DRILLS2.find((d) => d.id === drill) : null;
-        steps.push({ drill: drill || void 0, title, detail: detail2, minutes: Number(val2(`pw-m${i}`)) || 5, board: def?.needs.includes("board") && v ? v : void 0, mph: def?.needs.includes("mph") && v ? v : void 0 });
-      }
-      const plan = newPlan(val2("pw-from"), val2("pw-title"), val2("pw-note"), steps);
-      if (!plan) return void ($("pw-msg").textContent = "Add your name, a title and at least one step.");
-      const url = `${appLink()}/#plan=${await packText(JSON.stringify(plan))}`;
-      $("pw-msg").textContent = await shareLink(plan.title, `${plan.from} sent you a practice plan: ${plan.title}. Open it in LaneIQ.`, url);
-    };
-  }
-  var sheet10, DRILL_OPTS;
-  var init_coachplanui = __esm({
-    "camera/coachplanui.ts"() {
-      init_health();
-      init_drills();
-      init_coachplan();
-      init_toast();
-      init_live();
-      init_state();
-      init_friends();
-      sheet10 = () => $("review");
-      DRILL_OPTS = `<option value="">My own instruction</option>${DRILLS2.map((d) => `<option value="${d.id}">${esc2(d.name)} (camera-scored)</option>`).join("")}`;
-    }
-  });
-
-  // camera/friends.ts
-  var friends_exports = {};
-  __export(friends_exports, {
-    PUBLIC_APP: () => PUBLIC_APP,
-    appLink: () => appLink,
-    askForUsername: () => askForUsername,
-    captureIncomingHash: () => captureIncomingHash,
-    deferred: () => deferred,
-    dropDeferred: () => dropDeferred,
-    friendsCardHtml: () => friendsCardHtml,
-    handleIncoming: () => handleIncoming,
-    isPrivateHost: () => isPrivateHost,
-    openCompare: () => openCompare,
-    openInvite: () => openInvite,
-    openShareSession: () => openShareSession,
-    packSession: () => packSession,
-    packText: () => packText,
-    setAppLink: () => setAppLink,
-    shareLink: () => shareLink,
-    sharedShotOf: () => sharedShotOf,
-    unpackText: () => unpackText,
-    wireFriendsCard: () => wireFriendsCard
-  });
-  function appLink() {
-    try {
-      const stored = localStorage.getItem(LINK_KEY);
-      if (stored) return stored.replace(/\/+$/, "");
-    } catch {
-    }
-    return isPrivateHost(baseUrl()) ? PUBLIC_APP : baseUrl();
-  }
-  function setAppLink(v) {
-    try {
-      const t = v.trim();
-      if (t) localStorage.setItem(LINK_KEY, t);
-      else localStorage.removeItem(LINK_KEY);
-    } catch {
-    }
-  }
-  function isPrivateHost(link) {
-    return /tailscale|\.ts\.net|localhost|127\.0\.0\.1|^https?:\/\/(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(link);
-  }
-  async function shareLink(title, text, url) {
-    const nav = navigator;
-    try {
-      if (nav.share) {
-        await nav.share({ title, text, url });
-        return "Opened the share sheet.";
-      }
-    } catch (e) {
-      if (e.name === "AbortError") return "Cancelled.";
-    }
-    try {
-      await navigator.clipboard.writeText(`${text}
-${url}`);
-      return "Link copied. Paste it into a message.";
-    } catch {
-      return "Couldn't copy automatically. Select and copy the link below.";
-    }
-  }
-  async function packText(json) {
-    try {
-      if ("CompressionStream" in window) {
-        const cs = new CompressionStream("gzip");
-        const w = cs.writable.getWriter();
-        void w.write(new TextEncoder().encode(json));
-        void w.close();
-        return "z." + bytesToB64(new Uint8Array(await new Response(cs.readable).arrayBuffer()));
-      }
-    } catch {
-    }
-    return b64urlEncode(json);
-  }
-  async function unpackText(payload) {
-    try {
-      if (payload.startsWith("z.")) {
-        const ds = new DecompressionStream("gzip");
-        const w = ds.writable.getWriter();
-        void w.write(b64ToBytes(payload.slice(2)));
-        void w.close();
-        const json = await new Response(ds.readable).text();
-        return json.length > 4e5 ? null : json;
-      }
-      return b64urlDecode(payload);
-    } catch {
-      return null;
-    }
-  }
-  async function unpackSession(payload) {
-    const json = await unpackText(payload);
-    return json === null ? null : decodeSession(b64urlEncode(json));
-  }
-  function askForUsername(then) {
-    const el = sheet11();
-    el.classList.add("on");
-    el.innerHTML = `<div class="row"><h2>Choose an account name</h2><button class="btn ghost" id="fr-close">Close</button></div>
-    <div class="note">Friends add you by account name plus your friend code. Pick one (3 to 20 letters, numbers or underscores).</div>
-    <div class="card"><div class="field"><label>Account name</label><input id="fr-user" placeholder="e.g. strikeking22" autocomplete="off" autocapitalize="none" spellcheck="false"></div><div class="chips"><button class="btn" id="fr-usersave">Save</button></div><div class="note" id="fr-usermsg"></div></div>`;
-    $("fr-close").onclick = close9;
-    $("fr-usersave").onclick = () => {
-      const u = cleanUsername($("fr-user").value);
-      if (!isUsername(u)) return void ($("fr-usermsg").textContent = "Use 3 to 20 letters, numbers or underscores, no spaces.");
-      updateProfile({ username: u });
-      then();
-    };
-  }
-  function openInvite() {
-    if (!myUser2()) return askForUsername(openInvite);
-    const link = `${appLink()}/#invite=${encodeInvite(myName3(), myCode2(), myUser2())}`;
-    const warn = isPrivateHost(appLink());
-    const el = sheet11();
-    el.classList.add("on");
-    el.innerHTML = `
-    <div class="row"><h2>Invite a player</h2><button class="btn ghost" id="fr-close">Close</button></div>
-    <div class="note">This link brings someone to the app and sends them a friend request from you. When they accept, they can send theirs back so you're both friends. Nothing is uploaded: the link itself carries your name and friend code.</div>
-    ${warn ? `<div class="card"><div class="lr-head" style="font-size:16px">This address only works on your own network</div><div class="u">The link points at ${esc2(appLink())}, which friends can't open. Set the public address of the app in <b>Community \u2192 Friends</b> before inviting people.</div></div>` : ""}
-    <div class="card"><div class="k">Your friend tag</div><div class="u" style="font-size:18px;font-weight:700;word-break:break-all;user-select:all">${esc2(friendTag(myUser2(), myCode2()))}</div>
-      <div class="note">If the link doesn't add you, your friend can type this tag in <b>Community \u2192 Friends \u2192 Add a friend</b>, or in the "Invited by a friend?" box when they first set up.</div>
-      <div class="chips"><button class="chip" id="fr-copytag2">Copy tag</button><button class="chip" id="fr-copylink">Copy link</button></div></div>
-    <div class="card"><div class="k">Your invite link</div><div class="u" style="word-break:break-all;user-select:all">${esc2(link)}</div>
-      <div class="chips"><button class="btn" id="fr-send">Send invite / friend request</button></div><div class="note" id="fr-msg"></div></div>`;
-    $("fr-close").onclick = close9;
-    const tag = friendTag(myUser2(), myCode2());
-    $("fr-send").onclick = async () => ($("fr-msg").textContent = await shareLink("Join me on LaneIQ", `${myName3()} invited you to LaneIQ, a free bowling coach that uses your phone's camera, and wants to be friends. Open the link, then add it to your Home Screen. If I don't show up as a friend, add me with my tag: ${tag}`, link), void 0);
-    const copy = (id, text, label2) => $(id).onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(text);
-        $(id).textContent = "Copied";
-      } catch {
-        prompt(label2, text);
-      }
-    };
-    copy("fr-copytag2", tag, "Your friend tag:");
-    copy("fr-copylink", link, "Your invite link:");
-  }
-  function openFriendRequest(from, kind2) {
-    const el = sheet11();
-    el.classList.add("on");
-    const already = S.friends.some((f2) => f2.code === from.code);
-    const self2 = from.code === myCode2();
-    el.innerHTML = `
-    <div class="row"><h2>${kind2 === "invite" ? "Friend request" : "Friend request accepted"}</h2><button class="btn ghost" id="fr-close">Close</button></div>
-    ${self2 ? `<div class="card"><div class="u">That's your own link.</div></div>` : `<div class="card"><div class="lr-head">${esc2(from.name)}${from.username ? ` <span class="note">@${esc2(from.username)}</span>` : ""}</div><div class="u">${kind2 === "invite" ? "wants to be friends so you can compare shots on the same lane." : "added you. Add them back to finish connecting."}</div><div class="u">Friend code ${esc2(from.code)}</div>
-    <div class="chips">${already ? `<span class="tag">Already friends</span>` : `<button class="btn" id="fr-accept">${kind2 === "invite" ? `Add ${esc2(from.name)} and let them know` : `Add ${esc2(from.name)} as a friend`}</button>`}<button class="chip" id="fr-no">Not now</button></div><div class="note" id="fr-msg"></div></div>`}`;
-    $("fr-close").onclick = close9;
-    $("fr-no")?.addEventListener("click", () => {
-      if (!self2 && !already) deferInvite(from);
-      close9();
-    });
-    $("fr-accept")?.addEventListener("click", async () => {
-      S.friends.push({ code: from.code, name: from.name, username: from.username, addedAt: (/* @__PURE__ */ new Date()).toISOString() });
-      dropDeferred(from.code);
-      await saveSocial();
-      if (kind2 === "reply") return close9();
-      $("fr-msg").innerHTML = `Added ${esc2(from.name)}. Send the confirmation so they can add you back.`;
-      const send3 = async () => $("fr-msg").textContent = await shareLink("Friend request accepted", `${myName3()} accepted your friend request on LaneIQ. Tap to add them back.`, `${appLink()}/#reply=${encodeInvite(myName3(), myCode2(), myUser2())}`);
-      void send3();
-      const btn = document.createElement("button");
-      btn.className = "btn";
-      btn.textContent = "Send confirmation again";
-      btn.onclick = () => void send3();
-      $("fr-msg").append(document.createElement("br"), btn);
-    });
-  }
-  function buildSession(sessionId, lane2) {
-    const shots = S.shots.filter((s) => s.sessionId === sessionId).slice(-40);
-    if (!shots.length) return null;
+    const tail = (f2) => shots.slice(-20).map(f2).filter((v) => v !== null).map(r12);
     return {
       v: 1,
-      from: { name: myName3(), code: myCode2() },
-      lane: lane2,
-      date: new Date(shots[0].at).toISOString().slice(0, 10),
-      hand: S.profile?.hand ?? "R",
-      shots: shots.map(sharedShotOf)
+      seq: i.seq,
+      at: i.now,
+      lane: i.lane.slice(0, 40),
+      bowler: i.bowler.slice(0, 40),
+      ball: i.ball.slice(0, 50),
+      pattern: i.pattern.slice(0, 50),
+      hand: i.hand,
+      last: sums[sums.length - 1] ?? null,
+      recent: sums.slice(-12, -1),
+      session: {
+        shots: total2,
+        pocketPct: withZone.length ? Math.round(withZone.filter((s) => s.m.zone === "pocket").length / withZone.length * 100) : null,
+        avgSpeed: speeds2.length ? r12(speeds2.reduce((a, b) => a + b, 0) / speeds2.length) : null,
+        strikePct: done3.length ? Math.round(done3.filter((s) => s.result.pinsDown === 10).length / done3.length * 100) : null
+      },
+      card: card2,
+      advice: i.advice ? i.advice.slice(0, 240) : null,
+      trends: { speed: tail((s) => num6(s.m.launchSpeed)), breakpoint: tail((s) => num6(s.m.breakpointBoard)), entry: tail((s) => num6(s.m.entryBoard)), miss: tail((s) => num6(s.m.pocketMiss)) },
+      brand: cleanBrand(i.brand),
+      layout: i.layout
     };
   }
-  function openShareSession() {
-    const el = sheet11();
-    el.classList.add("on");
-    const list = sessionsOf().reverse();
-    const warn = isPrivateHost(appLink());
-    el.innerHTML = `
-    <div class="row"><h2>Share a session</h2><button class="btn ghost" id="fr-close">Close</button></div>
-    <div class="note">Sends a compact copy of your shots from one session (paths, speed, boards, ball and pin counts, no video) so a friend can compare them with theirs on the same lane.</div>
-    ${warn ? `<div class="card"><div class="u">The app address ${esc2(appLink())} only works on your own network, so friends won't be able to open this link. Set the public address under Me \u2192 Friends first.</div></div>` : ""}
-    ${list.length ? "" : `<div class="card"><div class="u">No sessions yet. Bowl some shots first.</div></div>`}
-    <div class="field"><label>Where was it? (center and lane, e.g. AMF 14)</label><input id="fr-lane" placeholder="Center and lane"></div>
-    ${list.map((s) => `<div class="card"><div class="row"><div><b>${esc2(s.date)}</b> <span class="note">${s.n} shots</span></div><button class="chip" data-id="${s.id}">Share</button></div></div>`).join("")}
-    <div class="note" id="fr-msg"></div>`;
-    $("fr-close").onclick = close9;
-    el.querySelectorAll("[data-id]").forEach(
-      (b) => b.onclick = async () => {
-        const lane2 = $("fr-lane").value.trim();
-        if (!lane2) return $("fr-msg").textContent = "Add where it was bowled first, so your friend can tell if it's the same lane.";
-        S.laneLabels[b.dataset.id] = lane2;
-        await saveSocial();
-        const sess = buildSession(b.dataset.id, lane2);
-        if (!sess) return;
-        $("fr-msg").textContent = await shareLink("My shots on LaneIQ", `${myName3()} shared a session from ${lane2}. Open it in LaneIQ to compare with yours.`, `${appLink()}/#session=${await packSession(sess)}`);
-      }
-    );
+  function cleanBrand(b) {
+    const o = b && typeof b === "object" ? b : {};
+    const accent = typeof o.accent === "string" && /^[0-9a-fA-F]{6}$/.test(o.accent) ? o.accent.toLowerCase() : DEFAULT_BRAND.accent;
+    return { name: txt2(o.name, 40) || DEFAULT_BRAND.name, accent, tagline: txt2(o.tagline, 80) };
   }
-  function openReceivedSession(sess) {
-    const el = sheet11();
-    el.classList.add("on");
-    const known = S.friends.some((f2) => f2.code === sess.from.code);
-    el.innerHTML = `
-    <div class="row"><h2>Shared session</h2><button class="btn ghost" id="fr-close">Close</button></div>
-    <div class="card"><div class="lr-head">${esc2(sess.from.name)}</div><div class="u">${esc2(sess.lane)} \xB7 ${esc2(sess.date)} \xB7 ${sess.shots.length} shots${sess.pattern ? ` \xB7 ${esc2(sess.pattern)}` : ""}</div>
-      <div class="note">${known ? "A friend of yours." : "Not in your friends yet. Saving this does not add them."}</div>
-      <div class="chips"><button class="btn" id="fr-save">Save to compare</button><button class="chip" id="fr-no">Not now</button></div></div>`;
-    $("fr-close").onclick = close9;
-    $("fr-no").onclick = close9;
-    $("fr-save").onclick = async () => {
-      S.shared = [...S.shared.filter((x) => !(x.from.code === sess.from.code && x.date === sess.date && x.lane === sess.lane)), sess];
-      await saveSocial();
-      close9();
-      openCompare(sess);
+  function cleanMeasure(m) {
+    if (!m || typeof m !== "object") return null;
+    const o = m;
+    const v = rng2(o.v, -1e3, 5e3);
+    if (v === null || !["measured", "inferred", "entered"].includes(o.src)) return null;
+    return { v, pm: txt2(o.pm, 20), src: o.src };
+  }
+  function cleanShot(s) {
+    if (!s || typeof s !== "object") return null;
+    const o = s;
+    const path2 = Array.isArray(o.path) ? o.path.slice(0, 96).map((x) => typeof x === "number" && Number.isFinite(x) ? Math.max(-5, Math.min(100, x)) : 0) : [];
+    return {
+      n: rng2(o.n, 0, 1e5) ?? 0,
+      at: txt2(o.at, 40),
+      speed: rng2(o.speed, 0, 40),
+      arrows: rng2(o.arrows, -5, 45),
+      breakpointBoard: rng2(o.breakpointBoard, -5, 45),
+      breakpointFt: rng2(o.breakpointFt, 0, 70),
+      entryBoard: rng2(o.entryBoard, -5, 45),
+      entryAngle: rng2(o.entryAngle, 0, 30),
+      pocketMiss: rng2(o.pocketMiss, -40, 40),
+      zone: txt2(o.zone, 12) || null,
+      pinsDown: rng2(o.pinsDown, 0, 10),
+      leave: Array.isArray(o.leave) ? o.leave.filter((p) => typeof p === "number" && p >= 1 && p <= 10).slice(0, 10) : [],
+      rev: cleanMeasure(o.rev),
+      rotation: cleanMeasure(o.rotation),
+      tilt: cleanMeasure(o.tilt),
+      path: path2.length % 2 ? path2.slice(0, -1) : path2
     };
   }
-  function openCompare(theirs) {
-    const el = sheet11();
-    el.classList.add("on");
-    const mine = sessionsOf().reverse();
-    if (!S.shared.length || !mine.length) {
-      el.innerHTML = `<div class="row"><h2>Compare</h2><button class="btn ghost" id="fr-close">Close</button></div><div class="card"><div class="u">${!S.shared.length ? "No friend sessions yet. When a friend shares a session with you and you save it, it shows up here." : "Bowl some shots first so there is something to compare."}</div></div>`;
-      $("fr-close").onclick = close9;
-      return;
-    }
-    let pickTheirs = theirs ?? S.shared[S.shared.length - 1];
-    let pickMine = mine.find((m) => S.laneLabels[m.id] && pickTheirs.lane && S.laneLabels[m.id].toLowerCase() === pickTheirs.lane.toLowerCase())?.id ?? mine[0].id;
-    const draw3 = () => {
-      const mySess = buildSession(pickMine, S.laneLabels[pickMine] ?? "");
-      const cmp = compareSessions(mySess, pickTheirs);
-      const fmt4 = (v, u) => v === null ? "-" : `${v.toFixed(1)}${u === "\xB0" ? "\xB0" : u ? " " + u : ""}`;
-      el.innerHTML = `
-      <div class="row"><h2>Compare shots</h2><button class="btn ghost" id="fr-close">Close</button></div>
-      <div class="field"><label>Their session</label><select id="cp-theirs">${S.shared.map((x, i) => `<option value="${i}" ${x === pickTheirs ? "selected" : ""}>${esc2(x.from.name)} \xB7 ${esc2(x.lane)} \xB7 ${esc2(x.date)}</option>`).join("")}</select></div>
-      <div class="field"><label>Your session</label><select id="cp-mine">${mine.map((m) => `<option value="${m.id}" ${m.id === pickMine ? "selected" : ""}>${esc2(m.date)} \xB7 ${m.n} shots${S.laneLabels[m.id] ? " \xB7 " + esc2(S.laneLabels[m.id]) : ""}</option>`).join("")}</select></div>
-      <div class="field"><label>Where was your session? (so it can be matched to their lane)</label><input id="cp-lane" value="${esc2(S.laneLabels[pickMine] ?? "")}" placeholder="Center and lane"></div>
-      <div class="card"><span class="badge ${cmp.sameLane ? "good" : "tentative"}">${cmp.sameLane ? "same lane" : "different lanes"}</span><div class="stagebox" style="margin-top:10px"><canvas id="cp-map" width="360" height="600" style="width:100%;height:auto;aspect-ratio:360/600"></canvas></div>
-        <div class="note"><span style="color:#46e6ff">Cyan: you</span> \xB7 <span style="color:#ffd25a">Gold: ${esc2(pickTheirs.from.name)}</span></div></div>
-      <div class="card"><table><tr><th></th><th class="n">You</th><th class="n">${esc2(pickTheirs.from.name)}</th></tr>${cmp.rows.map((r) => `<tr><td>${esc2(r.label)}</td><td class="n">${fmt4(r.mine, r.unit)}</td><td class="n">${fmt4(r.theirs, r.unit)}</td></tr>`).join("")}</table></div>
-      <div class="card"><ul>${cmp.notes.map((n) => `<li>${esc2(n)}</li>`).join("")}</ul></div>`;
-      $("fr-close").onclick = close9;
-      $("cp-theirs").onchange = (e) => (pickTheirs = S.shared[Number(e.target.value)], draw3());
-      $("cp-mine").onchange = (e) => (pickMine = e.target.value, draw3());
-      $("cp-lane").onchange = async (e) => {
-        S.laneLabels[pickMine] = e.target.value.trim();
-        await saveSocial();
-        draw3();
-      };
-      const paths = [
-        ...pickTheirs.shots.map((s) => ({ path: pathFromShared(s.p), color: "rgba(255,210,90,.75)", width: 1.6, alpha: 0.8 })),
-        ...mySess.shots.map((s) => ({ path: pathFromShared(s.p), color: "rgba(70,230,255,.8)", width: 1.6, alpha: 0.85 }))
+  function cleanSnapshot(x) {
+    if (!x || typeof x !== "object") return null;
+    const o = x;
+    if (o.v !== 1) return null;
+    const card2 = o.card && typeof o.card === "object" && Array.isArray(o.card.frames) ? { frames: o.card.frames.slice(0, 10).map((f2) => ({ marks: Array.isArray(f2?.marks) ? f2.marks.slice(0, 3).map((m) => txt2(m, 2)) : [], total: rng2(f2?.total, 0, 300) })), total: rng2(o.card.total, 0, 300) ?? 0, frame: rng2(o.card.frame, 1, 11) ?? 1, ball: rng2(o.card.ball, 1, 3) ?? 1, standing: Array.isArray(o.card.standing) ? o.card.standing.filter((p) => typeof p === "number" && p >= 1 && p <= 10).slice(0, 10) : [], complete: o.card.complete === true } : null;
+    const series = (a) => Array.isArray(a) ? a.slice(-20).filter((v) => typeof v === "number" && Number.isFinite(v) && Math.abs(v) < 1e3) : [];
+    return {
+      v: 1,
+      seq: rng2(o.seq, 0, 1e9) ?? 0,
+      at: rng2(o.at, 0, 4e12) ?? 0,
+      lane: txt2(o.lane, 40),
+      bowler: txt2(o.bowler, 40),
+      ball: txt2(o.ball, 50),
+      pattern: txt2(o.pattern, 50),
+      hand: o.hand === "L" ? "L" : "R",
+      last: cleanShot(o.last),
+      recent: Array.isArray(o.recent) ? o.recent.slice(-11).map(cleanShot).filter((s) => !!s) : [],
+      session: { shots: rng2(o.session?.shots, 0, 1e6) ?? 0, pocketPct: rng2(o.session?.pocketPct, 0, 100), avgSpeed: rng2(o.session?.avgSpeed, 0, 40), strikePct: rng2(o.session?.strikePct, 0, 100) },
+      card: card2,
+      advice: o.advice ? txt2(o.advice, 240) : null,
+      trends: { speed: series(o.trends?.speed), breakpoint: series(o.trends?.breakpoint), entry: series(o.trends?.entry), miss: series(o.trends?.miss) },
+      brand: cleanBrand(o.brand),
+      layout: isLayout(o.layout) ? o.layout : "bowler"
+    };
+  }
+  function sparkPoints(values, w, h, pad = 2) {
+    if (values.length < 2) return "";
+    const lo = Math.min(...values), hi = Math.max(...values), span = hi - lo || 1;
+    return values.map((v, i) => `${(pad + i / (values.length - 1) * (w - 2 * pad)).toFixed(1)},${(hi === lo ? h / 2 : h - pad - (v - lo) / span * (h - 2 * pad)).toFixed(1)}`).join(" ");
+  }
+  function newLaneCode(rnd = Math.random) {
+    let s = "";
+    for (let i = 0; i < 6; i++) s += CODE_CHARS2[Math.floor(rnd() * CODE_CHARS2.length)];
+    return s;
+  }
+  var LAYOUTS, layoutInfo, isLayout, DEFAULT_BRAND, r12, num6, txt2, rng2, CODE_CHARS2, cleanLaneCode;
+  var init_display = __esm({
+    "core/src/display.ts"() {
+      init_scoring();
+      LAYOUTS = [
+        { id: "bowler", label: "Bowler", blurb: "Big numbers for the bowler: speed, where it broke, how it hit the pocket, the path and the pins.", panels: ["last-shot", "path", "pins", "brand"] },
+        { id: "board", label: "Lane board", blurb: "A scoreboard for a bowling center: the card, the last shot's headline numbers, the center's name.", panels: ["scorecard", "last-shot", "pins", "brand"] },
+        { id: "coach", label: "Coach", blurb: "Everything at once: every number, the spin, the trends across the session, the advice.", panels: ["last-shot", "spin", "path", "trends", "session", "advice", "scorecard"] },
+        { id: "live", label: "Live video", blurb: "The lane camera's live picture, full screen, with the numbers popping up after each shot.", panels: ["live-video", "last-shot", "brand"] },
+        { id: "replay", label: "Replay loop", blurb: "Replays the last shot over and over with its numbers beside it, for the bowler to study between throws.", panels: ["replay", "last-shot", "path"] }
       ];
-      drawTopDown($("cp-map").getContext("2d"), 360, 600, paths, { board: S.profile?.hand === "L" ? 22.5 : 17.5 });
-    };
-    draw3();
-  }
-  function captureIncomingHash() {
-    if (/^#(invite|reply|session|live|league|progress|crew|card|plan|shop|order|cam)=/.test(location.hash)) {
-      const h = location.hash;
-      writePendingHash(h);
-      installManifestFor(h);
-      history.replaceState(null, "", location.pathname + location.search);
-    }
-  }
-  async function handleIncoming() {
-    if (S.profile) await addPendingTag();
-    const h = readPendingHash();
-    if (!h || !S.profile) return;
-    clearPendingHash();
-    const [, kind2, value] = /^#(invite|reply|session|live|league|progress|crew|card|plan|shop|order|cam)=(.+)$/.exec(h) ?? [];
-    if (!kind2) return;
-    if (kind2 === "cam") return void (await Promise.resolve().then(() => (init_camlink(), camlink_exports))).joinCameraFrom(value);
-    if (kind2 === "shop") return void (await Promise.resolve().then(() => (init_shopui(), shopui_exports))).handleShopLink(value);
-    if (kind2 === "order") return void (await Promise.resolve().then(() => (init_shopui(), shopui_exports))).handleOrderLink(value);
-    if (kind2 === "league") return void handleLeagueLink(value);
-    if (kind2 === "progress") return void handleProgressLink(value);
-    if (kind2 === "crew") return void handleCrewLink(value);
-    if (kind2 === "plan") return void (await Promise.resolve().then(() => (init_coachplanui(), coachplanui_exports))).handlePlanLink(value);
-    if (S.profile?.junior) return void notify("Friend, session and live links are switched off on a junior profile.");
-    if (kind2 === "card") return void handleCardLink(value);
-    if (kind2 === "live") return void joinFrom(value);
-    if (kind2 === "session") {
-      const s = await unpackSession(value);
-      return s ? openReceivedSession(s) : void notify("That session link is damaged or isn't a LaneIQ session.");
-    }
-    const inv = decodeInvite(value);
-    if (!inv) return void notify("That friend link is damaged.");
-    openFriendRequest(inv, kind2);
-  }
-  function deferInvite(from) {
-    if (!deferred().some((d) => d.code === from.code)) setDeferred([...deferred(), from]);
-  }
-  function dropDeferred(code2) {
-    setDeferred(deferred().filter((d) => d.code !== code2));
-  }
-  async function addPendingTag() {
-    const raw = readPendingTag();
-    if (!raw) return;
-    clearPendingTag();
-    const t = parseFriendTag(raw);
-    if (!t || t.code === myCode2() || S.friends.some((f2) => f2.code === t.code)) return;
-    S.friends.push({ code: t.code, name: t.username, username: t.username, addedAt: (/* @__PURE__ */ new Date()).toISOString() });
-    await saveSocial();
-    notify(`Added ${t.username} as a friend.`);
-  }
-  function friendsCardHtml() {
-    const link = appLink();
-    return `<div class="card"><div class="k">Friends</div>
-    ${myUser2() ? `<div class="note">Your account name: <b>@${esc2(myUser2())}</b> \xB7 your friend tag: <b>${esc2(friendTag(myUser2(), myCode2()))}</b></div><div class="chips"><button class="chip" id="fr-copytag">Copy my tag</button></div>` : `<div class="note">Choose an account name so friends can add you.</div><div class="chips"><button class="btn" id="fr-setuser">Choose account name</button></div>`}
-    <div class="field"><label>Add a friend by their tag</label><div class="chips"><input id="fr-addtag" placeholder="name#CODE, e.g. strikeking22#K7QP2MXA" autocomplete="off" autocapitalize="none" spellcheck="false" style="flex:1"><button class="chip add" id="fr-addbtn">Add</button></div><div class="note" id="fr-addmsg">Tap Add a friend to scan a code or send a request link, or add someone by their tag. There is no server to search, so a name alone cannot be looked up.</div></div>
-    ${deferred().filter((d) => !S.friends.some((f2) => f2.code === d.code)).map((d) => `<div class="card" style="margin:8px 0"><div class="u"><b>${esc2(d.name)}</b>${d.username ? ` <span class="note">@${esc2(d.username)}</span>` : ""} sent you a friend request.</div><div class="chips"><button class="chip add" data-def-add="${esc2(d.code)}">Add</button><button class="chip" data-def-no="${esc2(d.code)}">Dismiss</button></div></div>`).join("")}
-    <div class="chips"><button class="btn" id="fr-add">Add a friend</button><button class="btn ghost" id="fr-sharesess">Share a session</button><button class="btn ghost" id="fr-compare">Compare shots</button><button class="btn" id="fr-live">Bowl together, live</button></div>
-    ${S.friends.length ? `<table>${S.friends.map((f2) => `<tr><td><button class="chip sel" data-prof="${f2.code}">${esc2(f2.name)}</button>${f2.username ? ` <span class="note">@${esc2(f2.username)}</span>` : ""}${f2.card ? "" : ` <span class="note">(no card yet)</span>`}</td><td class="n"><button class="chip" data-rmf="${f2.code}">Remove</button></td></tr>`).join("")}</table>` : `<div class="u" style="margin-top:8px">No friends yet.</div>`}
-    ${S.shared.length ? `<div class="note" style="margin-top:8px">${S.shared.length} saved session${S.shared.length === 1 ? "" : "s"} from friends.</div>` : ""}
-    <div class="field"><label>App address friends will open</label><input id="fr-link" value="${esc2(link)}" placeholder="https://\u2026"></div>
-    ${isPrivateHost(link) ? `<div class="note" style="color:var(--gold)">That address only works on your own network or Tailscale. Friends need a public address; set it here once the app is hosted for everyone.</div>` : ""}</div>`;
-  }
-  function wireFriendsCard(rerender) {
-    $("fr-setuser")?.addEventListener("click", () => askForUsername(() => (close9(), rerender())));
-    $("fr-copytag")?.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(friendTag(myUser2(), myCode2()));
-        $("fr-copytag").textContent = "Copied";
-      } catch {
-        prompt("Your friend tag:", friendTag(myUser2(), myCode2()));
-      }
-    });
-    $("fr-addbtn")?.addEventListener("click", async () => {
-      const t = parseFriendTag($("fr-addtag").value);
-      const msg = $("fr-addmsg");
-      if (!t) return void (msg.textContent = "That doesn't look like a tag. It should be a name, a #, then 8 letters and numbers: strikeking22#K7QP2MXA.");
-      if (t.code === myCode2()) return void (msg.textContent = "That's your own tag.");
-      if (S.friends.some((f2) => f2.code === t.code)) return void (msg.textContent = "Already in your friends.");
-      S.friends.push({ code: t.code, name: t.username, username: t.username, addedAt: (/* @__PURE__ */ new Date()).toISOString() });
-      await saveSocial();
-      rerender();
-    });
-    document.querySelectorAll("[data-def-add]").forEach((b) => b.onclick = async () => {
-      const d = deferred().find((x) => x.code === b.dataset.defAdd);
-      if (d) S.friends.push({ code: d.code, name: d.name, username: d.username, addedAt: (/* @__PURE__ */ new Date()).toISOString() });
-      dropDeferred(b.dataset.defAdd);
-      await saveSocial();
-      rerender();
-    });
-    document.querySelectorAll("[data-def-no]").forEach((b) => b.onclick = () => (dropDeferred(b.dataset.defNo), rerender()));
-    $("fr-add")?.addEventListener("click", openAddFriend);
-    document.querySelectorAll("[data-prof]").forEach((b) => b.onclick = () => void openFriendProfile(b.dataset.prof));
-    $("fr-sharesess")?.addEventListener("click", openShareSession);
-    $("fr-compare")?.addEventListener("click", () => openCompare());
-    $("fr-live")?.addEventListener("click", openLive);
-    $("fr-link")?.addEventListener("change", (e) => (setAppLink(e.target.value), rerender()));
-    document.querySelectorAll("[data-rmf]").forEach(
-      (b) => b.onclick = async () => {
-        S.friends = S.friends.filter((f2) => f2.code !== b.dataset.rmf);
-        await saveSocial();
-        rerender();
-      }
-    );
-  }
-  var LINK_KEY, baseUrl, PUBLIC_APP, bytesToB64, b64ToBytes, packSession, sheet11, close9, myName3, myUser2, myCode2, sharedShotOf, sessionsOf, DEFER_KEY, deferred, setDeferred;
-  var init_friends = __esm({
-    "camera/friends.ts"() {
-      init_toast();
-      init_share();
-      init_live();
-      init_render();
-      init_sync();
-      init_leagueui();
-      init_juniorui();
-      init_crewui();
-      init_friendsplus();
-      init_state();
-      init_pending();
-      LINK_KEY = "laneiq.appLink";
-      baseUrl = () => new URL(".", location.href).href.replace(/\/+$/, "");
-      PUBLIC_APP = "https://flanxe.github.io/laneiq";
-      bytesToB64 = (b) => {
-        let s = "";
-        b.forEach((x) => s += String.fromCharCode(x));
-        return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-      };
-      b64ToBytes = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
-      packSession = (sess) => packText(JSON.stringify(sess));
-      sheet11 = () => $("friends");
-      close9 = () => (sheet11().classList.remove("on"), sheet11().innerHTML = "");
-      myName3 = () => S.profile?.name ?? "A bowler";
-      myUser2 = () => S.profile?.username ?? "";
-      myCode2 = () => {
-        if (S.profile && !S.profile.friendCode) updateProfile({ friendCode: newFriendCode() });
-        return S.profile?.friendCode ?? "";
-      };
-      sharedShotOf = (s) => ({
-        sp: Number(s.a.speedMph.toFixed(1)),
-        ar: s.m.arrowsBoard === null ? null : Number(s.m.arrowsBoard.toFixed(1)),
-        bb: s.m.breakpointBoard === null ? null : Number(s.m.breakpointBoard.toFixed(1)),
-        bf: s.m.breakpointFt === null ? null : Number(s.m.breakpointFt.toFixed(0)),
-        en: s.m.entryBoard === null ? null : Number(s.m.entryBoard.toFixed(1)),
-        an: s.a.impactAngleDeg === null ? null : Number(s.a.impactAngleDeg.toFixed(1)),
-        ball: S.arsenal.find((b) => b.id === s.ballId)?.name,
-        pins: s.result?.pinsDown,
-        p: downsamplePath(s.path)
-      });
-      sessionsOf = () => {
-        const ids = [...new Set(S.shots.map((s) => s.sessionId))];
-        return ids.map((id) => {
-          const g = S.shots.filter((s) => s.sessionId === id);
-          return { id, n: g.length, date: new Date(g[0].at).toLocaleDateString([], { month: "short", day: "numeric" }) };
-        });
-      };
-      DEFER_KEY = "laneiq.deferredInvites";
-      deferred = () => {
-        try {
-          return JSON.parse(localStorage.getItem(DEFER_KEY) ?? "[]");
-        } catch {
-          return [];
-        }
-      };
-      setDeferred = (v) => {
-        try {
-          localStorage.setItem(DEFER_KEY, JSON.stringify(v.slice(-20)));
-        } catch {
-        }
+      layoutInfo = (id) => LAYOUTS.find((l) => l.id === id) ?? LAYOUTS[0];
+      isLayout = (v) => LAYOUTS.some((l) => l.id === v);
+      DEFAULT_BRAND = { name: "LaneIQ", accent: "46e6ff", tagline: "" };
+      r12 = (v) => Math.round(v * 10) / 10;
+      num6 = (v) => typeof v === "number" && Number.isFinite(v) ? v : null;
+      txt2 = (s, max) => typeof s === "string" ? s.replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
+      rng2 = (v, lo, hi) => typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi ? v : null;
+      CODE_CHARS2 = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      cleanLaneCode = (v) => {
+        const s = typeof v === "string" ? v.toUpperCase().replace(/[^A-Z0-9]/g, "") : "";
+        return s.length === 6 && [...s].every((c) => CODE_CHARS2.includes(c)) ? s : null;
       };
     }
   });
 
-  // camera/shopconfig.ts
-  var REQUIRE_ACCOUNT, SHOP_DIRECTORY;
-  var init_shopconfig = __esm({
-    "camera/shopconfig.ts"() {
-      REQUIRE_ACCOUNT = false;
-      SHOP_DIRECTORY = { url: "https://akfpbiswmdvcqxsfieux.supabase.co", anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrZnBiaXN3bWR2Y3F4c2ZpZXV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5OTQyMTMsImV4cCI6MjEwODU3MDIxM30.wmBmLEvej5_pgUK0-CSw_qG_dz8-VTTdPlY99Nd2Uak" };
-    }
-  });
-
-  // camera/backend.ts
-  async function call(path2, init = {}, token2) {
-    const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), 2e4);
-    try {
-      const r = await fetch(`${base()}${path2}`, { ...init, headers: { ...keyHeaders(token2), ...init.headers }, signal: ctl.signal });
-      const text = await r.text();
-      const body = text ? JSON.parse(text) : null;
-      if (!r.ok) throw new Error(body && (body.msg || body.message || body.error_description || body.error) || `Request failed (${r.status})`);
-      return body;
-    } catch (e) {
-      if (e.name === "AbortError") throw new Error("The server didn't answer in time. Check your connection and try again.");
-      throw e;
-    } finally {
-      clearTimeout(t);
-    }
+  // core/src/gameplan.ts
+  function gamePlan(i) {
+    const sections = [];
+    if (i.pattern) {
+      const p = i.pattern;
+      const cls = lengthClass(p.lengthFt);
+      const lines = [`${p.name}: ${p.lengthFt} ft, a ${cls} pattern${p.volumeMl !== void 0 ? `, ${p.volumeMl} mL of oil` : ""}${p.ratio !== void 0 ? `, ratio ${p.ratio}:1 (${p.ratio <= SPORT_RATIO_LIMIT ? "within the 3:1 limit cited for sport patterns" : "a house-style pattern: more oil in the middle than on the outside"})` : ""}.`];
+      if (i.r31 !== null) lines.push(`Kegel's rule of 31 (length minus 31) puts a starting breakpoint near board ${i.r31}. It is a place to start looking, not a promise.`);
+      sections.push({ head: "Tonight's lanes", lines });
+    } else sections.push({ head: "Tonight's lanes", lines: ["No oil pattern is set. Add tonight's pattern under Target, then My patterns, and this section shows its length, ratio and a starting breakpoint."] });
+    if (i.memory && i.memory.arrows !== null) {
+      const m = i.memory;
+      const ar = i.memory.arrows;
+      sections.push({ head: "Where to start", lines: [`Last time here (${m.date}): you crossed the arrows near board ${ar.toFixed(0)}${m.stand !== null ? ` from board ${m.stand.toFixed(0)}` : ""}${m.ballNames.length ? ` with the ${m.ballNames.join(", ")}` : ""}${m.pocketPct !== null ? `, ${Math.round(m.pocketPct)}% in the pocket` : ""}. Start there and check after three shots; the lanes will have changed since.`] });
+    } else sections.push({ head: "Where to start", lines: ["Nothing on file for this pair of lanes. Set your centre and lane under Target so tonight is remembered next time. Start with your usual line and use the first three shots to see where it lands."] });
+    const ranked = i.balls.filter((b) => b.judged >= BALL_RANK_MIN && b.pocketPct !== null).sort((a, b) => b.pocketPct - a.pocketPct || (b.strikePct ?? 0) - (a.strikePct ?? 0));
+    const bl = [];
+    if (ranked.length) {
+      bl.push(...ranked.slice(0, 3).map((b, k2) => `${k2 + 1}. ${b.name}: ${Math.round(b.pocketPct)}% in the pocket over ${b.judged} judged shots${b.strikePct !== null ? `, ${Math.round(b.strikePct)}% strikes` : ""}.`));
+      bl.push("Ranked only by how each ball has done for you, on your own shots. How a ball has done is not how it will do tonight; watch the first frames.");
+    } else bl.push(`None of your balls has ${BALL_RANK_MIN} judged shots yet, so none is ranked. Open with the one you trust; the app ranks them from your own shots after tonight.`);
+    const short = i.balls.filter((b) => b.judged < BALL_RANK_MIN && b.judged > 0);
+    if (ranked.length && short.length) bl.push(`Not enough shots to rank: ${short.map((b) => `${b.name} (${b.judged})`).join(", ")}.`);
+    sections.push({ head: "Which ball to open with", lines: bl });
+    const towardLeft = i.hand === "R" ? "high" : "light";
+    const adj = [
+      `If you are consistently ${towardLeft}: move your feet and target left, the feet about twice as far as the target (the standard 2-and-1 move).`,
+      `If you are consistently ${towardLeft === "high" ? "light" : "high"}: move right the same way.`,
+      "Judge two shots after a move before making another, and do not chase a miss that goes both ways: that is execution, not the lane."
+    ];
+    for (const m of i.moves.filter((x) => x.n >= 3)) adj.push(`Your own record: ${m.label.toLowerCase()} helped ${m.helped} of ${m.n} times${m.hurt ? ` (hurt ${m.hurt})` : ""}.`);
+    sections.push({ head: "If it goes wrong", lines: adj });
+    sections.push({ head: "Before the real game", lines: ["Throw three shots, then check Your line and Your last move on the Live screen. A plan is a starting point to talk over with your coach, who has the last word."] });
+    return { title: i.pattern ? `Game plan: ${i.pattern.name}` : "Game plan", sections };
   }
-  async function sendSignInEmail(email) {
-    await call("/auth/v1/otp", { method: "POST", body: JSON.stringify({ email, create_user: true, gotrue_meta_security: {} }) });
-  }
-  async function verifyCode(email, code2) {
-    const j = await call("/auth/v1/verify", { method: "POST", body: JSON.stringify({ type: "email", email, token: code2.replace(/\s+/g, "") }) });
-    const s = toSession(j, email);
-    writeSession(s);
-    return s;
-  }
-  async function takeSessionFromHash() {
-    const h = location.hash;
-    if (!/access_token=/.test(h)) return false;
-    const p = new URLSearchParams(h.replace(/^#/, ""));
-    const access = p.get("access_token"), refresh2 = p.get("refresh_token");
-    history.replaceState(null, "", location.pathname + location.search);
-    if (!access || !refresh2) return false;
-    try {
-      const u = await call("/auth/v1/user", {}, access);
-      writeSession({ access, refresh: refresh2, expires: Date.now() + (Number(p.get("expires_in")) || 3600) * 1e3 - 6e4, userId: u.id, email: u.email });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  async function signInWithPassword(email, password) {
-    const j = await call("/auth/v1/token?grant_type=password", { method: "POST", body: JSON.stringify({ email, password }) });
-    const s = toSession(j, email);
-    writeSession(s);
-    return s;
-  }
-  async function enabledProviders() {
-    try {
-      const j = await call("/auth/v1/settings");
-      return { google: !!j?.external?.google, apple: !!j?.external?.apple };
-    } catch {
-      return { google: false, apple: false };
-    }
-  }
-  function startOAuth(provider) {
-    const back = location.origin + location.pathname;
-    location.href = `${base()}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(back)}`;
-  }
-  async function token() {
-    const s = readSession();
-    if (!s) throw new Error("Sign in first.");
-    if (Date.now() < s.expires) return s.access;
-    try {
-      const j = await call("/auth/v1/token?grant_type=refresh_token", { method: "POST", body: JSON.stringify({ refresh_token: s.refresh }) });
-      const n = toSession(j, s.email);
-      writeSession(n);
-      return n.access;
-    } catch {
-      writeSession(null);
-      throw new Error("Your sign-in ran out. Sign in again.");
-    }
-  }
-  async function asShop(path2, init = {}) {
-    return call(`/rest/v1/${path2}`, init, await token());
-  }
-  async function asUser(path2, init = {}) {
-    return call(path2, init, await token());
-  }
-  async function asBowler(path2, init = {}) {
-    return call(`/rest/v1/${path2}`, init);
-  }
-  var SESSION, base, backendOn, readSession, writeSession, currentSession, keyHeaders, toSession, signOut, MIN;
-  var init_backend = __esm({
-    "camera/backend.ts"() {
-      init_shopconfig();
-      SESSION = "laneiq.auth";
-      base = () => SHOP_DIRECTORY.url.replace(/\/+$/, "");
-      backendOn = () => !!(SHOP_DIRECTORY.url && SHOP_DIRECTORY.anonKey);
-      readSession = () => {
-        try {
-          const j = JSON.parse(localStorage.getItem(SESSION) ?? "null");
-          return j && j.access && j.refresh ? j : null;
-        } catch {
-          return null;
-        }
-      };
-      writeSession = (s) => {
-        try {
-          s ? localStorage.setItem(SESSION, JSON.stringify(s)) : localStorage.removeItem(SESSION);
-        } catch {
-        }
-      };
-      currentSession = () => readSession();
-      keyHeaders = (token2) => ({ apikey: SHOP_DIRECTORY.anonKey, Authorization: `Bearer ${token2 ?? SHOP_DIRECTORY.anonKey}`, "Content-Type": "application/json" });
-      toSession = (j, email = "") => ({ access: j.access_token, refresh: j.refresh_token, expires: Date.now() + (Number(j.expires_in) || 3600) * 1e3 - 6e4, userId: j.user?.id ?? readSession()?.userId ?? "", email: j.user?.email ?? email });
-      signOut = () => writeSession(null);
-      MIN = { headers: { Prefer: "return=minimal" } };
-    }
-  });
-
-  // camera/shopbox.ts
-  var shopbox_exports = {};
-  __export(shopbox_exports, {
-    openBoxScanner: () => openBoxScanner,
-    openStockEditor: () => openStockEditor
-  });
-  async function openBoxScanner() {
-    bump("shop-scan");
-    const el = sheet12();
-    el.classList.add("on");
-    el.innerHTML = `<div class="row"><h2>Receive boxes</h2><button class="btn" id="bx-done">Done</button></div>
-    <div class="note">Hold the barcode on the box inside the picture, steady, with good light. A beep and a short buzz mean it was counted.</div>
-    <video id="bx-v" playsinline muted style="width:100%;border-radius:14px;background:#000;max-height:46vh;object-fit:cover"></video>
-    <div id="bx-ask"></div>
-    <div class="field"><label for="bx-man">Or type the number under the barcode</label><div class="chips"><input id="bx-man" inputmode="numeric" autocomplete="off" style="flex:1"><button class="btn ghost" id="bx-add">Count it</button></div></div>
-    <h3>Counted this time</h3><div id="bx-log" class="note">Nothing yet.</div><div class="note" id="bx-msg" aria-live="polite"></div>`;
-    const video2 = $("bx-v");
-    let stream2 = null, stopped = false, paused = false;
-    const log = [];
-    const stop = () => {
-      stopped = true;
-      stream2?.getTracks().forEach((t) => t.stop());
-      video2.srcObject = null;
-    };
-    $("bx-done").onclick = () => {
-      stop();
-      openShop();
-    };
-    const say2 = (m) => $("bx-msg").textContent = m;
-    const beep = () => {
-      try {
-        navigator.vibrate?.(60);
-        const a = new AudioContext(), o = a.createOscillator(), g2 = a.createGain();
-        o.frequency.value = 1400;
-        g2.gain.value = 0.08;
-        o.connect(g2);
-        g2.connect(a.destination);
-        o.start();
-        setTimeout(() => (o.stop(), a.close()), 90);
-      } catch {
-      }
-    };
-    const handle = (raw) => {
-      const shop = load();
-      if (!shop) return;
-      const r = receiveBox(shop.items, shop.boxes ?? {}, raw, S.catalog);
-      if (r.status === "bad") return say2("That number didn't pass its check. Try the scan again or type it carefully.");
-      if (r.status === "unknown") return ask(r.barcode);
-      save2({ ...shop, items: r.inv });
-      beep();
-      log.unshift(`${r.item.manufacturer} ${r.item.name}${r.weightLb ? ` ${r.weightLb} lb` : ""}: now ${r.item.stock} in stock`);
-      $("bx-log").innerHTML = log.slice(0, 12).map((l) => `<div class="u">+1 ${esc2(l)}</div>`).join("");
-      say2("");
-    };
-    const ask = (barcode) => {
-      paused = true;
-      $("bx-ask").innerHTML = `<div class="card"><div class="k">New barcode ${esc2(barcode)}</div><div class="note">Which ball is this? You only say it once; the next box with this barcode is counted by itself.</div>
-      <div class="field"><label for="bx-q">Ball name</label><input id="bx-q" autocomplete="off" placeholder="Start typing, e.g. Phaze"></div><div id="bx-hits"></div>
-      <div class="field"><label for="bx-w">Weight in the box (lb)</label><select id="bx-w">${[16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6].map((w) => `<option value="${w}"${w === 15 ? " selected" : ""}>${w}</option>`).join("")}</select></div>
-      <div class="chips"><button class="btn ghost" id="bx-skip">Skip this box</button></div></div>`;
-      let chosen = "";
-      const hits = $("bx-hits");
-      $("bx-q").addEventListener("input", (e) => {
-        const q2 = e.target.value.trim();
-        const found2 = q2.length >= 2 ? searchCatalog(S.catalog, q2, 6).map((h) => h.ball) : [];
-        hits.innerHTML = found2.map((b) => `<button class="chip" data-k="${esc2(b.key)}" style="display:block;width:100%;text-align:left;margin:3px 0">${esc2(b.manufacturer)} ${esc2(b.name)}</button>`).join("");
-        hits.querySelectorAll("[data-k]").forEach((b) => b.onclick = () => {
-          chosen = b.dataset.k;
-          const shop = load();
-          if (!shop) return;
-          const w = Number($("bx-w").value);
-          const map = learnBox(shop.boxes ?? {}, barcode, chosen, w);
-          save2({ ...shop, boxes: map });
-          $("bx-ask").innerHTML = "";
-          paused = false;
-          handle(barcode);
-        });
-      });
-      $("bx-skip").onclick = () => {
-        $("bx-ask").innerHTML = "";
-        paused = false;
-        lastCode = barcode;
-        lastAt = performance.now() + 8e3;
-      };
-    };
-    $("bx-add").onclick = () => {
-      const v = $("bx-man").value;
-      if (!normalizeBarcode(v)) return say2("That number didn't pass its check. Type all the digits under the barcode.");
-      $("bx-man").value = "";
-      handle(v);
-    };
-    let lastCode = "", lastAt = 0;
-    const found = (code2) => {
-      const now = performance.now();
-      if (code2 === lastCode && now - lastAt < 3e3) return;
-      lastCode = code2;
-      lastAt = now;
-      handle(code2);
-    };
-    try {
-      stream2 = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } }, audio: false });
-    } catch (e) {
-      return void say2(`The camera isn't available (${e instanceof Error ? e.message : String(e)}). Allow the camera for LaneIQ, or type the numbers under the barcodes.`);
-    }
-    video2.srcObject = stream2;
-    await video2.play().catch(() => {
-    });
-    const Native = window.BarcodeDetector;
-    const native = Native ? new Native({ formats: ["ean_13", "upc_a", "ean_8", "upc_e"] }) : null;
-    const c = document.createElement("canvas");
-    const g = c.getContext("2d", { willReadFrequently: true });
-    const tick = async () => {
-      if (stopped) return;
-      if (!paused && video2.videoWidth) {
-        try {
-          let code2 = null;
-          if (native) code2 = (await native.detect(video2))[0]?.rawValue ?? null;
-          if (!code2) {
-            const s = Math.min(1, 960 / video2.videoWidth);
-            c.width = Math.round(video2.videoWidth * s);
-            c.height = Math.round(video2.videoHeight * s);
-            g.drawImage(video2, 0, 0, c.width, c.height);
-            code2 = readBarcode(g.getImageData(0, 0, c.width, c.height).data, c.width, c.height);
-          }
-          if (code2 && normalizeBarcode(code2)) found(code2);
-        } catch {
-        }
-      }
-      setTimeout(tick, 120);
-    };
-    void tick();
-  }
-  function openStockEditor() {
-    bump("shop-edit");
-    const el = sheet12();
-    el.classList.add("on");
-    const shop = load();
-    const items = shop?.items ?? [];
-    el.innerHTML = `<div class="row"><h2>Stock and prices</h2><button class="btn ghost" id="se-close">Back</button></div>
-    <div class="note">${items.length} item${items.length === 1 ? "" : "s"}. Set how many you have (0 hides a ball from suggestions) and its price.</div>
-    <div class="field"><label for="se-q">Find a ball</label><input id="se-q" autocomplete="off"></div>
-    <div id="se-list">${items.map((i, n) => `<div class="card" data-n="${n}" data-t="${esc2(`${i.manufacturer} ${i.name}`.toLowerCase())}"><div class="lr-head">${esc2(i.manufacturer)} ${esc2(i.name)}</div><div class="note">${i.key ? "In the catalog" : "Not in the catalog, so it can't be suggested"}${i.weights.length ? ` \xB7 ${i.weights.join(", ")} lb` : ""}</div>
-      <div class="two"><div class="field"><label>In stock</label><input class="se-s" inputmode="numeric" value="${i.stock}"></div><div class="field"><label>Price ($)</label><input class="se-p" inputmode="decimal" value="${i.price || ""}"></div></div></div>`).join("") || `<div class="note">No stock yet. Scan boxes or load a spreadsheet.</div>`}</div>
-    <div class="chips"><button class="btn" id="se-save">Save</button><button class="btn ghost" id="se-addball">Add a ball by name</button></div><div id="se-add"></div><div class="note" id="se-msg" aria-live="polite"></div>`;
-    $("se-close").onclick = openShop;
-    $("se-q").addEventListener("input", (e) => {
-      const q2 = e.target.value.trim().toLowerCase();
-      el.querySelectorAll("#se-list [data-t]").forEach((c) => c.style.display = !q2 || c.dataset.t.includes(q2) ? "" : "none");
-    });
-    $("se-save").onclick = () => {
-      const cur2 = load();
-      if (!cur2) return;
-      const next = cur2.items.map((i) => ({ ...i }));
-      el.querySelectorAll("#se-list [data-n]").forEach((c) => {
-        const it = next[Number(c.dataset.n)];
-        if (!it) return;
-        const s = Number(c.querySelector(".se-s").value), p = Number(c.querySelector(".se-p").value);
-        it.stock = Number.isFinite(s) && s >= 0 && s <= 9999 ? Math.floor(s) : it.stock;
-        it.price = Number.isFinite(p) && p >= 0 && p <= 2e3 ? Math.round(p * 100) / 100 : it.price;
-      });
-      save2({ ...cur2, items: next });
-      $("se-msg").textContent = "Saved.";
-    };
-    $("se-addball").onclick = () => {
-      $("se-add").innerHTML = `<div class="card"><div class="field"><label for="se-aq">Ball name</label><input id="se-aq" autocomplete="off"></div><div id="se-ah"></div></div>`;
-      $("se-aq").addEventListener("input", (e) => {
-        const q2 = e.target.value.trim();
-        const found = q2.length >= 2 ? searchCatalog(S.catalog, q2, 6).map((h) => h.ball) : [];
-        $("se-ah").innerHTML = found.map((b) => `<button class="chip" data-k="${esc2(b.key)}" style="display:block;width:100%;text-align:left;margin:3px 0">${esc2(b.manufacturer)} ${esc2(b.name)}</button>`).join("");
-        $("se-ah").querySelectorAll("[data-k]").forEach((b) => b.onclick = () => {
-          const cur2 = load(), ball = S.catalog.find((x) => x.key === b.dataset.k);
-          if (!cur2 || !ball || cur2.items.some((x) => x.key === ball.key)) return void ($("se-msg").textContent = "That ball is already in your stock.");
-          save2({ ...cur2, items: [...cur2.items, itemFromCatalog(ball, 0, 0, 1)] });
-          openStockEditor();
-        });
-      });
-    };
-  }
-  var sheet12;
-  var init_shopbox = __esm({
-    "camera/shopbox.ts"() {
-      init_health();
-      init_barcode();
-      init_identify();
-      init_shop();
-      init_live();
-      init_state();
-      init_shopui();
-      sheet12 = () => $("review");
-    }
-  });
-
-  // camera/shopcloud.ts
-  var shopcloud_exports = {};
-  __export(shopcloud_exports, {
-    openInbox: () => openInbox,
-    openShopOnline: () => openShopOnline
-  });
-  async function geocode(q2) {
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q2)}`);
-    const j = await r.json();
-    const lat = Number(j?.[0]?.lat), lng = Number(j?.[0]?.lon);
-    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
-  }
-  async function openShopOnline() {
-    bump("shop-online");
-    const el = sheet13();
-    el.classList.add("on");
-    if (!backendOn()) {
-      el.innerHTML = `<div class="row"><h2>Shop online</h2><button class="btn ghost" id="so-close">Back</button></div><div class="note">The online shop service isn't set up in this copy of LaneIQ.</div>`;
-      $("so-close").onclick = openShop;
-      return;
-    }
-    const s = currentSession();
-    if (!s) return signInScreen();
-    el.innerHTML = `<div class="row"><h2>Shop online</h2><button class="btn ghost" id="so-close">Back</button></div><div class="note">Loading your shop\u2026</div>`;
-    $("so-close").onclick = openShop;
-    let shop = null;
-    try {
-      shop = (await asShop(`shops?select=*&owner=eq.${s.userId}&limit=1`))[0] ?? null;
-    } catch (e) {
-      return void (el.innerHTML = `<div class="row"><h2>Shop online</h2><button class="btn ghost" id="so-close">Back</button></div><div class="note">${esc2(e.message)}</div><div class="chips"><button class="btn" id="so-out">Sign out</button></div>`, $("so-close").onclick = openShop, $("so-out").onclick = () => (signOut(), openShopOnline()));
-    }
-    const local = load();
-    if (shop && local && local.remoteId !== shop.id) save2({ ...local, remoteId: shop.id });
-    el.innerHTML = `<div class="row"><h2>Shop online</h2><button class="btn ghost" id="so-close">Back</button></div>
-    <div class="note">Signed in as ${esc2(s.email)}. Put your shop online to take orders in an inbox and, if you choose, be found by bowlers near you.</div>
-    <div class="card"><div class="k">Your shop</div>
-    <div class="field"><label for="so-name">Shop name</label><input id="so-name" maxlength="60" value="${esc2(shop?.name ?? local?.name ?? "")}"></div>
-    <div class="field"><label for="so-contact">How bowlers reach you</label><input id="so-contact" maxlength="80" value="${esc2(shop?.contact ?? local?.contact ?? "")}"></div>
-    <div class="two"><div class="field"><label for="so-addr">Street address, city, state</label><input id="so-addr" maxlength="120" value="${esc2(shop?.address ?? "")}" autocomplete="street-address"></div><div class="field"><label for="so-phone">Phone (optional)</label><input id="so-phone" maxlength="30" value="${esc2(shop?.phone ?? "")}" autocomplete="tel"></div></div>
-    <label class="chips" style="align-items:flex-start;gap:8px"><input type="checkbox" id="so-orders"${shop?.accepts_orders !== false ? " checked" : ""}> <span>Take orders online (they arrive in your inbox below).</span></label>
-    <label class="chips" style="align-items:flex-start;gap:8px"><input type="checkbox" id="so-list"${shop?.listed ? " checked" : ""}> <span>List my shop in "Find a pro shop near me", first, above shops that don't use LaneIQ. Shows my name, address and phone.</span></label>
-    <div class="note">${shop?.lat != null ? `Position saved. It's looked up from your address when you save.` : `Your position is looked up from the address when you save. A listed shop needs one.`}</div>
-    <div class="chips"><button class="btn" id="so-save">${shop ? "Save changes" : "Create my online shop"}</button></div><div class="note" id="so-msg" aria-live="polite"></div></div>
-    ${shop ? `<div class="card"><div class="k">Stock</div><div class="note">Upload what's in your stock now so bowlers can see it and order. Do it again after you scan boxes or change prices. This replaces the online copy.</div><div class="chips"><button class="btn" id="so-up">Upload my stock (${local?.items.length ?? 0} items)</button><button class="btn ghost" id="so-down">Load the online copy to this phone</button></div></div>
-    <div class="card"><div class="k">Orders</div><div class="note">Orders bowlers send to your shop.</div><div class="chips"><button class="btn" id="so-inbox">Open the inbox</button></div></div>` : ""}
-    <div class="chips"><button class="btn ghost" id="so-out">Sign out</button></div>`;
-    $("so-close").onclick = openShop;
-    $("so-out").onclick = () => (signOut(), openShopOnline());
-    const msg = (m) => $("so-msg").textContent = m;
-    $("so-save").onclick = async () => {
-      const v = (id) => $(id).value.trim();
-      const name = v("so-name"), contact = v("so-contact"), address = v("so-addr");
-      const listed = $("so-list").checked, accepts = $("so-orders").checked;
-      if (name.length < 2 || !contact) return msg("Add the shop name and a way to reach you.");
-      if (listed && !address) return msg("A listed shop needs its address, so bowlers can find it.");
-      msg("Saving\u2026");
-      try {
-        let pos = shop && shop.address === address && shop.lat != null ? { lat: shop.lat, lng: shop.lng } : null;
-        if (!pos && address) pos = await geocode(address);
-        if (listed && !pos) return msg("I couldn't find that address on the map. Add the city and state and try again.");
-        const row4 = { name, contact, address: address || null, phone: v("so-phone") || null, accepts_orders: accepts, listed: listed && !!pos, lat: pos?.lat ?? null, lng: pos?.lng ?? null, drill_price: local?.drillPrice ?? 0, note: (local?.note ?? "").slice(0, 300) };
-        if (shop) await asShop(`shops?id=eq.${shop.id}`, { method: "PATCH", body: JSON.stringify(row4), ...MIN });
-        else {
-          const made = await asShop("shops", { method: "POST", body: JSON.stringify({ ...row4, owner: s.userId, slug: slugify(name) }), headers: { Prefer: "return=representation" } });
-          if (made[0] && local) save2({ ...local, remoteId: made[0].id });
-        }
-        notify(shop ? "Saved." : "Your shop is online.");
-        void openShopOnline();
-      } catch (e) {
-        msg(e.message);
-      }
-    };
-    if (!shop) return;
-    $("so-up").onclick = async () => {
-      const cur2 = load();
-      if (!cur2?.items.length) return msg("There's no stock on this phone to upload yet.");
-      msg("Uploading\u2026");
-      try {
-        await asShop(`inventory?shop_id=eq.${shop.id}`, { method: "DELETE", ...MIN });
-        const rows2 = inventoryRows(shop.id, cur2.items);
-        for (let i = 0; i < rows2.length; i += 400) await asShop("inventory", { method: "POST", body: JSON.stringify(rows2.slice(i, i + 400)), ...MIN });
-        msg(`Uploaded ${rows2.length} items.`);
-      } catch (e) {
-        msg(e.message);
-      }
-    };
-    $("so-down").onclick = async () => {
-      msg("Loading\u2026");
-      try {
-        const rows2 = await asShop(`inventory?select=*&shop_id=eq.${shop.id}&limit=2000`);
-        const items = itemsFromRows(rows2);
-        const cur2 = load();
-        if (cur2) save2({ ...cur2, items });
-        msg(`Loaded ${items.length} items onto this phone.`);
-      } catch (e) {
-        msg(e.message);
-      }
-    };
-    $("so-inbox").onclick = () => void openInbox();
-  }
-  function signInScreen(email = "") {
-    const el = sheet13();
-    el.innerHTML = `<div class="row"><h2>Shop sign-in</h2><button class="btn ghost" id="si-close">Back</button></div>
-    <div class="note">Put your shop online with your email. No password: we email you a sign-in code. Bowlers never need to sign in.</div>
-    <div class="field"><label for="si-email">Your email</label><input id="si-email" type="email" autocomplete="email" value="${esc2(email)}"></div>
-    <div class="chips"><button class="btn" id="si-send">Email me a code</button></div>
-    <div id="si-code"></div><div class="note" id="si-msg" aria-live="polite"></div>`;
-    $("si-close").onclick = openShop;
-    $("si-send").onclick = async () => {
-      const em = $("si-email").value.trim();
-      if (!/^\S+@\S+\.\S+$/.test(em)) return void ($("si-msg").textContent = "Type a real email address.");
-      $("si-msg").textContent = "Sending\u2026";
-      try {
-        await sendSignInEmail(em);
-        $("si-msg").textContent = "Sent. Check your email (and spam) for a code. If the email has a link instead, open it on this phone.";
-        $("si-code").innerHTML = `<div class="field"><label for="si-c">The code from the email</label><input id="si-c" inputmode="numeric" autocomplete="one-time-code"></div><div class="chips"><button class="btn" id="si-go">Sign in</button></div>`;
-        $("si-go").onclick = async () => {
-          try {
-            await verifyCode(em, $("si-c").value);
-            void openShopOnline();
-          } catch (e) {
-            $("si-msg").textContent = e.message;
-          }
-        };
-      } catch (e) {
-        $("si-msg").textContent = e.message;
-      }
-    };
-  }
-  async function openInbox() {
-    bump("shop-inbox");
-    const el = sheet13();
-    el.classList.add("on");
-    el.innerHTML = `<div class="row"><h2>Orders</h2><button class="btn ghost" id="ib-close">Back</button></div><div class="note">Loading\u2026</div>`;
-    $("ib-close").onclick = () => void openShopOnline();
-    try {
-      const rows2 = await asShop("orders?select=id,status,created_at,request&order=created_at.desc&limit=100");
-      el.innerHTML = `<div class="row"><h2>Orders</h2><button class="btn ghost" id="ib-close">Back</button></div>
-      ${rows2.length ? rows2.map((r) => {
-        const o = parseOrder(JSON.stringify(r.request));
-        return `<div class="card"><div class="lr-head">${o ? esc2(o.customer.name) : "Order"} \xB7 ${esc2(o ? `${o.ball.manufacturer} ${o.ball.name}`.trim() : "unreadable")}</div><div class="u">${new Date(r.created_at).toLocaleString()}${o?.special ? " \xB7 special order" : ""}${o?.delivery?.mode === "ship-to-center" ? ` \xB7 ship to ${esc2(o.delivery.center?.name ?? "")}` : ""}</div>
-        <div class="chips"><select data-s="${esc2(r.id)}" aria-label="Order status">${STATUSES.map((st2) => `<option value="${st2}"${st2 === r.status ? " selected" : ""}>${statusLabel(st2)}</option>`).join("")}</select>${o ? `<button class="btn" data-o="${esc2(r.id)}">Open</button>` : ""}</div></div>`;
-      }).join("") : `<div class="note">No orders yet. They show up here when a bowler orders from your online shop.</div>`}`;
-      $("ib-close").onclick = () => void openShopOnline();
-      el.querySelectorAll("[data-s]").forEach((sel2) => sel2.onchange = async () => {
-        try {
-          await asShop(`orders?id=eq.${sel2.dataset.s}`, { method: "PATCH", body: JSON.stringify({ status: sel2.value }), ...MIN });
-          notify("Status updated.");
-        } catch (e) {
-          notify(e.message);
-        }
-      });
-      el.querySelectorAll("[data-o]").forEach((b) => b.onclick = async () => {
-        const r = rows2.find((x) => x.id === b.dataset.o);
-        const o = parseOrder(JSON.stringify(r.request));
-        if (o) {
-          if (r.status === "new") void asShop(`orders?id=eq.${r.id}`, { method: "PATCH", body: JSON.stringify({ status: "seen" }), ...MIN }).catch(() => {
-          });
-          showOrder(o, () => void openInbox());
-        }
-      });
-    } catch (e) {
-      el.innerHTML = `<div class="row"><h2>Orders</h2><button class="btn ghost" id="ib-close">Back</button></div><div class="note">${esc2(e.message)}</div>`;
-      $("ib-close").onclick = () => void openShopOnline();
-    }
-  }
-  var sheet13, slugify, STATUSES, statusLabel;
-  var init_shopcloud = __esm({
-    "camera/shopcloud.ts"() {
-      init_health();
-      init_shop();
-      init_live();
-      init_backend();
-      init_shopui();
-      init_toast();
-      sheet13 = () => $("review");
-      slugify = (name) => {
-        const base2 = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30) || "shop";
-        return `${base2.length < 3 ? base2 + "-shop" : base2}-${Math.random().toString(36).slice(2, 6)}`.slice(0, 40);
-      };
-      STATUSES = ["new", "seen", "confirmed", "drilled", "ready", "picked_up", "cancelled"];
-      statusLabel = (s) => ({ new: "New", seen: "Seen", confirmed: "Confirmed", drilled: "Drilled", ready: "Ready", picked_up: "Picked up", cancelled: "Cancelled" })[s] ?? s;
-    }
-  });
-
-  // core/src/shopfind.ts
-  function distanceKm(aLat, aLon, bLat, bLon) {
-    const r = (d) => d * Math.PI / 180, dLat = r(bLat - aLat), dLon = r(bLon - aLon);
-    const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(aLat)) * Math.cos(r(bLat)) * Math.sin(dLon / 2) ** 2;
-    return 12742 * Math.asin(Math.min(1, Math.sqrt(h)));
-  }
-  function overpassQuery(lat, lon, radiusM) {
-    const r = Math.round(Math.min(Math.max(radiusM, 1e3), 1e5)), p = `(around:${r},${lat.toFixed(5)},${lon.toFixed(5)})`;
-    return `[out:json][timeout:25];(nwr["shop"]["sport"~"10pin|bowling|9pin"]${p};nwr["leisure"="bowling_alley"]${p};);out center tags 120;`;
-  }
-  function addr(t) {
-    const line2 = [[t["addr:housenumber"], t["addr:street"]].filter(Boolean).join(" "), t["addr:city"], t["addr:state"]].filter(Boolean).join(", ");
-    return clean5(line2, 120) || void 0;
-  }
-  function parseOverpass(json, here2) {
-    const els = json?.elements;
-    if (!Array.isArray(els)) return [];
-    const out = [];
-    const seen2 = /* @__PURE__ */ new Set();
-    for (const e of els) {
-      const t = e?.tags && typeof e.tags === "object" ? e.tags : {};
-      const name = clean5(t.name, 80);
-      const lat = finite2(e?.lat ?? e?.center?.lat, -90, 90), lon = finite2(e?.lon ?? e?.center?.lon, -180, 180);
-      if (!name || lat === void 0 || lon === void 0) continue;
-      const kind2 = t.shop ? "pro shop" : "center";
-      const id = `${clean5(e.type, 8)}${clean5(String(e.id ?? ""), 16)}`;
-      const dup = `${name.toLowerCase()}|${lat.toFixed(3)}|${lon.toFixed(3)}`;
-      if (!id || seen2.has(dup)) continue;
-      seen2.add(dup);
-      const web = clean5(t.website ?? t["contact:website"], 200);
-      out.push({ id, name, lat, lon, kind: kind2, address: addr(t), phone: clean5(t.phone ?? t["contact:phone"], 30) || void 0, website: /^https?:\/\//i.test(web) ? web : void 0, ...here2 ? { km: distanceKm(here2.lat, here2.lon, lat, lon) } : {} });
-    }
-    return out;
-  }
-  function parseDirectory(rows2, here2) {
-    if (!Array.isArray(rows2)) return [];
-    const out = [];
-    for (const r of rows2) {
-      const name = clean5(r?.name, 60), slug2 = clean5(r?.slug, 40);
-      const lat = finite2(r?.lat, -90, 90), lon = finite2(r?.lng, -180, 180);
-      if (!name || !slug2 || lat === void 0 || lon === void 0) continue;
-      out.push({ id: `laneiq-${slug2}`, name, lat, lon, kind: "pro shop", address: clean5(r?.address, 120) || void 0, phone: clean5(r?.phone, 30) || void 0, laneiq: { slug: slug2, acceptsOrders: r?.accepts_orders !== false }, ...here2 ? { km: distanceKm(here2.lat, here2.lon, lat, lon) } : {} });
-    }
-    return out;
-  }
-  function rankShops(laneiq, others) {
-    const byKm = (a2, b2) => (a2.km ?? 1e9) - (b2.km ?? 1e9);
-    const a = [...laneiq].sort(byKm);
-    const rest = others.filter((o) => !a.some((l) => distanceKm(l.lat, l.lon, o.lat, o.lon) < 0.2 && (norm5(l.name) === norm5(o.name) || norm5(o.name).includes(norm5(l.name)) || norm5(l.name).includes(norm5(o.name)) || !norm5(o.name))));
-    const b = rest.sort((x, y) => x.kind === y.kind ? byKm(x, y) : x.kind === "pro shop" ? -1 : 1);
-    return { laneiq: a, others: b };
-  }
-  var clean5, finite2, miles, norm5;
-  var init_shopfind = __esm({
-    "core/src/shopfind.ts"() {
-      clean5 = (s, max) => typeof s === "string" ? s.replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
-      finite2 = (n, lo, hi) => typeof n === "number" && Number.isFinite(n) && n >= lo && n <= hi ? n : void 0;
-      miles = (km) => km * 0.621371;
-      norm5 = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\b(pro|shop|bowling|the|and|inc|llc)\b/g, "").replace(/\s+/g, " ").trim();
-    }
-  });
-
-  // camera/shopfinderui.ts
-  var shopfinderui_exports = {};
-  __export(shopfinderui_exports, {
-    openShopNearMe: () => openShopNearMe
-  });
-  async function getJson(url, init, ms = 15e3) {
-    const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), ms);
-    try {
-      const r = await fetch(url, { ...init, signal: ctl.signal });
-      if (!r.ok) throw new Error(String(r.status));
-      return await r.json();
-    } finally {
-      clearTimeout(t);
-    }
-  }
-  async function geocode2(q2) {
-    const j = await getJson(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q2)}`);
-    const f2 = Array.isArray(j) ? j[0] : null;
-    const lat = Number(f2?.lat), lon = Number(f2?.lon);
-    return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
-  }
-  async function directory(pt2, km) {
-    if (!SHOP_DIRECTORY.url || !SHOP_DIRECTORY.anonKey) return { places: [], configured: false };
-    const dLat = km / 111, dLon = km / (111 * Math.max(0.2, Math.cos(pt2.lat * Math.PI / 180)));
-    const q2 = `${SHOP_DIRECTORY.url.replace(/\/+$/, "")}/rest/v1/public_shops?select=name,slug,lat,lng,address,phone,accepts_orders&lat=gte.${pt2.lat - dLat}&lat=lte.${pt2.lat + dLat}&lng=gte.${pt2.lon - dLon}&lng=lte.${pt2.lon + dLon}&limit=100`;
-    const rows2 = await getJson(q2, { headers: { apikey: SHOP_DIRECTORY.anonKey, Authorization: `Bearer ${SHOP_DIRECTORY.anonKey}` } });
-    return { places: parseDirectory(rows2, pt2).filter((p) => (p.km ?? 0) <= km), configured: true };
-  }
-  async function nearby(pt2, km) {
-    const init = { method: "POST", body: "data=" + encodeURIComponent(overpassQuery(pt2.lat, pt2.lon, km * 1e3)), headers: { "Content-Type": "application/x-www-form-urlencoded" } };
-    const j = await Promise.any(["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"].map((u) => getJson(u, init, 5e4)));
-    return parseOverpass(j, pt2).filter((p) => (p.km ?? 0) <= km);
-  }
-  function openShopNearMe(opts = {}) {
-    bump("shop-near");
-    choosing = !!opts.pick;
-    const found = /* @__PURE__ */ new Map();
-    const el = sheet14();
-    el.classList.add("on");
-    el.innerHTML = `<div class="row"><h2>${opts.pick ? "Pick your bowling center" : "Find a pro shop near me"}</h2><button class="btn ghost" id="sn-close">Close</button></div>
-    <div class="note">Shops that use LaneIQ come first, then the rest. When you search, your position (or the city you type) is sent to OpenStreetMap${SHOP_DIRECTORY.url ? " and the LaneIQ shop list" : ""} to find shops around it. Nothing else about you is sent and nothing is saved.</div>
-    <div class="two"><div class="field"><label for="sn-r">How far</label><select id="sn-r"><option value="16">10 miles</option><option value="40" selected>25 miles</option><option value="80">50 miles</option></select></div><div class="field"><label for="sn-q">Or a city or ZIP code</label><input id="sn-q" autocomplete="postal-code" placeholder="e.g. Columbus, OH"></div></div>
-    <div class="chips"><button class="btn" id="sn-here">Use my location</button><button class="btn ghost" id="sn-go">Search this place</button></div>
-    <div id="sn-out" aria-live="polite"></div>`;
-    $("sn-close").onclick = () => {
-      choosing = false;
-      close10();
-    };
-    const run = async (get) => {
-      const out = $("sn-out");
-      out.innerHTML = `<div class="note">Looking\u2026</div>`;
-      try {
-        const pt2 = await get();
-        if (!pt2) return void (out.innerHTML = `<div class="note">I couldn't find that place. Try a city and state, or a ZIP code.</div>`);
-        const km = Number($("sn-r").value);
-        const [dir2, map] = await Promise.allSettled([directory(pt2, km), nearby(pt2, km)]);
-        const d = dir2.status === "fulfilled" ? dir2.value : { places: [], configured: true };
-        const m = map.status === "fulfilled" ? map.value : null;
-        const ranked = rankShops(d.places, m ?? []);
-        const parts = [];
-        parts.push(`<h3>Pro shops that use LaneIQ</h3>`);
-        parts.push(ranked.laneiq.length ? ranked.laneiq.map(row).join("") : `<div class="note">${d.configured ? "No LaneIQ shops within that distance yet." : "No LaneIQ shops are listed yet. They appear here, first, as soon as shops join."}</div>`);
-        parts.push(`<h3>Other shops and bowling centers</h3>`);
-        parts.push(m === null ? `<div class="note">I couldn't reach the map just now. Check your connection and try again.</div>` : ranked.others.length ? ranked.others.map(row).join("") + `<div class="note">From OpenStreetMap, which volunteers keep up, so a shop may be missing or out of date. Call ahead.</div>` : `<div class="note">The map lists nothing in that distance. Try a wider search.</div>`);
-        for (const p of [...ranked.laneiq, ...ranked.others]) found.set(p.id, p);
-        out.innerHTML = parts.join("");
-        out.querySelectorAll("[data-use]").forEach((b) => b.onclick = () => {
-          const p = found.get(b.dataset.use);
-          if (p) {
-            choosing = false;
-            opts.pick?.(p);
-          }
-        });
-      } catch (e) {
-        out.innerHTML = `<div class="note">${esc2(e.message || "That didn't work.")}</div>`;
-      }
-    };
-    $("sn-here").onclick = () => void run(here);
-    $("sn-go").onclick = () => {
-      const q2 = $("sn-q").value.trim();
-      if (q2.length < 3) return void ($("sn-out").innerHTML = `<div class="note">Type a city or ZIP code first.</div>`);
-      void run(() => geocode2(q2));
-    };
-  }
-  var sheet14, close10, here, choosing, row;
-  var init_shopfinderui = __esm({
-    "camera/shopfinderui.ts"() {
-      init_health();
-      init_shopfind();
-      init_live();
-      init_shopconfig();
-      sheet14 = () => $("review");
-      close10 = () => (sheet14().classList.remove("on"), sheet14().innerHTML = "");
-      here = () => new Promise((res, rej) => {
-        if (!navigator.geolocation) return rej(new Error("This phone can't share its location here."));
-        navigator.geolocation.getCurrentPosition((p) => res({ lat: p.coords.latitude, lon: p.coords.longitude }), () => rej(new Error("Location is off for LaneIQ. Type a city or ZIP code instead.")), { timeout: 12e3, maximumAge: 3e5 });
-      });
-      choosing = false;
-      row = (p) => {
-        const dist2 = p.km !== void 0 ? `${miles(p.km).toFixed(miles(p.km) < 10 ? 1 : 0)} mi` : "";
-        const dir2 = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`;
-        return `<div class="card"><div class="row"><div class="lr-head">${esc2(p.name)}</div>${p.laneiq ? `<span class="badge good">Uses LaneIQ</span>` : `<span class="badge tentative">${p.kind === "pro shop" ? "Pro shop" : "Bowling center"}</span>`}</div>
-    <div class="u">${esc2([dist2, p.address ?? ""].filter(Boolean).join(" \xB7 "))}</div>
-    ${p.laneiq ? `<div class="note">${p.laneiq.acceptsOrders ? "Takes orders from LaneIQ: ask them for their link or stock file, or fit a ball from their shelves." : "On LaneIQ. Ask them about fittings."}</div>` : p.kind === "center" ? `<div class="note">The map lists a bowling center here. Many have a pro shop, but the map doesn't say, so call ahead.</div>` : ""}
-    <div class="chips">${choosing ? `<button class="btn" data-use="${esc2(p.id)}">Send my ball here</button>` : ""}${p.phone ? `<a class="btn ghost" href="tel:${esc2(p.phone.replace(/[^+\d]/g, ""))}">Call</a>` : ""}${p.website ? `<a class="btn ghost" href="${esc2(p.website)}" target="_blank" rel="noopener noreferrer">Website</a>` : ""}<a class="btn ghost" href="${dir2}" target="_blank" rel="noopener noreferrer">Directions</a></div></div>`;
-      };
-    }
-  });
-
-  // camera/shopui.ts
-  var shopui_exports = {};
-  __export(shopui_exports, {
-    handleOrderLink: () => handleOrderLink,
-    handleShopLink: () => handleShopLink,
-    load: () => load,
-    openCustomer: () => openCustomer,
-    openShop: () => openShop,
-    openShopFinder: () => openShopFinder,
-    save: () => save2,
-    showOrder: () => showOrder
-  });
-  function openShop() {
-    bump("shop");
-    const el = sheet15();
-    el.classList.add("on");
-    const cur2 = load();
-    const items = cur2?.items ?? [];
-    el.innerHTML = `<div class="row"><h2>Pro shop mode</h2><button class="btn ghost" id="sh-close">Close</button></div>
-    <div class="note">For a pro shop. Load what you have in stock, send it to bowlers, and they get suggestions from your shelves only. When one orders, you get a drill sheet with their numbers. You make the final call on fit, layout and drilling. Nothing leaves this phone except what you choose to send.</div>
-    <div class="card"><div class="k">Your shop</div>
-    <div class="field"><label for="sh-name">Shop name</label><input id="sh-name" maxlength="${SHOP_LIMITS.name}" value="${esc2(cur2?.name ?? "")}" autocomplete="off"></div>
-    <div class="field"><label for="sh-contact">How bowlers reach you (email or phone)</label><input id="sh-contact" maxlength="${SHOP_LIMITS.contact}" value="${esc2(cur2?.contact ?? "")}" autocomplete="off"></div>
-    <div class="two"><div class="field"><label for="sh-drill">Drilling price ($, optional)</label><input id="sh-drill" inputmode="decimal" value="${cur2?.drillPrice || ""}"></div><div class="field"><label for="sh-note">A line for bowlers (hours, pickup)</label><input id="sh-note" maxlength="${SHOP_LIMITS.note}" value="${esc2(cur2?.note ?? "")}" autocomplete="off"></div></div></div>
-    <div class="card"><div class="k">Your stock${items.length ? ` \xB7 ${items.length} items` : ""}</div>
-    <div class="note">A spreadsheet saved as CSV, with columns like <b>brand, ball, price, qty, weights, sku</b> (any order; only the ball name is required). Weights are separated by semicolons, like 14;15;16. Balls are matched to the ${S.catalog.length}-ball catalog by brand and name; only matched balls can be suggested.</div>
-    <div class="field"><label for="sh-file">Open a CSV file</label><input id="sh-file" type="file" accept=".csv,text/csv,text/plain"></div>
-    <div class="field"><label for="sh-paste">Or paste the rows</label><textarea id="sh-paste" rows="4" placeholder="brand,ball,price,qty,weights"></textarea></div>
-    <div class="chips"><button class="btn" id="sh-load">Load this stock</button></div><div class="note" id="sh-msg" aria-live="polite"></div></div>
-    <div class="card"><div class="k">Receive boxes</div><div class="note">Point the camera at the barcode on a ball box and it's counted. The first time the app sees a barcode, you tell it which ball it is; after that every box with that barcode is counted by itself. Prices and counts can be edited any time.</div><div class="chips"><button class="btn" id="sh-scan">Scan boxes</button><button class="btn ghost" id="sh-edit">Edit stock and prices</button></div></div>
-    <div class="card"><div class="k">Online</div><div class="note">Sign in with your email to take orders in an inbox, keep your stock online, and be listed first when bowlers look for a pro shop near them. Optional: everything else here works without it.</div><div class="chips"><button class="btn" id="sh-online">Shop online and orders inbox</button></div></div>
-    <div class="card"><div class="k">Special orders</div>
-    <label class="chips" style="align-items:flex-start;gap:8px"><input type="checkbox" id="sh-sp"${cur2?.special?.accepts ? " checked" : ""}> <span>When a ball isn't on my shelf, let a bowler ask me to order it and have it sent to their bowling center.</span></label>
-    <div class="two"><div class="field"><label for="sh-spb">Brands I can order (blank = any)</label><input id="sh-spb" value="${esc2((cur2?.special?.brands ?? []).join(", "))}" placeholder="Storm, Hammer, Roto Grip" autocomplete="off"></div><div class="field"><label for="sh-spd">Usual wait (days)</label><input id="sh-spd" inputmode="numeric" value="${cur2?.special?.leadDays || ""}"></div></div>
-    <div class="note">You confirm the price and the wait with the bowler before you order anything in. LaneIQ doesn't take payment or arrange shipping yet; you do that with the bowler.</div></div>
-    <div class="card"><div class="k">Send to bowlers</div><div class="note">${items.length > LINK_ITEMS ? `That's a lot of stock for one link, so send it as a file.` : "A link works for a small stock; for more, send the file."} Bowlers open it in LaneIQ and see picks from your stock.</div><div class="chips"><button class="btn" id="sh-link"${items.length && items.length <= LINK_ITEMS ? "" : " disabled"}>Share a link</button></div><div id="sh-file-share"></div></div>
-    <div class="card"><div class="k">Orders</div><div class="u">When a bowler orders, they send you a link. Open it on this phone and you get the drill sheet, ready to read, copy or send.</div></div>
-    <div class="card"><div class="k">Customers \xB7 ${loadCustomers().length}</div>${loadCustomers().length ? loadCustomers().map((c) => `<button class="chip" data-cust="${esc2(c.key)}" style="display:block;width:100%;text-align:left;margin:4px 0">${esc2(c.name)} <small>${c.layouts.length} layout${c.layouts.length === 1 ? "" : "s"} \xB7 ${c.orders.length} order${c.orders.length === 1 ? "" : "s"}</small></button>`).join("") : `<div class="note">A customer is added here the first time they order. You can reopen their hand, pitches and the layouts on their other balls any time. This list stays on this phone.</div>`}</div>`;
-    $("sh-close").onclick = close11;
-    el.querySelectorAll("[data-cust]").forEach((b) => b.onclick = () => openCustomer(b.dataset.cust));
-    const persist2 = (extra2) => {
-      const v = (id) => $(id).value;
-      const special = { accepts: $("sh-sp").checked, brands: v("sh-spb").split(",").map((b) => b.trim()).filter(Boolean), leadDays: Number(v("sh-spd")) || 0 };
-      const p = newShopProfile(v("sh-name"), v("sh-contact"), Number(v("sh-drill")) || 0, v("sh-note"), cur2?.id, special);
-      if (!p) return null;
-      const s = { name: p.name, contact: p.contact, drillPrice: p.drillPrice, note: p.note, id: p.id, items: extra2 ?? load()?.items ?? cur2?.items ?? [], ...p.special ? { special: p.special } : {}, boxes: load()?.boxes ?? cur2?.boxes, remoteId: load()?.remoteId ?? cur2?.remoteId };
-      save2(s);
-      return s;
-    };
-    $("sh-scan").onclick = async () => persist2() ? (await Promise.resolve().then(() => (init_shopbox(), shopbox_exports))).openBoxScanner() : void ($("sh-msg").textContent = "Add your shop name and a way to reach you first.");
-    $("sh-edit").onclick = async () => persist2() ? (await Promise.resolve().then(() => (init_shopbox(), shopbox_exports))).openStockEditor() : void ($("sh-msg").textContent = "Add your shop name and a way to reach you first.");
-    $("sh-sp").addEventListener("change", () => void persist2());
-    $("sh-online").onclick = async () => persist2() ? (await Promise.resolve().then(() => (init_shopcloud(), shopcloud_exports))).openShopOnline() : void ($("sh-msg").textContent = "Add your shop name and a way to reach you first.");
-    let pending2 = "";
-    $("sh-file").addEventListener("change", async (e) => {
-      const f2 = e.target.files?.[0];
-      if (f2) pending2 = await f2.text();
-      $("sh-msg").textContent = f2 ? `${f2.name} is ready to load.` : "";
-    });
-    $("sh-load").onclick = () => {
-      const text = pending2 || $("sh-paste").value;
-      if (!text.trim()) return void ($("sh-msg").textContent = "Open a file or paste the rows first.");
-      const r = parseInventory(text, S.catalog);
-      if (!r.items.length) return void ($("sh-msg").textContent = r.problems[0] ?? "I found no usable rows.");
-      if (!persist2(r.items)) return void ($("sh-msg").textContent = "Add your shop name and a way to reach you first.");
-      notify(`Loaded ${r.items.length} items.`);
-      openShop();
-      setTimeout(() => {
-        const m = document.getElementById("sh-msg");
-        if (m) m.textContent = `${r.items.length} items loaded. ${r.unmatched ? `${r.unmatched} aren't in the catalog, so they can be sold but not suggested.` : "All matched the catalog."}${r.problems.length ? ` Skipped: ${r.problems.slice(0, 4).join(" ")}` : ""}`;
-      }, 0);
-    };
-    $("sh-link").onclick = async () => {
-      const s = persist2();
-      if (!s) return void ($("sh-msg").textContent = "Add your shop name and a way to reach you first.");
-      const url = `${appLink()}/#shop=${await packText(JSON.stringify(stockOf(s)))}`;
-      $("sh-msg").textContent = await shareLink(`${s.name} on LaneIQ`, `${s.name} on LaneIQ: see which of our balls fit your game.`, url);
-    };
-    if (cur2 && items.length) offerShare($("sh-file-share"), [new File([JSON.stringify(stockOf(cur2))], `${cur2.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-stock.laneiq-shop.json`, { type: "application/json" })], { title: `${cur2.name} stock`, label: "Send or save the stock file" });
-  }
-  async function handleShopLink(value) {
-    const json = await unpackText(value);
-    const s = json ? parseShopStock(json) : null;
-    if (!s) return void notify("That shop link is damaged or isn't from LaneIQ.");
-    openFitting(s);
-  }
-  function openShopFinder() {
-    bump("shop-finder");
-    const el = sheet15();
-    el.classList.add("on");
-    el.innerHTML = `<div class="row"><h2>Fit a ball from a pro shop</h2><button class="btn ghost" id="sf-close">Close</button></div>
-    <div class="note">Your pro shop can send you a link or a stock file. Open it here and LaneIQ suggests balls from what they actually have, with a starting layout for their driller. The shop makes the final call.</div>
-    <div class="field"><label for="sf-file">Open a shop's stock file</label><input id="sf-file" type="file" accept=".json,application/json"></div><div class="note" id="sf-msg" aria-live="polite"></div>
-    ${current3 ? `<div class="chips"><button class="btn ghost" id="sf-last">Back to ${esc2(current3.profile.name)}</button></div>` : ""}`;
-    $("sf-close").onclick = close11;
-    $("sf-file").addEventListener("change", async (e) => {
-      const f2 = e.target.files?.[0];
-      const s = f2 && f2.size < 2e6 ? parseShopStock(await f2.text()) : null;
-      if (!s) return void ($("sf-msg").textContent = "That file isn't a LaneIQ shop stock file.");
-      openFitting(s);
-    });
-    if (current3) $("sf-last").onclick = () => openFitting(current3);
-  }
-  function openFitting(stock) {
-    current3 = stock;
-    bump("shop-fitting");
-    const el = sheet15();
-    el.classList.add("on");
-    const bp = bowlerProfile();
-    const p = stock.profile;
-    const weights = [...new Set(stock.items.flatMap((i) => i.weights))].sort((a, b) => b - a);
-    const known = [bp.revRpm ? `${Math.round(bp.revRpm)} rpm${bp.revSource === "measured" || bp.revSource === "entered" ? "" : " (estimate)"}` : "", bp.launchSpeed ? `${bp.launchSpeed.toFixed(1)} mph` : "", bp.axisRotation !== void 0 && bp.axisTilt !== void 0 ? `axis ${Math.round(bp.axisRotation)}\xB0/${Math.round(bp.axisTilt)}\xB0` : ""].filter(Boolean);
-    el.innerHTML = `<div class="row"><h2>${esc2(p.name)}</h2><button class="btn ghost" id="sf-close">Close</button></div>
-    <div class="note">${p.note ? `${esc2(p.note)} \xB7 ` : ""}${p.drillPrice ? `Drilling $${p.drillPrice} \xB7 ` : ""}${stock.items.filter((i) => i.stock > 0).length} balls in stock. Suggestions come from this shop's stock only, and they're a starting point: the shop's driller makes the final call.</div>
-    <div class="card"><div class="k">What the app knows about you</div><div class="u">${known.length ? esc2(known.join(" \xB7 ")) : "Not much yet. Use the camera for a few shots and the picks get better."}</div></div>
-    <div class="two"><div class="field"><label for="sf-w">Ball weight</label><select id="sf-w"><option value="0">Any</option>${weights.map((w) => `<option value="${w}">${w} lb</option>`).join("")}</select></div><div class="field"><label for="sf-b">Most you'd spend ($, optional)</label><input id="sf-b" inputmode="numeric"></div></div>
-    <div class="chips"><button class="btn" id="sf-go">Show me balls</button></div><div id="sf-out"></div>`;
-    $("sf-close").onclick = close11;
-    $("sf-go").onclick = () => {
-      const w = Number($("sf-w").value) || void 0, budget = Number($("sf-b").value) || void 0;
-      const owned = S.arsenal.map((b) => b.catalogKey).filter(Boolean);
-      const inStock = recommendFromStock(stock.items, S.catalog, { bowler: bp, weightLb: w, budget, ownedKeys: owned }, 4);
-      const special = recommendSpecial(stock.items, S.catalog, stock.profile, { bowler: bp, weightLb: w, ownedKeys: owned }, 3);
-      const picks = [...inStock, ...special];
-      const out = $("sf-out");
-      if (!picks.length) return void (out.innerHTML = `<div class="note">Nothing in this shop's stock matches that. Try another weight or budget, or ask the shop what else they can order.</div>`);
-      const card2 = (k2, i) => `<div class="card"><div class="lr-head">${esc2(k2.item.manufacturer)} ${esc2(k2.item.name)}${k2.item.price ? ` \xB7 $${k2.item.price}` : ""}</div><div class="u">${esc2(k2.why[k2.why.length - 1])}</div><div class="note">${esc2(k2.why[0])}${k2.item.weights.length ? ` Weights: ${k2.item.weights.join(", ")} lb.` : ""}</div><div class="chips"><button class="btn" data-o="${i}">${k2.special ? "Ask them to order it in" : "Order this"}</button></div></div>`;
-      out.innerHTML = `${inStock.length ? `<h3>On their shelf</h3>${inStock.map((k2, i) => card2(k2, i)).join("")}` : `<div class="note">Nothing on their shelf fits that.</div>`}${special.length ? `<h3>Not on the shelf: they can order it in</h3><div class="note">${stock.profile.special?.leadDays ? `Usually about ${stock.profile.special.leadDays} days. ` : ""}It's sent to your bowling center. The shop confirms the price and the wait with you before anything is ordered or paid.</div>${special.map((k2, i) => card2(k2, inStock.length + i)).join("")}` : ""}<div class="note">Picks come from published specs, not from how a ball reacts for you.</div>`;
-      out.querySelectorAll("[data-o]").forEach((b) => b.onclick = () => openOrderForm(stock, picks[Number(b.dataset.o)], w));
-    };
-  }
-  function openOrderForm(stock, pick, weightLb) {
-    const el = sheet15();
-    const bp = bowlerProfile();
-    const pap = S.profile?.spin?.pap;
-    const fit = S.profile?.fit && Object.keys(cleanFit(S.profile.fit)).length ? cleanFit(S.profile.fit) : void 0;
-    const sheets = (S.profile?.sheets ?? []).slice(0, MAX_LAYOUTS);
-    el.innerHTML = `<div class="row"><h2>Order from ${esc2(stock.profile.name)}</h2><button class="btn ghost" id="of-close">Close</button></div>
-    <div class="card"><div class="lr-head">${esc2(pick.item.manufacturer)} ${esc2(pick.item.name)}${pick.weightLb ? ` \xB7 ${pick.weightLb} lb` : ""}${pick.item.price ? ` \xB7 $${pick.item.price}` : ""}</div></div>
-    ${pick.special ? `<div class="card"><div class="k">Where should it be sent?</div><div class="note">${esc2(stock.profile.name)} doesn't have this one on the shelf. They'll order it in and have it sent to your bowling center, and confirm the price and the wait with you first.</div>
-      <div class="field"><label for="of-cn">Your bowling center</label><input id="of-cn" maxlength="80" value="${esc2(lastCenter().name)}" autocomplete="off"></div>
-      <div class="field"><label for="of-ca">Its address</label><input id="of-ca" maxlength="140" value="${esc2(lastCenter().address)}" autocomplete="off"></div>
-      <div class="chips"><button class="btn ghost" id="of-pick">Pick from centers near me</button></div></div>` : ""}
-    <div class="card"><div class="field"><label for="of-name">Your name</label><input id="of-name" maxlength="${SHOP_LIMITS.customer}" value="${esc2(S.profile?.name ?? "")}" autocomplete="off"></div>
-    <div class="field"><label for="of-contact">How the shop reaches you (email or phone)</label><input id="of-contact" maxlength="${SHOP_LIMITS.contact}" autocomplete="off"></div>
-    <div class="field"><label for="of-note">Anything the driller should know</label><input id="of-note" maxlength="${SHOP_LIMITS.note}" autocomplete="off" placeholder="e.g. my thumb swells in the evening"></div></div>
-    ${fit || sheets.length ? `<label class="chips" style="align-items:flex-start;gap:8px"><input type="checkbox" id="of-profile" checked> <span>Also send my hand measurements${fit ? ` (${fitLines(fit).length ? esc2(fitLines(fit).join("; ")) : "span and hole sizes"})` : ""} and the layouts saved for my other balls${sheets.length ? ` (${sheets.length})` : ""}, so the driller can match what already works for me. The shop keeps them in a customer profile on its own phone.</span></label>` : `<div class="note">Save your hand and PAP in the Layout Lab and you can send them with an order, so the driller sees your grip, pitches and the layouts on your other balls.</div>`}
-    <div class="note">The shop gets your name, how to reach you, this ball, a starting layout and the readings the app has (${[bp.revRpm ? "rev rate" : "", bp.launchSpeed ? "speed" : "", bp.axisRotation !== void 0 ? "axis" : "", pap ? "PAP" : ""].filter(Boolean).join(", ") || "none yet"}). Release video is never attached. If you want the driller to see it, send it from the share sheet yourself. These are estimates from a phone camera; the shop measures before drilling.</div>
-    <div class="chips"><button class="btn" id="of-send">Send my order</button></div><div class="note" id="of-msg" aria-live="polite"></div>`;
-    $("of-close").onclick = () => openFitting(stock);
-    $("of-pick")?.addEventListener("click", async () => {
-      const { openShopNearMe: openShopNearMe2 } = await Promise.resolve().then(() => (init_shopfinderui(), shopfinderui_exports));
-      openShopNearMe2({ pick: (p) => {
-        rememberCenter({ name: p.name, address: p.address ?? "" });
-        openOrderForm(stock, pick, weightLb);
-      } });
-    });
-    $("of-send").onclick = async () => {
-      const v = (id) => $(id).value;
-      const share = !!$("of-profile")?.checked;
-      const cn = $("of-cn")?.value.trim() ?? "", ca = $("of-ca")?.value.trim() ?? "";
-      if (pick.special && !cn) return void ($("of-msg").textContent = "Tell the shop which bowling center to send it to.");
-      if (pick.special) rememberCenter({ name: cn, address: ca });
-      const delivery = pick.special ? { mode: "ship-to-center", center: { name: cn, address: ca } } : { mode: "pickup" };
-      const layouts = share ? sheets.map((s) => ({ ball: s.ball.name, manufacturer: s.ball.manufacturer ?? "", layout: s.layoutText, pap: `${s.pap.over} over, ${Math.abs(s.pap.up)} ${s.pap.up < 0 ? "down" : "up"}`, at: s.at, notes: s.notes })) : void 0;
-      const order = newOrder({ shop: stock.profile, customer: { name: v("of-name"), contact: v("of-contact") }, bowler: bp, pick: { ...pick, weightLb: weightLb ?? pick.weightLb }, pap, note: v("of-note"), fit: share ? fit : void 0, layouts, delivery });
-      if (!order) return void ($("of-msg").textContent = "Add your name and how the shop can reach you.");
-      if (stock.online && backendOn()) {
-        $("of-msg").textContent = "Sending\u2026";
-        try {
-          await asBowler("orders", { method: "POST", body: JSON.stringify(orderRow(stock.online.shopId, order)), ...MIN });
-          $("of-send").setAttribute("disabled", "true");
-          return void ($("of-msg").textContent = `Sent to ${stock.profile.name}. They'll contact you at ${order.customer.contact}${pick.special ? " to confirm the price and the wait" : ""}.`);
-        } catch (e) {
-          $("of-msg").textContent = `${e.message} I'll make a link you can send them instead.`;
-        }
-      }
-      const url = `${appLink()}/#order=${await packText(JSON.stringify(order))}`;
-      $("of-msg").textContent = await shareLink(`Order for ${stock.profile.name}`, `${order.customer.name} ordered the ${order.ball.name} from ${stock.profile.name} through LaneIQ. Open this in LaneIQ for the drill sheet.`, url);
-    };
-  }
-  function openCustomer(key3) {
-    const all = loadCustomers();
-    const c = all.find((x) => x.key === key3);
-    if (!c) return void openShop();
-    bump("shop-customer");
-    const el = sheet15();
-    el.classList.add("on");
-    const fit = c.fit ? fitLines(c.fit) : [];
-    const r = c.readings;
-    el.innerHTML = `<div class="row"><h2>${esc2(c.name)}</h2><button class="btn ghost" id="cu-close">Back</button></div>
-    <div class="card"><div class="u">${c.hand === "L" ? "Left" : "Right"}-handed${c.style ? ` \xB7 ${esc2(c.style.replace(/-/g, " "))}` : ""} \xB7 ${esc2(c.contact)}</div></div>
-    <div class="card"><div class="k">Hand and pitches</div>${fit.length ? fit.map((x) => `<div class="u">${esc2(x)}</div>`).join("") : `<div class="note">Not sent yet. Ask them to save their hand in the Layout Lab, or measure it and note it below.</div>`}</div>
-    <div class="card"><div class="k">Readings from the app (estimates)</div><div class="u">${esc2([r.revRpm !== void 0 ? `${r.revRpm} rpm` : "", r.speedMph !== void 0 ? `${r.speedMph} mph` : "", r.axisRotation !== void 0 && r.axisTilt !== void 0 ? `axis ${r.axisRotation}\xB0 / ${r.axisTilt}\xB0` : "", r.pap ? `PAP ${r.pap}` : ""].filter(Boolean).join(" \xB7 ") || "none sent")}</div></div>
-    <div class="card"><div class="k">Layouts on their other balls</div>${c.layouts.length ? c.layouts.map((l) => `<div class="drow"><div><b>${esc2(l.manufacturer ? `${l.manufacturer} ${l.ball}` : l.ball)}</b> <small>${l.at.slice(0, 4) === "1970" ? "" : l.at.slice(0, 10)}</small></div><div class="note dnote">${esc2(l.layout)}${l.pap ? ` \xB7 PAP ${esc2(l.pap)}` : ""}${l.notes ? ` \xB7 ${esc2(l.notes)}` : ""}</div></div>`).join("") : `<div class="note">None on file.</div>`}</div>
-    <div class="card"><div class="k">Orders</div>${c.orders.map((o) => `<div class="u">${o.at.slice(0, 10)} \xB7 ${esc2(o.ball)}${o.weightLb ? ` ${o.weightLb} lb` : ""}</div>`).join("") || `<div class="note">None.</div>`}</div>
-    <div class="card"><div class="field"><label for="cu-notes">Your notes on this customer (stay on this phone)</label><textarea id="cu-notes" rows="3" maxlength="500">${esc2(c.shopNotes)}</textarea></div></div>
-    <div class="chips"><button class="btn" id="cu-save">Save notes</button><button class="btn ghost" id="cu-copy">Copy profile</button><button class="btn ghost danger" id="cu-del">Remove customer</button></div><div class="note" id="cu-msg" aria-live="polite"></div>`;
-    $("cu-close").onclick = openShop;
-    $("cu-save").onclick = () => {
-      c.shopNotes = $("cu-notes").value.replace(/[\u0000-\u001f<>]/g, " ").slice(0, 500);
-      saveCustomers(all);
-      $("cu-msg").textContent = "Saved.";
-    };
-    $("cu-copy").onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(customerSheet(c));
-        $("cu-msg").textContent = "Copied.";
-      } catch {
-        $("cu-msg").textContent = "Couldn't copy. Select the text and copy it.";
-      }
-    };
-    $("cu-del").onclick = () => {
-      if ($("cu-del").dataset.sure !== "1") {
-        $("cu-del").dataset.sure = "1";
-        $("cu-del").textContent = "Tap again to remove";
-        return;
-      }
-      saveCustomers(all.filter((x) => x.key !== key3));
-      openShop();
-    };
-  }
-  async function handleOrderLink(value) {
-    const json = await unpackText(value);
-    const o = json ? parseOrder(json) : null;
-    if (!o) return void notify("That order link is damaged or isn't from LaneIQ.");
-    showOrder(o);
-  }
-  function showOrder(o, back = close11) {
-    bump("shop-order");
-    const text = drillSheet(o);
-    const customers = loadCustomers();
-    const key3 = customerKey(o.customer.contact);
-    const rec2 = mergeCustomer(customers.find((c) => c.key === key3), o);
-    saveCustomers([rec2, ...customers.filter((c) => c.key !== key3)]);
-    const el = sheet15();
-    el.classList.add("on");
-    el.innerHTML = `<div class="row"><h2>Order from ${esc2(o.customer.name)}</h2><button class="btn ghost" id="od-close">Close</button></div>
-    <div class="card"><div class="lr-head">${esc2(o.ball.manufacturer)} ${esc2(o.ball.name)}${o.ball.price ? ` \xB7 $${o.ball.price}` : ""}</div><div class="u">${esc2(o.customer.contact)} \xB7 ${new Date(o.at).toLocaleDateString()}</div></div>
-    <div class="card"><div class="k">Drill sheet</div><pre id="od-text" style="white-space:pre-wrap;font:inherit;margin:0">${esc2(text)}</pre></div>
-    <div class="chips"><button class="btn" id="od-copy">Copy the sheet</button><button class="btn ghost" id="od-share">Send it on</button><button class="btn ghost" id="od-cust">Open ${esc2(o.customer.name)}'s profile</button></div><div class="note" id="od-msg" aria-live="polite">Added to your customers on this phone.</div>`;
-    $("od-close").onclick = back;
-    $("od-cust").onclick = () => openCustomer(key3);
-    $("od-copy").onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(text);
-        $("od-msg").textContent = "Copied.";
-      } catch {
-        $("od-msg").textContent = "Select the text above and copy it.";
-      }
-    };
-    $("od-share").onclick = async () => {
-      const nav = navigator;
-      try {
-        if (nav.share) await nav.share({ title: `Drill sheet: ${o.ball.name}`, text });
-        else $("od-msg").textContent = "Sharing isn't available here. Use Copy.";
-      } catch {
-      }
-    };
-  }
-  var sheet15, close11, KEY5, load, save2, CKEY, loadCustomers, saveCustomers, stockOf, current3, CENTER, lastCenter, rememberCenter;
-  var init_shopui = __esm({
-    "camera/shopui.ts"() {
-      init_health();
-      init_shop();
-      init_toast();
-      init_live();
-      init_state();
-      init_friends();
-      init_sharefiles();
-      init_backend();
-      sheet15 = () => $("review");
-      close11 = () => (sheet15().classList.remove("on"), sheet15().innerHTML = "");
-      KEY5 = "laneiq.shop";
-      load = () => {
-        try {
-          const j = JSON.parse(localStorage.getItem(KEY5) ?? "null");
-          return j && typeof j === "object" ? j : null;
-        } catch {
-          return null;
-        }
-      };
-      save2 = (s) => {
-        try {
-          localStorage.setItem(KEY5, JSON.stringify(s));
-        } catch {
-        }
-      };
-      CKEY = "laneiq.shop.customers";
-      loadCustomers = () => {
-        try {
-          const j = JSON.parse(localStorage.getItem(CKEY) ?? "[]");
-          return Array.isArray(j) ? j : [];
-        } catch {
-          return [];
-        }
-      };
-      saveCustomers = (c) => {
-        try {
-          localStorage.setItem(CKEY, JSON.stringify(c.slice(0, MAX_CUSTOMERS)));
-        } catch {
-        }
-      };
-      stockOf = (s) => ({ v: 1, t: "shop", profile: { v: 1, id: s.id, name: s.name, contact: s.contact, drillPrice: s.drillPrice, note: s.note, ...s.special?.accepts ? { special: s.special } : {} }, items: s.items, at: (/* @__PURE__ */ new Date()).toISOString(), ...s.remoteId ? { online: { shopId: s.remoteId } } : {} });
-      current3 = null;
-      CENTER = "laneiq.center";
-      lastCenter = () => {
-        try {
-          const j = JSON.parse(localStorage.getItem(CENTER) ?? "null");
-          return { name: String(j?.name ?? ""), address: String(j?.address ?? "") };
-        } catch {
-          return { name: "", address: "" };
-        }
-      };
-      rememberCenter = (c) => {
-        try {
-          localStorage.setItem(CENTER, JSON.stringify(c));
-        } catch {
-        }
-      };
-    }
-  });
-
-  // camera/proshoptools.ts
-  function gripNow() {
-    const f2 = S.profile?.fit;
-    const st2 = bowlerProfile().style;
-    return { ...DEFAULT_GRIP, ...f2?.span ? { span: f2.span } : {}, ...f2?.thumbDia ? { thumbDia: f2.thumbDia } : {}, ...f2?.fingerDia ? { fingerDia: f2.fingerDia } : {}, ...f2?.bridge ? { bridge: f2.bridge } : {}, noThumb: st2 === "two-handed" || st2 === "one-hand-no-thumb" };
-  }
-  function proshopToolsHtml(pattern) {
-    const bp = bowlerProfile();
-    const grip = gripNow();
-    const pap = parsePap(S.profile?.spin?.pap ?? "") ?? void 0;
-    const a = adviseLayouts(bp, pattern, { pap, grip });
-    const dom = bowlerDominance(bp.revRpm, bp.launchSpeed);
-    const surf = surfaceFor(pattern, dom);
-    const twoHand = bp.style === "two-handed" || bp.style === "one-hand-no-thumb";
-    const known = [bp.revRpm !== void 0 ? `${Math.round(bp.revRpm)} RPM` : null, bp.launchSpeed !== void 0 ? `${bp.launchSpeed.toFixed(1)} mph` : null, bp.axisTilt !== void 0 ? `${Math.round(bp.axisTilt)}\xB0 tilt` : null].filter(Boolean).join(" \xB7 ");
-    return `
-    <h3>Pro shop toolkit</h3>
-    <div class="note">Built from published layout theory (Pinel's Dual Angle, Storm's Pin Buffer and 2LS) and the USBC rules. Every number is a starting point for a driller, and where sources disagree the text says so.</div>
-    <details class="card" open><summary class="k">Layout advisor${known ? " \xB7 " + esc2(known) : ""}</summary>
-      <table>
-        <tr><td>Dual Angle (drilling \xD7 pin to PAP \xD7 VAL)</td><td class="n">${a.dual.drilling}\xB0 \xD7 ${inch2(a.dual.pinToPap)} \xD7 ${a.dual.valAngle}\xB0</td></tr>
-        <tr><td>Pin Buffer (pin to PAP \xD7 PSA to PAP \xD7 buffer)</td><td class="n">${inch2(a.pinBuffer.pinToPap)} \xD7 ${inch2(a.pinBuffer.psaToPap)} \xD7 ${inch2(a.pinBuffer.pinBuffer)}</td></tr>
-        <tr><td>2LS (pin to PAP \xD7 PSA to PAP \xD7 pin to grip)${twoHand ? "" : " <span class='note'>for two-handed</span>"}</td><td class="n">${inch2(a.ls2.pinToPap)} \xD7 ${inch2(a.ls2.psaToPap)} \xD7 ${inch2(a.ls2.pinToGrip)}</td></tr>
-        <tr><td>Angle sum range for you</td><td class="n">${a.sumRange[0]} to ${a.sumRange[1]}</td></tr></table>
-      <ul>${a.why.map((w) => `<li>${esc2(w)}</li>`).join("")}</ul>
-      <div class="note">${pap ? "Converted at your saved PAP." : "No PAP saved, so the Pin Buffer and 2LS numbers use a typical 4 1/2 over, 1 up. Enter yours in the Layout Lab."} The three notations are the same layout; the pin goes at the same spot on the ball.</div>
-      <div class="k" style="margin-top:8px">Pinel's layouts by track (drilling \xD7 pin to PAP \xD7 VAL angle)</div>
-      <table>${TRACK_TABLE.map((r) => `<tr${r === a.trackRow && bp.axisTilt !== void 0 ? ' style="font-weight:600"' : ""}><td>${esc2(r.label)} <span class="note">${esc2(r.tiltRange)}</span></td><td class="n">${esc2(r.sharper)} \xB7 ${esc2(r.midlane)} \xB7 ${esc2(r.control)}</td></tr>`).join("")}</table>
-      <div class="note">Columns: sharper breakpoint, midlane, control (Pinel 2010 table, via BowlersMart).</div>
-      <div class="k" style="margin-top:8px">Storm benchmark ladders</div>
-      <div class="note">Pin Buffer: ${STORM_LADDER.map((l) => `${esc2(l.layout)} (${esc2(l.note)})`).join("; ")}.</div>
-      <div class="note">2LS, weakest to strongest: ${LS2_LADDER.map(esc2).join("; ")}.</div></details>
-
-    <div class="card"><div class="k">Pro shop mode</div><div class="note">Bowlers: open a link or file from your shop and get picks from what they actually have. Shops: load your stock and receive orders with a drill sheet.</div><div class="chips"><button class="btn" id="pt-fitshop">Fit a ball from my pro shop</button>${can(S.profile?.role, "shopMode") ? "" : `<span class="note">Run a pro shop? Switch your account type under Me.</span>`}</div><div class="chips"><button class="btn" id="pt-shopnear">Find a pro shop near me</button></div></div>
-
-    <details class="card"><summary class="k">Layout checker and drilled-ball estimate</summary>
-      <div class="note">Enter a layout in any system. LaneIQ checks it against the system's rules and the hole-clearance rule, converts it, and estimates what drilling does to the ball.</div>
-      <div class="chips"><label>System <select id="pt-sys"><option value="dual">Dual Angle</option><option value="pinbuffer">Pin Buffer</option><option value="2ls">2LS</option><option value="core">Core Angle + Buffer</option></select></label></div>
-      <div class="chips"><label id="pt-l1">Drilling angle \xB0 <input id="pt-a" inputmode="decimal" value="${a.dual.drilling}" style="width:70px"></label>
-        <label id="pt-l2">Pin to PAP <input id="pt-b" value="${inch2(a.dual.pinToPap)}" style="width:70px"></label>
-        <label id="pt-l3">VAL angle \xB0 <input id="pt-c" inputmode="decimal" value="${a.dual.valAngle}" style="width:70px"></label></div>
-      <div class="chips"><label>PAP over <input id="pt-over" value="${pap ? inch2(pap.over) : "4 1/2"}" style="width:70px"></label><label>up (negative = down) <input id="pt-up" value="${pap ? inch2(pap.up) : "1"}" style="width:70px"></label></div>
-      <div class="chips"><label>Ball lb <input id="pt-w" inputmode="decimal" placeholder="15" style="width:60px"></label><label>RG <input id="pt-rg" inputmode="decimal" placeholder="2.50" style="width:60px"></label><label>Total diff <input id="pt-td" inputmode="decimal" placeholder=".050" style="width:60px"></label><label>Int diff <input id="pt-id" inputmode="decimal" placeholder=".015 (0 = symmetric)" style="width:90px"></label></div>
-      <div class="chips"><button class="btn" id="pt-go">Check this layout</button></div>
-      <div id="pt-out"></div>
-      <div class="k" style="margin-top:10px">Static weight check</div>
-      <div class="chips"><label>Top oz <input id="pt-st" inputmode="decimal" style="width:55px"></label><label>Finger oz <input id="pt-sf" inputmode="decimal" style="width:55px"></label><label>Side oz <input id="pt-ss" inputmode="decimal" style="width:55px"></label><label><input type="checkbox" id="pt-bal"> has a balance hole</label><button class="btn ghost" id="pt-sgo">Check</button></div>
-      <div id="pt-sout"></div></details>
-
-    <details class="card"><summary class="k">Reaction doctor</summary>
-      <div class="chips"><label>What's the ball doing? <select id="pt-sym">${SYMPTOMS.map((s) => `<option value="${s.id}">${esc2(s.label)}</option>`).join("")}</select></label></div>
-      <div id="pt-sym-out"></div></details>
-
-    <details class="card"><summary class="k">Surface guide</summary>
-      <table>${SURFACE_TABLE.map((r) => `<tr${r === surf.row ? ' style="font-weight:600"' : ""}><td>${esc2(r.oil)}</td><td class="n">${esc2(r.grits)}</td></tr>`).join("")}</table>
-      <div class="note">${pattern ? `For ${esc2(pattern.name)}: ${esc2(surf.row.oil)}, ${esc2(surf.row.grits)} grit. ` : ""}${esc2(surf.lean)}</div>
-      <div class="note">Surface is the quick, reversible fix. Lower grit is more hook and earlier; higher grit or polish is longer skid and more backend. Coverstock and surface are said to account for 70 to 75 percent of reaction (no measurement cited), so change them before the layout.</div></details>
-
-    <details class="card"><summary class="k">Fit, grip and ball weight</summary>
-      <div class="chips"><label>Body weight lb <input id="pt-body" inputmode="numeric" style="width:70px"></label><button class="btn ghost" id="pt-wgo">Suggest ball weight</button></div>
-      <div id="pt-wout" class="note"></div>
-      <ul>${GRIP_TYPES.map((g) => `<li><b>${esc2(g.name)}.</b> ${esc2(g.text)}</li>`).join("")}</ul>
-      <div class="chips"><label>Fit problem <select id="pt-fit">${FIT_SYMPTOMS.map((s) => `<option value="${s.id}">${esc2(s.label)}</option>`).join("")}</select></label></div>
-      <div id="pt-fit-out"></div>
-      <div class="note">A good fit means no squeeze and no stress on the hand, wrist or arm. Hands swell during a session, so fit through the middle, not game one.</div></details>
-
-    <details class="card"><summary class="k">Theory library (sources named)</summary>
-      ${THEORY.map((t) => `<div style="padding:6px 0;border-top:1px solid var(--line)"><b>${esc2(t.title)}</b> <span class="badge ${t.kind === "disagreement" ? "moderate" : "good"}">${t.kind}</span><div class="note">${esc2(t.source)}</div><div class="u">${esc2(t.body)}</div></div>`).join("")}</details>`;
-  }
-  function wireProshopTools(el) {
-    const q2 = (id) => el.querySelector("#" + id);
-    q2("pt-fitshop")?.addEventListener("click", async () => (await Promise.resolve().then(() => (init_shopui(), shopui_exports))).openShopFinder());
-    q2("pt-shopnear")?.addEventListener("click", async () => (await Promise.resolve().then(() => (init_shopfinderui(), shopfinderui_exports))).openShopNearMe());
-    q2("pt-shopmode")?.addEventListener("click", async () => (await Promise.resolve().then(() => (init_shopui(), shopui_exports))).openShop());
-    const sys = q2("pt-sys");
-    if (!sys) return;
-    const bp = bowlerProfile();
-    const labels = { dual: ["Drilling angle \xB0", "Pin to PAP", "VAL angle \xB0"], pinbuffer: ["Pin to PAP", "PSA to PAP", "Pin buffer"], "2ls": ["Pin to PAP", "PSA to PAP", "Pin to center of grip"], core: ["Core (drilling) angle \xB0", "Pin to PAP", "Pin buffer"] };
-    const setLabels = () => {
-      const l = labels[sys.value];
-      ["pt-l1", "pt-l2", "pt-l3"].forEach((id, i) => {
-        const lab2 = q2(id);
-        lab2.firstChild.textContent = l[i] + " ";
-      });
-    };
-    sys.onchange = setLabels;
-    const readIn = (id) => {
-      const v = q2(id).value;
-      return parseInches2(v) ?? Number(v);
-    };
-    q2("pt-go").onclick = () => {
-      const out = q2("pt-out");
-      const a = readIn("pt-a"), b = readIn("pt-b"), c = readIn("pt-c");
-      const over = readIn("pt-over"), up = readIn("pt-up");
-      if (![a, b, c, over, up].every(Number.isFinite)) return void (out.innerHTML = `<div class="u">Enter all three layout numbers and the PAP. Fractions like 4 1/2 work.</div>`);
-      const input = sys.value === "dual" ? { system: "dual", drilling: a, pinToPap: b, valAngle: c } : sys.value === "pinbuffer" ? { system: "pinbuffer", pinToPap: a, psaToPap: b, pinBuffer: c } : sys.value === "core" ? { system: "core", drilling: a, pinToPap: b, pinBuffer: c } : { system: "2ls", pinToPap: a, psaToPap: b, pinToGrip: c };
-      const grip = gripNow();
-      const solved2 = solveLayout(input, { over, up }, bp.hand, grip);
-      const ballW = num7(q2("pt-w")), rg = num7(q2("pt-rg")), td = num7(q2("pt-td")), idf = num7(q2("pt-id"));
-      const f2 = checkLayout(input, solved2, { axisTilt: bp.axisTilt, symmetric: idf === 0, grip });
-      const e = solved2.eq;
-      let drilled = "";
-      if (ballW && rg && td !== void 0) {
-        const r = drillBall({ weightLb: ballW, rg, totalDiff: td, intDiff: idf }, solved2, grip);
-        drilled = `<div class="k" style="margin-top:8px">Estimated drilled ball</div>
-        <table><tr><td>RG</td><td class="n">${r.undrilled.rg.toFixed(3)} \u2192 ${r.drilled.rg.toFixed(3)}</td></tr>
-        <tr><td>Intermediate diff</td><td class="n">${r.undrilled.intDiff.toFixed(3)} \u2192 ${r.drilled.intDiff.toFixed(3)}</td></tr>
-        <tr><td>Total diff</td><td class="n">${r.undrilled.totalDiff.toFixed(3)} \u2192 ${r.drilled.totalDiff.toFixed(3)}</td></tr>
-        <tr><td>Weight removed</td><td class="n">${r.removedOz.total.toFixed(1)} oz (thumb ${r.removedOz.thumb.toFixed(1)}, fingers ${r.removedOz.fingers.toFixed(1)})</td></tr>
-        <tr><td>Static (from drilling alone)</td><td class="n">${esc2(r.staticWords.top)} ${Math.abs(r.staticOz.top).toFixed(1)} oz \xB7 ${esc2(r.staticWords.finger)} ${Math.abs(r.staticOz.finger).toFixed(1)} oz \xB7 ${esc2(r.staticWords.side)} ${Math.abs(r.staticOz.side).toFixed(1)} oz</td></tr></table>
-        <div class="note">${idf === 0 ? "On a symmetric core this model gets the RG and differential trends wrong, so trust the weight figures only. " : "Checked against Pinel's measured asymmetric ball. "}A ball's own built-in imbalance is unknown without the scale, so this never replaces the scale.</div>`;
-      }
-      out.innerHTML = `
-      <ul>${f2.map((x) => `<li class="${x.level === "error" ? "danger" : ""}"><b>${x.level === "error" ? "Problem" : x.level === "warn" ? "Check" : "Note"}.</b> ${esc2(x.text)}</li>`).join("")}</ul>
-      <table><tr><td>Dual Angle</td><td class="n">${Math.round(e.dual.drilling)}\xB0 \xD7 ${inch2(e.dual.pinToPap)} \xD7 ${Math.round(e.dual.valAngle)}\xB0</td></tr>
-      <tr><td>Pin Buffer</td><td class="n">${inch2(e.pinbuffer.pinToPap)} \xD7 ${inch2(e.pinbuffer.psaToPap)} \xD7 ${inch2(e.pinbuffer.pinBuffer)}</td></tr>
-      <tr><td>2LS</td><td class="n">${inch2(e.ls2.pinToPap)} \xD7 ${inch2(e.ls2.psaToPap)} \xD7 ${inch2(e.ls2.pinToGrip)}</td></tr><tr><td>Core Angle + Buffer</td><td class="n">${Math.round(e.core.drilling)}\xB0 \xD7 ${inch2(e.core.pinToPap)} \xD7 ${inch2(e.core.pinBuffer)}</td></tr></table>${drilled}`;
-    };
-    q2("pt-sgo").onclick = () => {
-      const v = (id) => num7(q2(id));
-      const bal = q2("pt-bal").checked;
-      const w = checkStaticWeight({ top: v("pt-st"), finger: v("pt-sf"), side: v("pt-ss") }, num7(q2("pt-w")) ?? 15, bal);
-      q2("pt-sout").innerHTML = `<div class="u">${w.ok ? "Within the USBC limits." : esc2(w.problems.join(" "))} Limits: ${w.limits.topBottom} oz top or bottom, ${w.limits.sideFingerThumb} oz side, finger or thumb.</div>${w.notes.map((n) => `<div class="note">${esc2(n)}</div>`).join("")}`;
-    };
-    const sym = q2("pt-sym");
-    const showSym = () => {
-      const s = SYMPTOMS.find((x) => x.id === sym.value);
-      q2("pt-sym-out").innerHTML = `<div class="u">${esc2(s.reading)}</div><ol>${s.fixes.map((f2) => `<li><span class="badge good">${esc2(f2.lever)}</span> ${esc2(f2.text)}</li>`).join("")}</ol><div class="note">Order matters: surface and lane play are free and reversible; layout and equipment are permanent.</div>`;
-    };
-    sym.onchange = showSym;
-    showSym();
-    q2("pt-wgo").onclick = () => {
-      const lb = Number(q2("pt-body").value);
-      q2("pt-wout").textContent = lb > 0 ? (() => {
-        const w = suggestWeight(lb);
-        return `About ${w.lb} lb. ${w.test}`;
-      })() : "Enter your body weight.";
-    };
-    const fit = q2("pt-fit");
-    const showFit = () => {
-      const s = FIT_SYMPTOMS.find((x) => x.id === fit.value);
-      q2("pt-fit-out").innerHTML = `<div class="u"><b>Likely cause.</b> ${s.causes.map(esc2).join(" ")}</div><div class="u"><b>Fix.</b> ${s.fixes.map(esc2).join(" ")}</div>`;
-    };
-    fit.onchange = showFit;
-    showFit();
-  }
-  var inch2, num7;
-  var init_proshoptools = __esm({
-    "camera/proshoptools.ts"() {
-      init_layoutgeo();
-      init_drilled();
-      init_layoutpro();
-      init_proshop();
-      init_editions();
-      init_live();
-      init_state();
-      inch2 = (v) => fractionInches(v);
-      num7 = (el) => el && el.value.trim() !== "" ? Number(el.value) : void 0;
-    }
-  });
-
-  // camera/skills.ts
-  function radarSvg(axes, sel2) {
-    const n = axes.length;
-    const rings = [25, 50, 75, 100].map((r) => `<polygon points="${poly(axes.map(() => r))}" fill="none" stroke="rgba(255,255,255,${r === 100 ? 0.35 : 0.12})" stroke-width="${r === 100 ? 1.5 : 1}" ${r === 100 ? 'stroke-dasharray="4 3"' : ""}/>`).join("");
-    const spokes = axes.map((_, i) => {
-      const [x, y] = pt(i, n, 100);
-      return `<line x1="${C}" y1="${C}" x2="${x}" y2="${y}" stroke="rgba(255,255,255,.1)"/>`;
-    }).join("");
-    const earlier = axes.some((a) => a.earlierScore !== null) ? `<polygon points="${poly(axes.map((a) => a.earlierScore))}" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.5" stroke-dasharray="3 3"/>` : "";
-    const now = `<polygon points="${poly(axes.map((a) => a.score))}" fill="rgba(70,230,255,.22)" stroke="#46e6ff" stroke-width="2.2" stroke-linejoin="round"/>`;
-    const dots = axes.map((a, i) => {
-      const [x, y] = pt(i, n, a.score ?? 0);
-      const col = a.score === null ? "none" : a.score >= 85 ? "#5affb0" : a.score >= 60 ? "#ffd25a" : "#ff5a6e";
-      return `<circle cx="${x}" cy="${y}" r="${i === sel2 ? 6 : 4.2}" fill="${col}" stroke="${a.score === null ? "rgba(255,255,255,.5)" : "#0b1220"}" stroke-width="1.5"/>`;
-    }).join("");
-    const ticks = axes.map((a, i) => {
-      if (a.score200 === null) return "";
-      const [x, y] = pt(i, n, a.score200);
-      return `<path d="M${x},${y - 5} l5,5 l-5,5 l-5,-5 z" fill="#ffd25a" stroke="#0b1220" stroke-width="1"/>`;
-    }).join("");
-    const labels = axes.map((a, i) => {
-      const [x, y] = pt(i, n, 126);
-      const anchor = x < C - 12 ? "end" : x > C + 12 ? "start" : "middle";
-      return `<g data-ax="${i}" style="cursor:pointer"><text x="${x}" y="${y + 4}" text-anchor="${anchor}" font-size="11.5" font-weight="${i === sel2 ? 800 : 600}" fill="${i === sel2 ? "#fff" : "#b6c2d9"}">${esc2(a.label)}</text></g>`;
-    }).join("");
-    return `<svg viewBox="-62 -4 ${SIZE + 124} ${SIZE + 8}" style="width:100%;max-width:420px;display:block;margin:0 auto" role="img" aria-label="Skills radar">${rings}${spokes}${earlier}${now}${ticks}${dots}${labels}</svg>`;
-  }
-  function detail(a) {
-    const have = a.value !== null;
-    const bar = a.score === null ? 0 : a.score;
-    const col = a.score === null ? "#555" : a.score >= 85 ? "#5affb0" : a.score >= 60 ? "#ffd25a" : "#ff5a6e";
-    return `<div class="k">${esc2(a.label)} \xB7 ${esc2(a.group)}</div>
-    <div style="height:8px;border-radius:4px;background:rgba(255,255,255,.1);margin:6px 0"><div style="width:${bar}%;height:8px;border-radius:4px;background:${col}"></div></div>
-    <table><tr><td>You</td><td class="n">${have ? fmt3(a, a.value) : "not enough data yet"}</td></tr>
-    <tr><td>Target</td><td class="n">${esc2(targetText(a))}</td></tr>
-    ${a.at200 !== void 0 ? `<tr><td>200-average bowlers</td><td class="n">${esc2(fmt3(a, a.at200))}</td></tr>` : ""}
-    ${a.earlierScore !== null && a.score !== null ? `<tr><td>Change since earlier</td><td class="n">${a.score - a.earlierScore >= 0 ? "+" : ""}${a.score - a.earlierScore} points</td></tr>` : ""}</table>
-    <div class="u">${esc2(a.drill)}</div>
-    <div class="note"><span class="badge ${a.basis === "benchmark" ? "good" : "moderate"}">${a.basis === "benchmark" ? "published benchmark" : "LaneIQ coaching target"}</span> ${esc2(a.source)}</div>`;
-  }
-  async function mountSkills(host2) {
-    const games2 = insightGames(await loadGames());
-    const axes = skillsProfile(games2, insightShots());
-    const scored = axes.filter((a) => a.score !== null);
-    const card2 = document.createElement("div");
-    card2.className = "card";
-    card2.id = "skills-card";
-    host2.querySelectorAll("#skills-card").forEach((x) => x.remove());
-    const focus = focusList(axes);
-    let sel2 = focus.length ? axes.indexOf(focus[0].axis) : 0;
-    const draw3 = () => {
-      card2.innerHTML = `<div class="k">Your skills</div>
-      ${scored.length ? radarSvg(axes, sel2) : `<div class="u">Your skills chart fills in as you bowl. Scoring axes come from games in My scores; accuracy and repeatability axes come from tracked camera shots.</div>${radarSvg(axes, sel2)}`}
-      <div class="note" style="text-align:center"><span style="color:#46e6ff">\u2501 now</span> \xB7 ${axes.some((a) => a.earlierScore !== null) ? '<span style="color:#ccc">\u2505 when you started</span> \xB7 ' : ""}<span style="color:#ffd25a">\u25C6 200-average bowler</span> \xB7 outer ring = target. Tap a skill.</div>
-      <div id="sk-detail" style="margin-top:8px">${detail(axes[sel2])}</div>
-      ${focus.length ? `<div class="k" style="margin-top:12px">Work on these first</div><ol>${focus.slice(0, 3).map((f2) => `<li><b>${esc2(f2.axis.label)}</b> (${f2.axis.score}/100): ${esc2(f2.axis.drill)}</li>`).join("")}</ol>` : scored.length ? `<div class="u">Every scored skill is at its target. Raise the bar by bowling more games.</div>` : ""}
-      ${strongest(axes).length ? `<div class="k" style="margin-top:8px">Your strengths</div><div class="u">${strongest(axes).map((a) => `${esc2(a.label)} (${a.score})`).join(" \xB7 ")}</div>` : ""}
-      ${axes.some((a) => a.score === null) ? `<div class="note" style="margin-top:8px">Not scored yet: ${axes.filter((a) => a.score === null).map((a) => esc2(a.label)).join(", ")}. They need more games or more tracked shots.</div>` : ""}`;
-      card2.querySelectorAll("[data-ax]").forEach((g) => g.addEventListener("click", () => {
-        sel2 = Number(g.getAttribute("data-ax"));
-        draw3();
-      }));
-    };
-    draw3();
-    const h = host2.querySelector("h2");
-    if (h) h.after(card2);
-    else host2.prepend(card2);
-  }
-  var SIZE, C, RAD, pt, poly, fmt3, targetText;
-  var init_skills2 = __esm({
-    "camera/skills.ts"() {
-      init_skills();
-      init_live();
-      init_scorecard();
-      init_state();
-      SIZE = 320;
-      C = SIZE / 2;
-      RAD = 104;
-      pt = (i, n, v) => {
-        const a = -Math.PI / 2 + i / n * Math.PI * 2;
-        return [C + Math.cos(a) * RAD * (v / 100), C + Math.sin(a) * RAD * (v / 100)];
-      };
-      poly = (vals4) => vals4.map((v, i) => pt(i, vals4.length, v ?? 0).map((x) => x.toFixed(1)).join(",")).join(" ");
-      fmt3 = (a, v) => a.unit.trim() === "%" ? `${v.toFixed(1)}%` : a.unit.trim() === "\xB0" ? `${v.toFixed(1)}\xB0` : `${v.toFixed(a.id === "speed" ? 2 : 1)}${a.unit}`;
-      targetText = (a) => `${a.higherBetter ? "at least " : "under "}${fmt3(a, a.target)}`;
+  var BALL_RANK_MIN;
+  var init_gameplan = __esm({
+    "core/src/gameplan.ts"() {
+      init_patterns();
+      BALL_RANK_MIN = 10;
     }
   });
 
@@ -27239,7 +24186,7 @@ ${url}`);
   });
 
   // core/src/debrief.ts
-  function sessionsOf2(all) {
+  function sessionsOf(all) {
     const by = /* @__PURE__ */ new Map();
     for (const s of [...all].sort((a, b) => when(a) - when(b))) {
       const g = by.get(s.sessionId);
@@ -27250,17 +24197,17 @@ ${url}`);
     for (const [id, shots] of by) {
       let part = [];
       let k2 = 0;
-      const flush = () => {
+      const flush2 = () => {
         if (!part.length) return;
         out.push({ id: k2 ? `${id}~${k2}` : id, shots: part, start: part[0].at, end: part[part.length - 1].at });
         k2++;
         part = [];
       };
       for (const s of shots) {
-        if (part.length && when(s) - when(part[part.length - 1]) > SESSION_GAP_MS) flush();
+        if (part.length && when(s) - when(part[part.length - 1]) > SESSION_GAP_MS) flush2();
         part.push(s);
       }
-      flush();
+      flush2();
     }
     return out.sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
   }
@@ -27373,6 +24320,185 @@ ${url}`);
     }
   });
 
+  // camera/oilview.ts
+  function setOilOn(v) {
+    on = v;
+    try {
+      localStorage.setItem(KEY4, v ? "1" : "0");
+    } catch {
+    }
+  }
+  function mapOf(p) {
+    const k2 = `${p.id}|${p.lengthFt}|${p.ratio ?? ""}|${p.rows?.length ?? 0}`;
+    let m = maps.get(k2);
+    if (!m) {
+      m = oilMapFor(p);
+      maps.set(k2, m);
+    }
+    return m;
+  }
+  function bakeOil(v, w, h, map) {
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    drawOil({ ctx: c.getContext("2d"), width: v.width, P: v.P }, map);
+    return c;
+  }
+  function drawOilLayer(v, w, h, lockKey) {
+    const p = activePattern();
+    if (!on || !p) return;
+    const key3 = `${lockKey}|${w}x${h}|${p.id}|${p.lengthFt}|${p.rows?.length ?? 0}|${p.ratio ?? ""}`;
+    if (!cache || cache.key !== key3) {
+      const c = cache?.canvas ?? document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      const g = c.getContext("2d");
+      g.clearRect(0, 0, w, h);
+      drawOil({ ctx: g, width: v.width, P: v.P }, mapOf(p));
+      cache = { key: key3, canvas: c };
+    }
+    v.ctx.drawImage(cache.canvas, 0, 0);
+  }
+  var KEY4, on, oilOn, patternById, activePattern, maps, cache;
+  var init_oilview = __esm({
+    "camera/oilview.ts"() {
+      init_oilsheet();
+      init_render();
+      init_state();
+      KEY4 = "laneiq.oilOn";
+      on = (() => {
+        try {
+          return localStorage.getItem(KEY4) !== "0";
+        } catch {
+          return true;
+        }
+      })();
+      oilOn = () => on;
+      patternById = (id) => id ? S.myPatterns.find((p) => p.id === id) ?? null : null;
+      activePattern = () => patternById(S.where.patternId);
+      maps = /* @__PURE__ */ new Map();
+      cache = null;
+    }
+  });
+
+  // camera/gameplanui.ts
+  function inputs() {
+    const pat = activePattern();
+    const onPat = pat ? S.shots.filter((s) => s.pattern === pat.id) : [];
+    const stats = (shots) => {
+      const judged = shots.filter((s) => s.m.zone !== null);
+      const res = shots.filter((s) => s.result);
+      return { judged: judged.length, pocketPct: judged.length ? 100 * judged.filter((s) => s.m.zone === "pocket").length / judged.length : null, strikePct: res.length >= 5 ? 100 * res.filter(isStrike).length / res.length : null };
+    };
+    const balls = S.arsenal.map((b) => {
+      const mine = S.shots.filter((s) => s.ballId === b.id);
+      const here2 = onPat.filter((s) => s.ballId === b.id);
+      return { name: b.name, ...stats(here2.length >= BALL_RANK_MIN ? here2 : mine) };
+    });
+    const mem = S.where.center && S.where.lane ? memoryFor(S.shots, S.where.center, S.where.lane, S.sessionId) : null;
+    const m = mem?.best ?? mem?.sessions[0] ?? null;
+    const rows2 = movePlaybook(sessionsOf(S.shots).map((x) => x.shots));
+    return {
+      hand: S.profile?.hand ?? "R",
+      pattern: pat ? { name: pat.name, lengthFt: pat.lengthFt, volumeMl: pat.volumeMl, ratio: pat.ratio } : null,
+      memory: m ? { date: new Date(m.date).toLocaleDateString([], { month: "short", day: "numeric" }), stand: m.stand, arrows: m.arrows, pocketPct: m.pocketPct, ballNames: m.ballIds.map((id) => S.arsenal.find((b) => b.id === id)?.name ?? "").filter(Boolean) } : null,
+      balls,
+      moves: rows2,
+      r31: pat ? ruleOf31(pat.lengthFt) : null
+    };
+  }
+  function openGamePlan() {
+    bump("game-plan");
+    const p = gamePlan(inputs());
+    const el = $("report");
+    el.classList.add("on");
+    el.innerHTML = `<div class="row noprint"><button class="btn" onclick="window.print()">Print or save PDF</button><button class="btn ghost" id="gp-close">Close</button></div>
+    <h2>${esc2(p.title)}</h2>
+    <div class="note">${esc2(S.profile?.name ?? "")}${S.where.center ? ` \xB7 ${esc2(S.where.center)}${S.where.lane ? ` lane ${esc2(S.where.lane)}` : ""}` : ""} \xB7 ${esc2((/* @__PURE__ */ new Date()).toLocaleDateString([], { dateStyle: "full" }))}</div>
+    ${p.sections.map((s) => `<div class="card"><div class="k">${esc2(s.head)}</div>${s.lines.map((l) => `<div class="u" style="margin:4px 0">${esc2(l)}</div>`).join("")}</div>`).join("")}
+    <div class="note">Made by LaneIQ from this bowler's own shots and the pattern entered. Estimates, not instructions.</div>`;
+    $("gp-close").onclick = () => (el.classList.remove("on"), el.innerHTML = "");
+  }
+  var init_gameplanui = __esm({
+    "camera/gameplanui.ts"() {
+      init_gameplan();
+      init_movejudge();
+      init_debrief();
+      init_oilsheet();
+      init_lanememory();
+      init_coach();
+      init_health();
+      init_live();
+      init_oilview();
+      init_state();
+    }
+  });
+
+  // core/src/aimsolver.ts
+  function solveAim(shots, hand3) {
+    const none3 = (notes2, extra2 = {}) => ({ ok: false, n: 0, slope: null, r2: null, shotSd: null, currentArrows: null, arrowsFor: null, plusMinus: null, move: null, notes: notes2, ...extra2 });
+    const last3 = shots[shots.length - 1];
+    const same = last3?.ballId ? shots.filter((s2) => s2.ballId === last3.ballId) : shots;
+    const pts = same.slice(-WINDOW2).map((s2) => ({ x: s2.m.arrowsBoard, y: s2.m.entryBoard, seen: s2.m.pocketMiss !== null })).filter((p) => p.x !== null && p.y !== null && p.seen);
+    const n = pts.length;
+    if (n < AIM_MIN_SHOTS) return none3([`Needs ${AIM_MIN_SHOTS} shots with the same ball that were followed from the arrows to the pins (you have ${n}).`], { n });
+    const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+    const xm = mean7(xs), ym = mean7(ys);
+    const sxx = xs.reduce((a, x) => a + (x - xm) ** 2, 0);
+    const spread = Math.sqrt(sxx / (n - 1));
+    const recent = xs.slice(-5).sort((a, b) => a - b)[Math.floor(Math.min(5, n) / 2)];
+    if (spread < AIM_MIN_SPREAD) return none3([`Your target at the arrows has stayed within about ${(spread * 2).toFixed(1)} boards, so there is not yet enough change to learn how moving it moves your hit. Throw a few shots a board or two either side to teach the app your line.`], { n, currentArrows: recent });
+    const sxy = xs.reduce((a, x, i) => a + (x - xm) * (ys[i] - ym), 0);
+    const slope = sxy / sxx;
+    const intercept = ym - slope * xm;
+    const rss = ys.reduce((a, y, i) => a + (y - (intercept + slope * xs[i])) ** 2, 0);
+    const sst = ys.reduce((a, y) => a + (y - ym) ** 2, 0);
+    const r2 = sst === 0 ? 0 : 1 - rss / sst;
+    const s = Math.sqrt(rss / (n - 2));
+    if (slope < 0.4 || slope > 3) return none3([`The line from your arrows board to your hit is ${slope.toFixed(2)} boards per board, which is outside what a rolling ball does (0.4 to 3), so it is more likely noise or two different shots mixed together. Not using it.`], { n, slope, r2, shotSd: s, currentArrows: recent });
+    const pocket = POCKET_BOARD[hand3];
+    const arrowsFor = (pocket - intercept) / slope;
+    const se = s / slope * Math.sqrt(1 / n + (arrowsFor - xm) ** 2 / sxx);
+    const plusMinus = t95(n - 2) * se;
+    const notes = [];
+    const lo = Math.min(...xs), hi = Math.max(...xs);
+    if (arrowsFor < lo - 3 || arrowsFor > hi + 3) notes.push(`That board is more than 3 boards outside where you have thrown (${lo.toFixed(0)} to ${hi.toFixed(0)}), so treat it as a direction, not a number, and re-check after two shots.`);
+    if (r2 < 0.3) notes.push(`Your target explains little of where the ball finishes (R\xB2 ${r2.toFixed(2)}): your shot-to-shot scatter is larger than the effect of moving, so the number is loose.`);
+    if (n < 12) notes.push(`Only ${n} shots so far; it sharpens as you throw more.`);
+    return { ok: true, n, slope, r2, shotSd: s, currentArrows: recent, arrowsFor, plusMinus, move: arrowsFor - recent, notes };
+  }
+  function aimLines(a) {
+    if (!a.ok) return a.notes;
+    const dir2 = a.move > 0 ? "left" : "right";
+    const head = Math.abs(a.move) < 0.5 ? `Your line is on the pocket: crossing the arrows near board ${a.arrowsFor.toFixed(1)} meets it.` : `To meet the pocket, cross the arrows near board ${a.arrowsFor.toFixed(1)} (\xB1${a.plusMinus.toFixed(1)}): about ${Math.abs(a.move).toFixed(1)} boards ${dir2} of where you have been (${a.currentArrows.toFixed(1)}).`;
+    return [head, `From your last ${a.n} shots with this ball: each board you move at the arrows moves your hit about ${a.slope.toFixed(1)} boards; your own scatter at the pins is \xB1${(a.shotSd * 2).toFixed(1)} boards.`, ...a.notes];
+  }
+  var AIM_MIN_SHOTS, AIM_MIN_SPREAD, WINDOW2, mean7;
+  var init_aimsolver = __esm({
+    "core/src/aimsolver.ts"() {
+      init_metrics();
+      init_abtest();
+      AIM_MIN_SHOTS = 8;
+      AIM_MIN_SPREAD = 0.6;
+      WINDOW2 = 30;
+      mean7 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+    }
+  });
+
+  // camera/aimui.ts
+  function aimHtml(shots, hand3) {
+    if (shots.length < 3) return "";
+    const a = solveAim(shots, hand3);
+    const lines = aimLines(a);
+    return `<div class="lr-next"><b>Your line</b>${lines.map((l, i) => `<div class="${i === 0 ? "u" : "note"}">${esc2(l)}</div>`).join("")}</div>`;
+  }
+  var init_aimui = __esm({
+    "camera/aimui.ts"() {
+      init_aimsolver();
+      init_live();
+    }
+  });
+
   // camera/movejudgeui.ts
   function changesHtml(shots, empty = true) {
     const r = judgeMoves(shots, ballName);
@@ -27390,7 +24516,7 @@ ${url}`);
     return `<div class="lr-next"><b>Your last move</b> (shot ${e.index + 1}): ${esc2(l.headline)}${l.detail[0] ? `<div class="u">${esc2(l.detail[0])}</div>` : ""}${e.notes.length && e.verdict !== "too few" ? `<div class="note">${esc2(e.notes[0])}</div>` : ""}</div>`;
   }
   function recordLine(dir2) {
-    const rows2 = movePlaybook(sessionsOf2(S.shots).map((x) => x.shots), ballName);
+    const rows2 = movePlaybook(sessionsOf(S.shots).map((x) => x.shots), ballName);
     const r = rows2.find((x) => x.label === `Starting board ${dir2}`);
     if (!r) return "";
     return `<div class="note">Your own record with this kind of move (starting board ${dir2}): ${r.helped} of ${r.n} helped${r.hurt ? `, ${r.hurt} hurt` : ""}.</div>`;
@@ -27412,6 +24538,4407 @@ ${url}`);
     }
   });
 
+  // core/src/execution.ts
+  function gradeShot(s, plan) {
+    if (!plan) return null;
+    const markOff = s.m.arrowsBoard === null ? null : s.m.arrowsBoard - plan.arrows;
+    const breakOff = plan.breakpoint === void 0 || s.m.breakpointBoard === null ? null : s.m.breakpointBoard - plan.breakpoint;
+    return { hitMark: markOff === null ? null : Math.abs(markOff) <= MARK_TOL, markOff, hitBreak: breakOff === null ? null : Math.abs(breakOff) <= BREAK_TOL, breakOff };
+  }
+  function executionReport(shots) {
+    const rows2 = shots.map((s) => ({ s, g: gradeShot(s, s.plan) })).filter((r) => !!r.g && r.g.hitMark !== null);
+    const hit = rows2.filter((r) => r.g.hitMark);
+    const missed = rows2.filter((r) => !r.g.hitMark);
+    const seen2 = (list) => list.filter((r) => r.s.m.pocketMiss !== null);
+    const inPocket = (list) => rate(seen2(list).filter((r) => Math.abs(r.s.m.pocketMiss) <= 1).length, seen2(list).length);
+    const withRes = (list) => list.filter((r) => r.s.result);
+    const strikes = (list) => rate(withRes(list).filter((r) => isStrike(r.s)).length, withRes(list).length);
+    const bp = rows2.filter((r) => r.g.hitBreak !== null);
+    const hitSeen = seen2(hit);
+    const lineBias = hitSeen.length >= 4 ? mean8(hitSeen.map((r) => r.s.m.pocketMiss)) : null;
+    const report = {
+      verdict: "insufficient",
+      graded: rows2.length,
+      mark: rate(hit.length, rows2.length),
+      breakpoint: bp.length ? rate(bp.filter((r) => r.g.hitBreak).length, bp.length) : null,
+      pocketWhenHit: inPocket(hit),
+      pocketWhenMissed: inPocket(missed),
+      strikeWhenHit: strikes(hit),
+      strikeWhenMissed: strikes(missed),
+      lineBias,
+      headline: "",
+      points: [],
+      next: ""
+    };
+    if (rows2.length < MIN_GRADED) {
+      report.headline = `Set a target and bowl ${MIN_GRADED - rows2.length} more shot${MIN_GRADED - rows2.length === 1 ? "" : "s"}`;
+      report.points.push("Tap Target on the Live screen, say where you stand and which board you aim at the arrows, and every shot is graded against it.");
+      report.next = "Set your usual line as the target before you bowl; if you work with a coach, use the line they've given you.";
+      return report;
+    }
+    const markRate = report.mark.rate ?? 0;
+    report.points.push(`You hit your mark (within ${MARK_TOL} board at the arrows) on ${pct2(report.mark)} of planned shots.`);
+    if (report.breakpoint) report.points.push(`The ball broke within ${BREAK_TOL} boards of where you wanted on ${pct2(report.breakpoint)}.`);
+    if (report.pocketWhenHit.attempts && report.pocketWhenMissed.attempts) report.points.push(`In the pocket: ${pct2(report.pocketWhenHit)} when you hit your mark, ${pct2(report.pocketWhenMissed)} when you missed it.`);
+    if (report.strikeWhenHit.attempts >= 4 && report.strikeWhenMissed.attempts >= 4) report.points.push(`Strikes: ${pct2(report.strikeWhenHit)} on the mark, ${pct2(report.strikeWhenMissed)} off it.`);
+    const offs = missed.map((r) => r.g.markOff).filter((x) => Number.isFinite(x));
+    if (offs.length >= 3) {
+      const left = offs.filter((x) => x > 0).length / offs.length;
+      if (left >= 0.7 || left <= 0.3) report.points.push(`When you miss the mark it's mostly ${left >= 0.7 ? "left of it (toward board 39)" : "right of it (toward board 1)"}: a pattern, not random. Check your shoulders are square to your target and your swing goes straight at it.`);
+    }
+    const biasWord = (b) => b > 0 ? "high" : "light";
+    if (markRate < 0.6) {
+      report.verdict = "execution";
+      report.headline = "The ball isn't reaching your mark yet";
+      report.next = "A move won't tell you much until the ball reaches the mark. A common practice is the same target until you hit it 7 of 10 times; the Arrow Sniper drill does this. Your coach may have a better drill for you.";
+    } else if (lineBias !== null && Math.abs(lineBias) > 1.2) {
+      report.verdict = "line";
+      report.headline = `Your aim is good; your line is ${biasWord(lineBias)}`;
+      report.points.push(`On the shots that hit your mark, the ball still met the pins ${Math.abs(lineBias).toFixed(1)} boards ${biasWord(lineBias)} on average. That's the line, not you.`);
+      report.next = "A move may help (see Move Advisor). Worth talking over with your coach.";
+    } else if (report.pocketWhenHit.rate !== null && report.pocketWhenHit.rate >= 0.5) {
+      report.verdict = "good";
+      report.headline = "On your mark, it works";
+      report.next = "This line is working. The misses come from shots off the mark, so repeating the shot is what to watch.";
+    } else {
+      report.verdict = "mixed";
+      report.headline = "Hitting the mark, but the pocket comes and goes";
+      report.next = "The line looks right on average, so the spread probably comes from something else, like speed or release. Miss Finder ranks what goes with it; a coach can help you work out the cause.";
+    }
+    return report;
+  }
+  var MARK_TOL, BREAK_TOL, MIN_GRADED, mean8, pct2;
+  var init_execution = __esm({
+    "core/src/execution.ts"() {
+      init_coach();
+      init_stats();
+      MARK_TOL = 1;
+      BREAK_TOL = 2;
+      MIN_GRADED = 6;
+      mean8 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+      pct2 = (r) => r.rate === null ? "n/a" : `${Math.round(r.rate * 100)}% (${r.made} of ${r.attempts})`;
+    }
+  });
+
+  // core/src/moves.ts
+  function adviseMove(recent, hand3, plan, lane2) {
+    const last3 = recent[recent.length - 1];
+    const sameBall2 = last3?.ballId ? recent.filter((s) => s.ballId === last3.ballId) : recent;
+    const window2 = sameBall2.slice(-6);
+    const base2 = { kind: "insufficient", headline: "", feet: 0, eyes: 0, from: { stand: null, arrows: null }, to: { stand: null, arrows: null }, why: [], shotsUsed: 0 };
+    const stands = window2.map((s) => s.plan?.stand ?? s.body?.startBoard ?? null).filter((x) => x !== null);
+    const aims = window2.map((s) => s.plan?.arrows ?? s.m.arrowsBoard).filter((x) => x !== null);
+    base2.from = { stand: plan?.stand ?? (stands.length ? Math.round(median8(stands)) : null), arrows: plan?.arrows ?? (aims.length ? Math.round(median8(aims)) : null) };
+    const graded = window2.map((s) => ({ s, g: gradeShot(s, s.plan) }));
+    const planned = graded.filter((r) => r.g && r.g.hitMark !== null);
+    const onMark = planned.length >= 3 ? planned.filter((r) => r.g.hitMark).map((r) => r.s) : window2;
+    if (planned.length >= 4 && planned.filter((r) => r.g.hitMark).length / planned.length < 0.5) {
+      return { ...base2, kind: "fix-aim", headline: "Hold off on a move: the ball isn't going where you aim", why: [`You hit your target on ${planned.filter((r) => r.g.hitMark).length} of the last ${planned.length} planned shots.`, "A move only tells you something when the ball goes where you aim. Your coach may want to look at your aim first."], shotsUsed: planned.length };
+    }
+    const seen2 = onMark.filter((s) => s.m.pocketMiss !== null);
+    base2.shotsUsed = seen2.length;
+    if (seen2.length < MOVE_MIN) {
+      return { ...base2, headline: `Bowl ${MOVE_MIN - seen2.length} more shot${MOVE_MIN - seen2.length === 1 ? "" : "s"} with this ball`, why: ["The advisor needs a few shots with the same ball that the camera saw reach the pins."] };
+    }
+    const misses = seen2.map((s) => s.m.pocketMiss);
+    const bias = mean9(misses);
+    const spread = sdOf6(misses);
+    const highs = misses.filter((m) => m > 1).length;
+    const lights = misses.filter((m) => m < -1).length;
+    const why = [`Last ${seen2.length} shots with this ball: ${misses.map((m) => Math.abs(m) <= 1 ? "pocket" : m > 0 ? `+${m.toFixed(1)}` : m.toFixed(1)).join(", ")} (boards from the pocket, + high).`];
+    if (Math.abs(bias) <= 1) return { ...base2, kind: "stay", headline: "Things look steady: no move suggested", why: [...why, "On average the ball is meeting the pocket. Repeating the same shot is the usual advice."] };
+    if (highs && lights && Math.min(highs, lights) / seen2.length >= 0.3) return { ...base2, kind: "stay", headline: "No move suggested: the misses go both ways", why: [...why, "Some high and some light is repeatability, not the line, and a move would only chase it. Miss Finder shows what changes between them; a coach can help with the cause."] };
+    if (spread > 3) return { ...base2, kind: "stay", headline: "Too scattered to call a move", why: [...why, `The misses spread \xB1${spread.toFixed(1)} boards, too wide for the data to point to one move.`] };
+    const pocket = POCKET_BOARD[hand3];
+    const entries = seen2.map((s) => s.m.entryBoard).filter((x) => x !== null);
+    const side2 = entries.length ? Math.sign(mean9(entries) - pocket) : hand3 === "R" ? Math.sign(bias) : -Math.sign(bias);
+    const size = Math.abs(bias);
+    const high = bias > 0;
+    if (lane2?.status === "ok" && /earlier/.test(lane2.headline) && high) why.push("The lane read agrees: the ball is reading the lane earlier as the oil dries up.");
+    if (lane2?.status === "ok" && /skidding farther/.test(lane2.headline) && !high) why.push("The lane read agrees: oil is carrying down and the ball is skidding farther.");
+    if (size > 4.5) {
+      return { ...base2, kind: "ball", ball: high ? "cleaner" : "stronger", headline: `Worth asking about a ball change: ${size.toFixed(1)} boards ${high ? "high" : "light"} is more than a move usually fixes`, why: [...why, high ? "A cleaner, later-reading ball may let you stay on a line you can repeat. Your pro shop can say what fits your game." : "A stronger, earlier-reading ball may get back the hook you're missing. Your pro shop can say what fits your game."], feet: 0, eyes: 0 };
+    }
+    const feet = side2 * (size > 2.5 ? 4 : 2);
+    const eyes = side2 * (size > 2.5 ? 2 : 1);
+    const to = { stand: base2.from.stand !== null ? base2.from.stand + feet : null, arrows: base2.from.arrows !== null ? base2.from.arrows + eyes : null };
+    why.push(`Averaging ${size.toFixed(1)} boards ${high ? "high" : "light"}: move toward the miss, feet ${Math.abs(feet)} boards and eyes ${Math.abs(eyes)} ${dirWord(feet)} (the ${Math.abs(feet)}-and-${Math.abs(eyes)} move).`);
+    why.push("A common approach is to judge two shots after a move before changing anything else. Your coach knows your game: treat this as something to try and talk over.");
+    return {
+      ...base2,
+      kind: "move",
+      feet,
+      eyes,
+      to,
+      headline: `A move to try: ${Math.abs(feet)} and ${Math.abs(eyes)} ${dirWord(feet)}${to.stand !== null && to.arrows !== null ? `: stand on ${to.stand}, aim at ${to.arrows}` : ""}`,
+      why
+    };
+  }
+  var MOVE_MIN, mean9, sdOf6, median8, dirWord;
+  var init_moves = __esm({
+    "core/src/moves.ts"() {
+      init_execution();
+      init_metrics();
+      MOVE_MIN = 3;
+      mean9 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+      sdOf6 = (v) => {
+        if (v.length < 2) return 0;
+        const m = mean9(v);
+        return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (v.length - 1));
+      };
+      median8 = (v) => {
+        const s = [...v].sort((a, b) => a - b);
+        const m = s.length >> 1;
+        return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+      };
+      dirWord = (b) => b > 0 ? "left" : "right";
+    }
+  });
+
+  // camera/voice.ts
+  function setVoice(v) {
+    on2 = v;
+    try {
+      localStorage.setItem(KEY5, v ? "1" : "0");
+    } catch {
+    }
+    if (v) say("Voice caddie on.");
+    else if ("speechSynthesis" in window) speechSynthesis.cancel();
+  }
+  function say(text) {
+    if (!("speechSynthesis" in window) || !text) return;
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1.05;
+      u.lang = navigator.language || "en-US";
+      speechSynthesis.speak(u);
+    } catch {
+    }
+  }
+  var KEY5, on2, voiceOn, spokenNumber;
+  var init_voice = __esm({
+    "camera/voice.ts"() {
+      KEY5 = "laneiq.voice";
+      on2 = (() => {
+        try {
+          return localStorage.getItem(KEY5) === "1";
+        } catch {
+          return false;
+        }
+      })();
+      voiceOn = () => on2 && "speechSynthesis" in window;
+      spokenNumber = (n, digits = 1) => {
+        const s = n.toFixed(digits);
+        return s.endsWith(".0") ? s.slice(0, -2) : s.replace(".", " point ");
+      };
+    }
+  });
+
+  // core/src/pdftext.ts
+  function md5(msg) {
+    const len = msg.length;
+    const padLen = (len + 8 >> 6) * 64 + 64;
+    const m = new Uint8Array(padLen);
+    m.set(msg);
+    m[len] = 128;
+    const bits = len * 8;
+    for (let i = 0; i < 8; i++) m[padLen - 8 + i] = Math.floor(bits / 2 ** (8 * i)) & 255;
+    let a0 = 1732584193, b0 = 4023233417, c0 = 2562383102, d0 = 271733878;
+    const w = new Uint32Array(16);
+    for (let off = 0; off < padLen; off += 64) {
+      for (let i = 0; i < 16; i++) w[i] = m[off + 4 * i] | m[off + 4 * i + 1] << 8 | m[off + 4 * i + 2] << 16 | m[off + 4 * i + 3] << 24;
+      let A = a0, B = b0, C2 = c0, D = d0;
+      for (let i = 0; i < 64; i++) {
+        let F, g;
+        if (i < 16) F = B & C2 | ~B & D, g = i;
+        else if (i < 32) F = D & B | ~D & C2, g = (5 * i + 1) % 16;
+        else if (i < 48) F = B ^ C2 ^ D, g = (3 * i + 5) % 16;
+        else F = C2 ^ (B | ~D), g = 7 * i % 16;
+        const tmp = D;
+        D = C2;
+        C2 = B;
+        const x = A + F + K[i] + w[g] >>> 0;
+        B = B + (x << SH[i] | x >>> 32 - SH[i]) >>> 0;
+        A = tmp;
+      }
+      a0 = a0 + A >>> 0;
+      b0 = b0 + B >>> 0;
+      c0 = c0 + C2 >>> 0;
+      d0 = d0 + D >>> 0;
+    }
+    const out = new Uint8Array(16);
+    [a0, b0, c0, d0].forEach((v, i) => {
+      for (let k2 = 0; k2 < 4; k2++) out[4 * i + k2] = v >>> 8 * k2 & 255;
+    });
+    return out;
+  }
+  function rc4(key3, data) {
+    const S3 = Array.from({ length: 256 }, (_, i) => i);
+    let j = 0;
+    for (let i = 0; i < 256; i++) {
+      j = j + S3[i] + key3[i % key3.length] & 255;
+      [S3[i], S3[j]] = [S3[j], S3[i]];
+    }
+    const out = new Uint8Array(data.length);
+    let a = 0, b = 0;
+    for (let k2 = 0; k2 < data.length; k2++) {
+      a = a + 1 & 255;
+      b = b + S3[a] & 255;
+      [S3[a], S3[b]] = [S3[b], S3[a]];
+      out[k2] = data[k2] ^ S3[S3[a] + S3[b] & 255];
+    }
+    return out;
+  }
+  function strAfter(s, key3) {
+    const i = s.indexOf(key3);
+    if (i < 0) return null;
+    let p = i + key3.length;
+    while (/\s/.test(s[p])) p++;
+    if (s[p] === "<") return fromHex(s.slice(p + 1, s.indexOf(">", p)));
+    if (s[p] !== "(") return null;
+    const out = [];
+    let depth = 1;
+    for (p++; p < s.length && depth > 0; p++) {
+      const c = s[p];
+      if (c === "\\") {
+        const n = s[++p];
+        if (/[0-7]/.test(n)) {
+          let o = n;
+          while (o.length < 3 && /[0-7]/.test(s[p + 1])) o += s[++p];
+          out.push(parseInt(o, 8) & 255);
+        } else out.push({ n: 10, r: 13, t: 9, b: 8, f: 12 }[n] ?? n.charCodeAt(0));
+      } else if (c === "(") depth++, out.push(40);
+      else if (c === ")") {
+        if (--depth > 0) out.push(41);
+      } else out.push(c.charCodeAt(0));
+    }
+    return Uint8Array.from(out);
+  }
+  function setupDecrypt(s) {
+    const e = /\/Encrypt\s+(\d+)\s+\d+\s+R/.exec(s);
+    let dict;
+    if (e) {
+      const at4 = s.search(new RegExp(`\\b${e[1]}\\s+0\\s+obj`));
+      dict = s.slice(at4, s.indexOf("endobj", at4));
+    } else {
+      const at4 = s.indexOf("/Encrypt");
+      dict = s.slice(at4, at4 + 2e3);
+    }
+    const V = Number(/\/V\s+(\d)/.exec(dict)?.[1] ?? 0);
+    const R3 = Number(/\/R\s+(\d)/.exec(dict)?.[1] ?? 0);
+    if (V >= 5 || R3 >= 5) return { key: new Uint8Array(0), aes: false, n: 0, unsupported: true };
+    const n = V === 1 ? 5 : Number(/\/Length\s+(\d+)/.exec(dict)?.[1] ?? 40) / 8;
+    const O = strAfter(dict, "/O") ?? new Uint8Array(0);
+    const P = Number(/\/P\s+(-?\d+)/.exec(dict)?.[1]);
+    const idm = /\/ID\s*\[\s*<([0-9A-Fa-f]+)>/.exec(s);
+    const id0 = idm ? fromHex(idm[1]) : strAfter(s, "/ID[") ?? new Uint8Array(0);
+    const p4 = new Uint8Array(4);
+    new DataView(p4.buffer).setInt32(0, P, true);
+    let h = md5(concat(PAD, O, p4, id0, /\/EncryptMetadata\s+false/.test(dict) && R3 >= 4 ? fromHex("FFFFFFFF") : new Uint8Array(0)));
+    if (R3 >= 3) for (let i = 0; i < 50; i++) h = md5(h.subarray(0, n));
+    return { key: h.subarray(0, n), aes: /\/CFM\s*\/AESV2/.test(dict), n };
+  }
+  async function decryptStream(d, enc, num11, gen) {
+    const ext = Uint8Array.from([num11 & 255, num11 >> 8 & 255, num11 >> 16 & 255, gen & 255, gen >> 8 & 255]);
+    const k2 = md5(concat(enc.key, ext, enc.aes ? fromLatin1("sAlT") : new Uint8Array(0))).subarray(0, Math.min(enc.n + 5, 16));
+    if (!enc.aes) return rc4(k2, d);
+    const subtle = globalThis.crypto?.subtle;
+    if (!subtle || d.length < 32) throw new Error("no AES");
+    const key3 = await subtle.importKey("raw", k2, { name: "AES-CBC" }, false, ["decrypt"]);
+    const body = d.subarray(16, 16 + Math.floor((d.length - 16) / 16) * 16);
+    return new Uint8Array(await subtle.decrypt({ name: "AES-CBC", iv: d.subarray(0, 16) }, key3, body));
+  }
+  async function inflate(d) {
+    try {
+      const DS = globalThis.DecompressionStream;
+      if (!DS) return null;
+      const stream2 = new Blob([d]).stream().pipeThrough(new DS("deflate"));
+      const reader = stream2.getReader();
+      const parts = [];
+      for (; ; ) {
+        try {
+          const { done: done3, value } = await reader.read();
+          if (done3) break;
+          parts.push(value);
+        } catch {
+          break;
+        }
+      }
+      return parts.length ? concat(...parts) : null;
+    } catch {
+      return null;
+    }
+  }
+  function parseCMap(txt4) {
+    const map = /* @__PURE__ */ new Map();
+    let width = 1;
+    const u16 = (h) => {
+      const b = fromHex(h);
+      let s = "";
+      for (let i = 0; i + 1 < b.length; i += 2) s += String.fromCharCode(b[i] << 8 | b[i + 1]);
+      return s;
+    };
+    for (const blk of txt4.matchAll(/beginbfchar([\s\S]*?)endbfchar/g))
+      for (const m of blk[1].matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g)) {
+        width = Math.max(width, m[1].length / 2);
+        map.set(parseInt(m[1], 16), u16(m[2]));
+      }
+    for (const blk of txt4.matchAll(/beginbfrange([\s\S]*?)endbfrange/g))
+      for (const m of blk[1].matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*(?:<([0-9A-Fa-f]+)>|\[([^\]]*)\])/g)) {
+        width = Math.max(width, m[1].length / 2);
+        const lo = parseInt(m[1], 16);
+        const hi = parseInt(m[2], 16);
+        if (m[3] !== void 0) {
+          const base2 = u16(m[3]);
+          for (let c = lo; c <= hi && c - lo < 5e3; c++) map.set(c, base2.slice(0, -1) + String.fromCharCode(base2.charCodeAt(base2.length - 1) + (c - lo)));
+        } else [...m[4].matchAll(/<([0-9A-Fa-f]+)>/g)].map((x) => u16(x[1])).forEach((v, k2) => map.set(lo + k2, v));
+      }
+    return { map, width };
+  }
+  async function pdfText(buf) {
+    const s = latin1(buf);
+    if (!s.startsWith("%PDF")) return null;
+    const enc = s.includes("/Encrypt") ? setupDecrypt(s) : null;
+    if (enc?.unsupported) return null;
+    const objs = /* @__PURE__ */ new Map();
+    const heads = [...s.matchAll(/(?:^|[\r\n\s])(\d+)\s+(\d+)\s+obj\b/g)];
+    const streamOf2 = async (o) => o?.raw ? /\/Filter/.test(o.dict) ? inflate(o.raw) : o.raw : null;
+    for (let k2 = 0; k2 < heads.length; k2++) {
+      const num11 = Number(heads[k2][1]);
+      const gen = Number(heads[k2][2]);
+      const start2 = heads[k2].index + heads[k2][0].length;
+      const stop = k2 + 1 < heads.length ? heads[k2 + 1].index : s.length;
+      const body = s.slice(start2, stop);
+      const sm = /stream\r?\n/.exec(body);
+      const dict = sm ? body.slice(0, sm.index) : body.slice(0, body.indexOf("endobj") >= 0 ? body.indexOf("endobj") : body.length);
+      let raw = null;
+      if (sm) {
+        const a = start2 + sm.index + sm[0].length;
+        const e = s.lastIndexOf("endstream", stop);
+        if (e > a) {
+          raw = buf.subarray(a, e);
+          if (enc && !/\/Type\s*\/XRef/.test(dict)) {
+            try {
+              raw = await decryptStream(raw, enc, num11, gen);
+            } catch {
+              raw = null;
+            }
+          }
+        }
+      }
+      objs.set(num11, { dict, raw });
+    }
+    for (const [, o] of [...objs]) {
+      if (!/\/Type\s*\/ObjStm/.test(o.dict)) continue;
+      const data = await streamOf2(o);
+      if (!data) continue;
+      const n = Number(/\/N\s+(\d+)/.exec(o.dict)?.[1]);
+      const first = Number(/\/First\s+(\d+)/.exec(o.dict)?.[1]);
+      const text = latin1(data);
+      const nums4 = (text.slice(0, first).match(/\d+/g) ?? []).map(Number);
+      for (let k2 = 0; k2 < n; k2++) {
+        const num11 = nums4[2 * k2];
+        const off = nums4[2 * k2 + 1];
+        const nxt = k2 + 1 < n ? nums4[2 * k2 + 3] : text.length - first;
+        objs.set(num11, { dict: text.slice(first + off, first + nxt), raw: null });
+      }
+    }
+    const ref = (str5, key3) => {
+      const m = new RegExp(`${key3}\\s+(\\d+)\\s+\\d+\\s+R`).exec(str5);
+      return m ? Number(m[1]) : null;
+    };
+    const cmapCache = /* @__PURE__ */ new Map();
+    const cmapOf = async (fontNum) => {
+      if (cmapCache.has(fontNum)) return cmapCache.get(fontNum);
+      const f2 = objs.get(fontNum);
+      const tu = f2 ? ref(f2.dict, "/ToUnicode") : null;
+      const data = tu !== null ? await streamOf2(objs.get(tu)) : null;
+      const c = data ? parseCMap(latin1(data)) : null;
+      cmapCache.set(fontNum, c);
+      return c;
+    };
+    const resourcesOf = (dict) => {
+      let d = dict;
+      for (let hop = 0; hop < 6 && d; hop++) {
+        const r = ref(d, "/Resources");
+        if (r !== null) return objs.get(r)?.dict ?? "";
+        const i = d.indexOf("/Resources");
+        if (i >= 0) return d.slice(i, i + 4e3);
+        const par = ref(d, "/Parent");
+        d = par !== null ? objs.get(par)?.dict : void 0;
+      }
+      return "";
+    };
+    const fontsOf = (res) => {
+      const out2 = /* @__PURE__ */ new Map();
+      let fd = res;
+      const r = ref(res, "/Font");
+      if (r !== null) fd = objs.get(r)?.dict ?? "";
+      else {
+        const i = res.indexOf("/Font");
+        fd = i >= 0 ? res.slice(i, i + 3e3) : "";
+      }
+      for (const m of fd.matchAll(/\/([^\s/<>\[\]()]+)\s+(\d+)\s+\d+\s+R/g)) out2.set(m[1], Number(m[2]));
+      return out2;
+    };
+    const decodeStr = (bytes, cm) => {
+      if (!cm) return latin1(bytes);
+      let out2 = "";
+      if (cm.width >= 2) for (let i = 0; i + 1 < bytes.length; i += 2) out2 += cm.map.get(bytes[i] << 8 | bytes[i + 1]) ?? "";
+      else for (const b of bytes) out2 += cm.map.get(b) ?? String.fromCharCode(b);
+      return out2;
+    };
+    let out = "";
+    const draw3 = async (data, fonts) => {
+      let cur2 = null;
+      for (const m of latin1(data).matchAll(/\/([^\s/<>\[\]()]+)\s+[\d.]+\s+Tf|\[((?:[^\]\\]|\\.)*)\]\s*TJ|\(((?:[^)\\]|\\.)*)\)\s*(?:Tj|'|")|<([0-9A-Fa-f\s]+)>\s*(?:Tj|'|")/g)) {
+        if (m[1] !== void 0) {
+          const fn = fonts.get(m[1]);
+          cur2 = fn !== void 0 ? await cmapOf(fn) : null;
+          continue;
+        }
+        if (m[2] !== void 0) {
+          for (const x of m[2].matchAll(/\(((?:[^)\\]|\\.)*)\)|<([0-9A-Fa-f\s]+)>|(-?[\d.]+)/g)) {
+            if (x[3] !== void 0) {
+              if (Number(x[3]) < -250) out += " ";
+              continue;
+            }
+            out += decodeStr(x[1] !== void 0 ? unescapeLit(x[1]) : fromHex(x[2]), cur2);
+          }
+        } else out += decodeStr(m[3] !== void 0 ? unescapeLit(m[3]) : fromHex(m[4]), cur2);
+        out += " ";
+      }
+    };
+    for (const [, o] of objs) {
+      if (/\/Type\s*\/Page\b(?!s)/.test(o.dict)) {
+        const fonts = fontsOf(resourcesOf(o.dict));
+        const cm = o.dict.indexOf("/Contents");
+        const cstr = cm >= 0 ? o.dict.slice(cm, cm + 600) : "";
+        const list = /\/Contents\s*\[([^\]]*)\]/.exec(cstr);
+        const nums4 = list ? [...list[1].matchAll(/(\d+)\s+\d+\s+R/g)].map((m) => Number(m[1])) : [ref(cstr, "/Contents")].filter((x) => x !== null);
+        for (const n of nums4) {
+          const data = await streamOf2(objs.get(n));
+          if (data) await draw3(data, fonts);
+        }
+      } else if (/\/Subtype\s*\/Form\b/.test(o.dict)) {
+        const data = await streamOf2(o);
+        if (data) await draw3(data, fontsOf(resourcesOf(o.dict)));
+      }
+    }
+    return out.replace(/\s+/g, " ");
+  }
+  var latin1, fromLatin1, fromHex, concat, K, SH, PAD, unescapeLit, tidy;
+  var init_pdftext = __esm({
+    "core/src/pdftext.ts"() {
+      latin1 = (b) => {
+        let s = "";
+        for (let i = 0; i < b.length; i += 8192) s += String.fromCharCode(...b.subarray(i, i + 8192));
+        return s;
+      };
+      fromLatin1 = (s) => Uint8Array.from(s, (c) => c.charCodeAt(0) & 255);
+      fromHex = (h) => {
+        const clean7 = h.replace(/[^0-9A-Fa-f]/g, "");
+        const even = clean7.length % 2 ? clean7 + "0" : clean7;
+        const out = new Uint8Array(even.length / 2);
+        for (let i = 0; i < out.length; i++) out[i] = parseInt(even.slice(2 * i, 2 * i + 2), 16);
+        return out;
+      };
+      concat = (...parts) => {
+        const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+        let o = 0;
+        for (const p of parts) {
+          out.set(p, o);
+          o += p.length;
+        }
+        return out;
+      };
+      K = Array.from({ length: 64 }, (_, i) => Math.floor(Math.abs(Math.sin(i + 1)) * 2 ** 32) >>> 0);
+      SH = [7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21];
+      PAD = fromHex("28BF4E5E4E758A4164004E56FFFA01082E2E00B6D0683E802F0CA9FE6453697A");
+      unescapeLit = (str5) => {
+        const out = [];
+        for (let p = 0; p < str5.length; p++) {
+          const c = str5[p];
+          if (c !== "\\") {
+            out.push(c.charCodeAt(0) & 255);
+            continue;
+          }
+          const n = str5[++p];
+          if (n === void 0) break;
+          if (/[0-7]/.test(n)) {
+            let o = n;
+            while (o.length < 3 && /[0-7]/.test(str5[p + 1] ?? "")) o += str5[++p];
+            out.push(parseInt(o, 8) & 255);
+          } else if (n === "\r" || n === "\n") {
+            if (n === "\r" && str5[p + 1] === "\n") p++;
+          } else out.push({ n: 10, r: 13, t: 9, b: 8, f: 12 }[n] ?? n.charCodeAt(0));
+        }
+        return Uint8Array.from(out);
+      };
+      tidy = (t) => t.replace(/ ?([.:]) ?/g, "$1 ").replace(/(\w) (?=\w)/g, "$1").replace(/(\d)[.] ?(\d)/g, "$1.$2");
+    }
+  });
+
+  // camera/scanlab.ts
+  function loadTesseract() {
+    tess ??= new Promise((res, rej) => {
+      if (window.Tesseract) return res(window.Tesseract);
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+      s.onload = () => window.Tesseract ? res(window.Tesseract) : rej(new Error("failed"));
+      s.onerror = () => {
+        tess = null;
+        rej(new Error("offline"));
+      };
+      document.head.append(s);
+    });
+    return tess;
+  }
+  function prepare(src, c, channel, invert) {
+    const out = document.createElement("canvas");
+    const size = 720;
+    out.width = out.height = size;
+    const o = out.getContext("2d", { willReadFrequently: true });
+    o.drawImage(src, c.cx - c.r, c.cy - c.r, c.r * 2, c.r * 2, 0, 0, size, size);
+    const img = o.getImageData(0, 0, size, size);
+    const g = new Uint8ClampedArray(size * size);
+    for (let i = 0; i < g.length; i++) g[i] = channel === "r" ? img.data[i * 4] : channel === "g" ? img.data[i * 4 + 1] : channel === "b" ? img.data[i * 4 + 2] : 0.299 * img.data[i * 4] + 0.587 * img.data[i * 4 + 1] + 0.114 * img.data[i * 4 + 2];
+    const sorted2 = Uint8ClampedArray.from(g).sort();
+    const lo = sorted2[Math.floor(sorted2.length * 0.02)];
+    const hi = sorted2[Math.floor(sorted2.length * 0.98)] || 255;
+    for (let i = 0; i < g.length; i++) {
+      let v = Math.max(0, Math.min(255, (g[i] - lo) / Math.max(1, hi - lo) * 255));
+      if (invert) v = 255 - v;
+      img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v;
+    }
+    o.putImageData(img, 0, 0);
+    return out;
+  }
+  async function readText(src, c, progress3) {
+    const T = await loadTesseract();
+    const words = /* @__PURE__ */ new Map();
+    const runs = [["lum", false], ["lum", true], ["r", false], ["r", true], ["b", false], ["b", true], ["g", false], ["g", true]];
+    let done3 = 0;
+    for (const [ch, inv] of runs) {
+      progress3(done3++, runs.length);
+      const { data } = await T.recognize(prepare(src, c, ch, inv), "eng");
+      for (const w of data.words) {
+        const clean7 = w.text.replace(/[^A-Za-z0-9]/g, "");
+        if (w.confidence > 40 && clean7.length >= 2 && /[A-Za-z]/.test(clean7)) words.set(clean7.toUpperCase(), Math.max(words.get(clean7.toUpperCase()) ?? 0, w.confidence));
+      }
+    }
+    return [...words.entries()].sort((a, b) => b[1] - a[1]).map(([w]) => w).join(" ");
+  }
+  function openScanLab(onAdded) {
+    const el = $("scanlab");
+    el.classList.add("on");
+    const stream2 = document.getElementById("v");
+    const live3 = stream2.videoWidth > 0 && !stream2.paused;
+    let circle = null;
+    let tap = 0;
+    const work2 = document.createElement("canvas");
+    let sig = null;
+    el.innerHTML = `
+    <div class="row"><h2>Scan a ball</h2><button class="btn ghost" id="sc-close">Close</button></div>
+    <div class="note">Take a clear photo of the ball with its logo facing the camera, in even light. The app compares what it sees with the balls you've taught it and with ${S.catalog.length} catalog balls. Reading the name needs a one-time download; you can always type the name instead.</div>
+    <div class="card">
+      <div class="chips"><label class="chip add" style="cursor:pointer">Take or choose a photo<input id="sc-file" type="file" accept="image/*" capture="environment" style="display:none"></label>${live3 ? `<button class="chip add" id="sc-live">Use the live camera</button>` : ""}</div>
+    </div>
+    <div id="sc-work" class="hide">
+      <div class="card"><div class="stagebox" style="position:relative"><canvas id="sc-cv" style="width:100%;height:auto;display:block"></canvas></div>
+        <div class="note" id="sc-hint">Tap the center of the ball, then tap its edge. Skip this to use the middle of the photo.</div>
+        <div class="field"><label>Name on the ball (read it, or type what you see)</label><input id="sc-text" placeholder="e.g. Ion Max" autocomplete="off"></div>
+        <div class="chips"><button class="btn ghost" id="sc-ocr">Read the name from the photo</button><button class="btn" id="sc-go">Identify</button></div>
+        <div class="note" id="sc-ocr-note"></div></div>
+      <div id="sc-out"></div>
+    </div>`;
+    const cv = $("sc-cv");
+    const cx = cv.getContext("2d", { willReadFrequently: true });
+    const base2 = () => circle ?? { cx: work2.width / 2, cy: work2.height / 2, r: Math.min(work2.width, work2.height) * 0.38 };
+    const redraw2 = () => {
+      cv.width = work2.width;
+      cv.height = work2.height;
+      cx.drawImage(work2, 0, 0);
+      const c = base2();
+      cx.strokeStyle = "#46e6ff";
+      cx.lineWidth = Math.max(2, work2.width / 250);
+      cx.setLineDash([10, 8]);
+      cx.beginPath();
+      cx.arc(c.cx, c.cy, Math.max(c.r, 4), 0, 7);
+      cx.stroke();
+      cx.setLineDash([]);
+    };
+    const show = (img, w, h) => {
+      const s = Math.min(1, 1200 / Math.max(w, h));
+      work2.width = Math.round(w * s);
+      work2.height = Math.round(h * s);
+      work2.getContext("2d").drawImage(img, 0, 0, work2.width, work2.height);
+      circle = null;
+      tap = 0;
+      $("sc-work").classList.remove("hide");
+      $("sc-out").innerHTML = "";
+      redraw2();
+    };
+    $("sc-close").onclick = () => (el.classList.remove("on"), el.innerHTML = "");
+    $("sc-file").onchange = (e) => {
+      const f2 = e.target.files?.[0];
+      if (!f2) return;
+      const img = new Image();
+      img.onload = () => (show(img, img.naturalWidth, img.naturalHeight), URL.revokeObjectURL(img.src));
+      img.src = URL.createObjectURL(f2);
+    };
+    $("sc-live")?.addEventListener("click", () => show(stream2, stream2.videoWidth, stream2.videoHeight));
+    cv.addEventListener("pointerdown", (e) => {
+      const r = cv.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width * cv.width;
+      const y = (e.clientY - r.top) / r.height * cv.height;
+      if (tap % 2 === 0) {
+        circle = { cx: x, cy: y, r: 0 };
+        $("sc-hint").textContent = "Now tap the edge of the ball.";
+      } else {
+        circle.r = Math.max(20, Math.hypot(x - circle.cx, y - circle.cy));
+        $("sc-hint").textContent = "Ball marked. Read the name, type it, or tap Identify.";
+      }
+      tap++;
+      redraw2();
+    });
+    const signature = () => {
+      const c = base2();
+      const k2 = 32;
+      const t = document.createElement("canvas");
+      t.width = t.height = k2;
+      const tc = t.getContext("2d", { willReadFrequently: true });
+      tc.drawImage(work2, c.cx - c.r * 0.8, c.cy - c.r * 0.8, c.r * 1.6, c.r * 1.6, 0, 0, k2, k2);
+      return normalize(signatureCounts(tc.getImageData(0, 0, k2, k2).data, k2));
+    };
+    $("sc-ocr").onclick = async () => {
+      const note = $("sc-ocr-note");
+      note.textContent = "Reading the name\u2026 (the first time this downloads a small text reader)";
+      try {
+        const text = await readText(work2, base2(), (d, n) => note.textContent = `Reading the name\u2026 (${d + 1}/${n})`);
+        $("sc-text").value = text;
+        note.textContent = text ? "Read these words. Correct them if they're wrong, then tap Identify." : "Couldn't read any text. Try a closer photo with the logo facing you, or type the name.";
+      } catch {
+        note.textContent = "The text reader needs an internet connection the first time. Type the name instead, or connect and try again.";
+      }
+    };
+    $("sc-go").onclick = () => {
+      sig = signature();
+      const text = $("sc-text").value.trim();
+      const out = $("sc-out");
+      const mine = identifyInArsenal(sig, S.arsenal);
+      const myBall = mine && mine.confidence >= 0.45 ? S.arsenal.find((b) => b.id === mine.ballId) : void 0;
+      const found = identifyFromCatalog({ text: text || void 0, sig, catalog: S.catalog }, 6);
+      out.innerHTML = `
+      ${myBall ? `<div class="card"><div class="k">Looks like a ball you already have</div><div class="lr-head">${esc2(myBall.name)}</div><div class="u">${Math.round(mine.confidence * 100)}% match to the looks you've taught it.</div></div>` : ""}
+      <div class="card"><div class="k">${text ? "Best matches in the catalog" : "Possible matches from colors alone"}</div>
+        ${found.length ? found.map((f2, i) => card2(f2, i)).join("") : `<div class="u">No confident match. Type the name printed on the ball and tap Identify again.</div>`}
+        ${text ? "" : `<div class="note">Colors alone are weak evidence. Add the name on the ball for a real answer.</div>`}</div>`;
+      out.querySelectorAll("[data-add]").forEach(
+        (b) => b.onclick = async () => {
+          const ball = found[Number(b.dataset.add)].ball;
+          const mineAlready = S.arsenal.find((x) => x.catalogKey === ball.key);
+          if (mineAlready) mineAlready.exemplars = [...mineAlready.exemplars, sig].slice(-12);
+          else {
+            const nb = { id: Math.random().toString(36).slice(2, 9), name: `${ball.manufacturer} ${ball.name}`, exemplars: [sig], catalogKey: ball.key };
+            S.arsenal.push(nb);
+          }
+          await saveArsenal();
+          onAdded();
+          $("sc-close").click();
+        }
+      );
+    };
+    function card2(f2, i) {
+      const b = f2.ball;
+      const inArsenal = S.arsenal.some((x) => x.catalogKey === b.key);
+      return `<div style="padding:10px 0;border-top:1px solid var(--line)"><div class="row"><b>${esc2(b.manufacturer)} ${esc2(b.name)}</b><span class="badge ${f2.confidence === "strong" ? "good" : f2.confidence === "likely" ? "moderate" : "tentative"}">${f2.confidence}</span></div>
+      <div class="u">${esc2(specLine(b))}</div><div class="note">${esc2(f2.evidence.join(" \xB7 "))}</div>
+      <div class="chips"><button class="chip" data-add="${i}">${inArsenal ? "Teach it this look" : "This is my ball: add it"}</button></div></div>`;
+    }
+  }
+  var tess, specLine;
+  var init_scanlab = __esm({
+    "camera/scanlab.ts"() {
+      init_ballid();
+      init_identify();
+      init_live();
+      init_state();
+      tess = null;
+      specLine = (b) => [b.rg && `RG ${b.rg.value}`, b.differential && `diff ${b.differential.value}`, b.coverstock?.value, b.core?.value, b.coreSymmetry?.value, b.colorway?.value].filter(Boolean).join(" \xB7 ");
+    }
+  });
+
+  // camera/patternsheet.ts
+  function close8() {
+    sheet8().classList.remove("on");
+    sheet8().innerHTML = "";
+    onDone?.();
+  }
+  function preview(canvas, p) {
+    drawTopDown(canvas.getContext("2d"), canvas.width, canvas.height, [], void 0, mapOf(p));
+  }
+  function openPatterns(done3) {
+    onDone = done3 ?? null;
+    const el = sheet8();
+    el.classList.add("on");
+    const list = S.myPatterns;
+    el.innerHTML = `<div class="row"><h2>My oil patterns</h2><button class="btn ghost" id="mp-close">Close</button></div>
+    <div class="note">Add the pattern your centre posts: the PDF of the sheet, a screenshot, or a photo of the printed one. It's read on your phone, you check the numbers, and nothing is uploaded. Sheets with a load table (most from Kegel lane machines) show exactly where the oil is; for the others the shape is estimated from the length and ratio, and says so.</div>
+    <div class="chips"><label class="btn" style="display:inline-block;cursor:pointer">Add from a sheet<input id="mp-file" type="file" accept="application/pdf,image/*" style="display:none"></label><button class="btn ghost" id="mp-type">Type it in</button></div>
+    <div class="note" id="mp-prog"></div>
+    ${list.length ? "" : `<div class="card"><div class="u">No patterns yet. Ask the front desk for tonight's pattern sheet, or look for it on the centre's website or the board by the lanes.</div></div>`}
+    ${list.map(
+      (p) => `<div class="card" data-p="${p.id}"><div style="display:flex;gap:12px"><canvas width="96" height="168" style="width:72px;height:126px;border-radius:8px;flex:none" data-prev="${p.id}"></canvas><div style="flex:1;min-width:0">
+          <div class="row"><b>${esc2(p.name)}</b>${S.where.patternId === p.id ? `<span class="badge good">tonight</span>` : ""}</div>
+          <div class="u">${esc2(describe(p))}</div>
+          <div class="note">${p.rows?.length ? `Oil map from the sheet's load table (${p.rows.length} rows)` : "Oil shape estimated from the length and ratio"} \xB7 rule of 31: board ${ruleOf31(p.lengthFt)} \xB7 ${p.from === "pdf" ? "from a PDF" : p.from === "photo" ? "from a photo" : "typed in"}</div>
+          <div class="chips">${S.where.patternId === p.id ? `<button class="chip" data-act="off">Not tonight</button>` : `<button class="chip sel" data-act="use">Use tonight</button>`}<button class="chip" data-act="edit">Edit</button><button class="chip danger" data-act="del">Delete</button></div></div></div></div>`
+    ).join("")}`;
+    $("mp-close").onclick = close8;
+    $("mp-type").onclick = () => openEditor2({ rows: [], tableOk: false, notes: [] }, "typed", "");
+    $("mp-file").onchange = async (e) => {
+      const f2 = e.target.files?.[0];
+      if (!f2) return;
+      const prog = $("mp-prog");
+      try {
+        const read2 = await readFile(f2, (m) => prog.textContent = m);
+        openEditor2(read2.sheet, read2.from, f2.name.replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ").trim());
+      } catch (err) {
+        prog.textContent = `Couldn't read that file: ${err instanceof Error ? err.message : String(err)}. You can type the numbers in instead.`;
+      }
+    };
+    el.querySelectorAll("canvas[data-prev]").forEach((c) => {
+      const p = S.myPatterns.find((x) => x.id === c.dataset.prev);
+      if (p) preview(c, p);
+    });
+    el.querySelectorAll("[data-p]").forEach((card2) => {
+      const p = S.myPatterns.find((x) => x.id === card2.dataset.p);
+      card2.querySelector("[data-act=use]")?.addEventListener("click", async () => {
+        S.where = { ...S.where, patternId: p.id };
+        await saveCoach();
+        openPatterns(done3);
+      });
+      card2.querySelector("[data-act=off]")?.addEventListener("click", async () => {
+        S.where = { ...S.where, patternId: "" };
+        await saveCoach();
+        openPatterns(done3);
+      });
+      card2.querySelector("[data-act=edit]")?.addEventListener("click", () => openEditor2({ rows: p.rows ?? [], tableOk: !!p.rows?.length, notes: [], lengthFt: p.lengthFt, volumeMl: p.volumeMl, ratio: p.ratio, forwardMl: p.forwardMl, reverseMl: p.reverseMl, brushDropFt: p.brushDropFt }, p.from, p.name, p));
+      card2.querySelector("[data-act=del]")?.addEventListener("click", async () => {
+        if (!confirm(`Delete ${p.name}?`)) return;
+        S.myPatterns = S.myPatterns.filter((x) => x.id !== p.id);
+        if (S.where.patternId === p.id) S.where = { ...S.where, patternId: "" };
+        await saveCoach();
+        openPatterns(done3);
+      });
+    });
+  }
+  async function readFile(f2, progress3) {
+    const isPdf = f2.type === "application/pdf" || /\.pdf$/i.test(f2.name);
+    if (isPdf) {
+      progress3("Reading the sheet\u2026");
+      const text2 = await pdfText(new Uint8Array(await f2.arrayBuffer()));
+      if (text2 === null) throw new Error("this PDF uses a protection the reader can't open");
+      return { sheet: readSheetText(tidy(text2)), from: "pdf" };
+    }
+    progress3("Loading the text reader (first time only)\u2026");
+    const T = await loadTesseract();
+    progress3("Reading the photo\u2026");
+    const img = await createImageBitmap(f2);
+    const scale2 = Math.min(1, 2200 / Math.max(img.width, img.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.width * scale2);
+    c.height = Math.round(img.height * scale2);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    const { data } = await T.recognize(c, "eng");
+    const text = data.text ?? data.words.map((w) => w.text).join(" ");
+    progress3("");
+    return { sheet: readSheetText(text), from: "photo" };
+  }
+  function openEditor2(r, from, name, existing) {
+    const el = sheet8();
+    el.classList.add("on");
+    const field = (id, label2, v, hint) => `<div class="field"><label>${label2}</label><input id="${id}" inputmode="decimal" value="${v ?? ""}" placeholder="${hint}"></div>`;
+    el.innerHTML = `<div class="row"><h2>${existing ? "Edit pattern" : "Check the pattern"}</h2><button class="btn ghost" id="pe-back">Back</button></div>
+    <div class="note">${from === "typed" ? "Type the numbers from the sheet." : `Read from your ${from === "pdf" ? "PDF" : "photo"}. Check each number against the sheet and fix any that are wrong.`}${r.notes.length ? " " + esc2(r.notes.join(" ")) : ""}</div>
+    ${r.tableOk ? `<div class="card" style="border-color:var(--mint)"><div class="u">Load table read: ${r.rows.length} rows, and they add up to the sheet's totals. The oil on your lane will be drawn from it, board by board.</div></div>` : ""}
+    <div class="card">
+      <div class="field"><label>Name</label><input id="pe-name" value="${esc2(name)}" placeholder="e.g. Main Street house shot"></div>
+      <div class="two">${field("pe-len", "Length (ft)", r.lengthFt, "e.g. 41")}${field("pe-vol", "Volume (mL)", r.volumeMl, "e.g. 24.5")}</div>
+      <div class="two">${field("pe-ratio", "Ratio (the N of N:1)", r.ratio, "e.g. 4")}${field("pe-drop", "Brush drop (ft)", r.brushDropFt, "optional")}</div>
+      <div class="two">${field("pe-fwd", "Forward oil (mL)", r.forwardMl, "optional")}${field("pe-rev", "Reverse oil (mL)", r.reverseMl, "optional")}</div>
+    </div>
+    <div class="card"><div class="k">The oil, from above</div><div style="display:flex;gap:12px;align-items:flex-start"><canvas id="pe-prev" width="180" height="315" style="width:120px;height:210px;border-radius:10px;flex:none"></canvas><div class="note" id="pe-desc"></div></div></div>
+    <div class="chips"><button class="btn" id="pe-save">${existing ? "Save" : "Save pattern"}</button></div><div class="note" id="pe-err"></div>`;
+    const num11 = (id) => {
+      const v = parseFloat($(id).value);
+      return Number.isFinite(v) ? v : void 0;
+    };
+    const build = () => {
+      const len = num11("pe-len");
+      if (len === void 0 || len < 20 || len > 55) return null;
+      const nm = $("pe-name").value.trim() || `${len} ft pattern`;
+      const ratio = num11("pe-ratio");
+      return {
+        id: existing?.id ?? newId(),
+        key: nm.toLowerCase(),
+        name: nm,
+        series: "mine",
+        lengthFt: Math.round(len),
+        volumeMl: num11("pe-vol"),
+        ratio: ratio !== void 0 && ratio >= 1 && ratio <= 15 ? ratio : void 0,
+        forwardMl: num11("pe-fwd"),
+        reverseMl: num11("pe-rev"),
+        brushDropFt: num11("pe-drop"),
+        // the load table is only kept while the length still matches the sheet it came from
+        rows: r.tableOk && Math.round(len) === r.lengthFt ? r.rows : existing?.rows && Math.round(len) === existing.lengthFt ? existing.rows : void 0,
+        from,
+        addedAt: existing?.addedAt ?? (/* @__PURE__ */ new Date()).toISOString(),
+        source: { kind: "user", url: "the bowler's own pattern sheet", retrievedOn: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10) }
+      };
+    };
+    const repaint = () => {
+      const p = build();
+      const c = $("pe-prev");
+      const desc = $("pe-desc");
+      if (!p) {
+        c.getContext("2d").clearRect(0, 0, c.width, c.height);
+        desc.textContent = "Enter the length (20 to 55 ft) to see the oil.";
+        return;
+      }
+      preview(c, p);
+      desc.textContent = `${p.rows?.length ? "Drawn from the sheet's load table: each board's oil, foot by foot." : `Estimated shape: full oil across the middle, the outside boards at 1/${p.ratio ?? 3} of it${p.ratio === void 0 ? " (no ratio given, so 3:1 is assumed)" : ""}, tapering off over the last part.`} The gold line is where the oil ends. Kegel's rule of 31 puts a starting breakpoint near board ${ruleOf31(p.lengthFt)} (${p.lengthFt} \u2212 31).`;
+    };
+    el.querySelectorAll("input").forEach((i) => i.addEventListener("input", repaint));
+    repaint();
+    $("pe-back").onclick = () => openPatterns(onDone ?? void 0);
+    $("pe-save").onclick = async () => {
+      const p = build();
+      if (!p) return void ($("pe-err").textContent = "The length must be between 20 and 55 feet.");
+      S.myPatterns = existing ? S.myPatterns.map((x) => x.id === p.id ? p : x) : [...S.myPatterns, p];
+      if (!existing && !S.where.patternId) S.where = { ...S.where, patternId: p.id };
+      await saveCoach();
+      openPatterns(onDone ?? void 0);
+    };
+  }
+  var sheet8, onDone, describe;
+  var init_patternsheet = __esm({
+    "camera/patternsheet.ts"() {
+      init_pdftext();
+      init_oilsheet();
+      init_patterns();
+      init_live();
+      init_state();
+      init_render();
+      init_oilview();
+      init_scanlab();
+      init_db();
+      sheet8 = () => $("coachsheet");
+      onDone = null;
+      describe = (p) => [`${p.lengthFt} ft (${lengthClass(p.lengthFt)})`, p.volumeMl !== void 0 ? `${p.volumeMl} mL` : "", p.ratio !== void 0 ? `${p.ratio}:1` : ""].filter(Boolean).join(" \xB7 ");
+    }
+  });
+
+  // camera/coachlive.ts
+  function moveNow() {
+    const shots = sessionShots();
+    return adviseMove(shots, hand(), S.target, readLane(shots.map((x) => ({ a: x.a, ballId: x.ballId }))));
+  }
+  function openTarget(prefill) {
+    const el = $("target");
+    el.classList.add("on");
+    const t = { ...S.target ?? { arrows: 10, at: "" }, ...prefill ?? {} };
+    const field = (id, label2, v, hint) => `<div class="field"><label>${label2}</label><div class="chips" style="margin:0;align-items:center"><button class="chip" data-step="${id}" data-d="-1">\u2212</button><input id="${id}" inputmode="decimal" value="${v ?? ""}" placeholder="${hint}" style="width:80px;text-align:center"><button class="chip" data-step="${id}" data-d="1">+</button></div></div>`;
+    el.innerHTML = `<div class="row"><h2>My target</h2><button class="btn ghost" id="tg-close">Close</button></div>
+    <div class="note">Boards are counted from the right gutter, as everywhere in LaneIQ (board 1 on the right, 39 on the left; the arrows are on boards 5, 10, 15, 20, 25, 30, 35). Every shot from now on is graded against this, so the app can tell a bad line from a missed shot.</div>
+    <div class="card">
+      ${field("tg-stand", "Where my slide foot starts (board)", t.stand, "e.g. 25")}
+      ${field("tg-arrows", "Board I aim at, at the arrows", t.arrows, "e.g. 10")}
+      ${field("tg-bp", "Where I want it to break (board, optional)", t.breakpoint, "e.g. 7")}
+    </div>
+    <div class="card"><div class="k">Where I'm bowling</div>
+      <div class="two"><div class="field"><label>Centre</label><input id="tg-center" value="${esc2(S.where.center)}" placeholder="Centre name" autocomplete="off"></div><div class="field"><label>Lane</label><input id="tg-lane" inputmode="numeric" value="${esc2(S.where.lane)}" placeholder="e.g. 17"></div></div>
+      <div class="field"><label>Oil pattern tonight</label><div class="chips" style="margin:0;align-items:center"><select id="tg-pat" style="flex:1;min-width:0"><option value="">None / not known</option>${S.myPatterns.map((p) => `<option value="${esc2(p.id)}" ${S.where.patternId === p.id ? "selected" : ""}>${esc2(p.name)} \xB7 ${p.lengthFt} ft</option>`).join("")}</select><button class="chip" id="tg-pats">My patterns</button></div></div>
+      <div class="note">Used to remember how each pair played for you, and to draw the oil on your lane. It stays on this phone.</div></div>
+    <div class="chips"><button class="btn" id="tg-save">Save target</button>${S.target ? `<button class="btn ghost" id="tg-clear">No target</button>` : ""}</div>`;
+    const num11 = (id) => {
+      const v = parseFloat($(id).value);
+      return Number.isFinite(v) ? Math.max(1, Math.min(39, v)) : void 0;
+    };
+    el.querySelectorAll("[data-step]").forEach(
+      (b) => b.onclick = () => {
+        const i = $(b.dataset.step);
+        const v = parseFloat(i.value);
+        i.value = String(Math.max(1, Math.min(39, (Number.isFinite(v) ? v : b.dataset.step === "tg-stand" ? 25 : 10) + Number(b.dataset.d))));
+      }
+    );
+    $("tg-close").onclick = () => el.classList.remove("on");
+    $("tg-pats").onclick = () => openPatterns(() => openTarget(prefill));
+    $("tg-clear")?.addEventListener("click", async () => {
+      S.target = null;
+      await saveCoach();
+      el.classList.remove("on");
+      renderTonight();
+    });
+    $("tg-save").onclick = async () => {
+      const arrows = num11("tg-arrows");
+      if (arrows === void 0) return void $("tg-arrows").focus();
+      S.target = { arrows, stand: num11("tg-stand"), breakpoint: num11("tg-bp"), at: (/* @__PURE__ */ new Date()).toISOString() };
+      S.where = { center: $("tg-center").value.trim(), lane: $("tg-lane").value.trim(), patternId: $("tg-pat").value };
+      await saveCoach();
+      el.classList.remove("on");
+      renderTonight();
+      renderMove();
+    };
+  }
+  function paintDrill() {
+    const chip = $("drill-chip");
+    if (!chip) return;
+    const run = S.drill;
+    chip.classList.toggle("hide", !run);
+    if (!run) return;
+    const def = DRILLS2.find((d) => d.id === run.id);
+    const s = summarize2(run);
+    chip.textContent = `${def.name}: ${s.made}/${s.scored} \xB7 next ${drillTarget(run).label}`;
+  }
+  function openDrillStatus() {
+    const run = S.drill;
+    if (!run) return;
+    const el = $("target");
+    el.classList.add("on");
+    const def = DRILLS2.find((d) => d.id === run.id);
+    const s = summarize2(run);
+    el.innerHTML = `<div class="row"><h2>${esc2(def.name)}</h2><button class="btn ghost" id="dr-close">Close</button></div>
+    <div class="card"><div class="u">${esc2(def.blurb)}</div><div class="lr-head" style="margin-top:8px">${esc2(s.text)}</div><div class="u">Next: ${esc2(drillTarget(run).label)}</div>
+    <table>${run.results.map((r, i) => `<tr><td>${i + 1}</td><td>${r.ok === null ? "not judged" : r.ok ? "\u2713 made" : "\u2717 missed"}</td><td class="n">${esc2(r.note)}</td></tr>`).join("")}</table></div>
+    <div class="chips"><button class="btn ghost danger" id="dr-stop">Stop this drill</button></div>`;
+    $("dr-close").onclick = () => el.classList.remove("on");
+    $("dr-stop").onclick = async () => {
+      if (S.drill && S.drill.results.length) S.drills = [...S.drills, { ...S.drill, finishedAt: S.drill.finishedAt ?? (/* @__PURE__ */ new Date()).toISOString() }].slice(-200);
+      S.drill = null;
+      await saveCoach();
+      el.classList.remove("on");
+      paintDrill();
+    };
+  }
+  function renderTonight() {
+    const el = document.getElementById("tonight");
+    if (!el) return;
+    const t = S.target;
+    const mem = S.where.center && S.where.lane ? memoryFor(S.shots, S.where.center, S.where.lane, S.sessionId) : null;
+    const last3 = mem?.sessions[0];
+    const best2 = mem?.best;
+    const lineOf = (x) => [x.stand !== null ? `stood on ${x.stand.toFixed(0)}` : "", x.arrows !== null ? `crossed the arrows on ${x.arrows.toFixed(0)}` : ""].filter(Boolean).join(", ");
+    el.innerHTML = `<div class="card"><div class="row"><div><div class="k">My target</div><div class="lr-head" style="font-size:16px">${t ? `${t.stand !== void 0 ? `Stand ${t.stand} \xB7 ` : ""}aim ${t.arrows} at the arrows${t.breakpoint !== void 0 ? ` \xB7 break at ${t.breakpoint}` : ""}` : "No target set"}</div></div><div class="chips" style="margin:0"><button class="chip" id="tn-plan">Game plan</button><button class="chip" id="tn-edit">${t ? "Change" : "Set target"}</button></div></div>
+    ${S.where.center ? `<div class="note">${esc2(S.where.center)}${S.where.lane ? ` \xB7 lanes ${esc2(pairOf(S.where.lane))}` : ""}</div>` : `<div class="note">Set a target to have every shot graded against it, and your centre and lane so the app remembers how each pair played.</div>`}
+    ${(() => {
+      const p = activePattern();
+      return p ? `<div class="note">Oil: <b>${esc2(p.name)}</b>, ${p.lengthFt} ft${p.volumeMl !== void 0 ? `, ${p.volumeMl} mL` : ""}${p.ratio !== void 0 ? `, ${p.ratio}:1` : ""}. Rule of 31: break near board ${ruleOf31(p.lengthFt)}. ${p.rows?.length ? "Drawn on the lane from the sheet's load table." : "Shape on the lane is estimated."}</div>` : `<div class="note">Add tonight's oil pattern (Target, then My patterns) to see the oil drawn on your lane.</div>`;
+    })()}
+    ${last3 ? `<div class="lr-next"><b>Last time on this pair</b> (${esc2(day2(last3.date))}): ${esc2(lineOf(last3) || "no line recorded")}${last3.ballIds.length ? ` with the ${esc2(last3.ballIds.map(ballName2).join(", "))}` : ""}${last3.pocketPct !== null ? `, ${Math.round(last3.pocketPct)}% in the pocket` : ""}${last3.strikePct !== null ? `, ${Math.round(last3.strikePct)}% strikes` : ""}.${best2 && best2 !== last3 ? `<div class="u">Best here: ${esc2(day2(best2.date))}, ${esc2(lineOf(best2))}, ${Math.round(best2.pocketPct)}% in the pocket.</div>` : ""}${(best2 ?? last3).arrows !== null ? `<div class="chips"><button class="chip" id="tn-use">Start on that line</button></div>` : ""}</div>` : ""}</div>`;
+    $("tn-edit").onclick = () => openTarget();
+    $("tn-plan").onclick = () => openGamePlan();
+    $("tn-use")?.addEventListener("click", () => {
+      const src = best2 ?? last3;
+      openTarget({ stand: src.stand !== null ? Math.round(src.stand) : void 0, arrows: Math.round(src.arrows) });
+    });
+  }
+  function renderMove() {
+    const el = document.getElementById("move-card");
+    if (!el) return;
+    const m = moveNow();
+    el.innerHTML = `<div class="lr-head">${esc2(m.headline)}</div><span class="badge ${m.kind === "move" ? "good" : m.kind === "insufficient" ? "low" : "moderate"}">${m.kind === "move" ? "move" : m.kind === "fix-aim" ? "aim first" : m.kind === "ball" ? "ball change" : m.kind === "stay" ? "stay" : "waiting"} \xB7 ${m.shotsUsed} shot${m.shotsUsed === 1 ? "" : "s"}</span><ul>${m.why.map((w) => `<li>${esc2(w)}</li>`).join("")}</ul><div class="note" style="margin-top:6px">A starting point to try and talk over with your coach, not an instruction.</div>${aimHtml(S.shots.filter((x) => x.sessionId === S.sessionId), S.profile?.hand ?? "R")}${m.kind === "move" ? recordLine(m.feet > 0 ? "left" : "right") : ""}${lastMoveHtml(S.shots.filter((x) => x.sessionId === S.sessionId))}${m.kind === "move" && m.to.arrows !== null ? `<div class="chips"><button class="chip sel" id="mv-take">Make this my target</button></div>` : ""}`;
+    $("mv-take")?.addEventListener("click", async () => {
+      S.target = { arrows: m.to.arrows, stand: m.to.stand ?? S.target?.stand, breakpoint: S.target?.breakpoint, at: (/* @__PURE__ */ new Date()).toISOString() };
+      await saveCoach();
+      renderTonight();
+      renderMove();
+      if (voiceOn()) say(`Target set. ${m.to.stand !== null ? `Stand on ${m.to.stand}, ` : ""}aim at ${m.to.arrows}.`);
+    });
+  }
+  function caddieLine(s, move) {
+    const bits = [spokenNumber(s.a.speedMph)];
+    if (s.m.arrowsBoard !== null) bits.push(`board ${Math.round(s.m.arrowsBoard)} at the arrows`);
+    if (s.m.breakpointBoard !== null) bits.push(`breakpoint ${Math.round(s.m.breakpointBoard)}`);
+    if (s.m.pocketMiss !== null) bits.push(Math.abs(s.m.pocketMiss) <= 1 ? "pocket" : `${spokenNumber(Math.abs(s.m.pocketMiss))} ${s.m.pocketMiss > 0 ? "high" : "light"}`);
+    const g = gradeShot(s, s.plan);
+    if (g?.hitMark === true) bits.push("on your mark");
+    else if (g?.hitMark === false && g.markOff !== null) bits.push(`missed your mark ${Math.abs(g.markOff).toFixed(0)} ${g.markOff > 0 ? "left" : "right"}`);
+    if (s.drill) {
+      const run = S.drill ?? S.drills[S.drills.length - 1];
+      const def = DRILLS2.find((d) => d.id === s.drill.id);
+      if (run && def) bits.push(`${def.name}: ${s.drill.ok === null ? "not judged" : s.drill.ok ? "made it" : "missed"}, ${summarize2(run).made} of ${summarize2(run).scored}`);
+    }
+    if (move.kind === "move") bits.push(`a move to try: ${Math.abs(move.feet)} and ${Math.abs(move.eyes)} ${move.feet > 0 ? "left" : "right"}`);
+    else if (move.kind === "fix-aim") bits.push("the ball is missing your target, so hold off on a move");
+    return bits.join(". ") + ".";
+  }
+  function paintOil() {
+    const b = document.getElementById("oil-btn");
+    if (!b) return;
+    b.classList.toggle("hide", !activePattern());
+    b.textContent = oilOn() ? "Oil: on" : "Oil: off";
+    b.classList.toggle("sel", oilOn());
+  }
+  function paintVoice() {
+    const b = document.getElementById("voice-btn");
+    if (b) {
+      b.textContent = voiceOn() ? "Voice: on" : "Voice: off";
+      b.classList.toggle("sel", voiceOn());
+    }
+  }
+  function initCoachLive() {
+    onBeforeSave((s) => {
+      if (S.target) s.plan = { ...S.target };
+      if (S.where.center) s.center = S.where.center;
+      if (S.where.lane && !s.lane) s.lane = S.where.lane;
+      if (S.where.patternId) s.pattern = S.where.patternId;
+      if (S.drill) {
+        const run = addDrillShot(S.drill, s);
+        const r = run.results[run.results.length - 1];
+        s.drill = { id: run.id, ok: r?.ok ?? null };
+        if (run.finishedAt) {
+          S.drills = [...S.drills, run].slice(-200);
+          S.drill = null;
+        } else S.drill = run;
+        void saveCoach();
+      }
+    });
+    onAfterShot((s) => {
+      renderTonight();
+      const m = moveNow();
+      renderMove();
+      paintDrill();
+      if (voiceOn()) say(caddieLine(s, m));
+    });
+    document.getElementById("target-btn")?.addEventListener("click", () => openTarget());
+    document.getElementById("voice-btn")?.addEventListener("click", () => {
+      setVoice(!voiceOn());
+      paintVoice();
+    });
+    document.getElementById("drill-chip")?.addEventListener("click", () => openDrillStatus());
+    document.getElementById("oil-btn")?.addEventListener("click", () => {
+      setOilOn(!oilOn());
+      paintOil();
+    });
+    onChange(() => {
+      paintDrill();
+      paintOil();
+      if (document.getElementById("tab-live")?.classList.contains("on")) renderTonight();
+    });
+    paintVoice();
+    paintOil();
+    paintDrill();
+    renderTonight();
+    renderMove();
+  }
+  var hand, ballName2, day2;
+  var init_coachlive = __esm({
+    "camera/coachlive.ts"() {
+      init_gameplanui();
+      init_aimui();
+      init_movejudgeui();
+      init_moves();
+      init_lanereads();
+      init_drills();
+      init_lanememory();
+      init_execution();
+      init_live();
+      init_state();
+      init_voice();
+      init_oilsheet();
+      init_oilview();
+      init_patternsheet();
+      hand = () => S.profile?.hand ?? "R";
+      ballName2 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "unknown ball";
+      day2 = (iso2) => new Date(iso2).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+    }
+  });
+
+  // camera/shopconfig.ts
+  var REQUIRE_ACCOUNT, SHOP_DIRECTORY;
+  var init_shopconfig = __esm({
+    "camera/shopconfig.ts"() {
+      REQUIRE_ACCOUNT = false;
+      SHOP_DIRECTORY = { url: "https://akfpbiswmdvcqxsfieux.supabase.co", anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrZnBiaXN3bWR2Y3F4c2ZpZXV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5OTQyMTMsImV4cCI6MjEwODU3MDIxM30.wmBmLEvej5_pgUK0-CSw_qG_dz8-VTTdPlY99Nd2Uak" };
+    }
+  });
+
+  // camera/displayrelay.ts
+  var relayAvailable, Relay;
+  var init_displayrelay = __esm({
+    "camera/displayrelay.ts"() {
+      init_shopconfig();
+      relayAvailable = () => !!(SHOP_DIRECTORY.url && SHOP_DIRECTORY.anonKey);
+      Relay = class {
+        constructor(code2, onMessage, onState = () => {
+        }) {
+          this.onMessage = onMessage;
+          this.onState = onState;
+          this.topic = `realtime:laneiq-${code2}`;
+          this.open();
+        }
+        onMessage;
+        onState;
+        ws = null;
+        ref = 1;
+        beat = 0;
+        tries = 0;
+        timer = 0;
+        dead = false;
+        joined = false;
+        queue = [];
+        topic;
+        state = "connecting";
+        open() {
+          if (this.dead || !relayAvailable()) return;
+          this.state = "connecting";
+          this.onState(this.state);
+          const url = `${SHOP_DIRECTORY.url.replace(/^http/, "ws").replace(/\/+$/, "")}/realtime/v1/websocket?apikey=${encodeURIComponent(SHOP_DIRECTORY.anonKey)}&vsn=1.0.0`;
+          let ws;
+          try {
+            ws = new WebSocket(url);
+          } catch {
+            return void this.again();
+          }
+          this.ws = ws;
+          ws.onopen = () => {
+            this.raw({ topic: this.topic, event: "phx_join", payload: { config: { broadcast: { ack: false, self: false }, presence: { key: "" }, private: false }, access_token: SHOP_DIRECTORY.anonKey }, ref: String(this.ref++), join_ref: "1" });
+            this.beat = window.setInterval(() => this.raw({ topic: "phoenix", event: "heartbeat", payload: {}, ref: String(this.ref++) }), 25e3);
+          };
+          ws.onmessage = (e) => {
+            try {
+              const m = JSON.parse(String(e.data));
+              if (m.event === "phx_reply" && m.topic === this.topic && m.payload?.status === "ok" && !this.joined) {
+                this.joined = true;
+                this.tries = 0;
+                this.state = "connected";
+                this.onState(this.state);
+                for (const q2 of this.queue.splice(0)) ws.send(q2);
+              } else if (m.event === "phx_reply" && m.topic === this.topic && m.payload?.status === "error") {
+                this.state = "closed";
+                this.onState(this.state);
+              } else if (m.event === "broadcast" && m.payload?.type === "broadcast") this.onMessage(String(m.payload.event ?? ""), m.payload.payload);
+              else if (m.event === "phx_close" || m.event === "phx_error") ws.close();
+            } catch {
+            }
+          };
+          ws.onclose = () => {
+            clearInterval(this.beat);
+            this.joined = false;
+            if (!this.dead) this.again();
+          };
+          ws.onerror = () => {
+            try {
+              ws.close();
+            } catch {
+            }
+          };
+        }
+        again() {
+          this.state = "connecting";
+          this.onState(this.state);
+          clearTimeout(this.timer);
+          const wait = Math.min(15e3, 800 * 2 ** Math.min(5, this.tries++));
+          this.timer = window.setTimeout(() => this.open(), wait);
+        }
+        raw(m) {
+          if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(m));
+        }
+        /** Send to everyone else on the channel. Held until the channel is joined, keeping only the newest few. */
+        send(event, payload) {
+          const msg = JSON.stringify({ topic: this.topic, event: "broadcast", payload: { type: "broadcast", event, payload }, ref: String(this.ref++) });
+          if (this.joined && this.ws?.readyState === WebSocket.OPEN) this.ws.send(msg);
+          else {
+            this.queue.push(msg);
+            if (this.queue.length > 3) this.queue.shift();
+          }
+        }
+        close() {
+          this.dead = true;
+          this.state = "closed";
+          clearInterval(this.beat);
+          clearTimeout(this.timer);
+          try {
+            this.ws?.close();
+          } catch {
+          }
+        }
+      };
+    }
+  });
+
+  // camera/displayui.ts
+  function lastTiles(l, big = false) {
+    if (!l) return `<div class="big-msg" style="margin:auto;color:#8a97b2">Waiting for the first shot\u2026</div>`;
+    const [zl, zc] = zoneLabel(l.zone);
+    const miss = l.pocketMiss === null ? "" : Math.abs(l.pocketMiss) < 0.75 ? "in the pocket" : `${Math.abs(l.pocketMiss).toFixed(1)} boards ${l.pocketMiss > 0 ? "high" : "light"}`;
+    return `<div class="tiles ${big ? "big" : ""}">${tile("SPEED", n12(l.speed), "mph")}${tile("BREAKPOINT", l.breakpointBoard === null ? "\u2013" : String(Math.round(l.breakpointBoard)), l.breakpointFt === null ? "" : `@ ${l.breakpointFt} ft`, "board from the right")}${tile("ENTRY", n12(l.entryBoard), "", l.entryAngle === null ? "" : `${l.entryAngle.toFixed(1)}\xB0 angle`)}${tile("POCKET", zl || "\u2013", "", miss, zc + " w")}${tile("ARROWS", n12(l.arrows, 0), "", "board at 15 ft")}</div>`;
+  }
+  function pathSvg(snap) {
+    const W3 = 200, H3 = 420, X = (b) => b / 39 * W3, Y = (ft) => H3 - ft / 60 * H3;
+    const p = snap.last?.path ?? [];
+    const pts = [];
+    for (let i = 0; i + 1 < p.length; i += 2) pts.push(`${X(p[i]).toFixed(1)},${Y(p[i + 1]).toFixed(1)}`);
+    const pocket = snap.hand === "R" ? 17.5 : 22.5;
+    const arrows = [5, 10, 15, 20, 25, 30, 35].map((b) => `<path d="M${X(b)} ${Y(15) + 6} l-4 -11 l8 0z" fill="#9fb0cc" opacity=".7"/>`).join("");
+    const dots = [0, 1, 2, 3].flatMap((r) => Array.from({ length: 4 - r }, (_, i) => `<circle cx="${X(pocket - (snap.hand === "R" ? 2.5 : -2.5)) + (i - (3 - r) / 2) * 8}" cy="${8 + r * 7}" r="2.6" fill="#fff" opacity=".85"/>`)).join("");
+    void dots;
+    return `<svg viewBox="0 0 ${W3} ${H3}" role="img" aria-label="The ball's path down the lane"><rect x="0" y="0" width="${W3}" height="${H3}" fill="#2a1d12"/><rect x="0" y="0" width="${W3}" height="${H3}" fill="none" stroke="#566"/>${arrows}<line x1="0" x2="${W3}" y1="${Y(0) - 2}" y2="${Y(0) - 2}" stroke="#ff5a6e" stroke-width="3"/><circle cx="${X(pocket)}" cy="${Y(59)}" r="5" fill="#ff5a6e" opacity=".9"/>${pts.length ? `<polyline fill="none" stroke="var(--ac)" stroke-width="3.4" stroke-linejoin="round" points="${pts.join(" ")}"/><circle cx="${pts[pts.length - 1].split(",")[0]}" cy="${pts[pts.length - 1].split(",")[1]}" r="5" fill="#fff"/>` : ""}</svg>`;
+  }
+  function pinsSvg(standing, label2) {
+    const pins = PIN_POS.map(([c, r], i) => {
+      const up = standing === null ? false : standing.includes(i + 1);
+      return `<g><ellipse cx="${100 + c * 24}" cy="${116 - r * 28}" rx="9" ry="15" fill="${up ? "#f4f6ff" : "rgba(255,255,255,.08)"}" stroke="${up ? "#5affb0" : "rgba(255,255,255,.18)"}" stroke-width="2"/><text x="${100 + c * 24}" y="${121 - r * 28}" font-size="9" text-anchor="middle" fill="${up ? "#0b1020" : "#556"}" font-family="system-ui" font-weight="800">${i + 1}</text></g>`;
+    }).join("");
+    return `<svg viewBox="0 0 200 132" role="img" aria-label="${esc2(label2)}">${pins}</svg>`;
+  }
+  function cardTable2(snap) {
+    const c = snap.card;
+    if (!c) return `<div class="big-msg" style="margin:auto;color:#8a97b2">No game yet</div>`;
+    const cells = Array.from({ length: 10 }, (_, i) => {
+      const f2 = c.frames[i], slots = i < 9 ? 2 : 3, cur2 = !c.complete && c.frame === i + 1;
+      const marks = Array.from({ length: slots }, (_2, k2) => `<span class="${f2?.marks[k2] === "X" ? "good" : f2?.marks[k2] === "/" ? "ac" : ""}" style="display:inline-block;min-width:1.2em">${esc2(f2?.marks[k2] ?? "")}</span>`).join("");
+      return `<td class="${cur2 ? "cur" : ""}"><div class="fn">${i + 1}</div><div class="mk">${marks}</div><div class="tt">${f2?.total ?? ""}</div></td>`;
+    });
+    return `<div style="display:flex;align-items:baseline;gap:calc(var(--u)*2);margin-bottom:calc(var(--u)*.8)"><div style="font-size:calc(var(--u)*3);font-weight:900">${esc2(snap.bowler)}</div><div style="font-size:calc(var(--u)*6);font-weight:900;margin-left:auto" class="ac">${c.total}</div></div><table><tr>${cells.join("")}</tr></table>`;
+  }
+  function trends(snap) {
+    const row4 = (label2, v, unit5) => `<div style="display:flex;align-items:center;gap:calc(var(--u)*1.2);margin:calc(var(--u)*.5) 0"><div style="width:calc(var(--u)*13);font-size:calc(var(--u)*1.5);color:#9fb0cc;font-weight:700">${esc2(label2)}</div><svg viewBox="0 0 120 28" preserveAspectRatio="none" style="flex:1;height:calc(var(--u)*4)"><polyline fill="none" stroke="var(--ac)" stroke-width="2" vector-effect="non-scaling-stroke" points="${sparkPoints(v, 120, 28)}"/></svg><div style="width:calc(var(--u)*9);text-align:right;font-weight:800;font-size:calc(var(--u)*2.2)">${v.length ? v[v.length - 1] : "\u2013"}<small style="color:#8a97b2;font-size:calc(var(--u)*1.3)"> ${unit5}</small></div></div>`;
+    return row4("Speed", snap.trends.speed, "mph") + row4("Breakpoint", snap.trends.breakpoint, "bd") + row4("Entry board", snap.trends.entry, "bd") + row4("Pocket miss", snap.trends.miss, "bd");
+  }
+  function session(snap) {
+    const s = snap.session;
+    return `<div class="tiles">${tile("SHOTS", String(s.shots))}${tile("IN THE POCKET", s.pocketPct === null ? "\u2013" : String(s.pocketPct), "%")}${tile("AVG SPEED", n12(s.avgSpeed), "mph")}${tile("STRIKES", s.strikePct === null ? "\u2013" : String(s.strikePct), "%")}</div>`;
+  }
+  function layoutHtml(id, snap) {
+    const last3 = snap.last;
+    const pins = last3 && last3.pinsDown !== null ? pinsSvg(last3.pinsDown === 10 ? [] : last3.leave, "Pins left standing") : snap.card ? pinsSvg(snap.card.standing, "Pins standing") : pinsSvg(null, "Pins");
+    const pinsLabel = last3 && last3.pinsDown === 10 ? `<div class="big-msg good" style="margin-top:calc(var(--u)*.5)">STRIKE</div>` : last3 && last3.pinsDown !== null ? `<div class="big-msg warn" style="margin-top:calc(var(--u)*.5);font-size:calc(var(--u)*3.4)">${last3.pinsDown} down${last3.leave.length ? ` \xB7 left ${last3.leave.join("-")}` : ""}</div>` : "";
+    const spin = pn("Spin", `<div class="tiles">${meas("REV RATE", last3?.rev ?? null, "rpm")}${meas("AXIS ROTATION", last3?.rotation ?? null, "\xB0")}${meas("AXIS TILT", last3?.tilt ?? null, "\xB0")}</div>`);
+    const advice = snap.advice ? pn("Next", `<div style="font-size:calc(var(--u)*2.6);font-weight:700;line-height:1.3">${esc2(snap.advice)}</div>`) : "";
+    const wrap2 = (cols, rows2, inner) => `${header(snap)}<div class="bd" style="grid-template-columns:${cols};grid-template-rows:${rows2}">${inner}</div>`;
+    if (id === "board") return wrap2("1fr 1fr", "auto 1fr", `${pn("", cardTable2(snap), 'style="grid-column:1/3"')}${pn("Last shot", `<div class="cmp">${lastTiles(last3)}</div>`)}${pn("Pins", pins + pinsLabel)}`);
+    if (id === "coach") return wrap2("1.25fr 1fr .9fr", "1fr 1fr", `${pn("Last shot" + (last3 ? ` \xB7 #${last3.n}` : ""), lastTiles(last3))}${pn("Path", pathSvg(snap))}${pn("Session", session(snap))}${spin}${pn("Trends", trends(snap))}${advice || pn("Scorecard", cardTable2(snap))}`);
+    if (id === "live") return `<div class="bd" style="grid-template-columns:1fr;grid-template-rows:1fr auto;padding:0;gap:0"><div class="vid" data-slot="live" style="border-radius:0"></div><div style="padding:calc(var(--u)*1.2) calc(var(--u)*2.4);background:linear-gradient(0deg,#05070d,rgba(5,7,13,.8))">${last3 ? `<div class="tiles" style="grid-template-columns:repeat(5,1fr)">${tile("SPEED", n12(last3.speed), "mph")}${tile("BREAKPOINT", last3.breakpointBoard === null ? "\u2013" : String(Math.round(last3.breakpointBoard)), last3.breakpointFt === null ? "" : `@ ${last3.breakpointFt} ft`)}${tile("ENTRY", n12(last3.entryBoard), "", last3.entryAngle === null ? "" : `${last3.entryAngle.toFixed(1)}\xB0`)}${tile("POCKET", zoneLabel(last3.zone)[0] || "\u2013", "", "", zoneLabel(last3.zone)[1] + " w")}${tile("PINS", last3.pinsDown === null ? "\u2013" : last3.pinsDown === 10 ? "X" : String(last3.pinsDown))}</div>` : ""}</div></div><div style="position:absolute;top:calc(var(--u)*1.4);left:calc(var(--u)*2);font-weight:900;font-size:calc(var(--u)*3);text-shadow:0 2px 10px #000" class="ac">${esc2(snap.brand.name)}${snap.lane ? ` \xB7 ${esc2(snap.lane)}` : ""}</div>`;
+    if (id === "replay") return wrap2("1.6fr 1fr", "1fr", `${pn("Replay \xB7 " + (last3 ? `shot #${last3.n}` : "waiting"), `<div class="vid" data-slot="replay"></div>`)}<div style="display:grid;grid-template-rows:auto 1fr;gap:calc(var(--u)*1.6);min-height:0">${pn("Last shot", lastTiles(last3))}${pn("Path", pathSvg(snap))}</div>`);
+    return wrap2("1.5fr 1fr", "1fr", `${pn("Last shot" + (last3 ? ` \xB7 #${last3.n}` : ""), lastTiles(last3, true))}<div style="display:grid;grid-template-rows:1.6fr 1fr;gap:calc(var(--u)*1.6);min-height:0">${pn("Path", pathSvg(snap))}${pn("Pins", pins + pinsLabel)}</div>`);
+  }
+  var CSS2, zoneLabel, n12, tile, meas, PIN_POS, header, pn, ScreenView;
+  var init_displayui = __esm({
+    "camera/displayui.ts"() {
+      init_display();
+      init_live();
+      CSS2 = `
+.scr{position:fixed;inset:0;z-index:99998;background:#05070d;color:#eef3ff;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;display:flex;flex-direction:column;--ac:#46e6ff;--u:min(1.6vh,1vw)}
+.scr *{box-sizing:border-box}
+.scr.hide{cursor:none}
+.scr .hd{display:flex;align-items:center;gap:calc(var(--u)*2);padding:calc(var(--u)*1.6) calc(var(--u)*3);background:linear-gradient(90deg,color-mix(in srgb,var(--ac) 22%,#0b1020),#0b1020);border-bottom:calc(var(--u)*.25) solid var(--ac)}
+.scr .hd .nm{font-weight:900;font-size:calc(var(--u)*3.4);letter-spacing:.02em;color:#fff}
+.scr .hd .tg{font-size:calc(var(--u)*1.7);color:#a9bbff}
+.scr .hd .mt{margin-left:auto;text-align:right;font-size:calc(var(--u)*1.8);color:#cfe0ff;line-height:1.25}
+.scr .bd{flex:1;min-height:0;display:grid;gap:calc(var(--u)*1.6);padding:calc(var(--u)*1.6) calc(var(--u)*2.4)}
+.scr .pn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:calc(var(--u)*1.6);padding:calc(var(--u)*1.6);min-height:0;min-width:0;overflow:hidden;display:flex;flex-direction:column}
+.scr .pn>.k{font-size:calc(var(--u)*1.5);font-weight:800;letter-spacing:.12em;color:#8a97b2;text-transform:uppercase;margin-bottom:calc(var(--u)*.8)}
+.scr .tiles{display:grid;gap:calc(var(--u)*1.2);grid-template-columns:repeat(auto-fit,minmax(calc(var(--u)*17),1fr));flex:1;align-content:start}
+.scr .tl{background:rgba(0,0,0,.35);border-radius:calc(var(--u)*1.2);padding:calc(var(--u)*1.2) calc(var(--u)*1.5)}
+.scr .tl .l{font-size:calc(var(--u)*1.4);font-weight:800;letter-spacing:.1em;color:#8a97b2}
+.scr .tl .v{font-size:calc(var(--u)*4.4);font-weight:900;line-height:1.05;color:#fff;white-space:nowrap;display:flex;align-items:baseline;gap:.2em;min-width:0}
+.scr .pn svg{flex:1 1 0;min-height:0}
+.scr .tl .v.w{font-size:calc(var(--u)*3.2)}
+.scr .tl .v small{font-size:calc(var(--u)*1.6);font-weight:700;color:#a9bbff}
+.scr .tl .s{font-size:calc(var(--u)*1.5);color:#9fb0cc}
+.scr .big .tl .v{font-size:calc(var(--u)*5.8)}
+.scr .big .tl .v.w{font-size:calc(var(--u)*3.8)}
+.scr.hasctl .bd{padding-bottom:calc(var(--u)*5.6)}
+.scr .good{color:#5affb0!important}.scr .warn{color:#ffd25a!important}.scr .bad{color:#ff5a6e!important}.scr .ac{color:var(--ac)!important}
+.scr table{border-collapse:collapse;width:100%;table-layout:fixed}
+.scr td{border:1px solid rgba(255,255,255,.18);text-align:center;vertical-align:top;padding:calc(var(--u)*.5)}
+.scr td .fn{font-size:calc(var(--u)*1.3);color:#8a97b2}
+.scr td .mk{font-size:calc(var(--u)*2.4);font-weight:800;min-height:calc(var(--u)*2.9)}
+.scr td .tt{font-size:calc(var(--u)*3.2);font-weight:900;color:#fff}
+.scr .cmp .tl .v{font-size:calc(var(--u)*3.4)}
+.scr .cmp .tl .v.w{font-size:calc(var(--u)*2.6)}
+.scr .cmp .tl{padding:calc(var(--u)*.8) calc(var(--u)*1.2)}
+.scr td.cur{outline:calc(var(--u)*.3) solid var(--ac);outline-offset:-2px;background:color-mix(in srgb,var(--ac) 14%,transparent)}
+.scr .vid{flex:1;min-height:0;background:#000;border-radius:calc(var(--u)*1.2);overflow:hidden;position:relative}
+.scr .vid video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+.scr .vid .none{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:calc(var(--u)*3);color:#8a97b2;font-size:calc(var(--u)*2.2)}
+.scr svg{width:100%;height:100%;display:block}
+.scr .big-msg{font-size:calc(var(--u)*5);font-weight:900;text-align:center}
+.scr .st{position:absolute;left:calc(var(--u)*2);bottom:calc(var(--u)*1.2);font-size:calc(var(--u)*1.5);color:#6b7690}
+.scr .ctl{position:absolute;right:calc(var(--u)*1.6);bottom:calc(var(--u)*1.2);display:flex;gap:calc(var(--u)*.8);opacity:.85}
+.scr .ctl button{font:700 calc(var(--u)*1.5) system-ui;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:calc(var(--u)*1);padding:calc(var(--u)*.7) calc(var(--u)*1.4)}
+.scr .ctl button.on{background:var(--ac);color:#04121a;border-color:var(--ac)}
+.scr.hide .ctl{opacity:0;pointer-events:none}
+`;
+      zoneLabel = (z) => ({ pocket: ["POCKET", "good"], high: ["HIGH", "warn"], light: ["LIGHT", "warn"], "very-high": ["VERY HIGH", "bad"], "very-light": ["VERY LIGHT", "bad"] })[z ?? ""] ?? ["", ""];
+      n12 = (v, d = 1) => v === null ? "\u2013" : v.toFixed(d);
+      tile = (l, v, unit5 = "", sub3 = "", cls = "") => `<div class="tl"><div class="l">${esc2(l)}</div><div class="v ${cls}">${esc2(v)}${unit5 ? `<small>${esc2(unit5)}</small>` : ""}</div>${sub3 ? `<div class="s">${esc2(sub3)}</div>` : ""}</div>`;
+      meas = (l, m, unit5) => m ? tile(l, String(m.v), unit5, `${m.pm ? m.pm + " \xB7 " : ""}${m.src === "measured" ? "read from the clip" : m.src === "inferred" ? "inferred from the path" : "assumed"}`) : tile(l, "\u2013", "", "not read for this shot");
+      PIN_POS = [[0, 0], [-1, 1], [1, 1], [-2, 2], [0, 2], [2, 2], [-3, 3], [-1, 3], [1, 3], [3, 3]];
+      header = (snap) => `<div class="hd"><div><div class="nm" style="color:var(--ac)">${esc2(snap.brand.name)}</div>${snap.brand.tagline ? `<div class="tg">${esc2(snap.brand.tagline)}</div>` : ""}</div><div class="mt">${snap.lane ? `<b>${esc2(snap.lane)}</b> \xB7 ` : ""}${esc2(snap.bowler)}<br>${esc2(snap.ball)}${snap.pattern ? ` \xB7 ${esc2(snap.pattern)}` : ""}</div></div>`;
+      pn = (k2, inner, extra2 = "") => `<div class="pn" ${extra2}>${k2 ? `<div class="k">${esc2(k2)}</div>` : ""}${inner}</div>`;
+      ScreenView = class {
+        el;
+        snap = null;
+        layout = "bowler";
+        status = "Waiting for the lane camera\u2026";
+        video;
+        replay;
+        opts;
+        idle = 0;
+        hasVideo = false;
+        hasReplay = false;
+        constructor(opts = {}) {
+          this.opts = opts;
+          if (!document.getElementById("scr-css")) {
+            const s = document.createElement("style");
+            s.id = "scr-css";
+            s.textContent = CSS2;
+            document.head.appendChild(s);
+          }
+          this.el = document.createElement("div");
+          this.el.className = opts.controls === false ? "scr" : "scr hasctl";
+          this.video = document.createElement("video");
+          this.video.muted = true;
+          this.video.playsInline = true;
+          this.video.autoplay = true;
+          this.replay = document.createElement("video");
+          this.replay.muted = true;
+          this.replay.playsInline = true;
+          this.replay.loop = true;
+          this.replay.autoplay = true;
+          document.body.appendChild(this.el);
+          const wake = () => {
+            this.el.classList.remove("hide");
+            clearTimeout(this.idle);
+            this.idle = window.setTimeout(() => this.el.classList.add("hide"), 3500);
+          };
+          ["mousemove", "touchstart", "click"].forEach((e) => this.el.addEventListener(e, wake));
+          wake();
+          window.addEventListener("keydown", this.onKey);
+          this.draw();
+        }
+        onKey = (e) => {
+          const i = Number(e.key) - 1;
+          if (i >= 0 && i < LAYOUTS.length && !this.opts.locked) this.setLayout(LAYOUTS[i].id, true);
+          if (e.key === "f") void this.fullscreen();
+        };
+        async fullscreen() {
+          try {
+            if (document.fullscreenElement) await document.exitFullscreen();
+            else await this.el.requestFullscreen();
+          } catch {
+          }
+        }
+        setStatus(m) {
+          this.status = m;
+          const s = this.el.querySelector(".st");
+          if (s) s.textContent = m;
+        }
+        setSnapshot(s) {
+          this.snap = s;
+          if (!this.opts.locked) this.layout = layoutInfo(s.layout).id;
+          this.draw();
+        }
+        setLayout(id, user = false) {
+          this.layout = id;
+          if (user) this.opts.onLayout?.(id);
+          this.draw();
+        }
+        setVideo(stream2) {
+          this.video.srcObject = stream2;
+          this.hasVideo = !!stream2;
+          if (stream2) void this.video.play().catch(() => {
+          });
+          this.draw();
+        }
+        setReplay(url) {
+          const old = this.replay.src;
+          this.replay.src = url ?? "";
+          this.hasReplay = !!url;
+          if (url) void this.replay.play().catch(() => {
+          });
+          if (old && old.startsWith("blob:") && old !== url) URL.revokeObjectURL(old);
+          this.draw();
+        }
+        getLayout() {
+          return this.layout;
+        }
+        draw() {
+          const snap = this.snap;
+          if (snap) this.el.style.setProperty("--ac", `#${snap.brand.accent}`);
+          const body = snap ? layoutHtml(this.layout, snap) : `<div class="hd"><div class="nm">LaneIQ</div></div><div class="bd" style="place-items:center"><div class="big-msg" style="color:#8a97b2">${esc2(this.status)}</div></div>`;
+          const ctl = this.opts.controls === false ? "" : `<div class="ctl">${LAYOUTS.map((l, i) => `<button data-l="${l.id}" class="${l.id === this.layout ? "on" : ""}" ${this.opts.locked ? "disabled" : ""}>${i + 1} ${esc2(l.label)}</button>`).join("")}<button data-fs="1">Full screen</button>${this.opts.onClose ? `<button data-close="1">Close</button>` : ""}</div>`;
+          this.el.innerHTML = `${body}<div class="st">${esc2(this.status)}</div>${ctl}`;
+          const live3 = this.el.querySelector('[data-slot="live"]');
+          if (live3) {
+            live3.innerHTML = this.hasVideo ? "" : `<div class="none">The lane camera's live video isn't connected to this screen.<br>Link it with a direct link (same Wi-Fi) to see the live picture.</div>`;
+            if (this.hasVideo) live3.appendChild(this.video);
+          }
+          const rep = this.el.querySelector('[data-slot="replay"]');
+          if (rep) {
+            rep.innerHTML = this.hasReplay ? "" : `<div class="none">The replay appears here after the next shot.<br>It needs a direct link (same Wi-Fi), which carries video.</div>`;
+            if (this.hasReplay) rep.appendChild(this.replay);
+          }
+          this.el.querySelectorAll("[data-l]").forEach((b) => b.onclick = () => this.setLayout(b.dataset.l, true));
+          this.el.querySelector("[data-fs]")?.addEventListener("click", () => void this.fullscreen());
+          this.el.querySelector("[data-close]")?.addEventListener("click", () => this.opts.onClose?.());
+        }
+        destroy() {
+          clearTimeout(this.idle);
+          window.removeEventListener("keydown", this.onKey);
+          this.video.srcObject = null;
+          this.el.remove();
+        }
+      };
+    }
+  });
+
+  // camera/displaylink.ts
+  var displaylink_exports = {};
+  __export(displaylink_exports, {
+    isKiosk: () => isKiosk,
+    joinScreenFrom: () => joinScreenFrom,
+    openScreens: () => openScreens,
+    pushScreens: () => pushScreens,
+    screenCount: () => screenCount,
+    sendReplay: () => sendReplay,
+    startKiosk: () => startKiosk,
+    startScreens: () => startScreens
+  });
+  function snapshot() {
+    const ses = sessionShots();
+    const shots = ses.length ? ses : S.shots.slice(-40);
+    const last3 = shots[shots.length - 1];
+    const adv = (() => {
+      try {
+        const a = moveNow();
+        return a.kind === "insufficient" ? null : a.headline;
+      } catch {
+        return null;
+      }
+    })();
+    return buildSnapshot({
+      seq: ++seq,
+      now: Date.now(),
+      shots,
+      lane: last3?.lane ?? "",
+      bowler: S.profile?.name ?? "Bowler",
+      ball: S.arsenal.find((b) => b.id === last3?.ballId)?.name ?? "",
+      pattern: S.myPatterns.find((p) => p.id === S.where.patternId)?.name ?? "",
+      hand: S.profile?.hand ?? "R",
+      rolls: cardRolls(),
+      advice: adv,
+      brand: cfg.brand,
+      layout: cfg.layout
+    });
+  }
+  function flush() {
+    timer2 = 0;
+    lastSend = performance.now();
+    if (!screens.some((s) => s.state === "connected") && !relay && !previews.size) return;
+    const snap = snapshot();
+    const msg = JSON.stringify({ t: "snap", snap });
+    for (const s of screens) if (s.state === "connected" && s.dc?.readyState === "open") s.dc.send(msg);
+    relay?.send("snap", snap);
+    for (const v of previews) v.setSnapshot(snap);
+  }
+  function pushScreens() {
+    if (timer2) return;
+    timer2 = window.setTimeout(flush, Math.max(120, 300 - (performance.now() - lastSend)));
+  }
+  function startScreens(stream2) {
+    streamOf = stream2;
+    onAfterShot(() => pushScreens());
+    onChange(() => pushScreens());
+    setInterval(() => {
+      if (screenCount()) pushScreens();
+    }, 2e4);
+    if (cfg.relayOn && cfg.code && relayAvailable()) startRelay(cfg.code);
+  }
+  function startRelay(code2) {
+    relay?.close();
+    cfg.code = code2;
+    cfg.relayOn = true;
+    saveCfg();
+    relay = new Relay(code2, (event) => {
+      if (event === "hello") pushScreens();
+    }, (s) => {
+      relayState = s;
+      renderPanel();
+    });
+    relay.send("hello", {});
+    pushScreens();
+  }
+  function stopRelay() {
+    relay?.close();
+    relay = null;
+    relayState = "";
+    cfg.relayOn = false;
+    saveCfg();
+  }
+  async function sendReplay(blob, n) {
+    if (blob.size > 60 * 1024 * 1024) return;
+    const buf = await blob.arrayBuffer().catch(() => null);
+    if (!buf) return;
+    for (const s of screens) {
+      const dc = s.dc;
+      if (s.state !== "connected" || !dc || dc.readyState !== "open") continue;
+      try {
+        dc.send(JSON.stringify({ t: "replay", rec: "r", size: buf.byteLength, mime: blob.type || "video/mp4", startMs: 0, n }));
+        for (let i = 0; i < buf.byteLength; i += CHUNK) {
+          while (dc.bufferedAmount > 1e6) await new Promise((r) => setTimeout(r, 20));
+          dc.send(buf.slice(i, i + CHUNK));
+        }
+        dc.send(JSON.stringify({ t: "replayend" }));
+      } catch {
+      }
+    }
+  }
+  function openScreens() {
+    const el = sheet9();
+    el.classList.add("on");
+    el.dataset.scr = "1";
+    renderPanel();
+  }
+  function renderPanel() {
+    const el = sheet9();
+    if (!el.classList.contains("on") || el.dataset.scr !== "1") return;
+    const live3 = screens.filter((s) => s.state !== "ended");
+    const url = cfg.code ? `${appLink()}/camera.html?display=${cfg.code}` : "";
+    el.innerHTML = `<div class="row"><h2>Second screen</h2><button class="btn ghost" id="sc-close">Close</button></div>
+    <div class="note">Show this camera's numbers on another screen: an iPad on a stand, a TV, a monitor above the lane. It updates after every shot with the speed, breakpoint, entry, pocket, spin, the path, the pins and the scorecard.</div>
+    <div class="card"><div class="k">What the screen shows</div><div class="chips" role="group" aria-label="Layout">${LAYOUTS.map((l) => `<button class="chip ${l.id === cfg.layout ? "sel" : ""}" data-l="${l.id}" aria-pressed="${l.id === cfg.layout}">${esc2(l.label)}</button>`).join("")}</div><div class="note">${esc2(LAYOUTS.find((l) => l.id === cfg.layout).blurb)}</div></div>
+    <div class="card"><div class="k">Name on the screen</div><div class="two"><div class="field"><label for="sc-name">Name (your center, or you)</label><input id="sc-name" maxlength="40" value="${esc2(cfg.brand.name)}"></div><div class="field"><label for="sc-tag">A line under it (optional)</label><input id="sc-tag" maxlength="80" value="${esc2(cfg.brand.tagline)}"></div></div><div class="field"><label for="sc-ac">Colour</label><input id="sc-ac" type="color" value="#${cfg.brand.accent}" style="height:44px;width:100%"></div></div>
+    <div class="card"><div class="k">This device</div><div class="u">Preview the screen right here, to see how it looks.</div><div class="chips"><button class="btn ghost" id="sc-prev">Preview on this device</button></div></div>
+    <div class="card"><div class="k">A screen on your network (live video and replay)</div>
+      ${live3.length ? live3.map((s) => `<div class="row"><div class="u">Screen \xB7 ${s.state === "connected" ? "connected" : "connecting\u2026"}${s.video ? " \xB7 live video on" : ""}</div><button class="chip danger" data-rm="${esc2(s.id)}">Disconnect</button></div>`).join("") : `<div class="note">None linked.</div>`}
+      <div class="chips"><button class="btn" id="sc-add">Add a screen</button></div>
+      <div class="note">Open the link on the other device. It shows the live picture too, if the camera is already running when you add it, and a replay after each shot. Both devices on the same Wi-Fi or hotspot.</div></div>
+    <div class="card"><div class="k">A screen by lane code (for a bowling center)</div>
+      ${!relayAvailable() ? `<div class="note">Not available in this copy of LaneIQ.</div>` : relay ? `<div class="u">Sharing as <b style="font-size:20px;letter-spacing:.12em">${esc2(cfg.code)}</b> \xB7 ${relayState === "connected" ? "connected" : "connecting\u2026"}</div><div class="u" style="word-break:break-all;user-select:all">${esc2(url)}</div><div id="sc-qr" style="margin:8px 0"></div><div class="chips"><button class="btn" id="sc-copy">Copy the screen's address</button><button class="btn ghost" id="sc-stop">Stop sharing</button></div><div class="note" id="sc-msg"></div>` : `<div class="field"><label for="sc-code">A code you already use for this lane (optional)</label><input id="sc-code" maxlength="8" placeholder="leave empty for a new one" value="${esc2(cfg.code)}" autocapitalize="characters"></div><div class="chips"><button class="btn" id="sc-go">Start sharing</button></div><div class="note" id="sc-msg"></div>`}
+      <div class="note">Any browser can show it: open the screen's address on a TV, a tablet or a computer. Add &layout=board&lock=1 to fix a layout. Only the numbers go through our relay (no video, nothing saved), and anyone who has the code can watch, so don't post it. A lane that always uses the same code keeps working after a restart.</div></div>`;
+    $("sc-close").onclick = () => {
+      el.dataset.scr = "";
+      el.classList.remove("on");
+      el.innerHTML = "";
+    };
+    el.querySelectorAll("[data-l]").forEach((b) => b.onclick = () => {
+      cfg.layout = b.dataset.l;
+      saveCfg();
+      pushScreens();
+      renderPanel();
+    });
+    const brand = () => {
+      cfg.brand = cleanBrand({ name: $("sc-name").value, tagline: $("sc-tag").value, accent: $("sc-ac").value.replace("#", "") });
+      saveCfg();
+      pushScreens();
+    };
+    ["sc-name", "sc-tag", "sc-ac"].forEach((id) => $(id).addEventListener("change", brand));
+    $("sc-prev").onclick = () => {
+      const v = new ScreenView({ controls: true, onClose: () => {
+        previews.delete(v);
+        v.destroy();
+      } });
+      previews.add(v);
+      v.setStatus("Preview on this device");
+      pushScreens();
+      setTimeout(flush, 0);
+    };
+    $("sc-add").onclick = () => void hostScreen();
+    el.querySelectorAll("[data-rm]").forEach((b) => b.onclick = () => {
+      const s = screens.find((x) => x.id === b.dataset.rm);
+      if (s) {
+        s.pc.close();
+        s.state = "ended";
+      }
+      renderPanel();
+    });
+    if (relay) {
+      const q2 = $("sc-qr");
+      q2.innerHTML = "";
+      try {
+        q2.appendChild(qrCanvas(url, 200));
+      } catch {
+      }
+      $("sc-copy").onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(url);
+          $("sc-msg").textContent = "Copied.";
+        } catch {
+          $("sc-msg").textContent = "Select the address above and copy it.";
+        }
+      };
+      $("sc-stop").onclick = () => {
+        stopRelay();
+        renderPanel();
+      };
+    } else if (relayAvailable()) {
+      $("sc-go").onclick = () => {
+        const typed = $("sc-code").value.trim();
+        const code2 = typed ? cleanLaneCode(typed) : newLaneCode();
+        if (!code2) return void ($("sc-msg").textContent = "A lane code is six letters and numbers, without 0, 1, O or I.");
+        startRelay(code2);
+        renderPanel();
+      };
+    }
+  }
+  async function gathered2(pc) {
+    if (pc.iceGatheringState !== "complete")
+      await new Promise((res) => {
+        const done3 = () => pc.iceGatheringState === "complete" && (pc.removeEventListener("icegatheringstatechange", done3), res());
+        pc.addEventListener("icegatheringstatechange", done3);
+        setTimeout(res, 5e3);
+      });
+    return pc.localDescription.sdp;
+  }
+  async function hostScreen() {
+    const el = sheet9();
+    el.dataset.scr = "";
+    el.innerHTML = `<div class="row"><h2>Starting\u2026</h2></div><div class="note">Getting your connection ready. Keep the app open.</div>`;
+    const pc = new RTCPeerConnection({ iceServers: ICE2 });
+    const scr = { id: Math.random().toString(36).slice(2, 8), pc, dc: null, state: "waiting", video: false };
+    const stream2 = streamOf();
+    if (stream2) {
+      stream2.getVideoTracks().forEach((t) => pc.addTrack(t, stream2));
+      scr.video = true;
+    }
+    const dc = pc.createDataChannel("laneiq-screen");
+    scr.dc = dc;
+    dc.onopen = () => {
+      scr.state = "connected";
+      pushScreens();
+      renderPanel();
+    };
+    dc.onclose = () => {
+      scr.state = "ended";
+      renderPanel();
+    };
+    dc.onmessage = (e) => {
+      try {
+        if (JSON.parse(String(e.data)).t === "hello") pushScreens();
+      } catch {
+      }
+    };
+    pc.onconnectionstatechange = () => {
+      if (["failed", "disconnected", "closed"].includes(pc.connectionState) && scr.state === "connected") {
+        scr.state = "ended";
+        renderPanel();
+      }
+    };
+    screens.push(scr);
+    await pc.setLocalDescription(await pc.createOffer());
+    const offer = await packText(JSON.stringify({ v: 1, sdp: await gathered2(pc), name: cfg.brand.name }));
+    const link = `${appLink()}/camera.html#screen=${offer}`;
+    if (location.search.includes("screentest")) globalThis.__screenLink = link;
+    el.innerHTML = `<div class="row"><h2>Add a screen</h2><button class="btn ghost" id="sa-cancel">Cancel</button></div>
+    <div class="card"><div class="k">1. Open this on the other screen</div><div class="u">${scr.video ? "The live video will be included." : "The camera isn't running yet, so only the numbers and replays will show. Start the camera first if you want the live picture."} On the iPad or computer, open this link.</div><div class="chips"><button class="btn" id="sa-send">Send the link</button></div><div class="note" id="sa-sent"></div></div>
+    <div class="card"><div class="k">2. Paste its reply</div><div class="field"><input id="sa-reply" placeholder="Paste the reply code"></div><div class="chips"><button class="btn" id="sa-connect">Connect</button></div><div class="note" id="sa-msg"></div></div>`;
+    $("sa-cancel").onclick = () => {
+      pc.close();
+      scr.state = "ended";
+      openScreens();
+    };
+    $("sa-send").onclick = async () => ($("sa-sent").textContent = await shareLink("Use this as a second screen", "Open this on the device you want to use as a second screen for LaneIQ.", link), void 0);
+    $("sa-connect").onclick = async () => {
+      const code2 = $("sa-reply").value.trim().replace(/^SCR-/, "");
+      const json = code2 ? await unpackText(code2) : null;
+      let ans = null;
+      try {
+        ans = json ? JSON.parse(json) : null;
+      } catch {
+      }
+      if (!ans?.sdp) return void ($("sa-msg").textContent = "That reply code isn't right. Ask the other screen to show it again.");
+      try {
+        await pc.setRemoteDescription({ type: "answer", sdp: ans.sdp });
+        $("sa-msg").textContent = "Connecting\u2026";
+        const wait = setInterval(() => {
+          if (scr.state === "connected") {
+            clearInterval(wait);
+            el.dataset.scr = "1";
+            renderPanel();
+          }
+          if (scr.state === "ended") clearInterval(wait);
+        }, 400);
+      } catch {
+        $("sa-msg").textContent = "Couldn't use that reply. Start again.";
+      }
+    };
+  }
+  async function joinScreenFrom(code2) {
+    const json = await unpackText(code2);
+    let offer = null;
+    try {
+      offer = json ? JSON.parse(json) : null;
+    } catch {
+    }
+    const el = sheet9();
+    el.classList.add("on");
+    if (!offer?.sdp) {
+      el.innerHTML = `<div class="row"><h2>Second screen</h2><button class="btn ghost" id="sj-close">Close</button></div><div class="card"><div class="u">That link is damaged or isn't a LaneIQ screen link.</div></div>`;
+      $("sj-close").onclick = () => (el.classList.remove("on"), el.innerHTML = "");
+      return;
+    }
+    const from = String(offer.name ?? "LaneIQ").slice(0, 40);
+    el.innerHTML = `<div class="row"><h2>Use this as a second screen?</h2><button class="btn ghost" id="sj-close">Not now</button></div><div class="card"><div class="u">${esc2(from)}'s lane camera will show its numbers, and the live picture and replays if it's running, on this screen. Nothing leaves your devices.</div><div class="chips"><button class="btn" id="sj-yes">Use this screen</button></div></div>`;
+    $("sj-close").onclick = () => (el.classList.remove("on"), el.innerHTML = "");
+    $("sj-yes").onclick = async () => {
+      el.innerHTML = `<div class="row"><h2>Connecting\u2026</h2></div><div class="note">Getting your reply ready. Keep the app open.</div>`;
+      const pc = new RTCPeerConnection({ iceServers: ICE2 });
+      let view3 = null;
+      pc.ontrack = (e) => {
+        view3 ??= new ScreenView();
+        view3.setVideo(e.streams[0] ?? new MediaStream([e.track]));
+      };
+      pc.ondatachannel = (e) => {
+        const dc = e.channel;
+        dc.binaryType = "arraybuffer";
+        let asm = null;
+        view3 ??= new ScreenView();
+        const v = view3;
+        el.classList.remove("on");
+        el.innerHTML = "";
+        v.setStatus("Connected. Waiting for the first shot.");
+        dc.onopen = () => dc.send(JSON.stringify({ t: "hello" }));
+        if (dc.readyState === "open") dc.send(JSON.stringify({ t: "hello" }));
+        dc.onclose = () => v.setStatus("Lost the lane camera. Open its link again to reconnect.");
+        dc.onmessage = (m) => {
+          if (typeof m.data !== "string") {
+            asm?.add(m.data);
+            return;
+          }
+          try {
+            const j = JSON.parse(m.data);
+            if (j.t === "snap") {
+              const s = cleanSnapshot(j.snap);
+              if (s) {
+                v.setSnapshot(s);
+                v.setStatus(`Connected \xB7 ${s.brand.name}`);
+              }
+            } else if (j.t === "replay") {
+              const meta = parseClipMeta(j);
+              asm = meta ? new ClipAssembler(meta) : null;
+            } else if (j.t === "replayend" && asm?.done) {
+              const b = asm.blob();
+              asm = null;
+              if (b) v.setReplay(URL.createObjectURL(b));
+            }
+          } catch {
+          }
+        };
+      };
+      await pc.setRemoteDescription({ type: "offer", sdp: offer.sdp });
+      await pc.setLocalDescription(await pc.createAnswer());
+      const reply = await packText(JSON.stringify({ v: 1, sdp: await gathered2(pc) }));
+      if (location.search.includes("screentest")) globalThis.__screenReply = reply;
+      el.classList.add("on");
+      el.innerHTML = `<div class="row"><h2>Send this reply back</h2><button class="btn ghost" id="sj-close">Cancel</button></div><div class="card"><div class="u">Send this code to the lane camera and paste it in its Second screen panel. Keep this screen open until it connects.</div><div class="u" style="word-break:break-all;user-select:all;max-height:6em;overflow:auto">${esc2(reply)}</div><div class="chips"><button class="btn" id="sj-copy">Copy and share</button></div><div class="note" id="sj-sent"></div></div>`;
+      $("sj-close").onclick = () => {
+        pc.close();
+        el.classList.remove("on");
+        el.innerHTML = "";
+      };
+      $("sj-copy").onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(reply);
+        } catch {
+        }
+        const nav = navigator;
+        try {
+          if (nav.share) await nav.share({ title: "LaneIQ screen reply", text: reply });
+        } catch {
+        }
+        $("sj-sent").textContent = "Reply copied. Paste it into a message to the lane camera.";
+      };
+    };
+  }
+  function startKiosk() {
+    const q2 = new URLSearchParams(location.search);
+    const code2 = cleanLaneCode(q2.get("display"));
+    document.title = "LaneIQ screen";
+    if (!code2) return void askCode();
+    const lock = q2.get("lock") === "1";
+    const layout = q2.get("layout");
+    const view3 = new ScreenView({ locked: lock, controls: q2.get("controls") !== "0" });
+    if (isLayout(layout)) view3.setLayout(layout);
+    const override = {};
+    if (q2.get("name")) override.name = q2.get("name");
+    if (q2.get("tagline")) override.tagline = q2.get("tagline");
+    if (q2.get("accent")) override.accent = q2.get("accent").replace("#", "");
+    let gotAny = false;
+    let quiet = 0;
+    const watch = () => {
+      clearTimeout(quiet);
+      quiet = window.setTimeout(() => gotAny && view3.setStatus("No new data from the lane camera. Is it running?"), 9e4);
+    };
+    const r = new Relay(code2, (event, payload) => {
+      if (event !== "snap") return;
+      const s = cleanSnapshot(payload);
+      if (!s) return;
+      if (Object.keys(override).length) s.brand = cleanBrand({ ...s.brand, ...override });
+      gotAny = true;
+      view3.setSnapshot(s);
+      view3.setStatus(`Lane ${code2} \xB7 updated ${(/* @__PURE__ */ new Date()).toLocaleTimeString()}`);
+      watch();
+    }, (st2) => {
+      if (st2 === "connected") {
+        view3.setStatus(`Connected to ${code2}. Waiting for the lane camera\u2026`);
+        r.send("hello", {});
+      } else view3.setStatus(st2 === "connecting" ? "Connecting\u2026" : "Disconnected.");
+    });
+    if (!relayAvailable()) view3.setStatus("This copy of LaneIQ has no relay set up, so a lane code can't be used.");
+  }
+  function askCode() {
+    document.body.innerHTML = `<div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#05070d;color:#eef3ff;font-family:system-ui;text-align:center;padding:24px"><div style="font-size:42px;font-weight:900">Lane<span style="color:#46e6ff">IQ</span> screen</div><div style="color:#a9bbff;font-size:20px">Type the lane code shown on the lane camera.</div><input id="kc" maxlength="8" autocapitalize="characters" style="font-size:40px;letter-spacing:.2em;text-align:center;width:min(90vw,420px);padding:12px;border-radius:14px;border:2px solid #46e6ff;background:#0b1020;color:#fff"><button id="kg" style="font-size:22px;padding:12px 28px;border-radius:14px;border:0;background:#46e6ff;color:#04121a;font-weight:800">Show the screen</button><div id="km" style="color:#ffd25a"></div></div>`;
+    const go = () => {
+      const c = cleanLaneCode(document.getElementById("kc").value);
+      if (!c) return void (document.getElementById("km").textContent = "A lane code is six letters and numbers.");
+      const u = new URL(location.href);
+      u.searchParams.set("display", c);
+      location.href = u.toString();
+    };
+    document.getElementById("kg").onclick = go;
+    document.getElementById("kc").addEventListener("keydown", (e) => e.key === "Enter" && go());
+  }
+  var ICE2, sheet9, KEY6, loadCfg, cfg, saveCfg, screens, relay, relayState, previews, streamOf, seq, timer2, lastSend, screenCount, isKiosk;
+  var init_displaylink = __esm({
+    "camera/displaylink.ts"() {
+      init_camsync();
+      init_display();
+      init_coachlive();
+      init_displayrelay();
+      init_displayui();
+      init_friends();
+      init_live();
+      init_qr();
+      init_scorecard();
+      init_state();
+      ICE2 = [{ urls: "stun:stun.l.google.com:19302" }];
+      sheet9 = () => $("friends");
+      KEY6 = "laneiq.screens";
+      loadCfg = () => {
+        try {
+          const j = JSON.parse(localStorage.getItem(KEY6) ?? "null");
+          return { brand: cleanBrand(j?.brand), layout: isLayout(j?.layout) ? j.layout : "bowler", code: cleanLaneCode(j?.code) ?? "", relayOn: j?.relayOn === true };
+        } catch {
+          return { brand: DEFAULT_BRAND, layout: "bowler", code: "", relayOn: false };
+        }
+      };
+      cfg = loadCfg();
+      saveCfg = () => {
+        try {
+          localStorage.setItem(KEY6, JSON.stringify(cfg));
+        } catch {
+        }
+      };
+      if (typeof location !== "undefined" && location.search.includes("screentest")) globalThis.__screenTest = { ScreenView, buildSnapshot, startRelay: (c) => startRelay(c), flush: () => flush(), snapshot: () => snapshot(), cfg: () => cfg };
+      screens = [];
+      relay = null;
+      relayState = "";
+      previews = /* @__PURE__ */ new Set();
+      streamOf = () => null;
+      seq = 0;
+      timer2 = 0;
+      lastSend = 0;
+      screenCount = () => screens.filter((s) => s.state === "connected").length + (relay ? 1 : 0) + previews.size;
+      isKiosk = () => new URLSearchParams(location.search).has("display");
+    }
+  });
+
+  // camera/multiviewui.ts
+  var multiviewui_exports = {};
+  __export(multiviewui_exports, {
+    paintViews: () => paintViews
+  });
+  async function paintViews(shot, player, host2) {
+    const views = cleanViews(shot.views);
+    if (!views.length) return void (host2.innerHTML = "");
+    host2.innerHTML = `<h3>Other angles</h3>${views.map((v) => `<div class="card" data-view="${esc2(v.id)}"><div class="row"><div class="lr-head">${esc2(v.label)}</div><span class="note">clocks within about ${Math.max(1, v.uncertaintyMs)} ms</span></div>
+    <div class="stagebox"><video playsinline muted preload="auto" style="width:100%;border-radius:10px;background:#000"></video></div>
+    <div class="chips" role="group" aria-label="Line this angle up"><span class="note">Out of step?</span><button class="chip" data-n="-1">&minus;1 s</button><button class="chip" data-n="-0.1">&minus;0.1</button><span class="note nv" aria-live="polite">${v.nudgeSec ? (v.nudgeSec > 0 ? "+" : "") + v.nudgeSec.toFixed(2) + " s" : "0"}</span><button class="chip" data-n="0.1">+0.1</button><button class="chip" data-n="1">+1 s</button></div></div>`).join("")}
+    <div class="note">Press play on the main replay and every angle follows. If an angle is a little early or late, nudge it; it's remembered for this shot.</div>`;
+    const urls = [];
+    const track = [];
+    for (const v of views) {
+      const card2 = host2.querySelector(`[data-view="${CSS.escape(v.id)}"]`);
+      const el = card2?.querySelector("video");
+      const blob = await loadClip(v.clipKey).catch(() => void 0);
+      if (!card2 || !el) continue;
+      if (!blob) {
+        card2.querySelector(".stagebox").innerHTML = `<div class="note">This angle's clip couldn't be loaded.</div>`;
+        continue;
+      }
+      const url = URL.createObjectURL(blob.type ? blob : new Blob([blob], { type: v.mime || "video/mp4" }));
+      urls.push(url);
+      el.src = url;
+      track.push({ v, el });
+      card2.querySelectorAll("[data-n]").forEach((b) => b.onclick = async () => {
+        v.nudgeSec = Math.max(-5, Math.min(5, Math.round((v.nudgeSec + Number(b.dataset.n)) * 100) / 100));
+        shot.views = views;
+        await updateShot(shot);
+        const n = card2.querySelector(".nv");
+        if (n) n.textContent = v.nudgeSec ? (v.nudgeSec > 0 ? "+" : "") + v.nudgeSec.toFixed(2) + " s" : "0";
+        follow(true);
+      });
+    }
+    const target = (t) => viewTime(player.currentTime + shot.recStartT, t.v.offsetSec, t.v.nudgeSec);
+    const follow = (hard = false) => {
+      for (const t of track) {
+        const want = target(t);
+        const dur = Number.isFinite(t.el.duration) ? t.el.duration : Infinity;
+        if (want < 0 || want > dur) {
+          if (!t.el.paused) t.el.pause();
+          if (hard || Math.abs(t.el.currentTime - Math.max(0, Math.min(dur === Infinity ? 0 : dur, want))) > 0.05) t.el.currentTime = Math.max(0, Math.min(Number.isFinite(dur) ? dur : 0, want));
+          continue;
+        }
+        if (hard || Math.abs(t.el.currentTime - want) > 0.15) t.el.currentTime = want;
+        t.el.playbackRate = player.playbackRate;
+        if (!player.paused && t.el.paused) void t.el.play().catch(() => {
+        });
+        if (player.paused && !t.el.paused) t.el.pause();
+      }
+    };
+    player.addEventListener("play", () => follow(true));
+    player.addEventListener("pause", () => follow(true));
+    player.addEventListener("seeked", () => follow(true));
+    player.addEventListener("ratechange", () => follow());
+    player.addEventListener("timeupdate", () => follow());
+    follow(true);
+    void mainTime;
+    window.addEventListener("pagehide", () => urls.forEach((u) => URL.revokeObjectURL(u)), { once: true });
+  }
+  var init_multiviewui = __esm({
+    "camera/multiviewui.ts"() {
+      init_camsync();
+      init_live();
+      init_state();
+    }
+  });
+
+  // camera/camlink.ts
+  var camlink_exports = {};
+  __export(camlink_exports, {
+    camRecordCancel: () => camRecordCancel,
+    camRecordStart: () => camRecordStart,
+    camRecordStop: () => camRecordStop,
+    cameraCount: () => cameraCount,
+    joinCameraFrom: () => joinCameraFrom,
+    noteFrame: () => noteFrame,
+    openCameras: () => openCameras,
+    wallOfMedia: () => wallOfMedia
+  });
+  function noteFrame(wall, media) {
+    lastWall = wall;
+    lastMedia = media;
+  }
+  async function gathered3(pc) {
+    if (pc.iceGatheringState !== "complete")
+      await new Promise((res) => {
+        const done3 = () => pc.iceGatheringState === "complete" && (pc.removeEventListener("icegatheringstatechange", done3), res());
+        pc.addEventListener("icegatheringstatechange", done3);
+        setTimeout(res, 5e3);
+      });
+    return pc.localDescription.sdp;
+  }
+  function startPings(l) {
+    let n = 0;
+    const burst = () => {
+      if (l.state !== "connected") return;
+      l.samples = [];
+      for (let i = 0; i < 16; i++) setTimeout(() => send2(l, { t: "ping", n: n++, t0: performance.now() }), i * 90);
+    };
+    burst();
+    l.timer = window.setInterval(burst, 45e3);
+  }
+  function onPrimaryMessage(l, e) {
+    if (typeof e.data !== "string") {
+      l.asm?.add(e.data);
+      return;
+    }
+    try {
+      const m = JSON.parse(e.data);
+      if (m.t === "hello") {
+        l.label = String(m.label ?? "Camera").slice(0, 30);
+        l.device = String(m.device ?? "").slice(0, 40);
+      } else if (m.t === "pong" && typeof m.t0 === "number") {
+        l.samples.push({ t0: m.t0, t1: Number(m.t1), t2: Number(m.t2), t3: performance.now() });
+        const o = estimateOffset(l.samples);
+        if (o) l.offset = o;
+      } else if (m.t === "clip") {
+        const meta = parseClipMeta(m);
+        l.asm = meta ? new ClipAssembler(meta) : null;
+      } else if (m.t === "clipend" && l.asm?.done) {
+        const meta = l.asm.meta, blob = l.asm.blob();
+        l.asm = null;
+        const r = recs.get(meta.rec);
+        if (blob && r) {
+          r.got.push({ link: l, blob, startMs: meta.startMs });
+          l.last = `received ${(blob.size / 1e6).toFixed(1)} MB`;
+          void tryAttach(meta.rec);
+        }
+      } else if (m.t === "nocam") {
+        l.last = `can't record: ${String(m.reason ?? "").slice(0, 80)}`;
+      }
+      renderPanel2();
+    } catch {
+    }
+  }
+  function camRecordStart(rec2) {
+    const r = { sent: /* @__PURE__ */ new Set(), got: [], done: false };
+    for (const l of connected()) {
+      send2(l, { t: "rec", rec: rec2 });
+      r.sent.add(l.id);
+    }
+    if (r.sent.size) recs.set(rec2, r);
+  }
+  function camRecordStop(rec2, shot, releaseWall) {
+    const r = recs.get(rec2);
+    if (!r) return;
+    r.shot = shot;
+    r.releaseWall = releaseWall;
+    for (const l of links) if (r.sent.has(l.id)) send2(l, { t: "stop", rec: rec2, tail: 250 });
+    void tryAttach(rec2);
+    setTimeout(() => recs.delete(rec2), 12e4);
+  }
+  function camRecordCancel(rec2) {
+    const r = recs.get(rec2);
+    if (!r) return;
+    for (const l of links) if (r.sent.has(l.id)) send2(l, { t: "cancel", rec: rec2 });
+    recs.delete(rec2);
+  }
+  async function tryAttach(recId2) {
+    const r = recs.get(recId2);
+    if (!r?.shot || r.releaseWall === void 0) return;
+    const shot = r.shot;
+    while (r.got.length) {
+      const c = r.got.shift();
+      const off = c.link.offset;
+      if (!off) {
+        notify(`The ${c.link.label} clip arrived before its clock was lined up, so it can't be placed on the shot. It will work next time.`);
+        continue;
+      }
+      const view3 = { id: newId(), label: c.link.label, clipKey: `${shot.id}~${c.link.id}`, offsetSec: clipOffsetSec(c.startMs, off, r.releaseWall), nudgeSec: 0, uncertaintyMs: Math.round(off.uncertaintyMs), bytes: c.blob.size, mime: c.blob.type || "video/mp4" };
+      try {
+        await saveClip(view3.clipKey, c.blob);
+        shot.views = cleanViews([...(shot.views ?? []).filter((v) => v.clipKey !== view3.clipKey), view3]);
+        await updateShot(shot);
+        c.link.last = `added to your last shot (clocks within about ${view3.uncertaintyMs} ms)`;
+        notify(`${view3.label} added to that shot.`);
+        logTrack("extra camera clip attached", { label: view3.label, bytes: c.blob.size, offsetSec: +view3.offsetSec.toFixed(3), uncertaintyMs: view3.uncertaintyMs });
+      } catch (e) {
+        logTrack("extra camera clip not saved", { error: String(e) });
+      }
+    }
+    renderPanel2();
+  }
+  function newLink() {
+    const pc = new RTCPeerConnection({ iceServers: ICE3 });
+    const l = { id: newId().slice(0, 8), pc, dc: null, label: "Camera", device: "", state: "waiting", samples: [], offset: null, asm: null, last: "", timer: 0 };
+    pc.onconnectionstatechange = () => {
+      if (["failed", "disconnected", "closed"].includes(pc.connectionState) && l.state === "connected") {
+        l.state = "ended";
+        clearInterval(l.timer);
+        renderPanel2();
+      }
+    };
+    links.push(l);
+    return l;
+  }
+  function wirePrimary(l, dc) {
+    l.dc = dc;
+    dc.binaryType = "arraybuffer";
+    dc.onopen = () => {
+      l.state = "connected";
+      send2(l, { t: "hi", name: S.profile?.name ?? "LaneIQ" });
+      startPings(l);
+      renderPanel2();
+    };
+    dc.onclose = () => {
+      l.state = "ended";
+      clearInterval(l.timer);
+      renderPanel2();
+    };
+    dc.onmessage = (e) => onPrimaryMessage(l, e);
+  }
+  function openCameras() {
+    const el = sheet10();
+    el.classList.add("on");
+    el.dataset.cams = "1";
+    renderPanel2();
+  }
+  function renderPanel2() {
+    const el = sheet10();
+    if (!el.classList.contains("on") || el.dataset.cams !== "1") return;
+    const live3 = links.filter((l) => l.state !== "ended");
+    el.innerHTML = `<div class="row"><h2>Extra cameras</h2><button class="btn ghost" id="cl-close">Close</button></div>
+    <div class="note">Link an iPad or a second phone at another angle. While they're linked, they record every throw together with this camera, send the clips back, and every shot's replay shows all the angles in step. They connect directly to this phone: nothing goes through a server. Keep them on the same Wi-Fi or hotspot, with the app open and the screen on.</div>
+    ${live3.length ? live3.map((l) => `<div class="card"><div class="row"><div class="lr-head">${esc2(l.label)}${l.device ? ` <span class="note">${esc2(l.device)}</span>` : ""}</div><span class="badge ${l.state === "connected" ? "good" : "tentative"}">${l.state === "connected" ? "connected" : "connecting\u2026"}</span></div>
+      <div class="note">${l.offset ? `Clocks lined up to within about ${Math.max(1, Math.round(l.offset.uncertaintyMs))} ms (${l.offset.n} checks).` : l.state === "connected" ? "Lining up clocks\u2026" : "Waiting for it to join."}${l.last ? ` Last: ${esc2(l.last)}.` : ""}</div>
+      <div class="chips"><button class="btn ghost danger" data-rm="${esc2(l.id)}">Disconnect</button></div></div>`).join("") : `<div class="card"><div class="u">No extra cameras linked.</div></div>`}
+    <div class="chips"><button class="btn" id="cl-add">Add a camera</button></div>
+    <div class="note">The extra camera's video isn't analysed yet: you get it synced in the replay. Tracking, speed and spin still come from this camera. Put it where it sees something this one can't, such as a close-up of the release or the approach from the side.</div>`;
+    $("cl-close").onclick = () => {
+      el.dataset.cams = "";
+      closeSheet();
+    };
+    $("cl-add").onclick = () => void hostLink();
+    el.querySelectorAll("[data-rm]").forEach((b) => b.onclick = () => {
+      const l = links.find((x) => x.id === b.dataset.rm);
+      if (l) {
+        send2(l, { t: "bye" });
+        l.pc.close();
+        l.state = "ended";
+        clearInterval(l.timer);
+      }
+      renderPanel2();
+    });
+  }
+  async function hostLink() {
+    const el = sheet10();
+    el.dataset.cams = "";
+    el.innerHTML = `<div class="row"><h2>Starting\u2026</h2></div><div class="note">Getting your connection ready. Keep the app open.</div>`;
+    const l = newLink();
+    wirePrimary(l, l.pc.createDataChannel("laneiq-cam"));
+    await l.pc.setLocalDescription(await l.pc.createOffer());
+    const offer = await packText(JSON.stringify({ v: 1, sdp: await gathered3(l.pc), name: S.profile?.name ?? "LaneIQ" }));
+    const link = `${appLink()}/#cam=${offer}`;
+    if (location.search.includes("camtest")) globalThis.__camLink = link;
+    el.innerHTML = `<div class="row"><h2>Add a camera</h2><button class="btn ghost" id="cl-cancel">Cancel</button></div>
+    <div class="card"><div class="k">1. Open this on the other device</div><div class="u">On the iPad or phone, open LaneIQ (add it to the home screen first if you like), then open this link there. AirDrop, a message or an email to yourself all work.</div><div class="chips"><button class="btn" id="cl-send">Send the link</button></div><div class="note" id="cl-sent"></div></div>
+    <div class="card"><div class="k">2. Paste its reply</div><div class="u">The other device shows a reply code. Paste it here.</div><div class="field"><input id="cl-reply" placeholder="Paste the reply code"></div><div class="chips"><button class="btn" id="cl-connect">Connect</button></div><div class="note" id="cl-msg"></div></div>`;
+    $("cl-cancel").onclick = () => {
+      l.pc.close();
+      l.state = "ended";
+      openCameras();
+    };
+    $("cl-send").onclick = async () => ($("cl-sent").textContent = await shareLink("Add this device as a camera", "Open this in LaneIQ on the device you want to use as an extra camera.", link), void 0);
+    $("cl-connect").onclick = async () => {
+      const code2 = $("cl-reply").value.trim().replace(/^CAM-/, "");
+      const json = code2 ? await unpackText(code2) : null;
+      let ans = null;
+      try {
+        ans = json ? JSON.parse(json) : null;
+      } catch {
+      }
+      if (!ans?.sdp) return void ($("cl-msg").textContent = "That reply code isn't right. Ask the other device to show it again.");
+      try {
+        await l.pc.setRemoteDescription({ type: "answer", sdp: ans.sdp });
+        $("cl-msg").textContent = "Connecting\u2026";
+        const wait = setInterval(() => {
+          if (l.state === "connected") {
+            clearInterval(wait);
+            el.dataset.cams = "1";
+            renderPanel2();
+          }
+          if (l.state === "ended") clearInterval(wait);
+        }, 400);
+      } catch {
+        $("cl-msg").textContent = "Couldn't use that reply. Start again.";
+      }
+    };
+  }
+  async function joinCameraFrom(code2) {
+    const json = await unpackText(code2);
+    let offer = null;
+    try {
+      offer = json ? JSON.parse(json) : null;
+    } catch {
+    }
+    const el = sheet10();
+    el.classList.add("on");
+    if (!offer?.sdp) {
+      el.innerHTML = `<div class="row"><h2>Extra camera</h2><button class="btn ghost" id="cx-close">Close</button></div><div class="card"><div class="u">That link is damaged or isn't a LaneIQ camera link.</div></div>`;
+      $("cx-close").onclick = closeSheet;
+      return;
+    }
+    const from = String(offer.name ?? "LaneIQ").slice(0, 40);
+    el.innerHTML = `<div class="row"><h2>Use this as an extra camera?</h2><button class="btn ghost" id="cx-close">Not now</button></div>
+    <div class="card"><div class="u">${esc2(from)}'s lane camera wants to use this device as another angle. It will record each throw and send the clip to that phone. Nothing leaves your devices.</div>
+    <div class="field"><label for="cx-label">What is this angle?</label><select id="cx-label">${LABELS.map((x) => `<option>${esc2(x)}</option>`).join("")}</select></div>
+    <div class="chips"><button class="btn" id="cx-yes">Use this device</button></div></div>`;
+    $("cx-close").onclick = closeSheet;
+    $("cx-yes").onclick = async () => {
+      const label2 = $("cx-label").value;
+      el.innerHTML = `<div class="row"><h2>Connecting\u2026</h2></div><div class="note">Getting your reply ready. Keep the app open.</div>`;
+      const pc = new RTCPeerConnection({ iceServers: ICE3 });
+      pc.ondatachannel = (e) => startExtra(pc, e.channel, label2);
+      await pc.setRemoteDescription({ type: "offer", sdp: offer.sdp });
+      await pc.setLocalDescription(await pc.createAnswer());
+      const reply = await packText(JSON.stringify({ v: 1, sdp: await gathered3(pc) }));
+      if (location.search.includes("camtest")) globalThis.__camReply = reply;
+      el.innerHTML = `<div class="row"><h2>Send this reply back</h2><button class="btn ghost" id="cx-close">Cancel</button></div>
+      <div class="card"><div class="u">Send this code to the lane camera and paste it in its Extra cameras screen. Keep this screen open until it connects.</div><div class="u" style="word-break:break-all;user-select:all;max-height:6em;overflow:auto">${esc2(reply)}</div><div class="chips"><button class="btn" id="cx-copy">Copy and share</button></div><div class="note" id="cx-sent"></div></div>`;
+      $("cx-close").onclick = () => {
+        pc.close();
+        closeSheet();
+      };
+      $("cx-copy").onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(reply);
+        } catch {
+        }
+        const nav = navigator;
+        try {
+          if (nav.share) await nav.share({ title: "LaneIQ camera reply", text: reply });
+        } catch {
+        }
+        $("cx-sent").textContent = "Reply copied. Paste it into a message to the lane camera.";
+      };
+    };
+  }
+  function pickMime() {
+    for (const m of ["video/mp4", "video/webm;codecs=vp9", "video/webm"]) if (window.MediaRecorder?.isTypeSupported?.(m)) return m;
+    return void 0;
+  }
+  async function startExtra(pc, dc, label2) {
+    dc.binaryType = "arraybuffer";
+    const ex = { pc, dc, stream: null, cur: null, label: label2 };
+    extra = ex;
+    const ov = document.createElement("div");
+    ov.id = "camx";
+    ov.style.cssText = "position:fixed;inset:0;z-index:99999;background:#000;display:flex;flex-direction:column";
+    ov.innerHTML = `<video id="camx-v" playsinline muted autoplay style="flex:1;width:100%;object-fit:contain;background:#000"></video>
+    <div style="padding:10px 14px;background:rgba(5,7,13,.92);color:#e8f0ff;font:600 14px system-ui"><div id="camx-s">Starting the camera\u2026</div><div class="note" style="color:#9fb0cc;font-weight:500;margin-top:2px">${esc2(label2)} \xB7 recording starts and stops by itself when the lane camera does. Keep this screen on.</div><button id="camx-x" style="margin-top:8px;padding:8px 14px;border-radius:10px;border:0;background:#2a3350;color:#fff;font:600 14px system-ui">Disconnect</button></div>`;
+    document.body.appendChild(ov);
+    const status2 = (m) => {
+      const s = document.getElementById("camx-s");
+      if (s) s.textContent = m;
+    };
+    const finish2 = () => {
+      try {
+        dc.close();
+        pc.close();
+      } catch {
+      }
+      ex.stream?.getTracks().forEach((t) => t.stop());
+      try {
+        wake?.release();
+      } catch {
+      }
+      ov.remove();
+      extra = null;
+    };
+    document.getElementById("camx-x").onclick = finish2;
+    dc.onclose = () => {
+      status2("Disconnected.");
+      setTimeout(finish2, 1500);
+    };
+    let wake = null;
+    try {
+      wake = await navigator.wakeLock?.request("screen") ?? null;
+    } catch {
+    }
+    try {
+      ex.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } }, audio: false });
+      const v = document.getElementById("camx-v");
+      v.srcObject = ex.stream;
+      await v.play().catch(() => {
+      });
+      status2("Connected. Waiting for the next throw.");
+    } catch (e) {
+      status2("This device's camera isn't available. Allow the camera for LaneIQ and link again.");
+      dc.send(JSON.stringify({ t: "nocam", reason: e instanceof Error ? e.message : "camera unavailable" }));
+    }
+    const hello = () => dc.send(JSON.stringify({ t: "hello", label: label2, device: /iPad/.test(navigator.userAgent) || navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1 ? "iPad" : /iPhone/.test(navigator.userAgent) ? "iPhone" : "device" }));
+    if (dc.readyState === "open") hello();
+    else dc.onopen = hello;
+    const startRec = (rec2) => {
+      if (!ex.stream || !window.MediaRecorder) return;
+      stopCur(true);
+      const mime = pickMime();
+      const mr = new MediaRecorder(ex.stream, mime ? { mimeType: mime, videoBitsPerSecond: 8e6 } : void 0);
+      const chunks = [];
+      const cur2 = { rec: rec2, mr, chunks, startMs: performance.now(), kill: window.setTimeout(() => stopCur(true), 12e4) };
+      mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+      mr.onstart = () => cur2.startMs = performance.now();
+      mr.start(1e3);
+      ex.cur = cur2;
+      status2("Recording this throw\u2026");
+    };
+    const stopCur = (discard) => {
+      const c = ex.cur;
+      if (!c) return;
+      ex.cur = null;
+      clearTimeout(c.kill);
+      if (discard) {
+        try {
+          c.mr.ondataavailable = null;
+          c.mr.state !== "inactive" && c.mr.stop();
+        } catch {
+        }
+      }
+    };
+    const finishRec = (rec2, tail) => {
+      const c = ex.cur;
+      if (!c || c.rec !== rec2) return;
+      ex.cur = null;
+      clearTimeout(c.kill);
+      c.mr.onstop = async () => {
+        const blob = new Blob(c.chunks, { type: c.mr.mimeType || "video/mp4" });
+        if (!blob.size) return status2("Nothing was recorded.");
+        status2(`Sending the clip (${(blob.size / 1e6).toFixed(1)} MB)\u2026`);
+        try {
+          dc.send(JSON.stringify({ t: "clip", rec: rec2, size: blob.size, mime: blob.type, startMs: c.startMs }));
+          const buf = await blob.arrayBuffer();
+          for (let i = 0; i < buf.byteLength; i += CHUNK) {
+            while (dc.bufferedAmount > 1e6) await new Promise((r) => setTimeout(r, 20));
+            dc.send(buf.slice(i, i + CHUNK));
+          }
+          dc.send(JSON.stringify({ t: "clipend", rec: rec2 }));
+          status2("Sent. Waiting for the next throw.");
+        } catch {
+          status2("Couldn't send the clip. Check the connection.");
+        }
+      };
+      setTimeout(() => c.mr.state !== "inactive" && c.mr.stop(), Math.max(0, Math.min(2e3, tail)));
+    };
+    dc.onmessage = (e) => {
+      if (typeof e.data !== "string") return;
+      try {
+        const m = JSON.parse(e.data);
+        if (m.t === "ping") dc.send(JSON.stringify({ t: "pong", n: m.n, t0: m.t0, t1: performance.now(), t2: performance.now() }));
+        else if (m.t === "rec") startRec(String(m.rec).slice(0, 40));
+        else if (m.t === "stop") finishRec(String(m.rec).slice(0, 40), Number(m.tail) || 250);
+        else if (m.t === "cancel") {
+          stopCur(true);
+          status2("Connected. Waiting for the next throw.");
+        } else if (m.t === "bye") finish2();
+      } catch {
+      }
+    };
+  }
+  var ICE3, sheet10, closeSheet, LABELS, lastWall, lastMedia, wallOfMedia, links, recs, connected, cameraCount, send2, extra;
+  var init_camlink = __esm({
+    "camera/camlink.ts"() {
+      init_camsync();
+      init_db();
+      init_health();
+      init_live();
+      init_friends();
+      init_state();
+      init_toast();
+      ICE3 = [{ urls: "stun:stun.l.google.com:19302" }];
+      sheet10 = () => $("friends");
+      closeSheet = () => (sheet10().classList.remove("on"), sheet10().innerHTML = "");
+      LABELS = ["Close-up of the release", "Side view", "Approach from behind", "Pins end", "Other angle"];
+      lastWall = 0;
+      lastMedia = 0;
+      wallOfMedia = (media) => lastWall + (media - lastMedia) * 1e3;
+      links = [];
+      recs = /* @__PURE__ */ new Map();
+      connected = () => links.filter((l) => l.state === "connected" && l.dc?.readyState === "open");
+      cameraCount = () => connected().length;
+      send2 = (l, m) => {
+        if (l.dc?.readyState === "open") l.dc.send(JSON.stringify(m));
+      };
+      if (typeof location !== "undefined" && location.search.includes("camtest")) globalThis.__cam = { camRecordStart, camRecordStop, links, wallOfMedia, perf: () => performance.now(), ui: () => Promise.resolve().then(() => (init_multiviewui(), multiviewui_exports)), state: () => Promise.resolve().then(() => (init_state(), state_exports)) };
+      extra = null;
+    }
+  });
+
+  // core/src/coachplan.ts
+  function cleanStep(s) {
+    if (!s || typeof s !== "object") return null;
+    const drill = typeof s.drill === "string" && DRILL_IDS.has(s.drill) ? s.drill : void 0;
+    const def = drill ? DRILLS2.find((d) => d.id === drill) : null;
+    const title = clean4(s.title, PLAN_LIMITS.title) || def?.name || "";
+    if (!title) return null;
+    const board = def?.needs.includes("board") ? num7(s.board, 1, 39) : void 0;
+    const mph = def?.needs.includes("mph") ? num7(s.mph, 5, 25) : void 0;
+    return { ...drill ? { drill } : {}, title, detail: clean4(s.detail, PLAN_LIMITS.detail), minutes: Math.round(num7(s.minutes, 1, PLAN_LIMITS.maxMinutes) ?? 5), ...board !== void 0 ? { board: Math.round(board) } : {}, ...mph !== void 0 ? { mph: Math.round(mph * 10) / 10 } : {} };
+  }
+  function newPlan(from, title, note, steps, now = /* @__PURE__ */ new Date(), id = Math.random().toString(36).slice(2, 10)) {
+    const cleaned = steps.map(cleanStep).filter((s) => !!s).slice(0, PLAN_LIMITS.steps);
+    const name = clean4(from, PLAN_LIMITS.name);
+    const t = clean4(title, PLAN_LIMITS.title);
+    if (!cleaned.length || !name || !t) return null;
+    return { v: 1, t: "plan", id: clean4(id, 16) || "plan", from: name, title: t, note: clean4(note, PLAN_LIMITS.note), steps: cleaned, at: now.toISOString() };
+  }
+  function parsePlan(json) {
+    let j;
+    try {
+      j = JSON.parse(json);
+    } catch {
+      return null;
+    }
+    if (!j || typeof j !== "object") return null;
+    const o = j;
+    if (o.v !== 1 || o.t !== "plan" || !Array.isArray(o.steps)) return null;
+    const at4 = typeof o.at === "string" && !Number.isNaN(Date.parse(o.at)) ? new Date(o.at) : /* @__PURE__ */ new Date();
+    return newPlan(clean4(o.from, PLAN_LIMITS.name), clean4(o.title, PLAN_LIMITS.title), clean4(o.note, PLAN_LIMITS.note), o.steps, at4, clean4(o.id, 16));
+  }
+  var PLAN_LIMITS, clean4, num7, DRILL_IDS, planMinutes;
+  var init_coachplan = __esm({
+    "core/src/coachplan.ts"() {
+      init_drills();
+      PLAN_LIMITS = { title: 60, note: 400, detail: 240, name: 40, steps: 8, maxMinutes: 60 };
+      clean4 = (s, max) => typeof s === "string" ? s.replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
+      num7 = (n, lo, hi) => typeof n === "number" && Number.isFinite(n) && n >= lo && n <= hi ? n : void 0;
+      DRILL_IDS = new Set(DRILLS2.map((d) => d.id));
+      planMinutes = (p) => p.steps.reduce((a, s) => a + s.minutes, 0);
+    }
+  });
+
+  // core/src/training.ts
+  function dailyPlan(day6, where, focus) {
+    const n = dayNumber(day6);
+    const axes = focus.length ? focus : ["arrows", "pocket"];
+    const first = axes[0], second = axes[1] ?? axes[0];
+    const steps = [WARMUP];
+    if (where === "lane") {
+      steps.push({ id: "drill1", title: `Drill: ${first}`, detail: "", minutes: 8, drill: DRILL_FOR[first] });
+      const d2 = DRILL_FOR[second] !== DRILL_FOR[first] ? DRILL_FOR[second] : ["speed-lock", "arrow-sniper", "pocket-hunter", "speed-ladder"].filter((d) => d !== DRILL_FOR[first])[n % 3];
+      steps.push({ id: "drill2", title: "Second drill", detail: "", minutes: 8, drill: d2 });
+      steps.push({ id: "spares", title: "Spare ladder", detail: "Ten shots at single pins with your spare ball, working the 10 pin and the 7 pin first. Count how many you make.", minutes: 8 });
+    } else {
+      const h = HOME_FOCUS[first];
+      steps.push({ id: "home1", title: h.title, detail: h.detail, minutes: 6 });
+      if (second !== first) {
+        const h2 = HOME_FOCUS[second];
+        steps.push({ id: "home2", title: h2.title, detail: h2.detail, minutes: 6 });
+      }
+      steps.push({ ...STUDY[n % STUDY.length] });
+    }
+    steps.push(REFLECT);
+    return { day: day6, where, steps, minutes: steps.reduce((a, s) => a + s.minutes, 0), focus: axes };
+  }
+  function markStep(log, day6, id, done3) {
+    const rest = log.filter((d) => d.day !== day6);
+    const cur2 = new Set(log.find((d) => d.day === day6)?.done ?? []);
+    if (done3) cur2.add(id);
+    else cur2.delete(id);
+    return cur2.size ? [...rest, { day: day6, done: [...cur2] }].sort((a, b) => a.day.localeCompare(b.day)) : rest;
+  }
+  function trainStats(log, today3) {
+    const days = new Set(log.filter(trained).map((d) => d.day));
+    const trainedToday = days.has(today3);
+    let streak = 0;
+    for (let d = trainedToday ? today3 : addDays(today3, -1); days.has(d); d = addDays(d, -1)) streak++;
+    let best2 = 0, run = 0, prev = null;
+    for (const d of [...days].sort()) {
+      run = prev && addDays(prev, 1) === d ? run + 1 : 1;
+      best2 = Math.max(best2, run);
+      prev = d;
+    }
+    let last7 = 0;
+    for (let i = 0; i < 7; i++) if (days.has(addDays(today3, -i))) last7++;
+    return { streak, best: best2, days: days.size, last7, trainedToday };
+  }
+  var MIN_STEPS_FOR_A_DAY, dayKey, dayNumber, addDays, DRILL_FOR, HOME_FOCUS, STUDY, WARMUP, REFLECT, trained;
+  var init_training = __esm({
+    "core/src/training.ts"() {
+      MIN_STEPS_FOR_A_DAY = 2;
+      dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      dayNumber = (key3) => Math.floor(Date.UTC(+key3.slice(0, 4), +key3.slice(5, 7) - 1, +key3.slice(8, 10)) / 864e5);
+      addDays = (key3, n) => dayKey(new Date(+key3.slice(0, 4), +key3.slice(5, 7) - 1, +key3.slice(8, 10) + n));
+      DRILL_FOR = {
+        strikes: "pocket-hunter",
+        singles: "corner-pins",
+        closed: "corner-pins",
+        firstBall: "pocket-hunter",
+        pocket: "pocket-hunter",
+        entry: "pocket-hunter",
+        arrows: "arrow-sniper",
+        start: "arrow-sniper",
+        speed: "speed-lock"
+      };
+      HOME_FOCUS = {
+        arrows: { title: "Shadow approach: same target", detail: "12 slow swings with no ball. Same start spot, same slide, and hold the finish for two seconds. Does your slide foot end on the same board each time?" },
+        start: { title: "Shadow approach: same start", detail: "Tape or mark your start spot. 12 slow swings from it, then check your slide ends in the same place each time." },
+        speed: { title: "Shadow approach: same tempo", detail: "12 swings counting your steps out loud at one steady tempo. Then 3 slower and 3 faster, and come back to the middle tempo without drifting." },
+        pocket: { title: "Say your adjustment", detail: "Pick a pattern in Patterns. For each of three imaginary misses (high, light, at the pocket), say out loud where you would move your feet or your target." },
+        entry: { title: "Say your adjustment", detail: "Pick a pattern in Patterns. Say where the ball should start to hook and what you would change if it hooked early or late." },
+        strikes: { title: "Pocket picture", detail: "Pick a pattern in Patterns and talk through where you stand, where you look, and where the ball should enter the pocket." },
+        firstBall: { title: "Repeat your line", detail: "Shadow 12 swings to the same target in your head, and say aloud which board you start on and which board you cross at the arrows." },
+        singles: { title: "Spare systems out loud", detail: "Pick the 10, 7, 5 and 6 pins. For each say where you stand with the 3-6-9 system (same target as your strike shot, feet moved 3, 6 or 9 boards) and why." },
+        closed: { title: "Make the makeable", detail: "Pick five common leaves. For each say whether it is makeable, which pin is the key pin, and where you would stand." }
+      };
+      STUDY = [
+        { id: "study-patterns", title: "Read one oil pattern", detail: "Open Patterns, pick one, and say in a sentence where the oil is thin and where it is heavy.", minutes: 4, link: "patterns" },
+        { id: "study-debrief", title: "Review your last session", detail: "Open your last debrief and find the one number that moved the most. Write down why you think it moved.", minutes: 4, link: "debrief" },
+        { id: "study-leaves", title: "Name five leaves", detail: "Pick five leaves (for example the 10, the 7, the 4-6, the 5-7, the 2-4-5). For each, name the key pin and the side you would play from.", minutes: 3 }
+      ];
+      WARMUP = { id: "warm", title: "Warm up", detail: "Five minutes of easy movement: shoulder circles, gentle wrist and forearm stretches, hip and hamstring stretches. Keep it comfortable and stop if anything hurts.", minutes: 5 };
+      REFLECT = { id: "reflect", title: "One line to keep", detail: "Write what worked today in one line in your session note.", minutes: 1 };
+      trained = (d) => d.done.length >= MIN_STEPS_FOR_A_DAY;
+    }
+  });
+
+  // camera/trainingui.ts
+  var trainingui_exports = {};
+  __export(trainingui_exports, {
+    openTraining: () => openTraining,
+    trainingTileHtml: () => trainingTileHtml,
+    wireTrainingTile: () => wireTrainingTile
+  });
+  function trainingTileHtml() {
+    if (!S.profile) return "";
+    const st2 = trainStats(S.training, dayKey(/* @__PURE__ */ new Date()));
+    const line2 = st2.streak ? `${st2.streak} day${st2.streak === 1 ? "" : "s"} in a row${st2.trainedToday ? "" : ", keep it going today"}` : "A short routine for today, at home or at the lane";
+    return `<button class="card" data-training="1" style="text-align:left;cursor:pointer;color:inherit;font:inherit;width:100%;grid-column:1/-1"><div class="note">Today's training</div><div class="lr-head" style="font-size:17px">${esc2(line2)}</div></button>`;
+  }
+  function wireTrainingTile(root) {
+    root.querySelectorAll("[data-training]").forEach((b) => b.onclick = () => void openTraining());
+  }
+  async function openTraining() {
+    bump("training");
+    const el = $("review");
+    const keep = el.classList.contains("on") ? el.scrollTop : 0;
+    el.classList.add("on");
+    const games2 = await loadGames();
+    const focus = focusList(skillsProfile(games2, S.shots)).slice(0, 2).map((f2) => f2.axis.id);
+    const today3 = dayKey(/* @__PURE__ */ new Date());
+    const where = getWhere();
+    const cp = S.coachPlan;
+    const over = {};
+    const plan = cp ? (() => {
+      const steps = cp.steps.map((s, i) => {
+        over[`c${i}`] = { board: s.board, mph: s.mph };
+        return { id: `c${i}`, title: s.title, detail: s.detail, minutes: s.minutes, drill: s.drill };
+      });
+      return { day: today3, where, steps, minutes: steps.reduce((a, s) => a + s.minutes, 0), focus: [] };
+    })() : dailyPlan(today3, where, focus);
+    const done3 = new Set(S.training.find((d) => d.day === today3)?.done ?? []);
+    for (const s of plan.steps) if (s.drill && drillDone(s.drill, today3)) done3.add(s.id);
+    const st2 = trainStats(S.training, today3);
+    const stepHtml = (s) => {
+      const d = s.drill ? DRILLS2.find((x) => x.id === s.drill) : null;
+      const title = cp ? s.title : d ? d.name : s.title;
+      const detail2 = cp ? s.detail : d ? d.blurb : s.detail;
+      const on3 = done3.has(s.id);
+      return `<div class="drow"><div><b>${esc2(title)}</b> <small>${s.minutes} min</small></div><div class="dval"><button class="chip" data-step="${esc2(s.id)}" aria-pressed="${on3}" style="${on3 ? "background:#5affb0;color:#06101c" : ""}">${on3 ? "Done \u2713" : "Mark done"}</button></div><div class="note dnote">${esc2(detail2)}${d ? ` Scored by the camera.` : ""}${s.link === "patterns" ? ` <button class="chip" data-pat="1">Open Patterns</button>` : ""}${d ? ` <button class="chip" data-start="${d.id}" data-stepid="${esc2(s.id)}" ${S.drill ? "disabled" : ""}>Start drill</button>` : ""}</div></div>`;
+    };
+    const days = [...Array(14)].map((_, i) => addDays(today3, i - 13));
+    const trainedDays = new Set(S.training.filter((d) => d.done.length >= 2).map((d) => d.day));
+    const strip = days.map((d) => `<div title="${esc2(d)}" style="flex:1;height:22px;border-radius:4px;background:${trainedDays.has(d) ? "#5affb0" : "rgba(255,255,255,.1)"}"></div>`).join("");
+    el.innerHTML = `
+    <div class="row"><h2>Today's training</h2><button class="btn ghost" id="tr-close">Close</button></div>
+    <div class="deb-hero"><div class="deb-big">${st2.streak}</div><div class="deb-unit">day${st2.streak === 1 ? "" : "s"} in a row</div><div class="deb-sub">best ${st2.best} \xB7 ${st2.last7} of the last 7 days \xB7 ${st2.days} day${st2.days === 1 ? "" : "s"} trained</div></div>
+    ${cp ? `<div class="card"><div class="k">Plan from ${esc2(cp.from)}</div><div class="lr-head" style="font-size:17px">${esc2(cp.title)}</div>${cp.note ? `<div class="u">${esc2(cp.note)}</div>` : ""}<div class="chips"><button class="chip" id="tr-mine">Use my own routine instead</button></div></div>` : ""}
+    <div class="chips" role="group" aria-label="Where are you training today" style="${cp ? "display:none" : ""}"><button class="chip" data-where="home" aria-pressed="${where === "home"}" style="${where === "home" ? "background:#46e6ff;color:#06101c" : ""}">At home</button><button class="chip" data-where="lane" aria-pressed="${where === "lane"}" style="${where === "lane" ? "background:#46e6ff;color:#06101c" : ""}">At a lane</button></div>
+    <div class="card">
+      <div class="note">${plan.minutes} minutes \xB7 ${cp ? `your coach's plan` : `built around ${focus.length ? esc2(focusNames(focus)) : "target control and the pocket (play some games and shots and it follows what you need)"}`}.</div>
+      ${plan.steps.map(stepHtml).join("")}
+      <div class="note" id="tr-msg">${done3.size >= 2 ? "Today counts. Nice." : "Finish any two steps and today counts toward your streak."}</div>
+    </div>
+    <h3>Last 14 days</h3>
+    <div class="card"><div role="img" aria-label="${trainedDays.size ? `Trained on ${days.filter((d) => trainedDays.has(d)).length} of the last 14 days` : "No training days yet"}" style="display:flex;gap:3px">${strip}</div><div class="note">A day counts when you finish two or more steps. Drills scored by the camera tick themselves off.</div></div>
+    ${can(S.profile?.role, "coachPlans") ? `<div class="chips"><button class="chip" id="tr-write">Write a plan for a bowler</button></div>` : `<div class="note">A coach's plan arrives as a link. Coaches and pro shops can write plans: switch your account type under Me.</div>`}
+    <div class="note">Training is practice, not medical advice. Warm up gently and stop if anything hurts. Your coach has the final say on what to work on.</div>`;
+    el.scrollTop = keep;
+    $("tr-close").onclick = () => {
+      el.classList.remove("on");
+      el.innerHTML = "";
+    };
+    el.querySelectorAll("[data-where]").forEach(
+      (b) => b.onclick = () => {
+        try {
+          localStorage.setItem(WHERE_KEY, b.dataset.where);
+        } catch {
+        }
+        void openTraining();
+      }
+    );
+    el.querySelectorAll("[data-step]").forEach(
+      (b) => b.onclick = async () => {
+        S.training = markStep(S.training, today3, b.dataset.step, b.getAttribute("aria-pressed") !== "true");
+        await saveCoach();
+        void openTraining();
+      }
+    );
+    $("tr-mine")?.addEventListener("click", async () => {
+      S.coachPlan = null;
+      await saveCoach();
+      void openTraining();
+    });
+    $("tr-write")?.addEventListener("click", async () => (await Promise.resolve().then(() => (init_coachplanui(), coachplanui_exports))).openPlanWriter());
+    el.querySelector("[data-pat]")?.addEventListener("click", () => openPatterns());
+    el.querySelectorAll("[data-start]").forEach(
+      (b) => b.onclick = async () => {
+        const id = b.dataset.start;
+        const sp = S.shots.filter((s) => typeof s.m.arrowsBoard === "number").map((s) => s.m.arrowsBoard).sort((a, c) => a - c);
+        const sm = S.shots.map((s) => s.m.launchSpeed).filter((v) => typeof v === "number").sort((a, c) => a - c);
+        const ov = over[b.dataset.stepid ?? ""] ?? {};
+        const board = ov.board ?? (sp.length ? Math.round(sp[sp.length >> 1]) : void 0), mph = ov.mph ?? (sm.length ? Math.round(sm[sm.length >> 1] * 10) / 10 : void 0);
+        const def = DRILLS2.find((x) => x.id === id);
+        if (def.needs.includes("board") && board === void 0 || def.needs.includes("mph") && mph === void 0) return void ($("tr-msg").textContent = "Bowl a few tracked shots first so the drill knows your usual board and speed.");
+        S.drill = { id, startedAt: (/* @__PURE__ */ new Date()).toISOString(), hand: S.profile?.hand ?? "R", board: def.needs.includes("board") ? board : void 0, mph: def.needs.includes("mph") ? mph : void 0, results: [] };
+        await saveCoach();
+        el.querySelectorAll("[data-start]").forEach((x) => x.disabled = true);
+        $("tr-msg").textContent = "Started. Open the camera and bowl: every shot is scored by itself.";
+      }
+    );
+  }
+  var WHERE_KEY, getWhere, drillDone, AXIS_NAME, focusNames;
+  var init_trainingui = __esm({
+    "camera/trainingui.ts"() {
+      init_health();
+      init_drills();
+      init_editions();
+      init_skills();
+      init_training();
+      init_live();
+      init_scorecard();
+      init_state();
+      init_patternsheet();
+      WHERE_KEY = "laneiq.trainWhere";
+      getWhere = () => {
+        try {
+          return localStorage.getItem(WHERE_KEY) === "lane" ? "lane" : "home";
+        } catch {
+          return "home";
+        }
+      };
+      drillDone = (id, day6) => S.drills.some((r) => r.id === id && r.finishedAt && dayKey(new Date(r.finishedAt)) === day6);
+      AXIS_NAME = { strikes: "strikes", singles: "single-pin spares", closed: "closed frames", firstBall: "first-ball pins", pocket: "pocket hits", entry: "entry angle", arrows: "target control", start: "start position", speed: "speed control" };
+      focusNames = (f2) => f2.map((x) => AXIS_NAME[x] ?? x).join(" and ");
+    }
+  });
+
+  // camera/coachplanui.ts
+  var coachplanui_exports = {};
+  __export(coachplanui_exports, {
+    handlePlanLink: () => handlePlanLink,
+    openPlanWriter: () => openPlanWriter
+  });
+  async function handlePlanLink(value) {
+    const json = await unpackText(value);
+    const p = json ? parsePlan(json) : null;
+    if (!p) return void notify("That plan link is damaged or isn't from LaneIQ.");
+    const el = sheet11();
+    el.classList.add("on");
+    el.innerHTML = `<div class="row"><h2>A plan from ${esc2(p.from)}</h2><button class="btn ghost" id="cp-no">Not now</button></div>
+    <div class="card"><div class="lr-head">${esc2(p.title)}</div>${p.note ? `<div class="u">${esc2(p.note)}</div>` : ""}<div class="note">${p.steps.length} step${p.steps.length === 1 ? "" : "s"} \xB7 about ${planMinutes(p)} minutes</div>
+    ${p.steps.map((s) => `<div class="drow"><div><b>${esc2(s.title)}</b> <small>${s.minutes} min</small></div><div class="note dnote">${esc2(s.detail)}${s.drill ? ` Scored by the camera${s.board !== void 0 ? `, board ${s.board}` : ""}${s.mph !== void 0 ? `, ${s.mph} mph` : ""}.` : ""}</div></div>`).join("")}</div>
+    <div class="note">${S.coachPlan ? `This replaces the plan you have now (${esc2(S.coachPlan.title)} from ${esc2(S.coachPlan.from)}). ` : ""}It becomes your Today's training; you can go back to your own routine any time. Nothing about you is sent back to ${esc2(p.from)}.</div>
+    <div class="chips"><button class="btn" id="cp-yes">Use this plan</button></div>`;
+    const close15 = () => (el.classList.remove("on"), el.innerHTML = "");
+    $("cp-no").onclick = close15;
+    $("cp-yes").onclick = async () => {
+      S.coachPlan = p;
+      await saveCoach();
+      close15();
+      notify(`Plan from ${p.from} is now your Today's training.`);
+      const { openTraining: openTraining2 } = await Promise.resolve().then(() => (init_trainingui(), trainingui_exports));
+      void openTraining2();
+    };
+  }
+  function openPlanWriter() {
+    bump("plan-writer");
+    const el = sheet11();
+    el.classList.add("on");
+    const row4 = (i) => `<div class="card" data-row="${i}"><div class="k">Step ${i + 1}</div>
+    <div class="field"><label for="pw-d${i}">What</label><select id="pw-d${i}">${DRILL_OPTS}</select></div>
+    <div class="field"><label for="pw-t${i}">Title</label><input id="pw-t${i}" maxlength="${PLAN_LIMITS.title}" placeholder="e.g. Same feet, same target" autocomplete="off"></div>
+    <div class="field"><label for="pw-x${i}">Instruction for the bowler</label><input id="pw-x${i}" maxlength="${PLAN_LIMITS.detail}" autocomplete="off"></div>
+    <div class="two"><div class="field"><label for="pw-m${i}">Minutes</label><input id="pw-m${i}" inputmode="numeric" value="8"></div><div class="field"><label for="pw-v${i}">Board or mph (for drills that use one)</label><input id="pw-v${i}" inputmode="decimal" placeholder="optional"></div></div></div>`;
+    el.innerHTML = `<div class="row"><h2>Write a plan</h2><button class="btn ghost" id="pw-close">Close</button></div>
+    <div class="note">For a coach or a pro shop to send a bowler. The bowler gets it as their Today's training. Camera-scored drills use the board or speed you set, or the bowler's own usual one if you leave it blank. You have the final say on what they work on.</div>
+    <div class="card"><div class="field"><label for="pw-from">Your name</label><input id="pw-from" maxlength="${PLAN_LIMITS.name}" value="${esc2(S.profile?.name ?? "")}" autocomplete="off"></div>
+    <div class="field"><label for="pw-title">Plan title</label><input id="pw-title" maxlength="${PLAN_LIMITS.title}" placeholder="e.g. Week 1: repeat your line" autocomplete="off"></div>
+    <div class="field"><label for="pw-note">A note for the bowler (optional)</label><input id="pw-note" maxlength="${PLAN_LIMITS.note}" autocomplete="off"></div></div>
+    ${[0, 1, 2, 3].map(row4).join("")}
+    <div class="note">Leave a step's title and instruction blank to skip it. Up to ${PLAN_LIMITS.steps} steps; four rows are shown.</div>
+    <div class="chips"><button class="btn" id="pw-send">Make the link</button></div><div class="note" id="pw-msg" aria-live="polite"></div>`;
+    $("pw-close").onclick = () => (el.classList.remove("on"), el.innerHTML = "");
+    $("pw-send").onclick = async () => {
+      const val2 = (id) => $(id).value;
+      const steps = [];
+      for (let i = 0; i < 4; i++) {
+        const drill = val2(`pw-d${i}`);
+        const title = val2(`pw-t${i}`), detail2 = val2(`pw-x${i}`);
+        if (!drill && !title.trim() && !detail2.trim()) continue;
+        const v = Number(val2(`pw-v${i}`));
+        const def = drill ? DRILLS2.find((d) => d.id === drill) : null;
+        steps.push({ drill: drill || void 0, title, detail: detail2, minutes: Number(val2(`pw-m${i}`)) || 5, board: def?.needs.includes("board") && v ? v : void 0, mph: def?.needs.includes("mph") && v ? v : void 0 });
+      }
+      const plan = newPlan(val2("pw-from"), val2("pw-title"), val2("pw-note"), steps);
+      if (!plan) return void ($("pw-msg").textContent = "Add your name, a title and at least one step.");
+      const url = `${appLink()}/#plan=${await packText(JSON.stringify(plan))}`;
+      $("pw-msg").textContent = await shareLink(plan.title, `${plan.from} sent you a practice plan: ${plan.title}. Open it in LaneIQ.`, url);
+    };
+  }
+  var sheet11, DRILL_OPTS;
+  var init_coachplanui = __esm({
+    "camera/coachplanui.ts"() {
+      init_health();
+      init_drills();
+      init_coachplan();
+      init_toast();
+      init_live();
+      init_state();
+      init_friends();
+      sheet11 = () => $("review");
+      DRILL_OPTS = `<option value="">My own instruction</option>${DRILLS2.map((d) => `<option value="${d.id}">${esc2(d.name)} (camera-scored)</option>`).join("")}`;
+    }
+  });
+
+  // camera/friends.ts
+  var friends_exports = {};
+  __export(friends_exports, {
+    PUBLIC_APP: () => PUBLIC_APP,
+    appLink: () => appLink,
+    askForUsername: () => askForUsername,
+    captureIncomingHash: () => captureIncomingHash,
+    deferred: () => deferred,
+    dropDeferred: () => dropDeferred,
+    friendsCardHtml: () => friendsCardHtml,
+    handleIncoming: () => handleIncoming,
+    isPrivateHost: () => isPrivateHost,
+    openCompare: () => openCompare,
+    openInvite: () => openInvite,
+    openShareSession: () => openShareSession,
+    packSession: () => packSession,
+    packText: () => packText,
+    setAppLink: () => setAppLink,
+    shareLink: () => shareLink,
+    sharedShotOf: () => sharedShotOf,
+    unpackText: () => unpackText,
+    wireFriendsCard: () => wireFriendsCard
+  });
+  function appLink() {
+    try {
+      const stored = localStorage.getItem(LINK_KEY);
+      if (stored) return stored.replace(/\/+$/, "");
+    } catch {
+    }
+    return isPrivateHost(baseUrl()) ? PUBLIC_APP : baseUrl();
+  }
+  function setAppLink(v) {
+    try {
+      const t = v.trim();
+      if (t) localStorage.setItem(LINK_KEY, t);
+      else localStorage.removeItem(LINK_KEY);
+    } catch {
+    }
+  }
+  function isPrivateHost(link) {
+    return /tailscale|\.ts\.net|localhost|127\.0\.0\.1|^https?:\/\/(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(link);
+  }
+  async function shareLink(title, text, url) {
+    const nav = navigator;
+    try {
+      if (nav.share) {
+        await nav.share({ title, text, url });
+        return "Opened the share sheet.";
+      }
+    } catch (e) {
+      if (e.name === "AbortError") return "Cancelled.";
+    }
+    try {
+      await navigator.clipboard.writeText(`${text}
+${url}`);
+      return "Link copied. Paste it into a message.";
+    } catch {
+      return "Couldn't copy automatically. Select and copy the link below.";
+    }
+  }
+  async function packText(json) {
+    try {
+      if ("CompressionStream" in window) {
+        const cs = new CompressionStream("gzip");
+        const w = cs.writable.getWriter();
+        void w.write(new TextEncoder().encode(json));
+        void w.close();
+        return "z." + bytesToB64(new Uint8Array(await new Response(cs.readable).arrayBuffer()));
+      }
+    } catch {
+    }
+    return b64urlEncode(json);
+  }
+  async function unpackText(payload) {
+    try {
+      if (payload.startsWith("z.")) {
+        const ds = new DecompressionStream("gzip");
+        const w = ds.writable.getWriter();
+        void w.write(b64ToBytes(payload.slice(2)));
+        void w.close();
+        const json = await new Response(ds.readable).text();
+        return json.length > 4e5 ? null : json;
+      }
+      return b64urlDecode(payload);
+    } catch {
+      return null;
+    }
+  }
+  async function unpackSession(payload) {
+    const json = await unpackText(payload);
+    return json === null ? null : decodeSession(b64urlEncode(json));
+  }
+  function askForUsername(then) {
+    const el = sheet12();
+    el.classList.add("on");
+    el.innerHTML = `<div class="row"><h2>Choose an account name</h2><button class="btn ghost" id="fr-close">Close</button></div>
+    <div class="note">Friends add you by account name plus your friend code. Pick one (3 to 20 letters, numbers or underscores).</div>
+    <div class="card"><div class="field"><label>Account name</label><input id="fr-user" placeholder="e.g. strikeking22" autocomplete="off" autocapitalize="none" spellcheck="false"></div><div class="chips"><button class="btn" id="fr-usersave">Save</button></div><div class="note" id="fr-usermsg"></div></div>`;
+    $("fr-close").onclick = close9;
+    $("fr-usersave").onclick = () => {
+      const u = cleanUsername($("fr-user").value);
+      if (!isUsername(u)) return void ($("fr-usermsg").textContent = "Use 3 to 20 letters, numbers or underscores, no spaces.");
+      updateProfile({ username: u });
+      then();
+    };
+  }
+  function openInvite() {
+    if (!myUser2()) return askForUsername(openInvite);
+    const link = `${appLink()}/#invite=${encodeInvite(myName3(), myCode2(), myUser2())}`;
+    const warn = isPrivateHost(appLink());
+    const el = sheet12();
+    el.classList.add("on");
+    el.innerHTML = `
+    <div class="row"><h2>Invite a player</h2><button class="btn ghost" id="fr-close">Close</button></div>
+    <div class="note">This link brings someone to the app and sends them a friend request from you. When they accept, they can send theirs back so you're both friends. Nothing is uploaded: the link itself carries your name and friend code.</div>
+    ${warn ? `<div class="card"><div class="lr-head" style="font-size:16px">This address only works on your own network</div><div class="u">The link points at ${esc2(appLink())}, which friends can't open. Set the public address of the app in <b>Community \u2192 Friends</b> before inviting people.</div></div>` : ""}
+    <div class="card"><div class="k">Your friend tag</div><div class="u" style="font-size:18px;font-weight:700;word-break:break-all;user-select:all">${esc2(friendTag(myUser2(), myCode2()))}</div>
+      <div class="note">If the link doesn't add you, your friend can type this tag in <b>Community \u2192 Friends \u2192 Add a friend</b>, or in the "Invited by a friend?" box when they first set up.</div>
+      <div class="chips"><button class="chip" id="fr-copytag2">Copy tag</button><button class="chip" id="fr-copylink">Copy link</button></div></div>
+    <div class="card"><div class="k">Your invite link</div><div class="u" style="word-break:break-all;user-select:all">${esc2(link)}</div>
+      <div class="chips"><button class="btn" id="fr-send">Send invite / friend request</button></div><div class="note" id="fr-msg"></div></div>`;
+    $("fr-close").onclick = close9;
+    const tag = friendTag(myUser2(), myCode2());
+    $("fr-send").onclick = async () => ($("fr-msg").textContent = await shareLink("Join me on LaneIQ", `${myName3()} invited you to LaneIQ, a free bowling coach that uses your phone's camera, and wants to be friends. Open the link, then add it to your Home Screen. If I don't show up as a friend, add me with my tag: ${tag}`, link), void 0);
+    const copy = (id, text, label2) => $(id).onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        $(id).textContent = "Copied";
+      } catch {
+        prompt(label2, text);
+      }
+    };
+    copy("fr-copytag2", tag, "Your friend tag:");
+    copy("fr-copylink", link, "Your invite link:");
+  }
+  function openFriendRequest(from, kind2) {
+    const el = sheet12();
+    el.classList.add("on");
+    const already = S.friends.some((f2) => f2.code === from.code);
+    const self2 = from.code === myCode2();
+    el.innerHTML = `
+    <div class="row"><h2>${kind2 === "invite" ? "Friend request" : "Friend request accepted"}</h2><button class="btn ghost" id="fr-close">Close</button></div>
+    ${self2 ? `<div class="card"><div class="u">That's your own link.</div></div>` : `<div class="card"><div class="lr-head">${esc2(from.name)}${from.username ? ` <span class="note">@${esc2(from.username)}</span>` : ""}</div><div class="u">${kind2 === "invite" ? "wants to be friends so you can compare shots on the same lane." : "added you. Add them back to finish connecting."}</div><div class="u">Friend code ${esc2(from.code)}</div>
+    <div class="chips">${already ? `<span class="tag">Already friends</span>` : `<button class="btn" id="fr-accept">${kind2 === "invite" ? `Add ${esc2(from.name)} and let them know` : `Add ${esc2(from.name)} as a friend`}</button>`}<button class="chip" id="fr-no">Not now</button></div><div class="note" id="fr-msg"></div></div>`}`;
+    $("fr-close").onclick = close9;
+    $("fr-no")?.addEventListener("click", () => {
+      if (!self2 && !already) deferInvite(from);
+      close9();
+    });
+    $("fr-accept")?.addEventListener("click", async () => {
+      S.friends.push({ code: from.code, name: from.name, username: from.username, addedAt: (/* @__PURE__ */ new Date()).toISOString() });
+      dropDeferred(from.code);
+      await saveSocial();
+      if (kind2 === "reply") return close9();
+      $("fr-msg").innerHTML = `Added ${esc2(from.name)}. Send the confirmation so they can add you back.`;
+      const send3 = async () => $("fr-msg").textContent = await shareLink("Friend request accepted", `${myName3()} accepted your friend request on LaneIQ. Tap to add them back.`, `${appLink()}/#reply=${encodeInvite(myName3(), myCode2(), myUser2())}`);
+      void send3();
+      const btn = document.createElement("button");
+      btn.className = "btn";
+      btn.textContent = "Send confirmation again";
+      btn.onclick = () => void send3();
+      $("fr-msg").append(document.createElement("br"), btn);
+    });
+  }
+  function buildSession(sessionId, lane2) {
+    const shots = S.shots.filter((s) => s.sessionId === sessionId).slice(-40);
+    if (!shots.length) return null;
+    return {
+      v: 1,
+      from: { name: myName3(), code: myCode2() },
+      lane: lane2,
+      date: new Date(shots[0].at).toISOString().slice(0, 10),
+      hand: S.profile?.hand ?? "R",
+      shots: shots.map(sharedShotOf)
+    };
+  }
+  function openShareSession() {
+    const el = sheet12();
+    el.classList.add("on");
+    const list = sessionsOf2().reverse();
+    const warn = isPrivateHost(appLink());
+    el.innerHTML = `
+    <div class="row"><h2>Share a session</h2><button class="btn ghost" id="fr-close">Close</button></div>
+    <div class="note">Sends a compact copy of your shots from one session (paths, speed, boards, ball and pin counts, no video) so a friend can compare them with theirs on the same lane.</div>
+    ${warn ? `<div class="card"><div class="u">The app address ${esc2(appLink())} only works on your own network, so friends won't be able to open this link. Set the public address under Me \u2192 Friends first.</div></div>` : ""}
+    ${list.length ? "" : `<div class="card"><div class="u">No sessions yet. Bowl some shots first.</div></div>`}
+    <div class="field"><label>Where was it? (center and lane, e.g. AMF 14)</label><input id="fr-lane" placeholder="Center and lane"></div>
+    ${list.map((s) => `<div class="card"><div class="row"><div><b>${esc2(s.date)}</b> <span class="note">${s.n} shots</span></div><button class="chip" data-id="${s.id}">Share</button></div></div>`).join("")}
+    <div class="note" id="fr-msg"></div>`;
+    $("fr-close").onclick = close9;
+    el.querySelectorAll("[data-id]").forEach(
+      (b) => b.onclick = async () => {
+        const lane2 = $("fr-lane").value.trim();
+        if (!lane2) return $("fr-msg").textContent = "Add where it was bowled first, so your friend can tell if it's the same lane.";
+        S.laneLabels[b.dataset.id] = lane2;
+        await saveSocial();
+        const sess = buildSession(b.dataset.id, lane2);
+        if (!sess) return;
+        $("fr-msg").textContent = await shareLink("My shots on LaneIQ", `${myName3()} shared a session from ${lane2}. Open it in LaneIQ to compare with yours.`, `${appLink()}/#session=${await packSession(sess)}`);
+      }
+    );
+  }
+  function openReceivedSession(sess) {
+    const el = sheet12();
+    el.classList.add("on");
+    const known = S.friends.some((f2) => f2.code === sess.from.code);
+    el.innerHTML = `
+    <div class="row"><h2>Shared session</h2><button class="btn ghost" id="fr-close">Close</button></div>
+    <div class="card"><div class="lr-head">${esc2(sess.from.name)}</div><div class="u">${esc2(sess.lane)} \xB7 ${esc2(sess.date)} \xB7 ${sess.shots.length} shots${sess.pattern ? ` \xB7 ${esc2(sess.pattern)}` : ""}</div>
+      <div class="note">${known ? "A friend of yours." : "Not in your friends yet. Saving this does not add them."}</div>
+      <div class="chips"><button class="btn" id="fr-save">Save to compare</button><button class="chip" id="fr-no">Not now</button></div></div>`;
+    $("fr-close").onclick = close9;
+    $("fr-no").onclick = close9;
+    $("fr-save").onclick = async () => {
+      S.shared = [...S.shared.filter((x) => !(x.from.code === sess.from.code && x.date === sess.date && x.lane === sess.lane)), sess];
+      await saveSocial();
+      close9();
+      openCompare(sess);
+    };
+  }
+  function openCompare(theirs) {
+    const el = sheet12();
+    el.classList.add("on");
+    const mine = sessionsOf2().reverse();
+    if (!S.shared.length || !mine.length) {
+      el.innerHTML = `<div class="row"><h2>Compare</h2><button class="btn ghost" id="fr-close">Close</button></div><div class="card"><div class="u">${!S.shared.length ? "No friend sessions yet. When a friend shares a session with you and you save it, it shows up here." : "Bowl some shots first so there is something to compare."}</div></div>`;
+      $("fr-close").onclick = close9;
+      return;
+    }
+    let pickTheirs = theirs ?? S.shared[S.shared.length - 1];
+    let pickMine = mine.find((m) => S.laneLabels[m.id] && pickTheirs.lane && S.laneLabels[m.id].toLowerCase() === pickTheirs.lane.toLowerCase())?.id ?? mine[0].id;
+    const draw3 = () => {
+      const mySess = buildSession(pickMine, S.laneLabels[pickMine] ?? "");
+      const cmp = compareSessions(mySess, pickTheirs);
+      const fmt4 = (v, u) => v === null ? "-" : `${v.toFixed(1)}${u === "\xB0" ? "\xB0" : u ? " " + u : ""}`;
+      el.innerHTML = `
+      <div class="row"><h2>Compare shots</h2><button class="btn ghost" id="fr-close">Close</button></div>
+      <div class="field"><label>Their session</label><select id="cp-theirs">${S.shared.map((x, i) => `<option value="${i}" ${x === pickTheirs ? "selected" : ""}>${esc2(x.from.name)} \xB7 ${esc2(x.lane)} \xB7 ${esc2(x.date)}</option>`).join("")}</select></div>
+      <div class="field"><label>Your session</label><select id="cp-mine">${mine.map((m) => `<option value="${m.id}" ${m.id === pickMine ? "selected" : ""}>${esc2(m.date)} \xB7 ${m.n} shots${S.laneLabels[m.id] ? " \xB7 " + esc2(S.laneLabels[m.id]) : ""}</option>`).join("")}</select></div>
+      <div class="field"><label>Where was your session? (so it can be matched to their lane)</label><input id="cp-lane" value="${esc2(S.laneLabels[pickMine] ?? "")}" placeholder="Center and lane"></div>
+      <div class="card"><span class="badge ${cmp.sameLane ? "good" : "tentative"}">${cmp.sameLane ? "same lane" : "different lanes"}</span><div class="stagebox" style="margin-top:10px"><canvas id="cp-map" width="360" height="600" style="width:100%;height:auto;aspect-ratio:360/600"></canvas></div>
+        <div class="note"><span style="color:#46e6ff">Cyan: you</span> \xB7 <span style="color:#ffd25a">Gold: ${esc2(pickTheirs.from.name)}</span></div></div>
+      <div class="card"><table><tr><th></th><th class="n">You</th><th class="n">${esc2(pickTheirs.from.name)}</th></tr>${cmp.rows.map((r) => `<tr><td>${esc2(r.label)}</td><td class="n">${fmt4(r.mine, r.unit)}</td><td class="n">${fmt4(r.theirs, r.unit)}</td></tr>`).join("")}</table></div>
+      <div class="card"><ul>${cmp.notes.map((n) => `<li>${esc2(n)}</li>`).join("")}</ul></div>`;
+      $("fr-close").onclick = close9;
+      $("cp-theirs").onchange = (e) => (pickTheirs = S.shared[Number(e.target.value)], draw3());
+      $("cp-mine").onchange = (e) => (pickMine = e.target.value, draw3());
+      $("cp-lane").onchange = async (e) => {
+        S.laneLabels[pickMine] = e.target.value.trim();
+        await saveSocial();
+        draw3();
+      };
+      const paths = [
+        ...pickTheirs.shots.map((s) => ({ path: pathFromShared(s.p), color: "rgba(255,210,90,.75)", width: 1.6, alpha: 0.8 })),
+        ...mySess.shots.map((s) => ({ path: pathFromShared(s.p), color: "rgba(70,230,255,.8)", width: 1.6, alpha: 0.85 }))
+      ];
+      drawTopDown($("cp-map").getContext("2d"), 360, 600, paths, { board: S.profile?.hand === "L" ? 22.5 : 17.5 });
+    };
+    draw3();
+  }
+  function captureIncomingHash() {
+    if (/^#(invite|reply|session|live|league|progress|crew|card|plan|shop|order|cam|screen)=/.test(location.hash)) {
+      const h = location.hash;
+      writePendingHash(h);
+      installManifestFor(h);
+      history.replaceState(null, "", location.pathname + location.search);
+    }
+  }
+  async function handleIncoming() {
+    if (S.profile) await addPendingTag();
+    const h = readPendingHash();
+    if (!h || !S.profile) return;
+    clearPendingHash();
+    const [, kind2, value] = /^#(invite|reply|session|live|league|progress|crew|card|plan|shop|order|cam|screen)=(.+)$/.exec(h) ?? [];
+    if (!kind2) return;
+    if (kind2 === "screen") return void (await Promise.resolve().then(() => (init_displaylink(), displaylink_exports))).joinScreenFrom(value);
+    if (kind2 === "cam") return void (await Promise.resolve().then(() => (init_camlink(), camlink_exports))).joinCameraFrom(value);
+    if (kind2 === "shop") return void (await Promise.resolve().then(() => (init_shopui(), shopui_exports))).handleShopLink(value);
+    if (kind2 === "order") return void (await Promise.resolve().then(() => (init_shopui(), shopui_exports))).handleOrderLink(value);
+    if (kind2 === "league") return void handleLeagueLink(value);
+    if (kind2 === "progress") return void handleProgressLink(value);
+    if (kind2 === "crew") return void handleCrewLink(value);
+    if (kind2 === "plan") return void (await Promise.resolve().then(() => (init_coachplanui(), coachplanui_exports))).handlePlanLink(value);
+    if (S.profile?.junior) return void notify("Friend, session and live links are switched off on a junior profile.");
+    if (kind2 === "card") return void handleCardLink(value);
+    if (kind2 === "live") return void joinFrom(value);
+    if (kind2 === "session") {
+      const s = await unpackSession(value);
+      return s ? openReceivedSession(s) : void notify("That session link is damaged or isn't a LaneIQ session.");
+    }
+    const inv = decodeInvite(value);
+    if (!inv) return void notify("That friend link is damaged.");
+    openFriendRequest(inv, kind2);
+  }
+  function deferInvite(from) {
+    if (!deferred().some((d) => d.code === from.code)) setDeferred([...deferred(), from]);
+  }
+  function dropDeferred(code2) {
+    setDeferred(deferred().filter((d) => d.code !== code2));
+  }
+  async function addPendingTag() {
+    const raw = readPendingTag();
+    if (!raw) return;
+    clearPendingTag();
+    const t = parseFriendTag(raw);
+    if (!t || t.code === myCode2() || S.friends.some((f2) => f2.code === t.code)) return;
+    S.friends.push({ code: t.code, name: t.username, username: t.username, addedAt: (/* @__PURE__ */ new Date()).toISOString() });
+    await saveSocial();
+    notify(`Added ${t.username} as a friend.`);
+  }
+  function friendsCardHtml() {
+    const link = appLink();
+    return `<div class="card"><div class="k">Friends</div>
+    ${myUser2() ? `<div class="note">Your account name: <b>@${esc2(myUser2())}</b> \xB7 your friend tag: <b>${esc2(friendTag(myUser2(), myCode2()))}</b></div><div class="chips"><button class="chip" id="fr-copytag">Copy my tag</button></div>` : `<div class="note">Choose an account name so friends can add you.</div><div class="chips"><button class="btn" id="fr-setuser">Choose account name</button></div>`}
+    <div class="field"><label>Add a friend by their tag</label><div class="chips"><input id="fr-addtag" placeholder="name#CODE, e.g. strikeking22#K7QP2MXA" autocomplete="off" autocapitalize="none" spellcheck="false" style="flex:1"><button class="chip add" id="fr-addbtn">Add</button></div><div class="note" id="fr-addmsg">Tap Add a friend to scan a code or send a request link, or add someone by their tag. There is no server to search, so a name alone cannot be looked up.</div></div>
+    ${deferred().filter((d) => !S.friends.some((f2) => f2.code === d.code)).map((d) => `<div class="card" style="margin:8px 0"><div class="u"><b>${esc2(d.name)}</b>${d.username ? ` <span class="note">@${esc2(d.username)}</span>` : ""} sent you a friend request.</div><div class="chips"><button class="chip add" data-def-add="${esc2(d.code)}">Add</button><button class="chip" data-def-no="${esc2(d.code)}">Dismiss</button></div></div>`).join("")}
+    <div class="chips"><button class="btn" id="fr-add">Add a friend</button><button class="btn ghost" id="fr-sharesess">Share a session</button><button class="btn ghost" id="fr-compare">Compare shots</button><button class="btn" id="fr-live">Bowl together, live</button></div>
+    ${S.friends.length ? `<table>${S.friends.map((f2) => `<tr><td><button class="chip sel" data-prof="${f2.code}">${esc2(f2.name)}</button>${f2.username ? ` <span class="note">@${esc2(f2.username)}</span>` : ""}${f2.card ? "" : ` <span class="note">(no card yet)</span>`}</td><td class="n"><button class="chip" data-rmf="${f2.code}">Remove</button></td></tr>`).join("")}</table>` : `<div class="u" style="margin-top:8px">No friends yet.</div>`}
+    ${S.shared.length ? `<div class="note" style="margin-top:8px">${S.shared.length} saved session${S.shared.length === 1 ? "" : "s"} from friends.</div>` : ""}
+    <div class="field"><label>App address friends will open</label><input id="fr-link" value="${esc2(link)}" placeholder="https://\u2026"></div>
+    ${isPrivateHost(link) ? `<div class="note" style="color:var(--gold)">That address only works on your own network or Tailscale. Friends need a public address; set it here once the app is hosted for everyone.</div>` : ""}</div>`;
+  }
+  function wireFriendsCard(rerender) {
+    $("fr-setuser")?.addEventListener("click", () => askForUsername(() => (close9(), rerender())));
+    $("fr-copytag")?.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(friendTag(myUser2(), myCode2()));
+        $("fr-copytag").textContent = "Copied";
+      } catch {
+        prompt("Your friend tag:", friendTag(myUser2(), myCode2()));
+      }
+    });
+    $("fr-addbtn")?.addEventListener("click", async () => {
+      const t = parseFriendTag($("fr-addtag").value);
+      const msg = $("fr-addmsg");
+      if (!t) return void (msg.textContent = "That doesn't look like a tag. It should be a name, a #, then 8 letters and numbers: strikeking22#K7QP2MXA.");
+      if (t.code === myCode2()) return void (msg.textContent = "That's your own tag.");
+      if (S.friends.some((f2) => f2.code === t.code)) return void (msg.textContent = "Already in your friends.");
+      S.friends.push({ code: t.code, name: t.username, username: t.username, addedAt: (/* @__PURE__ */ new Date()).toISOString() });
+      await saveSocial();
+      rerender();
+    });
+    document.querySelectorAll("[data-def-add]").forEach((b) => b.onclick = async () => {
+      const d = deferred().find((x) => x.code === b.dataset.defAdd);
+      if (d) S.friends.push({ code: d.code, name: d.name, username: d.username, addedAt: (/* @__PURE__ */ new Date()).toISOString() });
+      dropDeferred(b.dataset.defAdd);
+      await saveSocial();
+      rerender();
+    });
+    document.querySelectorAll("[data-def-no]").forEach((b) => b.onclick = () => (dropDeferred(b.dataset.defNo), rerender()));
+    $("fr-add")?.addEventListener("click", openAddFriend);
+    document.querySelectorAll("[data-prof]").forEach((b) => b.onclick = () => void openFriendProfile(b.dataset.prof));
+    $("fr-sharesess")?.addEventListener("click", openShareSession);
+    $("fr-compare")?.addEventListener("click", () => openCompare());
+    $("fr-live")?.addEventListener("click", openLive);
+    $("fr-link")?.addEventListener("change", (e) => (setAppLink(e.target.value), rerender()));
+    document.querySelectorAll("[data-rmf]").forEach(
+      (b) => b.onclick = async () => {
+        S.friends = S.friends.filter((f2) => f2.code !== b.dataset.rmf);
+        await saveSocial();
+        rerender();
+      }
+    );
+  }
+  var LINK_KEY, baseUrl, PUBLIC_APP, bytesToB64, b64ToBytes, packSession, sheet12, close9, myName3, myUser2, myCode2, sharedShotOf, sessionsOf2, DEFER_KEY, deferred, setDeferred;
+  var init_friends = __esm({
+    "camera/friends.ts"() {
+      init_toast();
+      init_share();
+      init_live();
+      init_render();
+      init_sync();
+      init_leagueui();
+      init_juniorui();
+      init_crewui();
+      init_friendsplus();
+      init_state();
+      init_pending();
+      LINK_KEY = "laneiq.appLink";
+      baseUrl = () => new URL(".", location.href).href.replace(/\/+$/, "");
+      PUBLIC_APP = "https://flanxe.github.io/laneiq";
+      bytesToB64 = (b) => {
+        let s = "";
+        b.forEach((x) => s += String.fromCharCode(x));
+        return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      };
+      b64ToBytes = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+      packSession = (sess) => packText(JSON.stringify(sess));
+      sheet12 = () => $("friends");
+      close9 = () => (sheet12().classList.remove("on"), sheet12().innerHTML = "");
+      myName3 = () => S.profile?.name ?? "A bowler";
+      myUser2 = () => S.profile?.username ?? "";
+      myCode2 = () => {
+        if (S.profile && !S.profile.friendCode) updateProfile({ friendCode: newFriendCode() });
+        return S.profile?.friendCode ?? "";
+      };
+      sharedShotOf = (s) => ({
+        sp: Number(s.a.speedMph.toFixed(1)),
+        ar: s.m.arrowsBoard === null ? null : Number(s.m.arrowsBoard.toFixed(1)),
+        bb: s.m.breakpointBoard === null ? null : Number(s.m.breakpointBoard.toFixed(1)),
+        bf: s.m.breakpointFt === null ? null : Number(s.m.breakpointFt.toFixed(0)),
+        en: s.m.entryBoard === null ? null : Number(s.m.entryBoard.toFixed(1)),
+        an: s.a.impactAngleDeg === null ? null : Number(s.a.impactAngleDeg.toFixed(1)),
+        ball: S.arsenal.find((b) => b.id === s.ballId)?.name,
+        pins: s.result?.pinsDown,
+        p: downsamplePath(s.path)
+      });
+      sessionsOf2 = () => {
+        const ids = [...new Set(S.shots.map((s) => s.sessionId))];
+        return ids.map((id) => {
+          const g = S.shots.filter((s) => s.sessionId === id);
+          return { id, n: g.length, date: new Date(g[0].at).toLocaleDateString([], { month: "short", day: "numeric" }) };
+        });
+      };
+      DEFER_KEY = "laneiq.deferredInvites";
+      deferred = () => {
+        try {
+          return JSON.parse(localStorage.getItem(DEFER_KEY) ?? "[]");
+        } catch {
+          return [];
+        }
+      };
+      setDeferred = (v) => {
+        try {
+          localStorage.setItem(DEFER_KEY, JSON.stringify(v.slice(-20)));
+        } catch {
+        }
+      };
+    }
+  });
+
+  // camera/backend.ts
+  async function call(path2, init = {}, token2) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 2e4);
+    try {
+      const r = await fetch(`${base()}${path2}`, { ...init, headers: { ...keyHeaders(token2), ...init.headers }, signal: ctl.signal });
+      const text = await r.text();
+      const body = text ? JSON.parse(text) : null;
+      if (!r.ok) throw new Error(body && (body.msg || body.message || body.error_description || body.error) || `Request failed (${r.status})`);
+      return body;
+    } catch (e) {
+      if (e.name === "AbortError") throw new Error("The server didn't answer in time. Check your connection and try again.");
+      throw e;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+  async function sendSignInEmail(email) {
+    await call("/auth/v1/otp", { method: "POST", body: JSON.stringify({ email, create_user: true, gotrue_meta_security: {} }) });
+  }
+  async function verifyCode(email, code2) {
+    const j = await call("/auth/v1/verify", { method: "POST", body: JSON.stringify({ type: "email", email, token: code2.replace(/\s+/g, "") }) });
+    const s = toSession(j, email);
+    writeSession(s);
+    return s;
+  }
+  async function takeSessionFromHash() {
+    const h = location.hash;
+    if (!/access_token=/.test(h)) return false;
+    const p = new URLSearchParams(h.replace(/^#/, ""));
+    const access = p.get("access_token"), refresh2 = p.get("refresh_token");
+    history.replaceState(null, "", location.pathname + location.search);
+    if (!access || !refresh2) return false;
+    try {
+      const u = await call("/auth/v1/user", {}, access);
+      writeSession({ access, refresh: refresh2, expires: Date.now() + (Number(p.get("expires_in")) || 3600) * 1e3 - 6e4, userId: u.id, email: u.email });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async function signInWithPassword(email, password) {
+    const j = await call("/auth/v1/token?grant_type=password", { method: "POST", body: JSON.stringify({ email, password }) });
+    const s = toSession(j, email);
+    writeSession(s);
+    return s;
+  }
+  async function enabledProviders() {
+    try {
+      const j = await call("/auth/v1/settings");
+      return { google: !!j?.external?.google, apple: !!j?.external?.apple };
+    } catch {
+      return { google: false, apple: false };
+    }
+  }
+  function startOAuth(provider) {
+    const back = location.origin + location.pathname;
+    location.href = `${base()}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(back)}`;
+  }
+  async function token() {
+    const s = readSession();
+    if (!s) throw new Error("Sign in first.");
+    if (Date.now() < s.expires) return s.access;
+    try {
+      const j = await call("/auth/v1/token?grant_type=refresh_token", { method: "POST", body: JSON.stringify({ refresh_token: s.refresh }) });
+      const n = toSession(j, s.email);
+      writeSession(n);
+      return n.access;
+    } catch {
+      writeSession(null);
+      throw new Error("Your sign-in ran out. Sign in again.");
+    }
+  }
+  async function asShop(path2, init = {}) {
+    return call(`/rest/v1/${path2}`, init, await token());
+  }
+  async function asUser(path2, init = {}) {
+    return call(path2, init, await token());
+  }
+  async function asBowler(path2, init = {}) {
+    return call(`/rest/v1/${path2}`, init);
+  }
+  var SESSION, base, backendOn, readSession, writeSession, currentSession, keyHeaders, toSession, signOut, MIN;
+  var init_backend = __esm({
+    "camera/backend.ts"() {
+      init_shopconfig();
+      SESSION = "laneiq.auth";
+      base = () => SHOP_DIRECTORY.url.replace(/\/+$/, "");
+      backendOn = () => !!(SHOP_DIRECTORY.url && SHOP_DIRECTORY.anonKey);
+      readSession = () => {
+        try {
+          const j = JSON.parse(localStorage.getItem(SESSION) ?? "null");
+          return j && j.access && j.refresh ? j : null;
+        } catch {
+          return null;
+        }
+      };
+      writeSession = (s) => {
+        try {
+          s ? localStorage.setItem(SESSION, JSON.stringify(s)) : localStorage.removeItem(SESSION);
+        } catch {
+        }
+      };
+      currentSession = () => readSession();
+      keyHeaders = (token2) => ({ apikey: SHOP_DIRECTORY.anonKey, Authorization: `Bearer ${token2 ?? SHOP_DIRECTORY.anonKey}`, "Content-Type": "application/json" });
+      toSession = (j, email = "") => ({ access: j.access_token, refresh: j.refresh_token, expires: Date.now() + (Number(j.expires_in) || 3600) * 1e3 - 6e4, userId: j.user?.id ?? readSession()?.userId ?? "", email: j.user?.email ?? email });
+      signOut = () => writeSession(null);
+      MIN = { headers: { Prefer: "return=minimal" } };
+    }
+  });
+
+  // camera/shopbox.ts
+  var shopbox_exports = {};
+  __export(shopbox_exports, {
+    openBoxScanner: () => openBoxScanner,
+    openStockEditor: () => openStockEditor
+  });
+  async function openBoxScanner() {
+    bump("shop-scan");
+    const el = sheet13();
+    el.classList.add("on");
+    el.innerHTML = `<div class="row"><h2>Receive boxes</h2><button class="btn" id="bx-done">Done</button></div>
+    <div class="note">Hold the barcode on the box inside the picture, steady, with good light. A beep and a short buzz mean it was counted.</div>
+    <video id="bx-v" playsinline muted style="width:100%;border-radius:14px;background:#000;max-height:46vh;object-fit:cover"></video>
+    <div id="bx-ask"></div>
+    <div class="field"><label for="bx-man">Or type the number under the barcode</label><div class="chips"><input id="bx-man" inputmode="numeric" autocomplete="off" style="flex:1"><button class="btn ghost" id="bx-add">Count it</button></div></div>
+    <h3>Counted this time</h3><div id="bx-log" class="note">Nothing yet.</div><div class="note" id="bx-msg" aria-live="polite"></div>`;
+    const video2 = $("bx-v");
+    let stream2 = null, stopped = false, paused = false;
+    const log = [];
+    const stop = () => {
+      stopped = true;
+      stream2?.getTracks().forEach((t) => t.stop());
+      video2.srcObject = null;
+    };
+    $("bx-done").onclick = () => {
+      stop();
+      openShop();
+    };
+    const say2 = (m) => $("bx-msg").textContent = m;
+    const beep = () => {
+      try {
+        navigator.vibrate?.(60);
+        const a = new AudioContext(), o = a.createOscillator(), g2 = a.createGain();
+        o.frequency.value = 1400;
+        g2.gain.value = 0.08;
+        o.connect(g2);
+        g2.connect(a.destination);
+        o.start();
+        setTimeout(() => (o.stop(), a.close()), 90);
+      } catch {
+      }
+    };
+    const handle = (raw) => {
+      const shop = load();
+      if (!shop) return;
+      const r = receiveBox(shop.items, shop.boxes ?? {}, raw, S.catalog);
+      if (r.status === "bad") return say2("That number didn't pass its check. Try the scan again or type it carefully.");
+      if (r.status === "unknown") return ask(r.barcode);
+      save2({ ...shop, items: r.inv });
+      beep();
+      log.unshift(`${r.item.manufacturer} ${r.item.name}${r.weightLb ? ` ${r.weightLb} lb` : ""}: now ${r.item.stock} in stock`);
+      $("bx-log").innerHTML = log.slice(0, 12).map((l) => `<div class="u">+1 ${esc2(l)}</div>`).join("");
+      say2("");
+    };
+    const ask = (barcode) => {
+      paused = true;
+      $("bx-ask").innerHTML = `<div class="card"><div class="k">New barcode ${esc2(barcode)}</div><div class="note">Which ball is this? You only say it once; the next box with this barcode is counted by itself.</div>
+      <div class="field"><label for="bx-q">Ball name</label><input id="bx-q" autocomplete="off" placeholder="Start typing, e.g. Phaze"></div><div id="bx-hits"></div>
+      <div class="field"><label for="bx-w">Weight in the box (lb)</label><select id="bx-w">${[16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6].map((w) => `<option value="${w}"${w === 15 ? " selected" : ""}>${w}</option>`).join("")}</select></div>
+      <div class="chips"><button class="btn ghost" id="bx-skip">Skip this box</button></div></div>`;
+      let chosen = "";
+      const hits = $("bx-hits");
+      $("bx-q").addEventListener("input", (e) => {
+        const q2 = e.target.value.trim();
+        const found2 = q2.length >= 2 ? searchCatalog(S.catalog, q2, 6).map((h) => h.ball) : [];
+        hits.innerHTML = found2.map((b) => `<button class="chip" data-k="${esc2(b.key)}" style="display:block;width:100%;text-align:left;margin:3px 0">${esc2(b.manufacturer)} ${esc2(b.name)}</button>`).join("");
+        hits.querySelectorAll("[data-k]").forEach((b) => b.onclick = () => {
+          chosen = b.dataset.k;
+          const shop = load();
+          if (!shop) return;
+          const w = Number($("bx-w").value);
+          const map = learnBox(shop.boxes ?? {}, barcode, chosen, w);
+          save2({ ...shop, boxes: map });
+          $("bx-ask").innerHTML = "";
+          paused = false;
+          handle(barcode);
+        });
+      });
+      $("bx-skip").onclick = () => {
+        $("bx-ask").innerHTML = "";
+        paused = false;
+        lastCode = barcode;
+        lastAt = performance.now() + 8e3;
+      };
+    };
+    $("bx-add").onclick = () => {
+      const v = $("bx-man").value;
+      if (!normalizeBarcode(v)) return say2("That number didn't pass its check. Type all the digits under the barcode.");
+      $("bx-man").value = "";
+      handle(v);
+    };
+    let lastCode = "", lastAt = 0;
+    const found = (code2) => {
+      const now = performance.now();
+      if (code2 === lastCode && now - lastAt < 3e3) return;
+      lastCode = code2;
+      lastAt = now;
+      handle(code2);
+    };
+    try {
+      stream2 = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } }, audio: false });
+    } catch (e) {
+      return void say2(`The camera isn't available (${e instanceof Error ? e.message : String(e)}). Allow the camera for LaneIQ, or type the numbers under the barcodes.`);
+    }
+    video2.srcObject = stream2;
+    await video2.play().catch(() => {
+    });
+    const Native = window.BarcodeDetector;
+    const native = Native ? new Native({ formats: ["ean_13", "upc_a", "ean_8", "upc_e"] }) : null;
+    const c = document.createElement("canvas");
+    const g = c.getContext("2d", { willReadFrequently: true });
+    const tick = async () => {
+      if (stopped) return;
+      if (!paused && video2.videoWidth) {
+        try {
+          let code2 = null;
+          if (native) code2 = (await native.detect(video2))[0]?.rawValue ?? null;
+          if (!code2) {
+            const s = Math.min(1, 960 / video2.videoWidth);
+            c.width = Math.round(video2.videoWidth * s);
+            c.height = Math.round(video2.videoHeight * s);
+            g.drawImage(video2, 0, 0, c.width, c.height);
+            code2 = readBarcode(g.getImageData(0, 0, c.width, c.height).data, c.width, c.height);
+          }
+          if (code2 && normalizeBarcode(code2)) found(code2);
+        } catch {
+        }
+      }
+      setTimeout(tick, 120);
+    };
+    void tick();
+  }
+  function openStockEditor() {
+    bump("shop-edit");
+    const el = sheet13();
+    el.classList.add("on");
+    const shop = load();
+    const items = shop?.items ?? [];
+    el.innerHTML = `<div class="row"><h2>Stock and prices</h2><button class="btn ghost" id="se-close">Back</button></div>
+    <div class="note">${items.length} item${items.length === 1 ? "" : "s"}. Set how many you have (0 hides a ball from suggestions) and its price.</div>
+    <div class="field"><label for="se-q">Find a ball</label><input id="se-q" autocomplete="off"></div>
+    <div id="se-list">${items.map((i, n) => `<div class="card" data-n="${n}" data-t="${esc2(`${i.manufacturer} ${i.name}`.toLowerCase())}"><div class="lr-head">${esc2(i.manufacturer)} ${esc2(i.name)}</div><div class="note">${i.key ? "In the catalog" : "Not in the catalog, so it can't be suggested"}${i.weights.length ? ` \xB7 ${i.weights.join(", ")} lb` : ""}</div>
+      <div class="two"><div class="field"><label>In stock</label><input class="se-s" inputmode="numeric" value="${i.stock}"></div><div class="field"><label>Price ($)</label><input class="se-p" inputmode="decimal" value="${i.price || ""}"></div></div></div>`).join("") || `<div class="note">No stock yet. Scan boxes or load a spreadsheet.</div>`}</div>
+    <div class="chips"><button class="btn" id="se-save">Save</button><button class="btn ghost" id="se-addball">Add a ball by name</button></div><div id="se-add"></div><div class="note" id="se-msg" aria-live="polite"></div>`;
+    $("se-close").onclick = openShop;
+    $("se-q").addEventListener("input", (e) => {
+      const q2 = e.target.value.trim().toLowerCase();
+      el.querySelectorAll("#se-list [data-t]").forEach((c) => c.style.display = !q2 || c.dataset.t.includes(q2) ? "" : "none");
+    });
+    $("se-save").onclick = () => {
+      const cur2 = load();
+      if (!cur2) return;
+      const next = cur2.items.map((i) => ({ ...i }));
+      el.querySelectorAll("#se-list [data-n]").forEach((c) => {
+        const it = next[Number(c.dataset.n)];
+        if (!it) return;
+        const s = Number(c.querySelector(".se-s").value), p = Number(c.querySelector(".se-p").value);
+        it.stock = Number.isFinite(s) && s >= 0 && s <= 9999 ? Math.floor(s) : it.stock;
+        it.price = Number.isFinite(p) && p >= 0 && p <= 2e3 ? Math.round(p * 100) / 100 : it.price;
+      });
+      save2({ ...cur2, items: next });
+      $("se-msg").textContent = "Saved.";
+    };
+    $("se-addball").onclick = () => {
+      $("se-add").innerHTML = `<div class="card"><div class="field"><label for="se-aq">Ball name</label><input id="se-aq" autocomplete="off"></div><div id="se-ah"></div></div>`;
+      $("se-aq").addEventListener("input", (e) => {
+        const q2 = e.target.value.trim();
+        const found = q2.length >= 2 ? searchCatalog(S.catalog, q2, 6).map((h) => h.ball) : [];
+        $("se-ah").innerHTML = found.map((b) => `<button class="chip" data-k="${esc2(b.key)}" style="display:block;width:100%;text-align:left;margin:3px 0">${esc2(b.manufacturer)} ${esc2(b.name)}</button>`).join("");
+        $("se-ah").querySelectorAll("[data-k]").forEach((b) => b.onclick = () => {
+          const cur2 = load(), ball = S.catalog.find((x) => x.key === b.dataset.k);
+          if (!cur2 || !ball || cur2.items.some((x) => x.key === ball.key)) return void ($("se-msg").textContent = "That ball is already in your stock.");
+          save2({ ...cur2, items: [...cur2.items, itemFromCatalog(ball, 0, 0, 1)] });
+          openStockEditor();
+        });
+      });
+    };
+  }
+  var sheet13;
+  var init_shopbox = __esm({
+    "camera/shopbox.ts"() {
+      init_health();
+      init_barcode();
+      init_identify();
+      init_shop();
+      init_live();
+      init_state();
+      init_shopui();
+      sheet13 = () => $("review");
+    }
+  });
+
+  // camera/shopcloud.ts
+  var shopcloud_exports = {};
+  __export(shopcloud_exports, {
+    openInbox: () => openInbox,
+    openShopOnline: () => openShopOnline
+  });
+  async function geocode(q2) {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q2)}`);
+    const j = await r.json();
+    const lat = Number(j?.[0]?.lat), lng = Number(j?.[0]?.lon);
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+  }
+  async function openShopOnline() {
+    bump("shop-online");
+    const el = sheet14();
+    el.classList.add("on");
+    if (!backendOn()) {
+      el.innerHTML = `<div class="row"><h2>Shop online</h2><button class="btn ghost" id="so-close">Back</button></div><div class="note">The online shop service isn't set up in this copy of LaneIQ.</div>`;
+      $("so-close").onclick = openShop;
+      return;
+    }
+    const s = currentSession();
+    if (!s) return signInScreen();
+    el.innerHTML = `<div class="row"><h2>Shop online</h2><button class="btn ghost" id="so-close">Back</button></div><div class="note">Loading your shop\u2026</div>`;
+    $("so-close").onclick = openShop;
+    let shop = null;
+    try {
+      shop = (await asShop(`shops?select=*&owner=eq.${s.userId}&limit=1`))[0] ?? null;
+    } catch (e) {
+      return void (el.innerHTML = `<div class="row"><h2>Shop online</h2><button class="btn ghost" id="so-close">Back</button></div><div class="note">${esc2(e.message)}</div><div class="chips"><button class="btn" id="so-out">Sign out</button></div>`, $("so-close").onclick = openShop, $("so-out").onclick = () => (signOut(), openShopOnline()));
+    }
+    const local = load();
+    if (shop && local && local.remoteId !== shop.id) save2({ ...local, remoteId: shop.id });
+    el.innerHTML = `<div class="row"><h2>Shop online</h2><button class="btn ghost" id="so-close">Back</button></div>
+    <div class="note">Signed in as ${esc2(s.email)}. Put your shop online to take orders in an inbox and, if you choose, be found by bowlers near you.</div>
+    <div class="card"><div class="k">Your shop</div>
+    <div class="field"><label for="so-name">Shop name</label><input id="so-name" maxlength="60" value="${esc2(shop?.name ?? local?.name ?? "")}"></div>
+    <div class="field"><label for="so-contact">How bowlers reach you</label><input id="so-contact" maxlength="80" value="${esc2(shop?.contact ?? local?.contact ?? "")}"></div>
+    <div class="two"><div class="field"><label for="so-addr">Street address, city, state</label><input id="so-addr" maxlength="120" value="${esc2(shop?.address ?? "")}" autocomplete="street-address"></div><div class="field"><label for="so-phone">Phone (optional)</label><input id="so-phone" maxlength="30" value="${esc2(shop?.phone ?? "")}" autocomplete="tel"></div></div>
+    <label class="chips" style="align-items:flex-start;gap:8px"><input type="checkbox" id="so-orders"${shop?.accepts_orders !== false ? " checked" : ""}> <span>Take orders online (they arrive in your inbox below).</span></label>
+    <label class="chips" style="align-items:flex-start;gap:8px"><input type="checkbox" id="so-list"${shop?.listed ? " checked" : ""}> <span>List my shop in "Find a pro shop near me", first, above shops that don't use LaneIQ. Shows my name, address and phone.</span></label>
+    <div class="note">${shop?.lat != null ? `Position saved. It's looked up from your address when you save.` : `Your position is looked up from the address when you save. A listed shop needs one.`}</div>
+    <div class="chips"><button class="btn" id="so-save">${shop ? "Save changes" : "Create my online shop"}</button></div><div class="note" id="so-msg" aria-live="polite"></div></div>
+    ${shop ? `<div class="card"><div class="k">Stock</div><div class="note">Upload what's in your stock now so bowlers can see it and order. Do it again after you scan boxes or change prices. This replaces the online copy.</div><div class="chips"><button class="btn" id="so-up">Upload my stock (${local?.items.length ?? 0} items)</button><button class="btn ghost" id="so-down">Load the online copy to this phone</button></div></div>
+    <div class="card"><div class="k">Orders</div><div class="note">Orders bowlers send to your shop.</div><div class="chips"><button class="btn" id="so-inbox">Open the inbox</button></div></div>` : ""}
+    <div class="chips"><button class="btn ghost" id="so-out">Sign out</button></div>`;
+    $("so-close").onclick = openShop;
+    $("so-out").onclick = () => (signOut(), openShopOnline());
+    const msg = (m) => $("so-msg").textContent = m;
+    $("so-save").onclick = async () => {
+      const v = (id) => $(id).value.trim();
+      const name = v("so-name"), contact = v("so-contact"), address = v("so-addr");
+      const listed = $("so-list").checked, accepts = $("so-orders").checked;
+      if (name.length < 2 || !contact) return msg("Add the shop name and a way to reach you.");
+      if (listed && !address) return msg("A listed shop needs its address, so bowlers can find it.");
+      msg("Saving\u2026");
+      try {
+        let pos = shop && shop.address === address && shop.lat != null ? { lat: shop.lat, lng: shop.lng } : null;
+        if (!pos && address) pos = await geocode(address);
+        if (listed && !pos) return msg("I couldn't find that address on the map. Add the city and state and try again.");
+        const row4 = { name, contact, address: address || null, phone: v("so-phone") || null, accepts_orders: accepts, listed: listed && !!pos, lat: pos?.lat ?? null, lng: pos?.lng ?? null, drill_price: local?.drillPrice ?? 0, note: (local?.note ?? "").slice(0, 300) };
+        if (shop) await asShop(`shops?id=eq.${shop.id}`, { method: "PATCH", body: JSON.stringify(row4), ...MIN });
+        else {
+          const made = await asShop("shops", { method: "POST", body: JSON.stringify({ ...row4, owner: s.userId, slug: slugify(name) }), headers: { Prefer: "return=representation" } });
+          if (made[0] && local) save2({ ...local, remoteId: made[0].id });
+        }
+        notify(shop ? "Saved." : "Your shop is online.");
+        void openShopOnline();
+      } catch (e) {
+        msg(e.message);
+      }
+    };
+    if (!shop) return;
+    $("so-up").onclick = async () => {
+      const cur2 = load();
+      if (!cur2?.items.length) return msg("There's no stock on this phone to upload yet.");
+      msg("Uploading\u2026");
+      try {
+        await asShop(`inventory?shop_id=eq.${shop.id}`, { method: "DELETE", ...MIN });
+        const rows2 = inventoryRows(shop.id, cur2.items);
+        for (let i = 0; i < rows2.length; i += 400) await asShop("inventory", { method: "POST", body: JSON.stringify(rows2.slice(i, i + 400)), ...MIN });
+        msg(`Uploaded ${rows2.length} items.`);
+      } catch (e) {
+        msg(e.message);
+      }
+    };
+    $("so-down").onclick = async () => {
+      msg("Loading\u2026");
+      try {
+        const rows2 = await asShop(`inventory?select=*&shop_id=eq.${shop.id}&limit=2000`);
+        const items = itemsFromRows(rows2);
+        const cur2 = load();
+        if (cur2) save2({ ...cur2, items });
+        msg(`Loaded ${items.length} items onto this phone.`);
+      } catch (e) {
+        msg(e.message);
+      }
+    };
+    $("so-inbox").onclick = () => void openInbox();
+  }
+  function signInScreen(email = "") {
+    const el = sheet14();
+    el.innerHTML = `<div class="row"><h2>Shop sign-in</h2><button class="btn ghost" id="si-close">Back</button></div>
+    <div class="note">Put your shop online with your email. No password: we email you a sign-in code. Bowlers never need to sign in.</div>
+    <div class="field"><label for="si-email">Your email</label><input id="si-email" type="email" autocomplete="email" value="${esc2(email)}"></div>
+    <div class="chips"><button class="btn" id="si-send">Email me a code</button></div>
+    <div id="si-code"></div><div class="note" id="si-msg" aria-live="polite"></div>`;
+    $("si-close").onclick = openShop;
+    $("si-send").onclick = async () => {
+      const em = $("si-email").value.trim();
+      if (!/^\S+@\S+\.\S+$/.test(em)) return void ($("si-msg").textContent = "Type a real email address.");
+      $("si-msg").textContent = "Sending\u2026";
+      try {
+        await sendSignInEmail(em);
+        $("si-msg").textContent = "Sent. Check your email (and spam) for a code. If the email has a link instead, open it on this phone.";
+        $("si-code").innerHTML = `<div class="field"><label for="si-c">The code from the email</label><input id="si-c" inputmode="numeric" autocomplete="one-time-code"></div><div class="chips"><button class="btn" id="si-go">Sign in</button></div>`;
+        $("si-go").onclick = async () => {
+          try {
+            await verifyCode(em, $("si-c").value);
+            void openShopOnline();
+          } catch (e) {
+            $("si-msg").textContent = e.message;
+          }
+        };
+      } catch (e) {
+        $("si-msg").textContent = e.message;
+      }
+    };
+  }
+  async function openInbox() {
+    bump("shop-inbox");
+    const el = sheet14();
+    el.classList.add("on");
+    el.innerHTML = `<div class="row"><h2>Orders</h2><button class="btn ghost" id="ib-close">Back</button></div><div class="note">Loading\u2026</div>`;
+    $("ib-close").onclick = () => void openShopOnline();
+    try {
+      const rows2 = await asShop("orders?select=id,status,created_at,request&order=created_at.desc&limit=100");
+      el.innerHTML = `<div class="row"><h2>Orders</h2><button class="btn ghost" id="ib-close">Back</button></div>
+      ${rows2.length ? rows2.map((r) => {
+        const o = parseOrder(JSON.stringify(r.request));
+        return `<div class="card"><div class="lr-head">${o ? esc2(o.customer.name) : "Order"} \xB7 ${esc2(o ? `${o.ball.manufacturer} ${o.ball.name}`.trim() : "unreadable")}</div><div class="u">${new Date(r.created_at).toLocaleString()}${o?.special ? " \xB7 special order" : ""}${o?.delivery?.mode === "ship-to-center" ? ` \xB7 ship to ${esc2(o.delivery.center?.name ?? "")}` : ""}</div>
+        <div class="chips"><select data-s="${esc2(r.id)}" aria-label="Order status">${STATUSES.map((st2) => `<option value="${st2}"${st2 === r.status ? " selected" : ""}>${statusLabel(st2)}</option>`).join("")}</select>${o ? `<button class="btn" data-o="${esc2(r.id)}">Open</button>` : ""}</div></div>`;
+      }).join("") : `<div class="note">No orders yet. They show up here when a bowler orders from your online shop.</div>`}`;
+      $("ib-close").onclick = () => void openShopOnline();
+      el.querySelectorAll("[data-s]").forEach((sel2) => sel2.onchange = async () => {
+        try {
+          await asShop(`orders?id=eq.${sel2.dataset.s}`, { method: "PATCH", body: JSON.stringify({ status: sel2.value }), ...MIN });
+          notify("Status updated.");
+        } catch (e) {
+          notify(e.message);
+        }
+      });
+      el.querySelectorAll("[data-o]").forEach((b) => b.onclick = async () => {
+        const r = rows2.find((x) => x.id === b.dataset.o);
+        const o = parseOrder(JSON.stringify(r.request));
+        if (o) {
+          if (r.status === "new") void asShop(`orders?id=eq.${r.id}`, { method: "PATCH", body: JSON.stringify({ status: "seen" }), ...MIN }).catch(() => {
+          });
+          showOrder(o, () => void openInbox());
+        }
+      });
+    } catch (e) {
+      el.innerHTML = `<div class="row"><h2>Orders</h2><button class="btn ghost" id="ib-close">Back</button></div><div class="note">${esc2(e.message)}</div>`;
+      $("ib-close").onclick = () => void openShopOnline();
+    }
+  }
+  var sheet14, slugify, STATUSES, statusLabel;
+  var init_shopcloud = __esm({
+    "camera/shopcloud.ts"() {
+      init_health();
+      init_shop();
+      init_live();
+      init_backend();
+      init_shopui();
+      init_toast();
+      sheet14 = () => $("review");
+      slugify = (name) => {
+        const base2 = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30) || "shop";
+        return `${base2.length < 3 ? base2 + "-shop" : base2}-${Math.random().toString(36).slice(2, 6)}`.slice(0, 40);
+      };
+      STATUSES = ["new", "seen", "confirmed", "drilled", "ready", "picked_up", "cancelled"];
+      statusLabel = (s) => ({ new: "New", seen: "Seen", confirmed: "Confirmed", drilled: "Drilled", ready: "Ready", picked_up: "Picked up", cancelled: "Cancelled" })[s] ?? s;
+    }
+  });
+
+  // core/src/shopfind.ts
+  function distanceKm(aLat, aLon, bLat, bLon) {
+    const r = (d) => d * Math.PI / 180, dLat = r(bLat - aLat), dLon = r(bLon - aLon);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(aLat)) * Math.cos(r(bLat)) * Math.sin(dLon / 2) ** 2;
+    return 12742 * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+  function overpassQuery(lat, lon, radiusM) {
+    const r = Math.round(Math.min(Math.max(radiusM, 1e3), 1e5)), p = `(around:${r},${lat.toFixed(5)},${lon.toFixed(5)})`;
+    return `[out:json][timeout:25];(nwr["shop"]["sport"~"10pin|bowling|9pin"]${p};nwr["leisure"="bowling_alley"]${p};);out center tags 120;`;
+  }
+  function addr(t) {
+    const line2 = [[t["addr:housenumber"], t["addr:street"]].filter(Boolean).join(" "), t["addr:city"], t["addr:state"]].filter(Boolean).join(", ");
+    return clean5(line2, 120) || void 0;
+  }
+  function parseOverpass(json, here2) {
+    const els = json?.elements;
+    if (!Array.isArray(els)) return [];
+    const out = [];
+    const seen2 = /* @__PURE__ */ new Set();
+    for (const e of els) {
+      const t = e?.tags && typeof e.tags === "object" ? e.tags : {};
+      const name = clean5(t.name, 80);
+      const lat = finite2(e?.lat ?? e?.center?.lat, -90, 90), lon = finite2(e?.lon ?? e?.center?.lon, -180, 180);
+      if (!name || lat === void 0 || lon === void 0) continue;
+      const kind2 = t.shop ? "pro shop" : "center";
+      const id = `${clean5(e.type, 8)}${clean5(String(e.id ?? ""), 16)}`;
+      const dup = `${name.toLowerCase()}|${lat.toFixed(3)}|${lon.toFixed(3)}`;
+      if (!id || seen2.has(dup)) continue;
+      seen2.add(dup);
+      const web = clean5(t.website ?? t["contact:website"], 200);
+      out.push({ id, name, lat, lon, kind: kind2, address: addr(t), phone: clean5(t.phone ?? t["contact:phone"], 30) || void 0, website: /^https?:\/\//i.test(web) ? web : void 0, ...here2 ? { km: distanceKm(here2.lat, here2.lon, lat, lon) } : {} });
+    }
+    return out;
+  }
+  function parseDirectory(rows2, here2) {
+    if (!Array.isArray(rows2)) return [];
+    const out = [];
+    for (const r of rows2) {
+      const name = clean5(r?.name, 60), slug2 = clean5(r?.slug, 40);
+      const lat = finite2(r?.lat, -90, 90), lon = finite2(r?.lng, -180, 180);
+      if (!name || !slug2 || lat === void 0 || lon === void 0) continue;
+      out.push({ id: `laneiq-${slug2}`, name, lat, lon, kind: "pro shop", address: clean5(r?.address, 120) || void 0, phone: clean5(r?.phone, 30) || void 0, laneiq: { slug: slug2, acceptsOrders: r?.accepts_orders !== false }, ...here2 ? { km: distanceKm(here2.lat, here2.lon, lat, lon) } : {} });
+    }
+    return out;
+  }
+  function rankShops(laneiq, others) {
+    const byKm = (a2, b2) => (a2.km ?? 1e9) - (b2.km ?? 1e9);
+    const a = [...laneiq].sort(byKm);
+    const rest = others.filter((o) => !a.some((l) => distanceKm(l.lat, l.lon, o.lat, o.lon) < 0.2 && (norm5(l.name) === norm5(o.name) || norm5(o.name).includes(norm5(l.name)) || norm5(l.name).includes(norm5(o.name)) || !norm5(o.name))));
+    const b = rest.sort((x, y) => x.kind === y.kind ? byKm(x, y) : x.kind === "pro shop" ? -1 : 1);
+    return { laneiq: a, others: b };
+  }
+  var clean5, finite2, miles, norm5;
+  var init_shopfind = __esm({
+    "core/src/shopfind.ts"() {
+      clean5 = (s, max) => typeof s === "string" ? s.replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
+      finite2 = (n, lo, hi) => typeof n === "number" && Number.isFinite(n) && n >= lo && n <= hi ? n : void 0;
+      miles = (km) => km * 0.621371;
+      norm5 = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\b(pro|shop|bowling|the|and|inc|llc)\b/g, "").replace(/\s+/g, " ").trim();
+    }
+  });
+
+  // camera/shopfinderui.ts
+  var shopfinderui_exports = {};
+  __export(shopfinderui_exports, {
+    openShopNearMe: () => openShopNearMe
+  });
+  async function getJson(url, init, ms = 15e3) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), ms);
+    try {
+      const r = await fetch(url, { ...init, signal: ctl.signal });
+      if (!r.ok) throw new Error(String(r.status));
+      return await r.json();
+    } finally {
+      clearTimeout(t);
+    }
+  }
+  async function geocode2(q2) {
+    const j = await getJson(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q2)}`);
+    const f2 = Array.isArray(j) ? j[0] : null;
+    const lat = Number(f2?.lat), lon = Number(f2?.lon);
+    return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
+  }
+  async function directory(pt2, km) {
+    if (!SHOP_DIRECTORY.url || !SHOP_DIRECTORY.anonKey) return { places: [], configured: false };
+    const dLat = km / 111, dLon = km / (111 * Math.max(0.2, Math.cos(pt2.lat * Math.PI / 180)));
+    const q2 = `${SHOP_DIRECTORY.url.replace(/\/+$/, "")}/rest/v1/public_shops?select=name,slug,lat,lng,address,phone,accepts_orders&lat=gte.${pt2.lat - dLat}&lat=lte.${pt2.lat + dLat}&lng=gte.${pt2.lon - dLon}&lng=lte.${pt2.lon + dLon}&limit=100`;
+    const rows2 = await getJson(q2, { headers: { apikey: SHOP_DIRECTORY.anonKey, Authorization: `Bearer ${SHOP_DIRECTORY.anonKey}` } });
+    return { places: parseDirectory(rows2, pt2).filter((p) => (p.km ?? 0) <= km), configured: true };
+  }
+  async function nearby(pt2, km) {
+    const init = { method: "POST", body: "data=" + encodeURIComponent(overpassQuery(pt2.lat, pt2.lon, km * 1e3)), headers: { "Content-Type": "application/x-www-form-urlencoded" } };
+    const j = await Promise.any(["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"].map((u) => getJson(u, init, 5e4)));
+    return parseOverpass(j, pt2).filter((p) => (p.km ?? 0) <= km);
+  }
+  function openShopNearMe(opts = {}) {
+    bump("shop-near");
+    choosing = !!opts.pick;
+    const found = /* @__PURE__ */ new Map();
+    const el = sheet15();
+    el.classList.add("on");
+    el.innerHTML = `<div class="row"><h2>${opts.pick ? "Pick your bowling center" : "Find a pro shop near me"}</h2><button class="btn ghost" id="sn-close">Close</button></div>
+    <div class="note">Shops that use LaneIQ come first, then the rest. When you search, your position (or the city you type) is sent to OpenStreetMap${SHOP_DIRECTORY.url ? " and the LaneIQ shop list" : ""} to find shops around it. Nothing else about you is sent and nothing is saved.</div>
+    <div class="two"><div class="field"><label for="sn-r">How far</label><select id="sn-r"><option value="16">10 miles</option><option value="40" selected>25 miles</option><option value="80">50 miles</option></select></div><div class="field"><label for="sn-q">Or a city or ZIP code</label><input id="sn-q" autocomplete="postal-code" placeholder="e.g. Columbus, OH"></div></div>
+    <div class="chips"><button class="btn" id="sn-here">Use my location</button><button class="btn ghost" id="sn-go">Search this place</button></div>
+    <div id="sn-out" aria-live="polite"></div>`;
+    $("sn-close").onclick = () => {
+      choosing = false;
+      close10();
+    };
+    const run = async (get) => {
+      const out = $("sn-out");
+      out.innerHTML = `<div class="note">Looking\u2026</div>`;
+      try {
+        const pt2 = await get();
+        if (!pt2) return void (out.innerHTML = `<div class="note">I couldn't find that place. Try a city and state, or a ZIP code.</div>`);
+        const km = Number($("sn-r").value);
+        const [dir2, map] = await Promise.allSettled([directory(pt2, km), nearby(pt2, km)]);
+        const d = dir2.status === "fulfilled" ? dir2.value : { places: [], configured: true };
+        const m = map.status === "fulfilled" ? map.value : null;
+        const ranked = rankShops(d.places, m ?? []);
+        const parts = [];
+        parts.push(`<h3>Pro shops that use LaneIQ</h3>`);
+        parts.push(ranked.laneiq.length ? ranked.laneiq.map(row).join("") : `<div class="note">${d.configured ? "No LaneIQ shops within that distance yet." : "No LaneIQ shops are listed yet. They appear here, first, as soon as shops join."}</div>`);
+        parts.push(`<h3>Other shops and bowling centers</h3>`);
+        parts.push(m === null ? `<div class="note">I couldn't reach the map just now. Check your connection and try again.</div>` : ranked.others.length ? ranked.others.map(row).join("") + `<div class="note">From OpenStreetMap, which volunteers keep up, so a shop may be missing or out of date. Call ahead.</div>` : `<div class="note">The map lists nothing in that distance. Try a wider search.</div>`);
+        for (const p of [...ranked.laneiq, ...ranked.others]) found.set(p.id, p);
+        out.innerHTML = parts.join("");
+        out.querySelectorAll("[data-use]").forEach((b) => b.onclick = () => {
+          const p = found.get(b.dataset.use);
+          if (p) {
+            choosing = false;
+            opts.pick?.(p);
+          }
+        });
+      } catch (e) {
+        out.innerHTML = `<div class="note">${esc2(e.message || "That didn't work.")}</div>`;
+      }
+    };
+    $("sn-here").onclick = () => void run(here);
+    $("sn-go").onclick = () => {
+      const q2 = $("sn-q").value.trim();
+      if (q2.length < 3) return void ($("sn-out").innerHTML = `<div class="note">Type a city or ZIP code first.</div>`);
+      void run(() => geocode2(q2));
+    };
+  }
+  var sheet15, close10, here, choosing, row;
+  var init_shopfinderui = __esm({
+    "camera/shopfinderui.ts"() {
+      init_health();
+      init_shopfind();
+      init_live();
+      init_shopconfig();
+      sheet15 = () => $("review");
+      close10 = () => (sheet15().classList.remove("on"), sheet15().innerHTML = "");
+      here = () => new Promise((res, rej) => {
+        if (!navigator.geolocation) return rej(new Error("This phone can't share its location here."));
+        navigator.geolocation.getCurrentPosition((p) => res({ lat: p.coords.latitude, lon: p.coords.longitude }), () => rej(new Error("Location is off for LaneIQ. Type a city or ZIP code instead.")), { timeout: 12e3, maximumAge: 3e5 });
+      });
+      choosing = false;
+      row = (p) => {
+        const dist2 = p.km !== void 0 ? `${miles(p.km).toFixed(miles(p.km) < 10 ? 1 : 0)} mi` : "";
+        const dir2 = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`;
+        return `<div class="card"><div class="row"><div class="lr-head">${esc2(p.name)}</div>${p.laneiq ? `<span class="badge good">Uses LaneIQ</span>` : `<span class="badge tentative">${p.kind === "pro shop" ? "Pro shop" : "Bowling center"}</span>`}</div>
+    <div class="u">${esc2([dist2, p.address ?? ""].filter(Boolean).join(" \xB7 "))}</div>
+    ${p.laneiq ? `<div class="note">${p.laneiq.acceptsOrders ? "Takes orders from LaneIQ: ask them for their link or stock file, or fit a ball from their shelves." : "On LaneIQ. Ask them about fittings."}</div>` : p.kind === "center" ? `<div class="note">The map lists a bowling center here. Many have a pro shop, but the map doesn't say, so call ahead.</div>` : ""}
+    <div class="chips">${choosing ? `<button class="btn" data-use="${esc2(p.id)}">Send my ball here</button>` : ""}${p.phone ? `<a class="btn ghost" href="tel:${esc2(p.phone.replace(/[^+\d]/g, ""))}">Call</a>` : ""}${p.website ? `<a class="btn ghost" href="${esc2(p.website)}" target="_blank" rel="noopener noreferrer">Website</a>` : ""}<a class="btn ghost" href="${dir2}" target="_blank" rel="noopener noreferrer">Directions</a></div></div>`;
+      };
+    }
+  });
+
+  // camera/shopui.ts
+  var shopui_exports = {};
+  __export(shopui_exports, {
+    handleOrderLink: () => handleOrderLink,
+    handleShopLink: () => handleShopLink,
+    load: () => load,
+    openCustomer: () => openCustomer,
+    openShop: () => openShop,
+    openShopFinder: () => openShopFinder,
+    save: () => save2,
+    showOrder: () => showOrder
+  });
+  function openShop() {
+    bump("shop");
+    const el = sheet16();
+    el.classList.add("on");
+    const cur2 = load();
+    const items = cur2?.items ?? [];
+    el.innerHTML = `<div class="row"><h2>Pro shop mode</h2><button class="btn ghost" id="sh-close">Close</button></div>
+    <div class="note">For a pro shop. Load what you have in stock, send it to bowlers, and they get suggestions from your shelves only. When one orders, you get a drill sheet with their numbers. You make the final call on fit, layout and drilling. Nothing leaves this phone except what you choose to send.</div>
+    <div class="card"><div class="k">Your shop</div>
+    <div class="field"><label for="sh-name">Shop name</label><input id="sh-name" maxlength="${SHOP_LIMITS.name}" value="${esc2(cur2?.name ?? "")}" autocomplete="off"></div>
+    <div class="field"><label for="sh-contact">How bowlers reach you (email or phone)</label><input id="sh-contact" maxlength="${SHOP_LIMITS.contact}" value="${esc2(cur2?.contact ?? "")}" autocomplete="off"></div>
+    <div class="two"><div class="field"><label for="sh-drill">Drilling price ($, optional)</label><input id="sh-drill" inputmode="decimal" value="${cur2?.drillPrice || ""}"></div><div class="field"><label for="sh-note">A line for bowlers (hours, pickup)</label><input id="sh-note" maxlength="${SHOP_LIMITS.note}" value="${esc2(cur2?.note ?? "")}" autocomplete="off"></div></div></div>
+    <div class="card"><div class="k">Your stock${items.length ? ` \xB7 ${items.length} items` : ""}</div>
+    <div class="note">A spreadsheet saved as CSV, with columns like <b>brand, ball, price, qty, weights, sku</b> (any order; only the ball name is required). Weights are separated by semicolons, like 14;15;16. Balls are matched to the ${S.catalog.length}-ball catalog by brand and name; only matched balls can be suggested.</div>
+    <div class="field"><label for="sh-file">Open a CSV file</label><input id="sh-file" type="file" accept=".csv,text/csv,text/plain"></div>
+    <div class="field"><label for="sh-paste">Or paste the rows</label><textarea id="sh-paste" rows="4" placeholder="brand,ball,price,qty,weights"></textarea></div>
+    <div class="chips"><button class="btn" id="sh-load">Load this stock</button></div><div class="note" id="sh-msg" aria-live="polite"></div></div>
+    <div class="card"><div class="k">Receive boxes</div><div class="note">Point the camera at the barcode on a ball box and it's counted. The first time the app sees a barcode, you tell it which ball it is; after that every box with that barcode is counted by itself. Prices and counts can be edited any time.</div><div class="chips"><button class="btn" id="sh-scan">Scan boxes</button><button class="btn ghost" id="sh-edit">Edit stock and prices</button></div></div>
+    <div class="card"><div class="k">Online</div><div class="note">Sign in with your email to take orders in an inbox, keep your stock online, and be listed first when bowlers look for a pro shop near them. Optional: everything else here works without it.</div><div class="chips"><button class="btn" id="sh-online">Shop online and orders inbox</button></div></div>
+    <div class="card"><div class="k">Special orders</div>
+    <label class="chips" style="align-items:flex-start;gap:8px"><input type="checkbox" id="sh-sp"${cur2?.special?.accepts ? " checked" : ""}> <span>When a ball isn't on my shelf, let a bowler ask me to order it and have it sent to their bowling center.</span></label>
+    <div class="two"><div class="field"><label for="sh-spb">Brands I can order (blank = any)</label><input id="sh-spb" value="${esc2((cur2?.special?.brands ?? []).join(", "))}" placeholder="Storm, Hammer, Roto Grip" autocomplete="off"></div><div class="field"><label for="sh-spd">Usual wait (days)</label><input id="sh-spd" inputmode="numeric" value="${cur2?.special?.leadDays || ""}"></div></div>
+    <div class="note">You confirm the price and the wait with the bowler before you order anything in. LaneIQ doesn't take payment or arrange shipping yet; you do that with the bowler.</div></div>
+    <div class="card"><div class="k">Send to bowlers</div><div class="note">${items.length > LINK_ITEMS ? `That's a lot of stock for one link, so send it as a file.` : "A link works for a small stock; for more, send the file."} Bowlers open it in LaneIQ and see picks from your stock.</div><div class="chips"><button class="btn" id="sh-link"${items.length && items.length <= LINK_ITEMS ? "" : " disabled"}>Share a link</button></div><div id="sh-file-share"></div></div>
+    <div class="card"><div class="k">Orders</div><div class="u">When a bowler orders, they send you a link. Open it on this phone and you get the drill sheet, ready to read, copy or send.</div></div>
+    <div class="card"><div class="k">Customers \xB7 ${loadCustomers().length}</div>${loadCustomers().length ? loadCustomers().map((c) => `<button class="chip" data-cust="${esc2(c.key)}" style="display:block;width:100%;text-align:left;margin:4px 0">${esc2(c.name)} <small>${c.layouts.length} layout${c.layouts.length === 1 ? "" : "s"} \xB7 ${c.orders.length} order${c.orders.length === 1 ? "" : "s"}</small></button>`).join("") : `<div class="note">A customer is added here the first time they order. You can reopen their hand, pitches and the layouts on their other balls any time. This list stays on this phone.</div>`}</div>`;
+    $("sh-close").onclick = close11;
+    el.querySelectorAll("[data-cust]").forEach((b) => b.onclick = () => openCustomer(b.dataset.cust));
+    const persist2 = (extra2) => {
+      const v = (id) => $(id).value;
+      const special = { accepts: $("sh-sp").checked, brands: v("sh-spb").split(",").map((b) => b.trim()).filter(Boolean), leadDays: Number(v("sh-spd")) || 0 };
+      const p = newShopProfile(v("sh-name"), v("sh-contact"), Number(v("sh-drill")) || 0, v("sh-note"), cur2?.id, special);
+      if (!p) return null;
+      const s = { name: p.name, contact: p.contact, drillPrice: p.drillPrice, note: p.note, id: p.id, items: extra2 ?? load()?.items ?? cur2?.items ?? [], ...p.special ? { special: p.special } : {}, boxes: load()?.boxes ?? cur2?.boxes, remoteId: load()?.remoteId ?? cur2?.remoteId };
+      save2(s);
+      return s;
+    };
+    $("sh-scan").onclick = async () => persist2() ? (await Promise.resolve().then(() => (init_shopbox(), shopbox_exports))).openBoxScanner() : void ($("sh-msg").textContent = "Add your shop name and a way to reach you first.");
+    $("sh-edit").onclick = async () => persist2() ? (await Promise.resolve().then(() => (init_shopbox(), shopbox_exports))).openStockEditor() : void ($("sh-msg").textContent = "Add your shop name and a way to reach you first.");
+    $("sh-sp").addEventListener("change", () => void persist2());
+    $("sh-online").onclick = async () => persist2() ? (await Promise.resolve().then(() => (init_shopcloud(), shopcloud_exports))).openShopOnline() : void ($("sh-msg").textContent = "Add your shop name and a way to reach you first.");
+    let pending2 = "";
+    $("sh-file").addEventListener("change", async (e) => {
+      const f2 = e.target.files?.[0];
+      if (f2) pending2 = await f2.text();
+      $("sh-msg").textContent = f2 ? `${f2.name} is ready to load.` : "";
+    });
+    $("sh-load").onclick = () => {
+      const text = pending2 || $("sh-paste").value;
+      if (!text.trim()) return void ($("sh-msg").textContent = "Open a file or paste the rows first.");
+      const r = parseInventory(text, S.catalog);
+      if (!r.items.length) return void ($("sh-msg").textContent = r.problems[0] ?? "I found no usable rows.");
+      if (!persist2(r.items)) return void ($("sh-msg").textContent = "Add your shop name and a way to reach you first.");
+      notify(`Loaded ${r.items.length} items.`);
+      openShop();
+      setTimeout(() => {
+        const m = document.getElementById("sh-msg");
+        if (m) m.textContent = `${r.items.length} items loaded. ${r.unmatched ? `${r.unmatched} aren't in the catalog, so they can be sold but not suggested.` : "All matched the catalog."}${r.problems.length ? ` Skipped: ${r.problems.slice(0, 4).join(" ")}` : ""}`;
+      }, 0);
+    };
+    $("sh-link").onclick = async () => {
+      const s = persist2();
+      if (!s) return void ($("sh-msg").textContent = "Add your shop name and a way to reach you first.");
+      const url = `${appLink()}/#shop=${await packText(JSON.stringify(stockOf(s)))}`;
+      $("sh-msg").textContent = await shareLink(`${s.name} on LaneIQ`, `${s.name} on LaneIQ: see which of our balls fit your game.`, url);
+    };
+    if (cur2 && items.length) offerShare($("sh-file-share"), [new File([JSON.stringify(stockOf(cur2))], `${cur2.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-stock.laneiq-shop.json`, { type: "application/json" })], { title: `${cur2.name} stock`, label: "Send or save the stock file" });
+  }
+  async function handleShopLink(value) {
+    const json = await unpackText(value);
+    const s = json ? parseShopStock(json) : null;
+    if (!s) return void notify("That shop link is damaged or isn't from LaneIQ.");
+    openFitting(s);
+  }
+  function openShopFinder() {
+    bump("shop-finder");
+    const el = sheet16();
+    el.classList.add("on");
+    el.innerHTML = `<div class="row"><h2>Fit a ball from a pro shop</h2><button class="btn ghost" id="sf-close">Close</button></div>
+    <div class="note">Your pro shop can send you a link or a stock file. Open it here and LaneIQ suggests balls from what they actually have, with a starting layout for their driller. The shop makes the final call.</div>
+    <div class="field"><label for="sf-file">Open a shop's stock file</label><input id="sf-file" type="file" accept=".json,application/json"></div><div class="note" id="sf-msg" aria-live="polite"></div>
+    ${current3 ? `<div class="chips"><button class="btn ghost" id="sf-last">Back to ${esc2(current3.profile.name)}</button></div>` : ""}`;
+    $("sf-close").onclick = close11;
+    $("sf-file").addEventListener("change", async (e) => {
+      const f2 = e.target.files?.[0];
+      const s = f2 && f2.size < 2e6 ? parseShopStock(await f2.text()) : null;
+      if (!s) return void ($("sf-msg").textContent = "That file isn't a LaneIQ shop stock file.");
+      openFitting(s);
+    });
+    if (current3) $("sf-last").onclick = () => openFitting(current3);
+  }
+  function openFitting(stock) {
+    current3 = stock;
+    bump("shop-fitting");
+    const el = sheet16();
+    el.classList.add("on");
+    const bp = bowlerProfile();
+    const p = stock.profile;
+    const weights = [...new Set(stock.items.flatMap((i) => i.weights))].sort((a, b) => b - a);
+    const known = [bp.revRpm ? `${Math.round(bp.revRpm)} rpm${bp.revSource === "measured" || bp.revSource === "entered" ? "" : " (estimate)"}` : "", bp.launchSpeed ? `${bp.launchSpeed.toFixed(1)} mph` : "", bp.axisRotation !== void 0 && bp.axisTilt !== void 0 ? `axis ${Math.round(bp.axisRotation)}\xB0/${Math.round(bp.axisTilt)}\xB0` : ""].filter(Boolean);
+    el.innerHTML = `<div class="row"><h2>${esc2(p.name)}</h2><button class="btn ghost" id="sf-close">Close</button></div>
+    <div class="note">${p.note ? `${esc2(p.note)} \xB7 ` : ""}${p.drillPrice ? `Drilling $${p.drillPrice} \xB7 ` : ""}${stock.items.filter((i) => i.stock > 0).length} balls in stock. Suggestions come from this shop's stock only, and they're a starting point: the shop's driller makes the final call.</div>
+    <div class="card"><div class="k">What the app knows about you</div><div class="u">${known.length ? esc2(known.join(" \xB7 ")) : "Not much yet. Use the camera for a few shots and the picks get better."}</div></div>
+    <div class="two"><div class="field"><label for="sf-w">Ball weight</label><select id="sf-w"><option value="0">Any</option>${weights.map((w) => `<option value="${w}">${w} lb</option>`).join("")}</select></div><div class="field"><label for="sf-b">Most you'd spend ($, optional)</label><input id="sf-b" inputmode="numeric"></div></div>
+    <div class="chips"><button class="btn" id="sf-go">Show me balls</button></div><div id="sf-out"></div>`;
+    $("sf-close").onclick = close11;
+    $("sf-go").onclick = () => {
+      const w = Number($("sf-w").value) || void 0, budget = Number($("sf-b").value) || void 0;
+      const owned = S.arsenal.map((b) => b.catalogKey).filter(Boolean);
+      const inStock = recommendFromStock(stock.items, S.catalog, { bowler: bp, weightLb: w, budget, ownedKeys: owned }, 4);
+      const special = recommendSpecial(stock.items, S.catalog, stock.profile, { bowler: bp, weightLb: w, ownedKeys: owned }, 3);
+      const picks = [...inStock, ...special];
+      const out = $("sf-out");
+      if (!picks.length) return void (out.innerHTML = `<div class="note">Nothing in this shop's stock matches that. Try another weight or budget, or ask the shop what else they can order.</div>`);
+      const card2 = (k2, i) => `<div class="card"><div class="lr-head">${esc2(k2.item.manufacturer)} ${esc2(k2.item.name)}${k2.item.price ? ` \xB7 $${k2.item.price}` : ""}</div><div class="u">${esc2(k2.why[k2.why.length - 1])}</div><div class="note">${esc2(k2.why[0])}${k2.item.weights.length ? ` Weights: ${k2.item.weights.join(", ")} lb.` : ""}</div><div class="chips"><button class="btn" data-o="${i}">${k2.special ? "Ask them to order it in" : "Order this"}</button></div></div>`;
+      out.innerHTML = `${inStock.length ? `<h3>On their shelf</h3>${inStock.map((k2, i) => card2(k2, i)).join("")}` : `<div class="note">Nothing on their shelf fits that.</div>`}${special.length ? `<h3>Not on the shelf: they can order it in</h3><div class="note">${stock.profile.special?.leadDays ? `Usually about ${stock.profile.special.leadDays} days. ` : ""}It's sent to your bowling center. The shop confirms the price and the wait with you before anything is ordered or paid.</div>${special.map((k2, i) => card2(k2, inStock.length + i)).join("")}` : ""}<div class="note">Picks come from published specs, not from how a ball reacts for you.</div>`;
+      out.querySelectorAll("[data-o]").forEach((b) => b.onclick = () => openOrderForm(stock, picks[Number(b.dataset.o)], w));
+    };
+  }
+  function openOrderForm(stock, pick, weightLb) {
+    const el = sheet16();
+    const bp = bowlerProfile();
+    const pap = S.profile?.spin?.pap;
+    const fit = S.profile?.fit && Object.keys(cleanFit(S.profile.fit)).length ? cleanFit(S.profile.fit) : void 0;
+    const sheets = (S.profile?.sheets ?? []).slice(0, MAX_LAYOUTS);
+    el.innerHTML = `<div class="row"><h2>Order from ${esc2(stock.profile.name)}</h2><button class="btn ghost" id="of-close">Close</button></div>
+    <div class="card"><div class="lr-head">${esc2(pick.item.manufacturer)} ${esc2(pick.item.name)}${pick.weightLb ? ` \xB7 ${pick.weightLb} lb` : ""}${pick.item.price ? ` \xB7 $${pick.item.price}` : ""}</div></div>
+    ${pick.special ? `<div class="card"><div class="k">Where should it be sent?</div><div class="note">${esc2(stock.profile.name)} doesn't have this one on the shelf. They'll order it in and have it sent to your bowling center, and confirm the price and the wait with you first.</div>
+      <div class="field"><label for="of-cn">Your bowling center</label><input id="of-cn" maxlength="80" value="${esc2(lastCenter().name)}" autocomplete="off"></div>
+      <div class="field"><label for="of-ca">Its address</label><input id="of-ca" maxlength="140" value="${esc2(lastCenter().address)}" autocomplete="off"></div>
+      <div class="chips"><button class="btn ghost" id="of-pick">Pick from centers near me</button></div></div>` : ""}
+    <div class="card"><div class="field"><label for="of-name">Your name</label><input id="of-name" maxlength="${SHOP_LIMITS.customer}" value="${esc2(S.profile?.name ?? "")}" autocomplete="off"></div>
+    <div class="field"><label for="of-contact">How the shop reaches you (email or phone)</label><input id="of-contact" maxlength="${SHOP_LIMITS.contact}" autocomplete="off"></div>
+    <div class="field"><label for="of-note">Anything the driller should know</label><input id="of-note" maxlength="${SHOP_LIMITS.note}" autocomplete="off" placeholder="e.g. my thumb swells in the evening"></div></div>
+    ${fit || sheets.length ? `<label class="chips" style="align-items:flex-start;gap:8px"><input type="checkbox" id="of-profile" checked> <span>Also send my hand measurements${fit ? ` (${fitLines(fit).length ? esc2(fitLines(fit).join("; ")) : "span and hole sizes"})` : ""} and the layouts saved for my other balls${sheets.length ? ` (${sheets.length})` : ""}, so the driller can match what already works for me. The shop keeps them in a customer profile on its own phone.</span></label>` : `<div class="note">Save your hand and PAP in the Layout Lab and you can send them with an order, so the driller sees your grip, pitches and the layouts on your other balls.</div>`}
+    <div class="note">The shop gets your name, how to reach you, this ball, a starting layout and the readings the app has (${[bp.revRpm ? "rev rate" : "", bp.launchSpeed ? "speed" : "", bp.axisRotation !== void 0 ? "axis" : "", pap ? "PAP" : ""].filter(Boolean).join(", ") || "none yet"}). Release video is never attached. If you want the driller to see it, send it from the share sheet yourself. These are estimates from a phone camera; the shop measures before drilling.</div>
+    <div class="chips"><button class="btn" id="of-send">Send my order</button></div><div class="note" id="of-msg" aria-live="polite"></div>`;
+    $("of-close").onclick = () => openFitting(stock);
+    $("of-pick")?.addEventListener("click", async () => {
+      const { openShopNearMe: openShopNearMe2 } = await Promise.resolve().then(() => (init_shopfinderui(), shopfinderui_exports));
+      openShopNearMe2({ pick: (p) => {
+        rememberCenter({ name: p.name, address: p.address ?? "" });
+        openOrderForm(stock, pick, weightLb);
+      } });
+    });
+    $("of-send").onclick = async () => {
+      const v = (id) => $(id).value;
+      const share = !!$("of-profile")?.checked;
+      const cn = $("of-cn")?.value.trim() ?? "", ca = $("of-ca")?.value.trim() ?? "";
+      if (pick.special && !cn) return void ($("of-msg").textContent = "Tell the shop which bowling center to send it to.");
+      if (pick.special) rememberCenter({ name: cn, address: ca });
+      const delivery = pick.special ? { mode: "ship-to-center", center: { name: cn, address: ca } } : { mode: "pickup" };
+      const layouts = share ? sheets.map((s) => ({ ball: s.ball.name, manufacturer: s.ball.manufacturer ?? "", layout: s.layoutText, pap: `${s.pap.over} over, ${Math.abs(s.pap.up)} ${s.pap.up < 0 ? "down" : "up"}`, at: s.at, notes: s.notes })) : void 0;
+      const order = newOrder({ shop: stock.profile, customer: { name: v("of-name"), contact: v("of-contact") }, bowler: bp, pick: { ...pick, weightLb: weightLb ?? pick.weightLb }, pap, note: v("of-note"), fit: share ? fit : void 0, layouts, delivery });
+      if (!order) return void ($("of-msg").textContent = "Add your name and how the shop can reach you.");
+      if (stock.online && backendOn()) {
+        $("of-msg").textContent = "Sending\u2026";
+        try {
+          await asBowler("orders", { method: "POST", body: JSON.stringify(orderRow(stock.online.shopId, order)), ...MIN });
+          $("of-send").setAttribute("disabled", "true");
+          return void ($("of-msg").textContent = `Sent to ${stock.profile.name}. They'll contact you at ${order.customer.contact}${pick.special ? " to confirm the price and the wait" : ""}.`);
+        } catch (e) {
+          $("of-msg").textContent = `${e.message} I'll make a link you can send them instead.`;
+        }
+      }
+      const url = `${appLink()}/#order=${await packText(JSON.stringify(order))}`;
+      $("of-msg").textContent = await shareLink(`Order for ${stock.profile.name}`, `${order.customer.name} ordered the ${order.ball.name} from ${stock.profile.name} through LaneIQ. Open this in LaneIQ for the drill sheet.`, url);
+    };
+  }
+  function openCustomer(key3) {
+    const all = loadCustomers();
+    const c = all.find((x) => x.key === key3);
+    if (!c) return void openShop();
+    bump("shop-customer");
+    const el = sheet16();
+    el.classList.add("on");
+    const fit = c.fit ? fitLines(c.fit) : [];
+    const r = c.readings;
+    el.innerHTML = `<div class="row"><h2>${esc2(c.name)}</h2><button class="btn ghost" id="cu-close">Back</button></div>
+    <div class="card"><div class="u">${c.hand === "L" ? "Left" : "Right"}-handed${c.style ? ` \xB7 ${esc2(c.style.replace(/-/g, " "))}` : ""} \xB7 ${esc2(c.contact)}</div></div>
+    <div class="card"><div class="k">Hand and pitches</div>${fit.length ? fit.map((x) => `<div class="u">${esc2(x)}</div>`).join("") : `<div class="note">Not sent yet. Ask them to save their hand in the Layout Lab, or measure it and note it below.</div>`}</div>
+    <div class="card"><div class="k">Readings from the app (estimates)</div><div class="u">${esc2([r.revRpm !== void 0 ? `${r.revRpm} rpm` : "", r.speedMph !== void 0 ? `${r.speedMph} mph` : "", r.axisRotation !== void 0 && r.axisTilt !== void 0 ? `axis ${r.axisRotation}\xB0 / ${r.axisTilt}\xB0` : "", r.pap ? `PAP ${r.pap}` : ""].filter(Boolean).join(" \xB7 ") || "none sent")}</div></div>
+    <div class="card"><div class="k">Layouts on their other balls</div>${c.layouts.length ? c.layouts.map((l) => `<div class="drow"><div><b>${esc2(l.manufacturer ? `${l.manufacturer} ${l.ball}` : l.ball)}</b> <small>${l.at.slice(0, 4) === "1970" ? "" : l.at.slice(0, 10)}</small></div><div class="note dnote">${esc2(l.layout)}${l.pap ? ` \xB7 PAP ${esc2(l.pap)}` : ""}${l.notes ? ` \xB7 ${esc2(l.notes)}` : ""}</div></div>`).join("") : `<div class="note">None on file.</div>`}</div>
+    <div class="card"><div class="k">Orders</div>${c.orders.map((o) => `<div class="u">${o.at.slice(0, 10)} \xB7 ${esc2(o.ball)}${o.weightLb ? ` ${o.weightLb} lb` : ""}</div>`).join("") || `<div class="note">None.</div>`}</div>
+    <div class="card"><div class="field"><label for="cu-notes">Your notes on this customer (stay on this phone)</label><textarea id="cu-notes" rows="3" maxlength="500">${esc2(c.shopNotes)}</textarea></div></div>
+    <div class="chips"><button class="btn" id="cu-save">Save notes</button><button class="btn ghost" id="cu-copy">Copy profile</button><button class="btn ghost danger" id="cu-del">Remove customer</button></div><div class="note" id="cu-msg" aria-live="polite"></div>`;
+    $("cu-close").onclick = openShop;
+    $("cu-save").onclick = () => {
+      c.shopNotes = $("cu-notes").value.replace(/[\u0000-\u001f<>]/g, " ").slice(0, 500);
+      saveCustomers(all);
+      $("cu-msg").textContent = "Saved.";
+    };
+    $("cu-copy").onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(customerSheet(c));
+        $("cu-msg").textContent = "Copied.";
+      } catch {
+        $("cu-msg").textContent = "Couldn't copy. Select the text and copy it.";
+      }
+    };
+    $("cu-del").onclick = () => {
+      if ($("cu-del").dataset.sure !== "1") {
+        $("cu-del").dataset.sure = "1";
+        $("cu-del").textContent = "Tap again to remove";
+        return;
+      }
+      saveCustomers(all.filter((x) => x.key !== key3));
+      openShop();
+    };
+  }
+  async function handleOrderLink(value) {
+    const json = await unpackText(value);
+    const o = json ? parseOrder(json) : null;
+    if (!o) return void notify("That order link is damaged or isn't from LaneIQ.");
+    showOrder(o);
+  }
+  function showOrder(o, back = close11) {
+    bump("shop-order");
+    const text = drillSheet(o);
+    const customers = loadCustomers();
+    const key3 = customerKey(o.customer.contact);
+    const rec2 = mergeCustomer(customers.find((c) => c.key === key3), o);
+    saveCustomers([rec2, ...customers.filter((c) => c.key !== key3)]);
+    const el = sheet16();
+    el.classList.add("on");
+    el.innerHTML = `<div class="row"><h2>Order from ${esc2(o.customer.name)}</h2><button class="btn ghost" id="od-close">Close</button></div>
+    <div class="card"><div class="lr-head">${esc2(o.ball.manufacturer)} ${esc2(o.ball.name)}${o.ball.price ? ` \xB7 $${o.ball.price}` : ""}</div><div class="u">${esc2(o.customer.contact)} \xB7 ${new Date(o.at).toLocaleDateString()}</div></div>
+    <div class="card"><div class="k">Drill sheet</div><pre id="od-text" style="white-space:pre-wrap;font:inherit;margin:0">${esc2(text)}</pre></div>
+    <div class="chips"><button class="btn" id="od-copy">Copy the sheet</button><button class="btn ghost" id="od-share">Send it on</button><button class="btn ghost" id="od-cust">Open ${esc2(o.customer.name)}'s profile</button></div><div class="note" id="od-msg" aria-live="polite">Added to your customers on this phone.</div>`;
+    $("od-close").onclick = back;
+    $("od-cust").onclick = () => openCustomer(key3);
+    $("od-copy").onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        $("od-msg").textContent = "Copied.";
+      } catch {
+        $("od-msg").textContent = "Select the text above and copy it.";
+      }
+    };
+    $("od-share").onclick = async () => {
+      const nav = navigator;
+      try {
+        if (nav.share) await nav.share({ title: `Drill sheet: ${o.ball.name}`, text });
+        else $("od-msg").textContent = "Sharing isn't available here. Use Copy.";
+      } catch {
+      }
+    };
+  }
+  var sheet16, close11, KEY7, load, save2, CKEY, loadCustomers, saveCustomers, stockOf, current3, CENTER, lastCenter, rememberCenter;
+  var init_shopui = __esm({
+    "camera/shopui.ts"() {
+      init_health();
+      init_shop();
+      init_toast();
+      init_live();
+      init_state();
+      init_friends();
+      init_sharefiles();
+      init_backend();
+      sheet16 = () => $("review");
+      close11 = () => (sheet16().classList.remove("on"), sheet16().innerHTML = "");
+      KEY7 = "laneiq.shop";
+      load = () => {
+        try {
+          const j = JSON.parse(localStorage.getItem(KEY7) ?? "null");
+          return j && typeof j === "object" ? j : null;
+        } catch {
+          return null;
+        }
+      };
+      save2 = (s) => {
+        try {
+          localStorage.setItem(KEY7, JSON.stringify(s));
+        } catch {
+        }
+      };
+      CKEY = "laneiq.shop.customers";
+      loadCustomers = () => {
+        try {
+          const j = JSON.parse(localStorage.getItem(CKEY) ?? "[]");
+          return Array.isArray(j) ? j : [];
+        } catch {
+          return [];
+        }
+      };
+      saveCustomers = (c) => {
+        try {
+          localStorage.setItem(CKEY, JSON.stringify(c.slice(0, MAX_CUSTOMERS)));
+        } catch {
+        }
+      };
+      stockOf = (s) => ({ v: 1, t: "shop", profile: { v: 1, id: s.id, name: s.name, contact: s.contact, drillPrice: s.drillPrice, note: s.note, ...s.special?.accepts ? { special: s.special } : {} }, items: s.items, at: (/* @__PURE__ */ new Date()).toISOString(), ...s.remoteId ? { online: { shopId: s.remoteId } } : {} });
+      current3 = null;
+      CENTER = "laneiq.center";
+      lastCenter = () => {
+        try {
+          const j = JSON.parse(localStorage.getItem(CENTER) ?? "null");
+          return { name: String(j?.name ?? ""), address: String(j?.address ?? "") };
+        } catch {
+          return { name: "", address: "" };
+        }
+      };
+      rememberCenter = (c) => {
+        try {
+          localStorage.setItem(CENTER, JSON.stringify(c));
+        } catch {
+        }
+      };
+    }
+  });
+
+  // camera/proshoptools.ts
+  function gripNow() {
+    const f2 = S.profile?.fit;
+    const st2 = bowlerProfile().style;
+    return { ...DEFAULT_GRIP, ...f2?.span ? { span: f2.span } : {}, ...f2?.thumbDia ? { thumbDia: f2.thumbDia } : {}, ...f2?.fingerDia ? { fingerDia: f2.fingerDia } : {}, ...f2?.bridge ? { bridge: f2.bridge } : {}, noThumb: st2 === "two-handed" || st2 === "one-hand-no-thumb" };
+  }
+  function proshopToolsHtml(pattern) {
+    const bp = bowlerProfile();
+    const grip = gripNow();
+    const pap = parsePap(S.profile?.spin?.pap ?? "") ?? void 0;
+    const a = adviseLayouts(bp, pattern, { pap, grip });
+    const dom = bowlerDominance(bp.revRpm, bp.launchSpeed);
+    const surf = surfaceFor(pattern, dom);
+    const twoHand = bp.style === "two-handed" || bp.style === "one-hand-no-thumb";
+    const known = [bp.revRpm !== void 0 ? `${Math.round(bp.revRpm)} RPM` : null, bp.launchSpeed !== void 0 ? `${bp.launchSpeed.toFixed(1)} mph` : null, bp.axisTilt !== void 0 ? `${Math.round(bp.axisTilt)}\xB0 tilt` : null].filter(Boolean).join(" \xB7 ");
+    return `
+    <h3>Pro shop toolkit</h3>
+    <div class="note">Built from published layout theory (Pinel's Dual Angle, Storm's Pin Buffer and 2LS) and the USBC rules. Every number is a starting point for a driller, and where sources disagree the text says so.</div>
+    <details class="card" open><summary class="k">Layout advisor${known ? " \xB7 " + esc2(known) : ""}</summary>
+      <table>
+        <tr><td>Dual Angle (drilling \xD7 pin to PAP \xD7 VAL)</td><td class="n">${a.dual.drilling}\xB0 \xD7 ${inch2(a.dual.pinToPap)} \xD7 ${a.dual.valAngle}\xB0</td></tr>
+        <tr><td>Pin Buffer (pin to PAP \xD7 PSA to PAP \xD7 buffer)</td><td class="n">${inch2(a.pinBuffer.pinToPap)} \xD7 ${inch2(a.pinBuffer.psaToPap)} \xD7 ${inch2(a.pinBuffer.pinBuffer)}</td></tr>
+        <tr><td>2LS (pin to PAP \xD7 PSA to PAP \xD7 pin to grip)${twoHand ? "" : " <span class='note'>for two-handed</span>"}</td><td class="n">${inch2(a.ls2.pinToPap)} \xD7 ${inch2(a.ls2.psaToPap)} \xD7 ${inch2(a.ls2.pinToGrip)}</td></tr>
+        <tr><td>Angle sum range for you</td><td class="n">${a.sumRange[0]} to ${a.sumRange[1]}</td></tr></table>
+      <ul>${a.why.map((w) => `<li>${esc2(w)}</li>`).join("")}</ul>
+      <div class="note">${pap ? "Converted at your saved PAP." : "No PAP saved, so the Pin Buffer and 2LS numbers use a typical 4 1/2 over, 1 up. Enter yours in the Layout Lab."} The three notations are the same layout; the pin goes at the same spot on the ball.</div>
+      <div class="k" style="margin-top:8px">Pinel's layouts by track (drilling \xD7 pin to PAP \xD7 VAL angle)</div>
+      <table>${TRACK_TABLE.map((r) => `<tr${r === a.trackRow && bp.axisTilt !== void 0 ? ' style="font-weight:600"' : ""}><td>${esc2(r.label)} <span class="note">${esc2(r.tiltRange)}</span></td><td class="n">${esc2(r.sharper)} \xB7 ${esc2(r.midlane)} \xB7 ${esc2(r.control)}</td></tr>`).join("")}</table>
+      <div class="note">Columns: sharper breakpoint, midlane, control (Pinel 2010 table, via BowlersMart).</div>
+      <div class="k" style="margin-top:8px">Storm benchmark ladders</div>
+      <div class="note">Pin Buffer: ${STORM_LADDER.map((l) => `${esc2(l.layout)} (${esc2(l.note)})`).join("; ")}.</div>
+      <div class="note">2LS, weakest to strongest: ${LS2_LADDER.map(esc2).join("; ")}.</div></details>
+
+    <div class="card"><div class="k">Pro shop mode</div><div class="note">Bowlers: open a link or file from your shop and get picks from what they actually have. Shops: load your stock and receive orders with a drill sheet.</div><div class="chips"><button class="btn" id="pt-fitshop">Fit a ball from my pro shop</button>${can(S.profile?.role, "shopMode") ? "" : `<span class="note">Run a pro shop? Switch your account type under Me.</span>`}</div><div class="chips"><button class="btn" id="pt-shopnear">Find a pro shop near me</button></div></div>
+
+    <details class="card"><summary class="k">Layout checker and drilled-ball estimate</summary>
+      <div class="note">Enter a layout in any system. LaneIQ checks it against the system's rules and the hole-clearance rule, converts it, and estimates what drilling does to the ball.</div>
+      <div class="chips"><label>System <select id="pt-sys"><option value="dual">Dual Angle</option><option value="pinbuffer">Pin Buffer</option><option value="2ls">2LS</option><option value="core">Core Angle + Buffer</option></select></label></div>
+      <div class="chips"><label id="pt-l1">Drilling angle \xB0 <input id="pt-a" inputmode="decimal" value="${a.dual.drilling}" style="width:70px"></label>
+        <label id="pt-l2">Pin to PAP <input id="pt-b" value="${inch2(a.dual.pinToPap)}" style="width:70px"></label>
+        <label id="pt-l3">VAL angle \xB0 <input id="pt-c" inputmode="decimal" value="${a.dual.valAngle}" style="width:70px"></label></div>
+      <div class="chips"><label>PAP over <input id="pt-over" value="${pap ? inch2(pap.over) : "4 1/2"}" style="width:70px"></label><label>up (negative = down) <input id="pt-up" value="${pap ? inch2(pap.up) : "1"}" style="width:70px"></label></div>
+      <div class="chips"><label>Ball lb <input id="pt-w" inputmode="decimal" placeholder="15" style="width:60px"></label><label>RG <input id="pt-rg" inputmode="decimal" placeholder="2.50" style="width:60px"></label><label>Total diff <input id="pt-td" inputmode="decimal" placeholder=".050" style="width:60px"></label><label>Int diff <input id="pt-id" inputmode="decimal" placeholder=".015 (0 = symmetric)" style="width:90px"></label></div>
+      <div class="chips"><button class="btn" id="pt-go">Check this layout</button></div>
+      <div id="pt-out"></div>
+      <div class="k" style="margin-top:10px">Static weight check</div>
+      <div class="chips"><label>Top oz <input id="pt-st" inputmode="decimal" style="width:55px"></label><label>Finger oz <input id="pt-sf" inputmode="decimal" style="width:55px"></label><label>Side oz <input id="pt-ss" inputmode="decimal" style="width:55px"></label><label><input type="checkbox" id="pt-bal"> has a balance hole</label><button class="btn ghost" id="pt-sgo">Check</button></div>
+      <div id="pt-sout"></div></details>
+
+    <details class="card"><summary class="k">Reaction doctor</summary>
+      <div class="chips"><label>What's the ball doing? <select id="pt-sym">${SYMPTOMS.map((s) => `<option value="${s.id}">${esc2(s.label)}</option>`).join("")}</select></label></div>
+      <div id="pt-sym-out"></div></details>
+
+    <details class="card"><summary class="k">Surface guide</summary>
+      <table>${SURFACE_TABLE.map((r) => `<tr${r === surf.row ? ' style="font-weight:600"' : ""}><td>${esc2(r.oil)}</td><td class="n">${esc2(r.grits)}</td></tr>`).join("")}</table>
+      <div class="note">${pattern ? `For ${esc2(pattern.name)}: ${esc2(surf.row.oil)}, ${esc2(surf.row.grits)} grit. ` : ""}${esc2(surf.lean)}</div>
+      <div class="note">Surface is the quick, reversible fix. Lower grit is more hook and earlier; higher grit or polish is longer skid and more backend. Coverstock and surface are said to account for 70 to 75 percent of reaction (no measurement cited), so change them before the layout.</div></details>
+
+    <details class="card"><summary class="k">Fit, grip and ball weight</summary>
+      <div class="chips"><label>Body weight lb <input id="pt-body" inputmode="numeric" style="width:70px"></label><button class="btn ghost" id="pt-wgo">Suggest ball weight</button></div>
+      <div id="pt-wout" class="note"></div>
+      <ul>${GRIP_TYPES.map((g) => `<li><b>${esc2(g.name)}.</b> ${esc2(g.text)}</li>`).join("")}</ul>
+      <div class="chips"><label>Fit problem <select id="pt-fit">${FIT_SYMPTOMS.map((s) => `<option value="${s.id}">${esc2(s.label)}</option>`).join("")}</select></label></div>
+      <div id="pt-fit-out"></div>
+      <div class="note">A good fit means no squeeze and no stress on the hand, wrist or arm. Hands swell during a session, so fit through the middle, not game one.</div></details>
+
+    <details class="card"><summary class="k">Theory library (sources named)</summary>
+      ${THEORY.map((t) => `<div style="padding:6px 0;border-top:1px solid var(--line)"><b>${esc2(t.title)}</b> <span class="badge ${t.kind === "disagreement" ? "moderate" : "good"}">${t.kind}</span><div class="note">${esc2(t.source)}</div><div class="u">${esc2(t.body)}</div></div>`).join("")}</details>`;
+  }
+  function wireProshopTools(el) {
+    const q2 = (id) => el.querySelector("#" + id);
+    q2("pt-fitshop")?.addEventListener("click", async () => (await Promise.resolve().then(() => (init_shopui(), shopui_exports))).openShopFinder());
+    q2("pt-shopnear")?.addEventListener("click", async () => (await Promise.resolve().then(() => (init_shopfinderui(), shopfinderui_exports))).openShopNearMe());
+    q2("pt-shopmode")?.addEventListener("click", async () => (await Promise.resolve().then(() => (init_shopui(), shopui_exports))).openShop());
+    const sys = q2("pt-sys");
+    if (!sys) return;
+    const bp = bowlerProfile();
+    const labels = { dual: ["Drilling angle \xB0", "Pin to PAP", "VAL angle \xB0"], pinbuffer: ["Pin to PAP", "PSA to PAP", "Pin buffer"], "2ls": ["Pin to PAP", "PSA to PAP", "Pin to center of grip"], core: ["Core (drilling) angle \xB0", "Pin to PAP", "Pin buffer"] };
+    const setLabels = () => {
+      const l = labels[sys.value];
+      ["pt-l1", "pt-l2", "pt-l3"].forEach((id, i) => {
+        const lab2 = q2(id);
+        lab2.firstChild.textContent = l[i] + " ";
+      });
+    };
+    sys.onchange = setLabels;
+    const readIn = (id) => {
+      const v = q2(id).value;
+      return parseInches2(v) ?? Number(v);
+    };
+    q2("pt-go").onclick = () => {
+      const out = q2("pt-out");
+      const a = readIn("pt-a"), b = readIn("pt-b"), c = readIn("pt-c");
+      const over = readIn("pt-over"), up = readIn("pt-up");
+      if (![a, b, c, over, up].every(Number.isFinite)) return void (out.innerHTML = `<div class="u">Enter all three layout numbers and the PAP. Fractions like 4 1/2 work.</div>`);
+      const input = sys.value === "dual" ? { system: "dual", drilling: a, pinToPap: b, valAngle: c } : sys.value === "pinbuffer" ? { system: "pinbuffer", pinToPap: a, psaToPap: b, pinBuffer: c } : sys.value === "core" ? { system: "core", drilling: a, pinToPap: b, pinBuffer: c } : { system: "2ls", pinToPap: a, psaToPap: b, pinToGrip: c };
+      const grip = gripNow();
+      const solved2 = solveLayout(input, { over, up }, bp.hand, grip);
+      const ballW = num8(q2("pt-w")), rg = num8(q2("pt-rg")), td = num8(q2("pt-td")), idf = num8(q2("pt-id"));
+      const f2 = checkLayout(input, solved2, { axisTilt: bp.axisTilt, symmetric: idf === 0, grip });
+      const e = solved2.eq;
+      let drilled = "";
+      if (ballW && rg && td !== void 0) {
+        const r = drillBall({ weightLb: ballW, rg, totalDiff: td, intDiff: idf }, solved2, grip);
+        drilled = `<div class="k" style="margin-top:8px">Estimated drilled ball</div>
+        <table><tr><td>RG</td><td class="n">${r.undrilled.rg.toFixed(3)} \u2192 ${r.drilled.rg.toFixed(3)}</td></tr>
+        <tr><td>Intermediate diff</td><td class="n">${r.undrilled.intDiff.toFixed(3)} \u2192 ${r.drilled.intDiff.toFixed(3)}</td></tr>
+        <tr><td>Total diff</td><td class="n">${r.undrilled.totalDiff.toFixed(3)} \u2192 ${r.drilled.totalDiff.toFixed(3)}</td></tr>
+        <tr><td>Weight removed</td><td class="n">${r.removedOz.total.toFixed(1)} oz (thumb ${r.removedOz.thumb.toFixed(1)}, fingers ${r.removedOz.fingers.toFixed(1)})</td></tr>
+        <tr><td>Static (from drilling alone)</td><td class="n">${esc2(r.staticWords.top)} ${Math.abs(r.staticOz.top).toFixed(1)} oz \xB7 ${esc2(r.staticWords.finger)} ${Math.abs(r.staticOz.finger).toFixed(1)} oz \xB7 ${esc2(r.staticWords.side)} ${Math.abs(r.staticOz.side).toFixed(1)} oz</td></tr></table>
+        <div class="note">${idf === 0 ? "On a symmetric core this model gets the RG and differential trends wrong, so trust the weight figures only. " : "Checked against Pinel's measured asymmetric ball. "}A ball's own built-in imbalance is unknown without the scale, so this never replaces the scale.</div>`;
+      }
+      out.innerHTML = `
+      <ul>${f2.map((x) => `<li class="${x.level === "error" ? "danger" : ""}"><b>${x.level === "error" ? "Problem" : x.level === "warn" ? "Check" : "Note"}.</b> ${esc2(x.text)}</li>`).join("")}</ul>
+      <table><tr><td>Dual Angle</td><td class="n">${Math.round(e.dual.drilling)}\xB0 \xD7 ${inch2(e.dual.pinToPap)} \xD7 ${Math.round(e.dual.valAngle)}\xB0</td></tr>
+      <tr><td>Pin Buffer</td><td class="n">${inch2(e.pinbuffer.pinToPap)} \xD7 ${inch2(e.pinbuffer.psaToPap)} \xD7 ${inch2(e.pinbuffer.pinBuffer)}</td></tr>
+      <tr><td>2LS</td><td class="n">${inch2(e.ls2.pinToPap)} \xD7 ${inch2(e.ls2.psaToPap)} \xD7 ${inch2(e.ls2.pinToGrip)}</td></tr><tr><td>Core Angle + Buffer</td><td class="n">${Math.round(e.core.drilling)}\xB0 \xD7 ${inch2(e.core.pinToPap)} \xD7 ${inch2(e.core.pinBuffer)}</td></tr></table>${drilled}`;
+    };
+    q2("pt-sgo").onclick = () => {
+      const v = (id) => num8(q2(id));
+      const bal = q2("pt-bal").checked;
+      const w = checkStaticWeight({ top: v("pt-st"), finger: v("pt-sf"), side: v("pt-ss") }, num8(q2("pt-w")) ?? 15, bal);
+      q2("pt-sout").innerHTML = `<div class="u">${w.ok ? "Within the USBC limits." : esc2(w.problems.join(" "))} Limits: ${w.limits.topBottom} oz top or bottom, ${w.limits.sideFingerThumb} oz side, finger or thumb.</div>${w.notes.map((n) => `<div class="note">${esc2(n)}</div>`).join("")}`;
+    };
+    const sym = q2("pt-sym");
+    const showSym = () => {
+      const s = SYMPTOMS.find((x) => x.id === sym.value);
+      q2("pt-sym-out").innerHTML = `<div class="u">${esc2(s.reading)}</div><ol>${s.fixes.map((f2) => `<li><span class="badge good">${esc2(f2.lever)}</span> ${esc2(f2.text)}</li>`).join("")}</ol><div class="note">Order matters: surface and lane play are free and reversible; layout and equipment are permanent.</div>`;
+    };
+    sym.onchange = showSym;
+    showSym();
+    q2("pt-wgo").onclick = () => {
+      const lb = Number(q2("pt-body").value);
+      q2("pt-wout").textContent = lb > 0 ? (() => {
+        const w = suggestWeight(lb);
+        return `About ${w.lb} lb. ${w.test}`;
+      })() : "Enter your body weight.";
+    };
+    const fit = q2("pt-fit");
+    const showFit = () => {
+      const s = FIT_SYMPTOMS.find((x) => x.id === fit.value);
+      q2("pt-fit-out").innerHTML = `<div class="u"><b>Likely cause.</b> ${s.causes.map(esc2).join(" ")}</div><div class="u"><b>Fix.</b> ${s.fixes.map(esc2).join(" ")}</div>`;
+    };
+    fit.onchange = showFit;
+    showFit();
+  }
+  var inch2, num8;
+  var init_proshoptools = __esm({
+    "camera/proshoptools.ts"() {
+      init_layoutgeo();
+      init_drilled();
+      init_layoutpro();
+      init_proshop();
+      init_editions();
+      init_live();
+      init_state();
+      inch2 = (v) => fractionInches(v);
+      num8 = (el) => el && el.value.trim() !== "" ? Number(el.value) : void 0;
+    }
+  });
+
+  // camera/skills.ts
+  function radarSvg(axes, sel2) {
+    const n = axes.length;
+    const rings = [25, 50, 75, 100].map((r) => `<polygon points="${poly(axes.map(() => r))}" fill="none" stroke="rgba(255,255,255,${r === 100 ? 0.35 : 0.12})" stroke-width="${r === 100 ? 1.5 : 1}" ${r === 100 ? 'stroke-dasharray="4 3"' : ""}/>`).join("");
+    const spokes = axes.map((_, i) => {
+      const [x, y] = pt(i, n, 100);
+      return `<line x1="${C}" y1="${C}" x2="${x}" y2="${y}" stroke="rgba(255,255,255,.1)"/>`;
+    }).join("");
+    const earlier = axes.some((a) => a.earlierScore !== null) ? `<polygon points="${poly(axes.map((a) => a.earlierScore))}" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.5" stroke-dasharray="3 3"/>` : "";
+    const now = `<polygon points="${poly(axes.map((a) => a.score))}" fill="rgba(70,230,255,.22)" stroke="#46e6ff" stroke-width="2.2" stroke-linejoin="round"/>`;
+    const dots = axes.map((a, i) => {
+      const [x, y] = pt(i, n, a.score ?? 0);
+      const col = a.score === null ? "none" : a.score >= 85 ? "#5affb0" : a.score >= 60 ? "#ffd25a" : "#ff5a6e";
+      return `<circle cx="${x}" cy="${y}" r="${i === sel2 ? 6 : 4.2}" fill="${col}" stroke="${a.score === null ? "rgba(255,255,255,.5)" : "#0b1220"}" stroke-width="1.5"/>`;
+    }).join("");
+    const ticks = axes.map((a, i) => {
+      if (a.score200 === null) return "";
+      const [x, y] = pt(i, n, a.score200);
+      return `<path d="M${x},${y - 5} l5,5 l-5,5 l-5,-5 z" fill="#ffd25a" stroke="#0b1220" stroke-width="1"/>`;
+    }).join("");
+    const labels = axes.map((a, i) => {
+      const [x, y] = pt(i, n, 126);
+      const anchor = x < C - 12 ? "end" : x > C + 12 ? "start" : "middle";
+      return `<g data-ax="${i}" style="cursor:pointer"><text x="${x}" y="${y + 4}" text-anchor="${anchor}" font-size="11.5" font-weight="${i === sel2 ? 800 : 600}" fill="${i === sel2 ? "#fff" : "#b6c2d9"}">${esc2(a.label)}</text></g>`;
+    }).join("");
+    return `<svg viewBox="-62 -4 ${SIZE + 124} ${SIZE + 8}" style="width:100%;max-width:420px;display:block;margin:0 auto" role="img" aria-label="Skills radar">${rings}${spokes}${earlier}${now}${ticks}${dots}${labels}</svg>`;
+  }
+  function detail(a) {
+    const have = a.value !== null;
+    const bar = a.score === null ? 0 : a.score;
+    const col = a.score === null ? "#555" : a.score >= 85 ? "#5affb0" : a.score >= 60 ? "#ffd25a" : "#ff5a6e";
+    return `<div class="k">${esc2(a.label)} \xB7 ${esc2(a.group)}</div>
+    <div style="height:8px;border-radius:4px;background:rgba(255,255,255,.1);margin:6px 0"><div style="width:${bar}%;height:8px;border-radius:4px;background:${col}"></div></div>
+    <table><tr><td>You</td><td class="n">${have ? fmt3(a, a.value) : "not enough data yet"}</td></tr>
+    <tr><td>Target</td><td class="n">${esc2(targetText(a))}</td></tr>
+    ${a.at200 !== void 0 ? `<tr><td>200-average bowlers</td><td class="n">${esc2(fmt3(a, a.at200))}</td></tr>` : ""}
+    ${a.earlierScore !== null && a.score !== null ? `<tr><td>Change since earlier</td><td class="n">${a.score - a.earlierScore >= 0 ? "+" : ""}${a.score - a.earlierScore} points</td></tr>` : ""}</table>
+    <div class="u">${esc2(a.drill)}</div>
+    <div class="note"><span class="badge ${a.basis === "benchmark" ? "good" : "moderate"}">${a.basis === "benchmark" ? "published benchmark" : "LaneIQ coaching target"}</span> ${esc2(a.source)}</div>`;
+  }
+  async function mountSkills(host2) {
+    const games2 = insightGames(await loadGames());
+    const axes = skillsProfile(games2, insightShots());
+    const scored = axes.filter((a) => a.score !== null);
+    const card2 = document.createElement("div");
+    card2.className = "card";
+    card2.id = "skills-card";
+    host2.querySelectorAll("#skills-card").forEach((x) => x.remove());
+    const focus = focusList(axes);
+    let sel2 = focus.length ? axes.indexOf(focus[0].axis) : 0;
+    const draw3 = () => {
+      card2.innerHTML = `<div class="k">Your skills</div>
+      ${scored.length ? radarSvg(axes, sel2) : `<div class="u">Your skills chart fills in as you bowl. Scoring axes come from games in My scores; accuracy and repeatability axes come from tracked camera shots.</div>${radarSvg(axes, sel2)}`}
+      <div class="note" style="text-align:center"><span style="color:#46e6ff">\u2501 now</span> \xB7 ${axes.some((a) => a.earlierScore !== null) ? '<span style="color:#ccc">\u2505 when you started</span> \xB7 ' : ""}<span style="color:#ffd25a">\u25C6 200-average bowler</span> \xB7 outer ring = target. Tap a skill.</div>
+      <div id="sk-detail" style="margin-top:8px">${detail(axes[sel2])}</div>
+      ${focus.length ? `<div class="k" style="margin-top:12px">Work on these first</div><ol>${focus.slice(0, 3).map((f2) => `<li><b>${esc2(f2.axis.label)}</b> (${f2.axis.score}/100): ${esc2(f2.axis.drill)}</li>`).join("")}</ol>` : scored.length ? `<div class="u">Every scored skill is at its target. Raise the bar by bowling more games.</div>` : ""}
+      ${strongest(axes).length ? `<div class="k" style="margin-top:8px">Your strengths</div><div class="u">${strongest(axes).map((a) => `${esc2(a.label)} (${a.score})`).join(" \xB7 ")}</div>` : ""}
+      ${axes.some((a) => a.score === null) ? `<div class="note" style="margin-top:8px">Not scored yet: ${axes.filter((a) => a.score === null).map((a) => esc2(a.label)).join(", ")}. They need more games or more tracked shots.</div>` : ""}`;
+      card2.querySelectorAll("[data-ax]").forEach((g) => g.addEventListener("click", () => {
+        sel2 = Number(g.getAttribute("data-ax"));
+        draw3();
+      }));
+    };
+    draw3();
+    const h = host2.querySelector("h2");
+    if (h) h.after(card2);
+    else host2.prepend(card2);
+  }
+  var SIZE, C, RAD, pt, poly, fmt3, targetText;
+  var init_skills2 = __esm({
+    "camera/skills.ts"() {
+      init_skills();
+      init_live();
+      init_scorecard();
+      init_state();
+      SIZE = 320;
+      C = SIZE / 2;
+      RAD = 104;
+      pt = (i, n, v) => {
+        const a = -Math.PI / 2 + i / n * Math.PI * 2;
+        return [C + Math.cos(a) * RAD * (v / 100), C + Math.sin(a) * RAD * (v / 100)];
+      };
+      poly = (vals4) => vals4.map((v, i) => pt(i, vals4.length, v ?? 0).map((x) => x.toFixed(1)).join(",")).join(" ");
+      fmt3 = (a, v) => a.unit.trim() === "%" ? `${v.toFixed(1)}%` : a.unit.trim() === "\xB0" ? `${v.toFixed(1)}\xB0` : `${v.toFixed(a.id === "speed" ? 2 : 1)}${a.unit}`;
+      targetText = (a) => `${a.higherBetter ? "at least " : "under "}${fmt3(a, a.target)}`;
+    }
+  });
+
   // core/src/season.ts
   function seasonRecap(sessions) {
     const all = sessions.flatMap((s) => s.shots);
@@ -27421,7 +28948,7 @@ ${url}`);
     const days = new Set(all.map((s) => s.at.slice(0, 10))).size;
     const rate3 = (shots) => {
       const j = shots.filter((s) => s.m.zone !== null);
-      return { j: j.length, p: j.length ? pct2(j.filter((s) => s.m.zone === "pocket").length, j.length) : null };
+      return { j: j.length, p: j.length ? pct3(j.filter((s) => s.m.zone === "pocket").length, j.length) : null };
     };
     let best2 = null;
     for (const s of sessions) {
@@ -27441,21 +28968,21 @@ ${url}`);
       sessions: sessions.length,
       shots: all.length,
       days,
-      pocketPct: judged.length >= 10 ? pct2(inPocket, judged.length) : null,
+      pocketPct: judged.length >= 10 ? pct3(inPocket, judged.length) : null,
       judged: judged.length,
       best: best2,
-      strikes: res.length >= 10 ? { made: res.filter(isStrike).length, of: res.length, pct: pct2(res.filter(isStrike).length, res.length) } : null,
+      strikes: res.length >= 10 ? { made: res.filter(isStrike).length, of: res.length, pct: pct3(res.filter(isStrike).length, res.length) } : null,
       trend: trend3,
       topBall: top ? { id: top[0], shots: top[1] } : null,
       avgSpeed: sp.length >= 10 ? Math.round(sp.reduce((a, b) => a + b, 0) / sp.length * 10) / 10 : null
     };
   }
-  var RECAP_MIN_SHOTS, pct2;
+  var RECAP_MIN_SHOTS, pct3;
   var init_season = __esm({
     "core/src/season.ts"() {
       init_coach();
       RECAP_MIN_SHOTS = 20;
-      pct2 = (n, d) => d ? Math.round(100 * n / d) : 0;
+      pct3 = (n, d) => d ? Math.round(100 * n / d) : 0;
     }
   });
 
@@ -27479,7 +29006,7 @@ ${url}`);
     const font = (px, w = 600) => g.font = `${w} ${px}px -apple-system, "SF Pro Display", "Segoe UI", system-ui, sans-serif`;
     g.fillStyle = "#8a97b2";
     font(40, 500);
-    g.fillText(`${day2(r.from)} to ${day2(r.to)}`.toUpperCase(), 540, 150);
+    g.fillText(`${day3(r.from)} to ${day3(r.to)}`.toUpperCase(), 540, 150);
     g.fillStyle = "#eef3ff";
     font(56, 700);
     g.fillText(name, 540, 225);
@@ -27501,7 +29028,7 @@ ${url}`);
     });
     const lines = [];
     if (r.trend) lines.push(["#5affb0", `Pocket rate ${r.trend.from}% to ${r.trend.to}% (first three sessions to last three)`]);
-    if (r.best) lines.push(["#ffd25a", `Best session: ${r.best.pct}% in the pocket, ${day2(r.best.date)}`]);
+    if (r.best) lines.push(["#ffd25a", `Best session: ${r.best.pct}% in the pocket, ${day3(r.best.date)}`]);
     if (r.strikes) lines.push(["#46e6ff", `${r.strikes.made} strikes in ${r.strikes.of} shots with a result (${r.strikes.pct}%)`]);
     if (topBall) lines.push(["#eef3ff", `Most used ball: ${topBall}`]);
     if (r.avgSpeed !== null) lines.push(["#eef3ff", `Average speed ${r.avgSpeed.toFixed(1)} mph`]);
@@ -27517,16 +29044,16 @@ ${url}`);
     return new File([blob], `laneiq-recap-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.png`, { type: "image/png" });
   }
   function recapHtml() {
-    const r = seasonRecap(sessionsOf2(S.shots));
+    const r = seasonRecap(sessionsOf(S.shots));
     if (!r) return `<div class="card"><div class="u">Bowl 20 shots or more and a recap you can share appears here.</div></div>`;
     return `<div class="card"><div class="lr-head" style="font-size:18px">${r.sessions} sessions \xB7 ${r.shots} shots \xB7 ${r.days} days</div>
     ${r.pocketPct !== null ? `<div class="u">${r.pocketPct}% of ${r.judged} judged shots in the pocket${r.trend ? `; ${r.trend.from}% \u2192 ${r.trend.to}% from your first three sessions to your last three` : ""}.</div>` : ""}
-    ${r.best ? `<div class="note">Best session: ${r.best.pct}% on ${esc2(day2(r.best.date))}.</div>` : ""}
+    ${r.best ? `<div class="note">Best session: ${r.best.pct}% on ${esc2(day3(r.best.date))}.</div>` : ""}
     ${S.profile?.junior ? "" : `<div id="rc-share" class="chips"><button class="btn ghost" id="rc-make">Make my recap picture</button></div>`}</div>`;
   }
   function wireRecap() {
     $("rc-make")?.addEventListener("click", async () => {
-      const r = seasonRecap(sessionsOf2(S.shots));
+      const r = seasonRecap(sessionsOf(S.shots));
       if (!r) return;
       $("rc-share").innerHTML = `<div class="note">Making the picture\u2026</div>`;
       const ball = r.topBall ? S.arsenal.find((b) => b.id === r.topBall.id)?.name ?? null : null;
@@ -27537,7 +29064,7 @@ ${url}`);
       }
     });
   }
-  var day2;
+  var day3;
   var init_recapui = __esm({
     "camera/recapui.ts"() {
       init_season();
@@ -27545,7 +29072,7 @@ ${url}`);
       init_live();
       init_sharefiles();
       init_state();
-      day2 = (iso2) => new Date(iso2).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+      day3 = (iso2) => new Date(iso2).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
     }
   });
 
@@ -27565,31 +29092,31 @@ ${url}`);
         speedSd: d.spreads.find((x) => x.key === "launchSpeed")?.sd ?? null
       });
     });
-    const trends = [];
+    const trends2 = [];
     for (const t of TRENDS) {
       const v = points.filter((p) => p[t.key] !== null);
       if (v.length < TREND_MIN_SESSIONS) continue;
       const recent = v.slice(-TREND_SIDE);
       const before = v.slice(-TREND_SIDE * 2, -recent.length);
       if (before.length < 1 || recent.length < 2) continue;
-      const from = mean7(before.map((p) => p[t.key])), to = mean7(recent.map((p) => p[t.key]));
+      const from = mean10(before.map((p) => p[t.key])), to = mean10(recent.map((p) => p[t.key]));
       const change = to - from;
       const big = Math.abs(change) >= t.small(from);
-      trends.push({ key: t.key, label: t.label, unit: t.unit, from, to, change, better: big ? change > 0 === t.goodWhenUp : null, sessions: [recent.length, before.length] });
+      trends2.push({ key: t.key, label: t.label, unit: t.unit, from, to, change, better: big ? change > 0 === t.goodWhenUp : null, sessions: [recent.length, before.length] });
     }
     const allShots = sessions.reduce((a, s) => a + s.shots.length, 0);
-    const days = new Set(sessions.map((s) => day3(s.start)));
+    const days = new Set(sessions.map((s) => day4(s.start)));
     const pockets = points.filter((p) => p.pocketPct !== null && p.n >= 10);
     const tight = points.filter((p) => p.arrowsSd !== null && p.n >= 10);
     return {
       points,
-      trends,
+      trends: trends2,
       totals: { sessions: sessions.length, shots: allShots, days: days.size, firstDay: sessions[0]?.start ?? null },
       bests: {
         pocketPct: pockets.length >= 2 ? pockets.reduce((a, b) => b.pocketPct >= a.pocketPct ? b : a) : null,
         arrowsSd: tight.length >= 2 ? tight.reduce((a, b) => b.arrowsSd <= a.arrowsSd ? b : a) : null
       },
-      note: trends.length ? null : points.length < TREND_MIN_SESSIONS ? `Trends show once you have ${TREND_MIN_SESSIONS} sessions of ${DEBRIEF_MIN_SHOTS} or more shots (you have ${points.length}).` : "Not enough measurements of these yet to compare."
+      note: trends2.length ? null : points.length < TREND_MIN_SESSIONS ? `Trends show once you have ${TREND_MIN_SESSIONS} sessions of ${DEBRIEF_MIN_SHOTS} or more shots (you have ${points.length}).` : "Not enough measurements of these yet to compare."
     };
   }
   function practicePlan(shots, report) {
@@ -27600,17 +29127,17 @@ ${url}`);
     const board = vals3(shots, "arrowsBoard");
     const mph = vals3(shots, "launchSpeed");
     if (arrows && arrows.sd >= 1.2 && board.length >= DEBRIEF_MIN_SHOTS) {
-      items.push({ drill: "arrow-sniper", board: Math.round(median8(board)), why: `Your arrows board varied by ${arrows.sd.toFixed(1)} boards over ${arrows.n} shots. Aim for within 1.` });
+      items.push({ drill: "arrow-sniper", board: Math.round(median9(board)), why: `Your arrows board varied by ${arrows.sd.toFixed(1)} boards over ${arrows.n} shots. Aim for within 1.` });
     }
     if (speed && speed.sd >= 0.6 && mph.length >= DEBRIEF_MIN_SHOTS) {
-      items.push({ drill: "speed-lock", mph: Math.round(median8(mph) * 10) / 10, why: `Your speed varied by ${speed.sd.toFixed(1)} mph over ${speed.n} shots. Aim for within 0.5.` });
+      items.push({ drill: "speed-lock", mph: Math.round(median9(mph) * 10) / 10, why: `Your speed varied by ${speed.sd.toFixed(1)} mph over ${speed.n} shots. Aim for within 0.5.` });
     }
     if (report.pocket && report.pocket.judged >= DEBRIEF_MIN_SHOTS && report.pocket.pct < 60) {
       items.push({ drill: "pocket-hunter", why: `${report.pocket.pct}% of the ${report.pocket.judged} shots we could judge met the pocket.` });
     }
     const steady = items.length === 0;
     if (steady) {
-      if (board.length >= DEBRIEF_MIN_SHOTS) items.push({ drill: "arrow-sniper", board: Math.round(median8(board)), why: "Your last session was steady. Ten at the same board keeps it that way." });
+      if (board.length >= DEBRIEF_MIN_SHOTS) items.push({ drill: "arrow-sniper", board: Math.round(median9(board)), why: "Your last session was steady. Ten at the same board keeps it that way." });
       else items.push({ drill: "pocket-hunter", why: "Your last session was steady. Ten at the pocket keeps it that way." });
     }
     return { items: items.slice(0, 3), steady, basis: `Based on your last session: ${report.n} shots on ${new Date(report.start).toLocaleDateString([], { month: "short", day: "numeric" })}.` };
@@ -27636,19 +29163,19 @@ ${url}`);
     while (i >= 0 && has(grid2[i])) weekStreak++, i--;
     return { grid: grid2, weekStreak, daysBowled: grid2.flat().filter((d) => d.shots > 0).length };
   }
-  var TREND_SIDE, TREND_MIN_SESSIONS, mean7, median8, day3, TRENDS, vals3, key2;
+  var TREND_SIDE, TREND_MIN_SESSIONS, mean10, median9, day4, TRENDS, vals3, key2;
   var init_progress = __esm({
     "core/src/progress.ts"() {
       init_debrief();
       TREND_SIDE = 3;
       TREND_MIN_SESSIONS = 4;
-      mean7 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
-      median8 = (v) => {
+      mean10 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+      median9 = (v) => {
         const s = [...v].sort((a, b) => a - b);
         const m = s.length >> 1;
         return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
       };
-      day3 = (iso2) => new Date(iso2).toDateString();
+      day4 = (iso2) => new Date(iso2).toDateString();
       TRENDS = [
         { key: "pocketPct", label: "Shots in the pocket", unit: "%", goodWhenUp: true, small: () => 5 },
         { key: "arrowsSd", label: "Arrows board spread", unit: "boards", goodWhenUp: false, small: (f2) => Math.max(0.15, f2 * 0.15) },
@@ -27768,7 +29295,7 @@ ${url}`);
     return v.map((x, i) => {
       if (x === null) return null;
       const w = v.slice(Math.max(0, i - h), i + h + 1).filter((y) => y !== null);
-      return w.length >= 3 ? median9(w) : null;
+      return w.length >= 3 ? median10(w) : null;
     });
   }
   function traceSvg(values, o) {
@@ -27785,15 +29312,15 @@ ${url}`);
     const sm = rollingMedian(values).map((v, i) => ({ v, i })).filter((p) => p.v !== null);
     const line2 = sm.map((p, k2) => `${k2 ? "L" : "M"}${x(p.i).toFixed(1)} ${y(p.v).toFixed(1)}`).join(" ");
     const third = Math.max(3, Math.floor(pts.length / 3));
-    const a = median9(pts.slice(0, third).map((p) => p.v)), b = median9(pts.slice(-third).map((p) => p.v));
+    const a = median10(pts.slice(0, third).map((p) => p.v)), b = median10(pts.slice(-third).map((p) => p.v));
     const label2 = `${o.label} through the session: first third median ${a.toFixed(d)} ${o.unit}, last third ${b.toFixed(d)} ${o.unit}, over ${pts.length} shots`;
     return `<div class="trace"><div class="row" style="align-items:baseline"><div>${esc2(o.label)}</div><div class="note">${a.toFixed(d)} \u2192 ${b.toFixed(d)} ${esc2(o.unit)}</div></div><svg viewBox="0 0 ${W3} ${H3}" role="img" aria-label="${esc2(label2)}" style="width:100%;height:auto;color:${color}"><text x="${L3 - 4}" y="${T + 6}" text-anchor="end" font-size="9" fill="currentColor" opacity=".6">${hi.toFixed(d)}</text><text x="${L3 - 4}" y="${H3 - B}" text-anchor="end" font-size="9" fill="currentColor" opacity=".6">${lo.toFixed(d)}</text><line x1="${L3}" x2="${W3 - R3}" y1="${H3 - B + 3}" y2="${H3 - B + 3}" stroke="currentColor" opacity=".25"/>${pts.map((p) => `<circle cx="${x(p.i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="2.2" fill="currentColor" opacity=".45"/>`).join("")}<path d="${line2}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><text x="${L3}" y="${H3 - 2}" font-size="9" fill="currentColor" opacity=".6">shot 1</text><text x="${W3 - R3}" y="${H3 - 2}" text-anchor="end" font-size="9" fill="currentColor" opacity=".6">shot ${values.length}</text></svg></div>`;
   }
-  var median9;
+  var median10;
   var init_charts = __esm({
     "camera/charts.ts"() {
       init_live();
-      median9 = (v) => {
+      median10 = (v) => {
         const s = [...v].sort((a, b) => a - b);
         const m = s.length >> 1;
         return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
@@ -27821,7 +29348,7 @@ ${url}`);
       const j = list.filter((s) => s.m.zone !== null);
       const pk = j.length ? Math.round(100 * j.filter((s) => s.m.zone === "pocket").length / j.length) : null;
       const res = list.filter((s) => s.result);
-      return `<tr><td>${esc2(ballName2(id || null))}</td><td class="n">${list.length}</td><td class="n">${pk === null ? "\u2013" : pk + "%"}</td><td class="n">${res.length >= 5 ? Math.round(100 * res.filter(isStrike).length / res.length) + "%" : "\u2013"}</td><td class="n">${f(mean8(col(list, "breakpointFt")), 0)}</td><td class="n">${f(mean8(col(list, "entryAngle")))}</td><td class="n">${f(mean8(col(list, "launchSpeed")))}</td></tr>`;
+      return `<tr><td>${esc2(ballName3(id || null))}</td><td class="n">${list.length}</td><td class="n">${pk === null ? "\u2013" : pk + "%"}</td><td class="n">${res.length >= 5 ? Math.round(100 * res.filter(isStrike).length / res.length) + "%" : "\u2013"}</td><td class="n">${f(mean11(col(list, "breakpointFt")), 0)}</td><td class="n">${f(mean11(col(list, "entryAngle")))}</td><td class="n">${f(mean11(col(list, "launchSpeed")))}</td></tr>`;
     }).join("");
     const center = [...new Set(shots.map((s) => s.center).filter(Boolean))].join(", ");
     const spreadRows2 = r.spreads.map((x) => `<tr><td>${esc2(x.label)}</td><td class="n">\xB1 ${x.sd.toFixed(1)} ${esc2(x.unit)}</td><td class="n">${x.n}</td><td class="n">${x.usual === null ? "\u2013" : "\xB1 " + x.usual.toFixed(1)}</td></tr>`).join("");
@@ -27851,7 +29378,7 @@ ${url}`);
       if (note.textContent === "Tap to add a note for the coach or pro shop.") note.textContent = "";
     };
   }
-  var TRACES, seriesOf, dayLong, mean8, f, ballName2;
+  var TRACES, seriesOf, dayLong, mean11, f, ballName3;
   var init_proreport = __esm({
     "camera/proreport.ts"() {
       init_health();
@@ -27870,15 +29397,15 @@ ${url}`);
       ];
       seriesOf = (shots, k2) => shots.map((s) => typeof s.m[k2] === "number" && Number.isFinite(s.m[k2]) ? s.m[k2] : null);
       dayLong = (iso2) => new Date(iso2).toLocaleDateString([], { dateStyle: "full" });
-      mean8 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+      mean11 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
       f = (v, d = 1) => v === null ? "\u2013" : v.toFixed(d);
-      ballName2 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "No ball picked";
+      ballName3 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "No ball picked";
     }
   });
 
   // camera/debriefui.ts
   function sessionList() {
-    const all = sessionsOf2(S.shots);
+    const all = sessionsOf(S.shots);
     return all.map((s, i) => ({ ...s, report: debrief(s.shots, all.slice(0, i)) })).reverse();
   }
   function sessionCardsHtml() {
@@ -27978,16 +29505,16 @@ ${url}`);
     ${r ? `<div class="deb-hero"><div class="deb-big" data-count="${r.pocket ? r.pocket.pct : r.n}">${r.pocket ? r.pocket.pct : r.n}</div><div class="deb-unit">${r.pocket ? "% in the pocket" : "shots tracked"}</div><div class="deb-sub">${r.n} shots in ${r.minutes} min${r.strikes ? ` \xB7 ${r.strikes.made} strike${r.strikes.made === 1 ? "" : "s"} of ${r.strikes.attempts} with a result` : ""}</div></div>
     ${r.bests.length ? `<div class="card deb-best">${r.bests.map((b) => `<div>\u2605 ${esc2(b)}</div>`).join("")}</div>` : ""}
     ${r.focus ? `<h3>One thing to work on</h3><div class="card"><div class="u">${esc2(r.focus)}</div><div class="note">A starting point to talk over with your coach. It rests on this session's shots only.</div></div>` : ""}
-    <h3>Runs</h3><div class="card">${row2("Longest run in the pocket", `${r.streaks.pocket}`, "in a row")}${r.strikes ? row2("Longest run of strikes", `${r.streaks.strike}`, "in a row") : ""}${r.best ? row2("Best shot", `${(r.best.a.speedMph ?? 0).toFixed(1)} <small>mph</small>`, `${isStrike(r.best) ? "a strike" : "in the pocket"} with ${ballName3(r.best.ballId)}, ${timeText(r.best.at)}`) : ""}</div>
+    <h3>Runs</h3><div class="card">${row2("Longest run in the pocket", `${r.streaks.pocket}`, "in a row")}${r.strikes ? row2("Longest run of strikes", `${r.streaks.strike}`, "in a row") : ""}${r.best ? row2("Best shot", `${(r.best.a.speedMph ?? 0).toFixed(1)} <small>mph</small>`, `${isStrike(r.best) ? "a strike" : "in the pocket"} with ${ballName4(r.best.ballId)}, ${timeText(r.best.at)}`) : ""}</div>
     ${r.spreads.length ? `<h3>How repeatable</h3><div class="card">${spreadRows(r)}<div class="note">How far each reading varied from shot to shot (one standard deviation). Smaller is more repeatable.</div></div>` : ""}
     ${r.drifts.length ? `<h3>Start to finish</h3><div class="card">${driftRows(r)}<div class="note">The first third of the session against the last third (medians). A move may be the lane changing, or you.</div></div>` : `<div class="note">Start-to-finish changes show from 9 shots.</div>`}
     ${shots.length >= 10 ? `<h3>What you changed, and did it work</h3>${changesHtml(shots)}` : ""}
     ${shots.length >= 9 ? `<h3>Through the session</h3><div class="card">${sessionTracesHtml(shots)}<div class="note">Each dot is a shot; the line is the rolling middle of five shots, so one odd shot does not move it. Look for the line sliding: that is the lane or you changing.</div></div>` : ""}
-    <div class="note">Balls: ${esc2(r.balls.map(ballName3).join(", ") || "not set")}</div>
+    <div class="note">Balls: ${esc2(r.balls.map(ballName4).join(", ") || "not set")}</div>
     <div class="chips"><button class="btn ghost" id="db-pro">Pro report (print or save PDF)</button></div>
     ${junior ? "" : `<h3>Share</h3><div id="db-share" class="card"><div class="u">Making the picture\u2026</div></div>`}` : `<div class="card"><div class="u">${shots.length} shot${shots.length === 1 ? "" : "s"}. A debrief needs 5 shots with measurements.</div></div>`}
     <h3>Shots in this session</h3>
-    <div class="card" id="db-shots">${shots.map((s, i) => `<label class="drow dsel"><input type="checkbox" data-sel="${s.id}"><span class="dnum">${i + 1}</span><span style="flex:1">${esc2(timeText(s.at))} \xB7 ${esc2(ballName3(s.ballId))}${s.m.zone ? ` \xB7 ${esc2(s.m.zone.replace("-", " "))}` : ""}${s.result ? ` \xB7 ${s.result.pinsDown === 10 ? "strike" : s.result.pinsDown + " pins"}` : ""}</span><button class="chip" data-open="${s.id}">Replay</button></label>`).join("")}
+    <div class="card" id="db-shots">${shots.map((s, i) => `<label class="drow dsel"><input type="checkbox" data-sel="${s.id}"><span class="dnum">${i + 1}</span><span style="flex:1">${esc2(timeText(s.at))} \xB7 ${esc2(ballName4(s.ballId))}${s.m.zone ? ` \xB7 ${esc2(s.m.zone.replace("-", " "))}` : ""}${s.result ? ` \xB7 ${s.result.pinsDown === 10 ? "strike" : s.result.pinsDown + " pins"}` : ""}</span><button class="chip" data-open="${s.id}">Replay</button></label>`).join("")}
       <div class="note">Tick shots that are not yours (another bowler, or a neighbouring lane) and remove them, so they do not count in your averages.</div>
       <div class="chips"><button class="btn ghost danger" id="db-del" disabled>Remove ticked shots</button></div></div>`;
     document.getElementById("db-pro")?.addEventListener("click", () => openProReport(id));
@@ -28020,7 +29547,7 @@ ${url}`);
       void cardPicture2(r, S.profile?.name ?? "My session").then((f2) => offerShare($("db-share"), [f2], { title: "My LaneIQ session", label: "Share this session", text: "My bowling session, measured with LaneIQ." })).catch(() => $("db-share").innerHTML = `<div class="note">Couldn't make the picture on this phone.</div>`);
     }
   }
-  var ballName3, dayText4, timeText, sg3, row2;
+  var ballName4, dayText4, timeText, sg3, row2;
   var init_debriefui = __esm({
     "camera/debriefui.ts"() {
       init_health();
@@ -28031,7 +29558,7 @@ ${url}`);
       init_state();
       init_sharefiles();
       init_proreport();
-      ballName3 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
+      ballName4 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
       dayText4 = (iso2) => new Date(iso2).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
       timeText = (iso2) => new Date(iso2).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
       sg3 = (v, d = 1) => `${v > 0 ? "+" : ""}${v.toFixed(d)}`;
@@ -28059,7 +29586,7 @@ ${url}`);
     };
   }
   function calendarHtml() {
-    const c = calendar(sessionsOf2(S.shots), 12);
+    const c = calendar(sessionsOf(S.shots), 12);
     const cell3 = (d) => {
       const a = d.future ? 0 : d.shots === 0 ? 0.07 : Math.min(1, 0.3 + d.shots / 40);
       return `<div title="${esc2(d.date)}: ${d.shots} shot${d.shots === 1 ? "" : "s"}" style="aspect-ratio:1;border-radius:3px;background:${d.future ? "transparent" : d.shots ? `rgba(70,230,255,${a.toFixed(2)})` : "rgba(255,255,255,.07)"}"></div>`;
@@ -28068,7 +29595,7 @@ ${url}`);
     return `<div class="card"><div role="img" aria-label="${esc2(label2)}" style="display:grid;grid-template-columns:repeat(12,1fr);gap:3px">${c.grid.map((w) => `<div style="display:grid;gap:3px">${w.map(cell3).join("")}</div>`).join("")}</div><div class="note">${c.daysBowled} day${c.daysBowled === 1 ? "" : "s"} bowled in 12 weeks \xB7 ${c.weekStreak} week${c.weekStreak === 1 ? "" : "s"} in a row. Each column is a week, Monday at the top.</div></div>`;
   }
   function goalsHtml() {
-    const sts = goalsStatus(S.goals, sessionsOf2(S.shots));
+    const sts = goalsStatus(S.goals, sessionsOf(S.shots));
     const pct5 = (x) => Math.round(x * 100);
     const one = (s) => {
       const f2 = s.def.unit === "boards" || s.def.unit === "mph" ? 1 : 0;
@@ -28106,7 +29633,7 @@ ${url}`);
     ${r.centers.length ? `<div class="k" style="margin-top:8px">Centres</div>${r.centers.slice(0, 8).map(placeRow).join("")}` : ""}${r.patterns.length ? `<div class="k" style="margin-top:8px">Oil patterns</div>${r.patterns.slice(0, 8).map(placeRow).join("")}` : ""}</div>`;
   }
   function progressTileHtml() {
-    const p = progress2(sessionsOf2(S.shots));
+    const p = progress2(sessionsOf(S.shots));
     if (!S.profile) return "";
     const t = p.trends.find((x) => x.better !== null);
     const line2 = !p.points.length ? "Set goals, see where you bowl best, plan your practice" : t ? `${t.label}: ${t.better ? "better" : "worse"} lately (${t.from.toFixed(t.key === "pocketPct" ? 0 : 1)} to ${t.to.toFixed(t.key === "pocketPct" ? 0 : 1)} ${t.unit})` : `${p.totals.sessions} session${p.totals.sessions === 1 ? "" : "s"} \xB7 ${p.totals.shots} shots`;
@@ -28119,7 +29646,7 @@ ${url}`);
     bump("progress");
     const el = $("review");
     const keep = el.classList.contains("on") ? el.scrollTop : 0;
-    const p = progress2(sessionsOf2(S.shots));
+    const p = progress2(sessionsOf(S.shots));
     const last3 = sessionList().find((s) => s.report);
     const plan = last3 ? practicePlan(last3.shots, last3.report) : null;
     el.classList.add("on");
@@ -28143,7 +29670,7 @@ ${url}`);
     <h3>Your recap</h3>
     ${recapHtml()}
     <h3>Your moves, scored</h3>
-    ${playbookCardHtml(sessionsOf2(S.shots).map((x) => x.shots))}
+    ${playbookCardHtml(sessionsOf(S.shots).map((x) => x.shots))}
     <h3>Where you bowl best</h3>
     ${whereHtml()}
     <h3>Your practice calendar</h3>
@@ -28227,10 +29754,10 @@ ${url}`);
     if (!s || !s.seen) return 4;
     return 1 + 3 * (1 - s.right / s.seen);
   }
-  function nextLeave(stats, rng2, last3) {
+  function nextLeave(stats, rng3, last3) {
     const pool = LEAVES.filter((l) => leaveKey(l) !== last3);
     const w = pool.map((l) => weight(stats[leaveKey(l)]));
-    let r = rng2() * w.reduce((a, b) => a + b, 0);
+    let r = rng3() * w.reduce((a, b) => a + b, 0);
     for (let i = 0; i < pool.length; i++) {
       r -= w[i];
       if (r < 0) return pool[i];
@@ -28425,10 +29952,10 @@ ${url}`);
     return [head, ...rows2].map((r) => r.map(cell).join(",")).join("\n");
   }
   function referenceFrom(f2, at4 = (/* @__PURE__ */ new Date()).toISOString()) {
-    const r = { speedMph: num8(f2.speed, 5, 30), rpm: num8(f2.rpm, 50, 1e3), axisRotation: num8(f2.rotation, -90, 90), axisTilt: num8(f2.tilt, -30, 60), breakpointBoard: num8(f2.breakpoint, 1, 39), source: f2.source.replace(/[\u0000-\u001f<>]/g, " ").trim().slice(0, 40) || void 0, at: at4 };
+    const r = { speedMph: num9(f2.speed, 5, 30), rpm: num9(f2.rpm, 50, 1e3), axisRotation: num9(f2.rotation, -90, 90), axisTilt: num9(f2.tilt, -30, 60), breakpointBoard: num9(f2.breakpoint, 1, 39), source: f2.source.replace(/[\u0000-\u001f<>]/g, " ").trim().slice(0, 40) || void 0, at: at4 };
     return [r.speedMph, r.rpm, r.axisRotation, r.axisTilt, r.breakpointBoard].some((v) => v !== void 0) ? r : null;
   }
-  var spinOk, REF_METRICS, t952, MIN_PAIRS, cell, num8;
+  var spinOk, REF_METRICS, t952, MIN_PAIRS, cell, num9;
   var init_accuracy = __esm({
     "core/src/accuracy.ts"() {
       spinOk = (s) => !!s.spin && (s.spin.status === "measured" || s.spin.status === "rough");
@@ -28442,7 +29969,7 @@ ${url}`);
       t952 = (df) => df >= 30 ? 2 : [0, 12.71, 4.3, 3.18, 2.78, 2.57, 2.45, 2.36, 2.31, 2.26, 2.23, 2.2, 2.18, 2.16, 2.14, 2.13, 2.12, 2.11, 2.1, 2.09, 2.09, 2.08, 2.07, 2.07, 2.06, 2.06, 2.06, 2.05, 2.05, 2.04][df] ?? 2;
       MIN_PAIRS = 5;
       cell = (v) => v === void 0 || v === null ? "" : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
-      num8 = (v, lo, hi) => {
+      num9 = (v, lo, hi) => {
         const n = Number(v.trim());
         return v.trim() !== "" && Number.isFinite(n) && n >= lo && n <= hi ? n : void 0;
       };
@@ -28636,10 +30163,10 @@ ${url}`);
   }
   function cleanProfileSnapshot(p) {
     if (!isObj(p)) return void 0;
-    const name = txt2(p.name, 60);
+    const name = txt3(p.name, 60);
     if (!name) return void 0;
     const out = { name, hand: p.hand === "L" ? "L" : "R" };
-    const user = txt2(p.username, 20);
+    const user = txt3(p.username, 20);
     if (/^[a-z0-9_]{3,20}$/i.test(user)) out.username = user;
     const rpm = fin2(p.revRpm, 50, 1e3);
     if (rpm !== void 0) out.revRpm = rpm;
@@ -28649,9 +30176,9 @@ ${url}`);
     if (isObj(p.quiz)) {
       const q2 = {};
       for (const [k2, v] of Object.entries(p.quiz).slice(0, 40)) {
-        if (typeof v === "string") q2[k2] = txt2(v, 60);
+        if (typeof v === "string") q2[k2] = txt3(v, 60);
         else if (typeof v === "number" && Number.isFinite(v)) q2[k2] = v;
-        else if (Array.isArray(v)) q2[k2] = v.filter((x) => typeof x === "string").map((x) => txt2(x, 40)).slice(0, 20);
+        else if (Array.isArray(v)) q2[k2] = v.filter((x) => typeof x === "string").map((x) => txt3(x, 40)).slice(0, 20);
       }
       out.quiz = q2;
     }
@@ -28661,7 +30188,7 @@ ${url}`);
       if (Object.keys(f2).length) out.fit = f2;
     }
     if (isObj(p.spin) && (p.spin.source === "entered" || p.spin.source === "video")) {
-      out.spin = { source: p.spin.source, at: txt2(p.spin.at, 40), ...fin2(p.spin.rpm, 50, 1e3) !== void 0 ? { rpm: p.spin.rpm } : {}, ...fin2(p.spin.axisRotation, 0, 180) !== void 0 ? { axisRotation: p.spin.axisRotation } : {}, ...fin2(p.spin.axisTilt, 0, 90) !== void 0 ? { axisTilt: p.spin.axisTilt } : {}, ...txt2(p.spin.pap, 40) ? { pap: txt2(p.spin.pap, 40) } : {}, ...p.spin.papFrom === "photo" || p.spin.papFrom === "video" ? { papFrom: p.spin.papFrom } : {} };
+      out.spin = { source: p.spin.source, at: txt3(p.spin.at, 40), ...fin2(p.spin.rpm, 50, 1e3) !== void 0 ? { rpm: p.spin.rpm } : {}, ...fin2(p.spin.axisRotation, 0, 180) !== void 0 ? { axisRotation: p.spin.axisRotation } : {}, ...fin2(p.spin.axisTilt, 0, 90) !== void 0 ? { axisTilt: p.spin.axisTilt } : {}, ...txt3(p.spin.pap, 40) ? { pap: txt3(p.spin.pap, 40) } : {}, ...p.spin.papFrom === "photo" || p.spin.papFrom === "video" ? { papFrom: p.spin.papFrom } : {} };
     }
     if (Array.isArray(p.sheets)) out.sheets = p.sheets.filter((x) => isObj(x) && typeof x.id === "string" && x.id.length > 0 && x.id.length <= 64).slice(0, 40);
     return out;
@@ -28710,13 +30237,13 @@ ${url}`);
     const bits = [`${d.shots.length} shot${d.shots.length === 1 ? "" : "s"}`, `${d.arsenal.length} ball${d.arsenal.length === 1 ? "" : "s"}`, `${d.games.length} game${d.games.length === 1 ? "" : "s"}`, `${d.training.length} training day${d.training.length === 1 ? "" : "s"}`];
     return bits.join(", ");
   }
-  var LISTS, isObj, txt2, fin2;
+  var LISTS, isObj, txt3, fin2;
   var init_backup = __esm({
     "core/src/backup.ts"() {
       init_editions();
       LISTS = ["shots", "arsenal", "games", "goals", "myPatterns", "leagues"];
       isObj = (x) => !!x && typeof x === "object" && !Array.isArray(x);
-      txt2 = (s, max) => typeof s === "string" ? s.replace(/[\u0000-\u001f<>]/g, " ").trim().slice(0, max) : "";
+      txt3 = (s, max) => typeof s === "string" ? s.replace(/[\u0000-\u001f<>]/g, " ").trim().slice(0, max) : "";
       fin2 = (n, lo, hi) => typeof n === "number" && Number.isFinite(n) && n >= lo && n <= hi ? n : void 0;
     }
   });
@@ -28747,7 +30274,7 @@ ${url}`);
       await dbPut(S.profile.id, "shots", s).catch(() => {
       });
     }
-    S.shots = shots.merged.sort((a, c) => a.at.localeCompare(c.at));
+    S.shots = shots.merged.sort((a, c) => (a.at ?? "").localeCompare(c.at ?? ""));
     const balls = addMissing(S.arsenal, d.arsenal);
     S.arsenal = balls.merged;
     const goals = addMissing(S.goals, d.goals);
@@ -29017,7 +30544,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
   });
   function openEvent() {
     bump("event-night");
-    const el = sheet16();
+    const el = sheet17();
     const keep = el.classList.contains("on") ? el.scrollTop : 0;
     el.classList.add("on");
     const e = load2();
@@ -29119,29 +30646,29 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
       redo({ ...e, poa });
     });
   }
-  var KEY6, load2, save3, sheet16, FORMATS, hc;
+  var KEY8, load2, save3, sheet17, FORMATS, hc;
   var init_eventui = __esm({
     "camera/eventui.ts"() {
       init_events();
       init_health();
       init_live();
       init_toast();
-      KEY6 = "laneiq.event";
+      KEY8 = "laneiq.event";
       load2 = () => {
         try {
-          return JSON.parse(localStorage.getItem(KEY6) ?? "null");
+          return JSON.parse(localStorage.getItem(KEY8) ?? "null");
         } catch {
           return null;
         }
       };
       save3 = (e) => {
         try {
-          if (e) localStorage.setItem(KEY6, JSON.stringify(e));
-          else localStorage.removeItem(KEY6);
+          if (e) localStorage.setItem(KEY8, JSON.stringify(e));
+          else localStorage.removeItem(KEY8);
         } catch {
         }
       };
-      sheet16 = () => $("review");
+      sheet17 = () => $("review");
       FORMATS = { roundrobin: "Round robin (match play)", stepladder: "Stepladder final", poa: "Pins over average" };
       hc = (e, i) => e.hcp ? handicap(e.players[i].avg) : 0;
     }
@@ -29171,18 +30698,18 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
           names.center(s),
           names.lane(s),
           names.pattern(s),
-          num9(s.m.launchSpeed, 1),
-          num9(s.m.entrySpeed, 1),
-          num9(s.m.speedLossPct, 1),
-          num9(s.m.startBoard, 1),
-          num9(s.m.arrowsBoard, 1),
-          num9(s.m.breakpointBoard, 1),
-          num9(s.m.breakpointFt, 1),
-          num9(s.m.entryBoard, 1),
-          num9(s.m.launchAngle, 2),
-          num9(s.m.entryAngle, 2),
-          num9(s.m.hookBoards, 1),
-          num9(s.m.pocketMiss, 2),
+          num10(s.m.launchSpeed, 1),
+          num10(s.m.entrySpeed, 1),
+          num10(s.m.speedLossPct, 1),
+          num10(s.m.startBoard, 1),
+          num10(s.m.arrowsBoard, 1),
+          num10(s.m.breakpointBoard, 1),
+          num10(s.m.breakpointFt, 1),
+          num10(s.m.entryBoard, 1),
+          num10(s.m.launchAngle, 2),
+          num10(s.m.entryAngle, 2),
+          num10(s.m.hookBoards, 1),
+          num10(s.m.pocketMiss, 2),
           s.m.zone ?? "",
           s.result?.pinsDown
         ])
@@ -29191,7 +30718,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     return lines.join("\r\n") + "\r\n";
   }
   function sessionsCsv(shots) {
-    const all = sessionsOf2(shots);
+    const all = sessionsOf(shots);
     const lines = [row3(SESSION_HEAD)];
     all.forEach((s, i) => {
       const d = debrief(s.shots, all.slice(0, i));
@@ -29210,18 +30737,18 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
           d?.strikes?.attempts,
           d?.streaks.pocket,
           d?.streaks.strike,
-          num9(d?.spreads.find((x) => x.key === "arrowsBoard")?.sd, 2),
-          num9(d?.spreads.find((x) => x.key === "launchSpeed")?.sd, 2)
+          num10(d?.spreads.find((x) => x.key === "arrowsBoard")?.sd, 2),
+          num10(d?.spreads.find((x) => x.key === "launchSpeed")?.sd, 2)
         ])
       );
     });
     return lines.join("\r\n") + "\r\n";
   }
-  var num9, row3, SHOT_HEAD, SESSION_HEAD;
+  var num10, row3, SHOT_HEAD, SESSION_HEAD;
   var init_shotcsv = __esm({
     "core/src/shotcsv.ts"() {
       init_debrief();
-      num9 = (v, d = 2) => typeof v === "number" && Number.isFinite(v) ? String(Math.round(v * 10 ** d) / 10 ** d) : "";
+      num10 = (v, d = 2) => typeof v === "number" && Number.isFinite(v) ? String(Math.round(v * 10 ** d) / 10 ** d) : "";
       row3 = (cells) => cells.map(cell2).join(",");
       SHOT_HEAD = ["date", "time", "session", "ball", "centre", "lane", "pattern", "launch_speed_mph", "entry_speed_mph", "speed_loss_pct", "start_board", "arrows_board", "breakpoint_board", "breakpoint_ft", "entry_board", "launch_angle_deg", "entry_angle_deg", "hook_boards", "pocket_miss_boards", "zone", "pins_down"];
       SESSION_HEAD = ["date", "start", "shots", "minutes", "in_pocket", "judged", "pocket_pct", "strikes", "with_result", "longest_pocket_run", "longest_strike_run", "arrows_spread_boards", "speed_spread_mph"];
@@ -29499,14 +31026,14 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
   // camera/papscan.ts
   function openPapScan() {
     const bp = bowlerProfile();
-    hand = bp.hand;
+    hand2 = bp.hand;
     kind = bp.style === "two-handed" ? "two" : bp.style === "one-hand-no-thumb" ? "nothumb" : "thumb";
     done2 = [];
     cur = null;
     intro();
   }
   function intro() {
-    const el = sheet17();
+    const el = sheet18();
     el.classList.add("on");
     el.innerHTML = `
     <div class="row"><h2>PAP from flare rings</h2><button class="btn ghost" id="pp-close">Close</button></div>
@@ -29603,7 +31130,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     if (outlines.length) autoRing(cur, true);
     edit();
   }
-  function snapshot(c) {
+  function snapshot2(c) {
     c.hist.push({ line: c.line ? { a: { ...c.line.a }, b: { ...c.line.b } } : null, ring: c.ring.map((p) => ({ ...p })), shape: c.shape });
     if (c.hist.length > 30) c.hist.shift();
   }
@@ -29618,14 +31145,14 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     const curveV = bc ? ringVerdict(bc.score) : "none";
     const lead2 = quiet ? c.found + " " : "";
     if (bl && lineV !== "none" && !(curveV === "clear" && bc && bc.score > bl.score * 1.5 && Math.abs(bc.axis[2]) > 0.4)) {
-      snapshot(c);
+      snapshot2(c);
       c.shape = "line";
       c.line = { a: { ...bl.a }, b: { ...bl.b } };
       c.found = `${lead2}I found ${lineV === "clear" ? "the flare ring" : "a faint flare ring"} as a straight line down the ball. ${lineV === "faint" ? "It is faint, so check it against the photo. " : ""}Drag either end, or the middle, onto the real ring and the PAP updates as you go.`.trim();
       return true;
     }
     if (bc && curveV !== "none" && bc.points.length >= 6) {
-      snapshot(c);
+      snapshot2(c);
       c.shape = "curve";
       c.ring = bc.points.map((p) => ({ ...p }));
       c.found = `${lead2}The ring looks curved in this photo, so I put points on it. ${curveV === "faint" ? "It is faint, so check it. " : ""}Drag the points onto the ring, or switch to a straight line if the ring runs straight down the ball.`.trim();
@@ -29638,7 +31165,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     if (!cur) return;
     const c = cur;
     const n = done2.length + 1;
-    sheet17().innerHTML = `
+    sheet18().innerHTML = `
     <div class="row"><h2>Photo ${n} of ${WANT}</h2><button class="btn ghost" id="pp-close">Close</button></div>
     <div class="note" id="pp-found" aria-live="polite"></div>
     <div class="card"><canvas id="pp-cv" width="${c.img.width}" height="${c.img.height}" style="width:100%;height:auto;touch-action:none;border-radius:10px" aria-label="The ball photo. Drag the ends of the gold line onto the flare ring."></canvas>
@@ -29652,7 +31179,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
       <div class="chips"><button class="btn" id="pp-use" disabled>Use this photo</button></div></div>`;
     $("pp-close").onclick = close12;
     const cv = $("pp-cv");
-    const bindModes = () => sheet17().querySelectorAll("[data-mode]").forEach((b) => b.onclick = () => (c.mode = b.dataset.mode, refresh2()));
+    const bindModes = () => sheet18().querySelectorAll("[data-mode]").forEach((b) => b.onclick = () => (c.mode = b.dataset.mode, refresh2()));
     const refresh2 = () => {
       $("pp-found").textContent = c.found;
       const pts = ringOf(c);
@@ -29670,11 +31197,11 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
         tb.dataset.have = want;
         bindModes();
       }
-      sheet17().querySelectorAll("[data-mode]").forEach((b) => {
+      sheet18().querySelectorAll("[data-mode]").forEach((b) => {
         b.classList.toggle("sel", b.dataset.mode === c.mode);
         b.setAttribute("aria-pressed", String(b.dataset.mode === c.mode));
       });
-      sheet17().querySelectorAll("[data-shape]").forEach((b) => {
+      sheet18().querySelectorAll("[data-shape]").forEach((b) => {
         b.classList.toggle("sel", b.dataset.shape === c.shape);
         b.setAttribute("aria-pressed", String(b.dataset.shape === c.shape));
       });
@@ -29682,7 +31209,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
       $("pp-cands").innerHTML = cands.length > 1 ? cands.map((k2, i) => `<button class="chip" data-cand="${i}" title="another ${c.shape === "line" ? "line" : "ring"} the finder saw">${c.shape === "line" ? "Line" : "Ring"} ${i + 1} (${k2.v})</button>`).join("") : "";
       $("pp-cands").querySelectorAll("[data-cand]").forEach((b) => b.onclick = () => {
         const i = Number(b.dataset.cand);
-        snapshot(c);
+        snapshot2(c);
         if (c.shape === "line") c.line = { a: { ...c.lineCands[i].a }, b: { ...c.lineCands[i].b } };
         else c.ring = c.cands[i].points.map((p) => ({ ...p }));
         c.mode = "move";
@@ -29690,10 +31217,10 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
       });
       paint(cv, c);
     };
-    sheet17().querySelectorAll("[data-shape]").forEach((b) => b.onclick = () => {
+    sheet18().querySelectorAll("[data-shape]").forEach((b) => b.onclick = () => {
       const to = b.dataset.shape;
       if (to === c.shape) return;
-      snapshot(c);
+      snapshot2(c);
       c.shape = to;
       if (to === "curve" && c.line && !c.ring.length) c.ring = lineSamples(c.line.a, c.line.b, 8);
       if (to === "line" && !c.line && c.ring.length >= 3) c.line = fitLine(c.ring);
@@ -29706,7 +31233,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
       if (h) c.line = h.line, c.ring = h.ring, c.shape = h.shape;
       refresh2();
     };
-    $("pp-clear").onclick = () => (snapshot(c), c.ring = [], c.line = null, refresh2());
+    $("pp-clear").onclick = () => (snapshot2(c), c.ring = [], c.line = null, refresh2());
     document.getElementById("pp-next")?.addEventListener("click", () => (c.outlineIx = (c.outlineIx + 1) % c.outlines.length, c.circle = c.outlines[c.outlineIx], refresh2()));
     $("pp-smaller").onclick = () => (c.circle = { ...c.circle, r: c.circle.r * 0.97 }, refresh2());
     $("pp-bigger").onclick = () => (c.circle = { ...c.circle, r: c.circle.r * 1.03 }, refresh2());
@@ -29738,11 +31265,11 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
         const handles = L3 ? [L3.a, L3.b, { x: (L3.a.x + L3.b.x) / 2, y: (L3.a.y + L3.b.y) / 2 }] : [];
         const li = nearest(p, handles, 46 * s());
         if (L3 && li >= 0) {
-          snapshot(c);
+          snapshot2(c);
           c.drag = li === 2 ? { kind: "slide", from: p, a: { ...L3.a }, b: { ...L3.b } } : { kind: "end", which: li === 0 ? "a" : "b" };
         } else if (hi >= 0) c.drag = { kind: "hole", which: hs[hi].which };
         else if (!L3) {
-          snapshot(c);
+          snapshot2(c);
           c.line = { a: p, b: { x: p.x + 60 * s(), y: p.y } };
           c.drag = { kind: "end", which: "b" };
         }
@@ -29750,20 +31277,20 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
         const hs = holesNow();
         const ri = nearest(p, c.ring, 40 * s()), hi = nearest(p, hs.map((h) => h.p), 34 * s());
         const rd = ri >= 0 ? Math.hypot(c.ring[ri].x - p.x, c.ring[ri].y - p.y) : 1e9, hd = hi >= 0 ? Math.hypot(hs[hi].p.x - p.x, hs[hi].p.y - p.y) : 1e9;
-        if (ri >= 0 && rd <= hd) snapshot(c), c.drag = { kind: "ring", i: ri };
+        if (ri >= 0 && rd <= hd) snapshot2(c), c.drag = { kind: "ring", i: ri };
         else if (hi >= 0) c.drag = { kind: "hole", which: hs[hi].which };
       } else if (c.mode === "add") {
-        snapshot(c);
+        snapshot2(c);
         c.ring.push(p);
         c.drag = { kind: "ring", i: c.ring.length - 1 };
       } else if (c.mode === "draw") {
-        snapshot(c);
+        snapshot2(c);
         c.ring = [p];
         c.cands = [];
         c.drag = { kind: "stroke" };
       } else if (c.mode === "erase") {
         const i = nearest(p, c.ring, 44 * s());
-        if (i >= 0) snapshot(c), c.ring.splice(i, 1);
+        if (i >= 0) snapshot2(c), c.ring.splice(i, 1);
       } else if (c.mode === "outline") {
         c.drag = { kind: "outline" };
         c.circle = { ...c.circle, x: p.x, y: p.y };
@@ -29955,7 +31482,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     }
   }
   function between() {
-    sheet17().innerHTML = `
+    sheet18().innerHTML = `
     <div class="row"><h2>Photo ${done2.length} saved</h2><button class="btn ghost" id="pp-close">Close</button></div>
     <div class="card"><div class="u">${done2.length} of ${WANT} photos done. Turn the ball a little so a different stretch of the ring faces the camera, with the grip still in view, then take the next one.</div>
       <div class="chips"><label class="btn" style="display:inline-block;cursor:pointer">Take or choose photo ${done2.length + 1}<input id="pp-file" type="file" accept="image/*" capture="environment" style="display:none"></label><button class="btn ghost" id="pp-finish">Use ${done2.length === 1 ? "this one photo" : `these ${done2.length}`}</button></div>
@@ -29965,14 +31492,14 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     $("pp-file").onchange = onFile;
   }
   function result() {
-    const e = papEstimate(done2, hand);
+    const e = papEstimate(done2, hand2);
     if ("error" in e) {
-      sheet17().innerHTML = `<div class="row"><h2>PAP from flare rings</h2><button class="btn ghost" id="pp-close">Close</button></div><div class="card"><div class="u">${esc2(e.error)}</div><div class="chips"><button class="btn" id="pp-again">Start over</button></div></div>`;
+      sheet18().innerHTML = `<div class="row"><h2>PAP from flare rings</h2><button class="btn ghost" id="pp-close">Close</button></div><div class="card"><div class="u">${esc2(e.error)}</div><div class="chips"><button class="btn" id="pp-again">Start over</button></div></div>`;
       $("pp-close").onclick = close12;
       $("pp-again").onclick = openPapScan;
       return;
     }
-    sheet17().innerHTML = `
+    sheet18().innerHTML = `
     <div class="row"><h2>Your estimated PAP</h2><button class="btn ghost" id="pp-close">Close</button></div>
     <div class="card"><div class="k">Average of ${e.picks.length} photo${e.picks.length === 1 ? "" : "s"}</div>
       <div class="lr-head" style="font-size:24px">${esc2(e.text)}</div>
@@ -29989,7 +31516,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     };
     $("pp-lab").onclick = () => (close12(), openLayoutLab());
   }
-  var KINDS2, WANT, MAX_W2, sheet17, kind, hand, done2, cur, close12, TOOLS_LINE, TOOLS_CURVE, PLACE, gold, ringOf, live2, canvasPt;
+  var KINDS2, WANT, MAX_W2, sheet18, kind, hand2, done2, cur, close12, TOOLS_LINE, TOOLS_CURVE, PLACE, gold, ringOf, live2, canvasPt;
   var init_papscan2 = __esm({
     "camera/papscan.ts"() {
       init_ballscan();
@@ -30005,12 +31532,12 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
       ];
       WANT = 3;
       MAX_W2 = 960;
-      sheet17 = () => $("papscan");
+      sheet18 = () => $("papscan");
       kind = "thumb";
-      hand = "R";
+      hand2 = "R";
       done2 = [];
       cur = null;
-      close12 = () => (sheet17().classList.remove("on"), sheet17().innerHTML = "", cur = null);
+      close12 = () => (sheet18().classList.remove("on"), sheet18().innerHTML = "", cur = null);
       TOOLS_LINE = [
         { id: "move", label: "Move the line" },
         { id: "draw", label: "Draw along the ring" }
@@ -30031,7 +31558,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
       ringOf = (c) => c.shape === "line" ? c.line ? lineSamples(c.line.a, c.line.b, 14) : [] : c.ring;
       live2 = (c) => {
         const pts = ringOf(c);
-        return pts.length >= 4 ? poleFromShot({ circle: c.circle, thumb: kind === "thumb" ? c.thumb : null, fingerA: c.fingerA, fingerB: c.fingerB, ring: pts }, hand) : null;
+        return pts.length >= 4 ? poleFromShot({ circle: c.circle, thumb: kind === "thumb" ? c.thumb : null, fingerA: c.fingerA, fingerB: c.fingerB, ring: pts }, hand2) : null;
       };
       canvasPt = (cv, e) => {
         const r = cv.getBoundingClientRect();
@@ -31585,88 +33112,6 @@ ${t}`;
     }
   });
 
-  // core/src/execution.ts
-  function gradeShot(s, plan) {
-    if (!plan) return null;
-    const markOff = s.m.arrowsBoard === null ? null : s.m.arrowsBoard - plan.arrows;
-    const breakOff = plan.breakpoint === void 0 || s.m.breakpointBoard === null ? null : s.m.breakpointBoard - plan.breakpoint;
-    return { hitMark: markOff === null ? null : Math.abs(markOff) <= MARK_TOL, markOff, hitBreak: breakOff === null ? null : Math.abs(breakOff) <= BREAK_TOL, breakOff };
-  }
-  function executionReport(shots) {
-    const rows2 = shots.map((s) => ({ s, g: gradeShot(s, s.plan) })).filter((r) => !!r.g && r.g.hitMark !== null);
-    const hit = rows2.filter((r) => r.g.hitMark);
-    const missed = rows2.filter((r) => !r.g.hitMark);
-    const seen2 = (list) => list.filter((r) => r.s.m.pocketMiss !== null);
-    const inPocket = (list) => rate(seen2(list).filter((r) => Math.abs(r.s.m.pocketMiss) <= 1).length, seen2(list).length);
-    const withRes = (list) => list.filter((r) => r.s.result);
-    const strikes = (list) => rate(withRes(list).filter((r) => isStrike(r.s)).length, withRes(list).length);
-    const bp = rows2.filter((r) => r.g.hitBreak !== null);
-    const hitSeen = seen2(hit);
-    const lineBias = hitSeen.length >= 4 ? mean9(hitSeen.map((r) => r.s.m.pocketMiss)) : null;
-    const report = {
-      verdict: "insufficient",
-      graded: rows2.length,
-      mark: rate(hit.length, rows2.length),
-      breakpoint: bp.length ? rate(bp.filter((r) => r.g.hitBreak).length, bp.length) : null,
-      pocketWhenHit: inPocket(hit),
-      pocketWhenMissed: inPocket(missed),
-      strikeWhenHit: strikes(hit),
-      strikeWhenMissed: strikes(missed),
-      lineBias,
-      headline: "",
-      points: [],
-      next: ""
-    };
-    if (rows2.length < MIN_GRADED) {
-      report.headline = `Set a target and bowl ${MIN_GRADED - rows2.length} more shot${MIN_GRADED - rows2.length === 1 ? "" : "s"}`;
-      report.points.push("Tap Target on the Live screen, say where you stand and which board you aim at the arrows, and every shot is graded against it.");
-      report.next = "Set your usual line as the target before you bowl; if you work with a coach, use the line they've given you.";
-      return report;
-    }
-    const markRate = report.mark.rate ?? 0;
-    report.points.push(`You hit your mark (within ${MARK_TOL} board at the arrows) on ${pct3(report.mark)} of planned shots.`);
-    if (report.breakpoint) report.points.push(`The ball broke within ${BREAK_TOL} boards of where you wanted on ${pct3(report.breakpoint)}.`);
-    if (report.pocketWhenHit.attempts && report.pocketWhenMissed.attempts) report.points.push(`In the pocket: ${pct3(report.pocketWhenHit)} when you hit your mark, ${pct3(report.pocketWhenMissed)} when you missed it.`);
-    if (report.strikeWhenHit.attempts >= 4 && report.strikeWhenMissed.attempts >= 4) report.points.push(`Strikes: ${pct3(report.strikeWhenHit)} on the mark, ${pct3(report.strikeWhenMissed)} off it.`);
-    const offs = missed.map((r) => r.g.markOff).filter((x) => Number.isFinite(x));
-    if (offs.length >= 3) {
-      const left = offs.filter((x) => x > 0).length / offs.length;
-      if (left >= 0.7 || left <= 0.3) report.points.push(`When you miss the mark it's mostly ${left >= 0.7 ? "left of it (toward board 39)" : "right of it (toward board 1)"}: a pattern, not random. Check your shoulders are square to your target and your swing goes straight at it.`);
-    }
-    const biasWord = (b) => b > 0 ? "high" : "light";
-    if (markRate < 0.6) {
-      report.verdict = "execution";
-      report.headline = "The ball isn't reaching your mark yet";
-      report.next = "A move won't tell you much until the ball reaches the mark. A common practice is the same target until you hit it 7 of 10 times; the Arrow Sniper drill does this. Your coach may have a better drill for you.";
-    } else if (lineBias !== null && Math.abs(lineBias) > 1.2) {
-      report.verdict = "line";
-      report.headline = `Your aim is good; your line is ${biasWord(lineBias)}`;
-      report.points.push(`On the shots that hit your mark, the ball still met the pins ${Math.abs(lineBias).toFixed(1)} boards ${biasWord(lineBias)} on average. That's the line, not you.`);
-      report.next = "A move may help (see Move Advisor). Worth talking over with your coach.";
-    } else if (report.pocketWhenHit.rate !== null && report.pocketWhenHit.rate >= 0.5) {
-      report.verdict = "good";
-      report.headline = "On your mark, it works";
-      report.next = "This line is working. The misses come from shots off the mark, so repeating the shot is what to watch.";
-    } else {
-      report.verdict = "mixed";
-      report.headline = "Hitting the mark, but the pocket comes and goes";
-      report.next = "The line looks right on average, so the spread probably comes from something else, like speed or release. Miss Finder ranks what goes with it; a coach can help you work out the cause.";
-    }
-    return report;
-  }
-  var MARK_TOL, BREAK_TOL, MIN_GRADED, mean9, pct3;
-  var init_execution = __esm({
-    "core/src/execution.ts"() {
-      init_coach();
-      init_stats();
-      MARK_TOL = 1;
-      BREAK_TOL = 2;
-      MIN_GRADED = 6;
-      mean9 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
-      pct3 = (r) => r.rate === null ? "n/a" : `${Math.round(r.rate * 100)}% (${r.made} of ${r.attempts})`;
-    }
-  });
-
   // camera/compare.ts
   function bestShotFor(s) {
     const pool = S.shots.filter((x) => x.id !== s.id && x.hasClip && (!s.ballId || x.ballId === s.ballId));
@@ -31802,7 +33247,7 @@ ${t}`;
         s.v.currentTime = Math.max(0, s.v.currentTime + dt);
       }
   }
-  async function snapshot2(side2) {
+  async function snapshot3(side2) {
     if (!side2.v || !side2.v.videoWidth) return null;
     const c = document.createElement("canvas");
     c.width = side2.v.videoWidth;
@@ -31818,7 +33263,7 @@ ${t}`;
     const lines = [`LaneIQ shot comparison${S.profile ? ` for ${S.profile.name}` : ""}`];
     sides2.forEach((s, i) => {
       const m = s.shot.m;
-      lines.push("", `${i ? "B" : "A"}: ${when3(s.shot.at)}, ${ballName4(s.shot.ballId)}${s.shot.result ? `, ${s.shot.result.pinsDown === 10 ? "strike" : `${s.shot.result.pinsDown} pins`}` : ""}`);
+      lines.push("", `${i ? "B" : "A"}: ${when3(s.shot.at)}, ${ballName5(s.shot.ballId)}${s.shot.result ? `, ${s.shot.result.pinsDown === 10 ? "strike" : `${s.shot.result.pinsDown} pins`}` : ""}`);
       for (const f2 of FEATURES) {
         const v = m[f2.key];
         if (typeof v === "number") lines.push(`  ${f2.label}: ${v.toFixed(1)} ${f2.unit}`.trimEnd());
@@ -31835,7 +33280,7 @@ ${t}`;
     box.textContent = "Getting the pictures ready\u2026";
     const files = [];
     for (const [i, s] of sides2.entries()) {
-      const snap = await snapshot2(s);
+      const snap = await snapshot3(s);
       if (snap) files.push(new File([snap], `laneiq-shot-${i ? "B" : "A"}.jpg`, { type: "image/jpeg" }));
       if (s.clip) files.push(new File([s.clip], `laneiq-shot-${i ? "B" : "A"}.${/mp4/.test(s.clip.type) ? "mp4" : "webm"}`, { type: s.clip.type || "video/mp4" }));
     }
@@ -31848,12 +33293,12 @@ ${t}`;
     const other = b ?? bestShotFor(a);
     sides2 = [await sideFor(a), ...other ? [await sideFor(other)] : []];
     const pickList = S.shots.filter((x) => x.id !== a.id && x.hasClip).slice(-60).reverse();
-    const head = (s, i) => `<div class="note"><b style="color:${i ? "var(--mg)" : "var(--cy)"}">${i ? "B" : "A"}</b> ${esc2(when3(s.shot.at))} \xB7 ${esc2(ballName4(s.shot.ballId))} \xB7 ${s.shot.a.speedMph.toFixed(1)} mph${s.shot.result ? ` \xB7 ${s.shot.result.pinsDown === 10 ? "strike" : s.shot.result.pinsDown + " pins"}` : ""}</div>`;
+    const head = (s, i) => `<div class="note"><b style="color:${i ? "var(--mg)" : "var(--cy)"}">${i ? "B" : "A"}</b> ${esc2(when3(s.shot.at))} \xB7 ${esc2(ballName5(s.shot.ballId))} \xB7 ${s.shot.a.speedMph.toFixed(1)} mph${s.shot.result ? ` \xB7 ${s.shot.result.pinsDown === 10 ? "strike" : s.shot.result.pinsDown + " pins"}` : ""}</div>`;
     const stage = (s, i) => s.url ? `<div style="flex:1;min-width:0">${head(s, i)}<div class="stagebox" style="margin:4px 0"><video id="cp-v${i}" src="${s.url}" playsinline muted preload="auto"></video><canvas class="ov" id="cp-o${i}" width="${s.shot.vw}" height="${s.shot.vh}"></canvas><canvas class="ov" id="cp-d${i}" style="touch-action:none;pointer-events:auto"></canvas></div></div>` : `<div style="flex:1;min-width:0">${head(s, i)}<div class="note">No video for this shot.</div></div>`;
     const rows2 = FEATURES.filter((f2) => sides2.some((s) => typeof s.shot.m[f2.key] === "number"));
     el.innerHTML = `<div class="row"><h2>Side by side</h2><button class="btn ghost" id="cp-close">Close</button></div>
     <div class="note">Both clips are lined up at the moment the ball leaves the hand. Draw on either picture to mark it up.</div>
-    <div class="field"><label>Compare with</label><select id="cp-pick">${other ? "" : `<option value="">choose a shot\u2026</option>`}${pickList.map((x) => `<option value="${x.id}" ${other?.id === x.id ? "selected" : ""}>${esc2(when3(x.at))} \xB7 ${esc2(ballName4(x.ballId))} \xB7 ${x.a.speedMph.toFixed(1)} mph${x.result?.pinsDown === 10 ? " \xB7 strike" : ""}${x.id === bestShotFor(a)?.id ? " (your best)" : ""}</option>`).join("")}</select></div>
+    <div class="field"><label>Compare with</label><select id="cp-pick">${other ? "" : `<option value="">choose a shot\u2026</option>`}${pickList.map((x) => `<option value="${x.id}" ${other?.id === x.id ? "selected" : ""}>${esc2(when3(x.at))} \xB7 ${esc2(ballName5(x.ballId))} \xB7 ${x.a.speedMph.toFixed(1)} mph${x.result?.pinsDown === 10 ? " \xB7 strike" : ""}${x.id === bestShotFor(a)?.id ? " (your best)" : ""}</option>`).join("")}</select></div>
     <div style="display:flex;gap:8px">${sides2.map(stage).join("")}</div>
     <div class="field"><label>From release (s)</label><input id="cp-scrub" type="range" min="-3" max="3" step="0.02" value="-${lead}"></div>
     <div class="chips"><button class="btn" id="cp-play">Play both</button><button class="chip" id="cp-back">\u25C0 frame</button><button class="chip" id="cp-fwd">frame \u25B6</button>${[0.25, 0.5, 1].map((r) => `<button class="chip ${r === rate2 ? "sel" : ""}" data-rate="${r}">${r}\xD7</button>`).join("")}</div>
@@ -31904,7 +33349,7 @@ ${t}`;
     $("cp-share").onclick = () => void sharePacket();
     trailLoop();
   }
-  var raf2, sides2, tool, rate2, lead, when3, ballName4;
+  var raf2, sides2, tool, rate2, lead, when3, ballName5;
   var init_compare = __esm({
     "camera/compare.ts"() {
       init_vision();
@@ -31921,15 +33366,15 @@ ${t}`;
       rate2 = 0.5;
       lead = 2.5;
       when3 = (iso2) => new Date(iso2).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-      ballName4 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
+      ballName5 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
     }
   });
 
   // core/src/missfinder.ts
   function pearson(x, y) {
     if (x.length < 3) return 0;
-    const mx = mean10(x);
-    const my = mean10(y);
+    const mx = mean12(x);
+    const my = mean12(y);
     let sxy = 0, sxx = 0, syy = 0;
     for (let i = 0; i < x.length; i++) {
       sxy += (x[i] - mx) * (y[i] - my);
@@ -31945,7 +33390,7 @@ ${t}`;
     for (const s of shots) bySession.set(s.sessionId, [...bySession.get(s.sessionId) ?? [], s]);
     for (const list of bySession.values()) list.sort((a, b) => a.at.localeCompare(b.at)).forEach((s, i) => order.set(s.id, i + 1));
     const miss = used.map((s) => s.m.pocketMiss);
-    const out = { status: "insufficient", shotsUsed: used.length, needed: MIN_FINDER, bias: miss.length ? mean10(miss) : null, spread: miss.length >= 2 ? sdOf6(miss) : null, factors: [], headline: "", summary: "" };
+    const out = { status: "insufficient", shotsUsed: used.length, needed: MIN_FINDER, bias: miss.length ? mean12(miss) : null, spread: miss.length >= 2 ? sdOf7(miss) : null, factors: [], headline: "", summary: "" };
     if (used.length < MIN_FINDER) {
       out.headline = `Miss Finder needs ${MIN_FINDER - used.length} more shot${MIN_FINDER - used.length === 1 ? "" : "s"} seen to the pins`;
       out.summary = "It ranks what goes with your misses: speed, aim, where the ball lands, your walk and timing, the time into the session. It needs shots the camera saw reach the pins.";
@@ -31958,12 +33403,12 @@ ${t}`;
       const rows2 = used.map((s) => ({ x: c.get(s, { order }), y: s.m.pocketMiss })).filter((r) => typeof r.x === "number" && Number.isFinite(r.x));
       if (rows2.length < MIN_FINDER - 2) continue;
       const xs = rows2.map((r) => r.x);
-      if (sdOf6(xs) < 1e-6) continue;
+      if (sdOf7(xs) < 1e-6) continue;
       const ys = rows2.map((r) => r.y);
       const fmt4 = (v) => v.toFixed(c.digits);
       const u = c.unit && c.unit !== "\xB0" ? ` ${c.unit}` : c.unit;
       const rd = pearson(xs, ys);
-      const cx = median10(xs);
+      const cx = median11(xs);
       const rc = pearson(xs.map((x) => Math.abs(x - cx)), ys.map((y) => Math.abs(y)));
       const sorted2 = rows2.slice().sort((a, b) => a.x - b.x);
       const third = Math.max(3, Math.floor(sorted2.length / 3));
@@ -31973,8 +33418,8 @@ ${t}`;
       values.set(c.id, new Map(used.map((s) => [s.id, c.get(s, { order })])));
       if (rd * rd >= rc * rc || rc <= 0) {
         if (tOf(rd, rows2.length) < 2 || rd * rd < 0.08) continue;
-        const mLo = mean10(lo.map((r) => r.y));
-        const mHi = mean10(hi.map((r) => r.y));
+        const mLo = mean12(lo.map((r) => r.y));
+        const mHi = mean12(hi.map((r) => r.y));
         const betterHigh = Math.abs(mHi) < Math.abs(mLo);
         factors.push({ id: c.id, label: c.label, unit: c.unit, kind: "direction", explained: rd * rd, n: rows2.length, text: `At ${range(lo)} you meet the pins ${missWord(mLo)} on average; at ${range(hi)}, ${missWord(mHi)}.`, fix: c.fixDir(betterHigh, range(lo), range(hi)) });
       } else {
@@ -31983,7 +33428,7 @@ ${t}`;
         const near = devs.slice(0, Math.floor(devs.length / 2));
         const far = devs.slice(Math.floor(devs.length / 2));
         const cut = far[0].d;
-        factors.push({ id: c.id, label: c.label, unit: c.unit, kind: "consistency", explained: rc * rc, n: rows2.length, text: `Your usual is ${fmt4(cx)}${u}. Within ${fmt4(cut)}${u} of it you miss the pocket by ${mean10(near.map((r) => r.y)).toFixed(1)} boards on average; further off, by ${mean10(far.map((r) => r.y)).toFixed(1)}.`, fix: c.fixCons(fmt4(cx)) });
+        factors.push({ id: c.id, label: c.label, unit: c.unit, kind: "consistency", explained: rc * rc, n: rows2.length, text: `Your usual is ${fmt4(cx)}${u}. Within ${fmt4(cut)}${u} of it you miss the pocket by ${mean12(near.map((r) => r.y)).toFixed(1)} boards on average; further off, by ${mean12(far.map((r) => r.y)).toFixed(1)}.`, fix: c.fixCons(fmt4(cx)) });
       }
     }
     factors.sort((a, b) => b.explained - a.explained);
@@ -32004,7 +33449,7 @@ ${t}`;
     out.summary = top ? `It accounts for about ${Math.round(top.explained * 100)}% of where your ball meets the pins over ${top.n} shots. ${top.text}${lineNote}` : `${used.length} shots: you meet the pins ${missWord(bias)} on average, give or take ${spread.toFixed(1)} boards.${lineNote || " Nothing measured stands out yet, so keep the same line and let more shots build up."}`;
     return out;
   }
-  var MIN_FINDER, CAUSES, mean10, sdOf6, median10, tOf, missWord;
+  var MIN_FINDER, CAUSES, mean12, sdOf7, median11, tOf, missWord;
   var init_missfinder = __esm({
     "core/src/missfinder.ts"() {
       MIN_FINDER = 12;
@@ -32020,13 +33465,13 @@ ${t}`;
         { id: "hold", label: "Holding your finish", unit: "s", digits: 1, get: (s) => s.body?.heldS ?? null, fixDir: (h) => h ? "Your better shots are the ones you hold at the line. Post every shot until the ball reaches the pins." : "Shots you hold longest aren't helping here, so check something else first.", fixCons: () => "Some shots you post, some you fall out of. Hold the finish every time." },
         { id: "fatigue", label: "Shots into the session", unit: "shots", digits: 0, get: (s, ctx2) => ctx2.order.get(s.id) ?? null, fixDir: (h) => h ? "You get better as the session goes on: warm up longer before it counts." : "You fade as the session goes on: keep your legs under you, slow down between shots and stay with the same tempo.", fixCons: () => "Your misses get wider at one end of the session." }
       ];
-      mean10 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
-      sdOf6 = (v) => {
+      mean12 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+      sdOf7 = (v) => {
         if (v.length < 2) return 0;
-        const m = mean10(v);
+        const m = mean12(v);
         return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (v.length - 1));
       };
-      median10 = (v) => {
+      median11 = (v) => {
         const s = [...v].sort((a, b) => a - b);
         const m = s.length >> 1;
         return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
@@ -32045,81 +33490,6 @@ ${t}`;
     }
   });
 
-  // core/src/moves.ts
-  function adviseMove(recent, hand3, plan, lane2) {
-    const last3 = recent[recent.length - 1];
-    const sameBall2 = last3?.ballId ? recent.filter((s) => s.ballId === last3.ballId) : recent;
-    const window2 = sameBall2.slice(-6);
-    const base2 = { kind: "insufficient", headline: "", feet: 0, eyes: 0, from: { stand: null, arrows: null }, to: { stand: null, arrows: null }, why: [], shotsUsed: 0 };
-    const stands = window2.map((s) => s.plan?.stand ?? s.body?.startBoard ?? null).filter((x) => x !== null);
-    const aims = window2.map((s) => s.plan?.arrows ?? s.m.arrowsBoard).filter((x) => x !== null);
-    base2.from = { stand: plan?.stand ?? (stands.length ? Math.round(median11(stands)) : null), arrows: plan?.arrows ?? (aims.length ? Math.round(median11(aims)) : null) };
-    const graded = window2.map((s) => ({ s, g: gradeShot(s, s.plan) }));
-    const planned = graded.filter((r) => r.g && r.g.hitMark !== null);
-    const onMark = planned.length >= 3 ? planned.filter((r) => r.g.hitMark).map((r) => r.s) : window2;
-    if (planned.length >= 4 && planned.filter((r) => r.g.hitMark).length / planned.length < 0.5) {
-      return { ...base2, kind: "fix-aim", headline: "Hold off on a move: the ball isn't going where you aim", why: [`You hit your target on ${planned.filter((r) => r.g.hitMark).length} of the last ${planned.length} planned shots.`, "A move only tells you something when the ball goes where you aim. Your coach may want to look at your aim first."], shotsUsed: planned.length };
-    }
-    const seen2 = onMark.filter((s) => s.m.pocketMiss !== null);
-    base2.shotsUsed = seen2.length;
-    if (seen2.length < MOVE_MIN) {
-      return { ...base2, headline: `Bowl ${MOVE_MIN - seen2.length} more shot${MOVE_MIN - seen2.length === 1 ? "" : "s"} with this ball`, why: ["The advisor needs a few shots with the same ball that the camera saw reach the pins."] };
-    }
-    const misses = seen2.map((s) => s.m.pocketMiss);
-    const bias = mean11(misses);
-    const spread = sdOf7(misses);
-    const highs = misses.filter((m) => m > 1).length;
-    const lights = misses.filter((m) => m < -1).length;
-    const why = [`Last ${seen2.length} shots with this ball: ${misses.map((m) => Math.abs(m) <= 1 ? "pocket" : m > 0 ? `+${m.toFixed(1)}` : m.toFixed(1)).join(", ")} (boards from the pocket, + high).`];
-    if (Math.abs(bias) <= 1) return { ...base2, kind: "stay", headline: "Things look steady: no move suggested", why: [...why, "On average the ball is meeting the pocket. Repeating the same shot is the usual advice."] };
-    if (highs && lights && Math.min(highs, lights) / seen2.length >= 0.3) return { ...base2, kind: "stay", headline: "No move suggested: the misses go both ways", why: [...why, "Some high and some light is repeatability, not the line, and a move would only chase it. Miss Finder shows what changes between them; a coach can help with the cause."] };
-    if (spread > 3) return { ...base2, kind: "stay", headline: "Too scattered to call a move", why: [...why, `The misses spread \xB1${spread.toFixed(1)} boards, too wide for the data to point to one move.`] };
-    const pocket = POCKET_BOARD[hand3];
-    const entries = seen2.map((s) => s.m.entryBoard).filter((x) => x !== null);
-    const side2 = entries.length ? Math.sign(mean11(entries) - pocket) : hand3 === "R" ? Math.sign(bias) : -Math.sign(bias);
-    const size = Math.abs(bias);
-    const high = bias > 0;
-    if (lane2?.status === "ok" && /earlier/.test(lane2.headline) && high) why.push("The lane read agrees: the ball is reading the lane earlier as the oil dries up.");
-    if (lane2?.status === "ok" && /skidding farther/.test(lane2.headline) && !high) why.push("The lane read agrees: oil is carrying down and the ball is skidding farther.");
-    if (size > 4.5) {
-      return { ...base2, kind: "ball", ball: high ? "cleaner" : "stronger", headline: `Worth asking about a ball change: ${size.toFixed(1)} boards ${high ? "high" : "light"} is more than a move usually fixes`, why: [...why, high ? "A cleaner, later-reading ball may let you stay on a line you can repeat. Your pro shop can say what fits your game." : "A stronger, earlier-reading ball may get back the hook you're missing. Your pro shop can say what fits your game."], feet: 0, eyes: 0 };
-    }
-    const feet = side2 * (size > 2.5 ? 4 : 2);
-    const eyes = side2 * (size > 2.5 ? 2 : 1);
-    const to = { stand: base2.from.stand !== null ? base2.from.stand + feet : null, arrows: base2.from.arrows !== null ? base2.from.arrows + eyes : null };
-    why.push(`Averaging ${size.toFixed(1)} boards ${high ? "high" : "light"}: move toward the miss, feet ${Math.abs(feet)} boards and eyes ${Math.abs(eyes)} ${dirWord(feet)} (the ${Math.abs(feet)}-and-${Math.abs(eyes)} move).`);
-    why.push("A common approach is to judge two shots after a move before changing anything else. Your coach knows your game: treat this as something to try and talk over.");
-    return {
-      ...base2,
-      kind: "move",
-      feet,
-      eyes,
-      to,
-      headline: `A move to try: ${Math.abs(feet)} and ${Math.abs(eyes)} ${dirWord(feet)}${to.stand !== null && to.arrows !== null ? `: stand on ${to.stand}, aim at ${to.arrows}` : ""}`,
-      why
-    };
-  }
-  var MOVE_MIN, mean11, sdOf7, median11, dirWord;
-  var init_moves = __esm({
-    "core/src/moves.ts"() {
-      init_execution();
-      init_metrics();
-      MOVE_MIN = 3;
-      mean11 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
-      sdOf7 = (v) => {
-        if (v.length < 2) return 0;
-        const m = mean11(v);
-        return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (v.length - 1));
-      };
-      median11 = (v) => {
-        const s = [...v].sort((a, b) => a - b);
-        const m = s.length >> 1;
-        return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-      };
-      dirWord = (b) => b > 0 ? "left" : "right";
-    }
-  });
-
   // core/src/balladvisor.ts
   function ballStats(shots) {
     const seen2 = shots.filter((s) => s.m.pocketMiss !== null);
@@ -32131,11 +33501,11 @@ ${t}`;
       pocketPct: seen2.length ? miss.filter((m) => Math.abs(m) <= 1).length / seen2.length * 100 : null,
       highPct: seen2.length ? miss.filter((m) => m > 1).length / seen2.length * 100 : null,
       lightPct: seen2.length ? miss.filter((m) => m < -1).length / seen2.length * 100 : null,
-      meanMiss: mean12(miss),
-      entryAngle: mean12(nums3(shots.map((s) => s.m.entryAngle))),
-      breakpointFt: mean12(nums3(shots.map((s) => s.m.breakpointFt))),
+      meanMiss: mean13(miss),
+      entryAngle: mean13(nums3(shots.map((s) => s.m.entryAngle))),
+      breakpointFt: mean13(nums3(shots.map((s) => s.m.breakpointFt))),
       strikePct: res.length >= 8 ? res.filter(isStrike).length / res.length * 100 : null,
-      speed: mean12(nums3(shots.map((s) => s.m.launchSpeed)))
+      speed: mean13(nums3(shots.map((s) => s.m.launchSpeed)))
     };
   }
   function judgeBall(st2) {
@@ -32204,7 +33574,7 @@ ${t}`;
     else headline = best2 ? `Your best ball right now is the ${best2.name}` : "Nothing in your bag needs replacing on this evidence.";
     return { balls: reads, headline, best: best2, caveats };
   }
-  var BALL_MIN_SHOTS, STEP, mean12, nums3;
+  var BALL_MIN_SHOTS, STEP, mean13, nums3;
   var init_balladvisor = __esm({
     "core/src/balladvisor.ts"() {
       init_arsenal();
@@ -32212,7 +33582,7 @@ ${t}`;
       init_recommend();
       BALL_MIN_SHOTS = 10;
       STEP = 0.4;
-      mean12 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+      mean13 = (v) => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
       nums3 = (v) => v.filter((x) => typeof x === "number" && Number.isFinite(x));
     }
   });
@@ -32263,13 +33633,13 @@ ${t}`;
       };
       const a = speed(first);
       const b = speed(lastT);
-      if (a.length >= 3 && b.length >= 3) sp.push(mean13(b) - mean13(a));
+      if (a.length >= 3 && b.length >= 3) sp.push(mean14(b) - mean14(a));
       const pa = pocket(first);
       const pb = pocket(lastT);
       if (pa !== null && pb !== null) pk.push(pb - pa);
       sessions++;
     }
-    const out = { status: sessions ? "ok" : "insufficient", sessions, speedChange: sp.length ? mean13(sp) : null, pocketChange: pk.length ? mean13(pk) : null, headline: "", points: [] };
+    const out = { status: sessions ? "ok" : "insufficient", sessions, speedChange: sp.length ? mean14(sp) : null, pocketChange: pk.length ? mean14(pk) : null, headline: "", points: [] };
     if (!sessions) {
       out.headline = "Fatigue needs a session of 9 or more shots";
       return out;
@@ -32283,7 +33653,7 @@ ${t}`;
     if (warm) out.points.push("Your first shots are your weakest: warm up properly before the ones that count.");
     return out;
   }
-  var BANDS, CARRY_MIN, mean13;
+  var BANDS, CARRY_MIN, mean14;
   var init_carry = __esm({
     "core/src/carry.ts"() {
       init_coach();
@@ -32295,7 +33665,7 @@ ${t}`;
         [6, 99, "6\xB0 and up"]
       ];
       CARRY_MIN = 12;
-      mean13 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+      mean14 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
     }
   });
 
@@ -32343,422 +33713,6 @@ ${t}`;
         const m = s.length >> 1;
         return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
       };
-    }
-  });
-
-  // core/src/gameplan.ts
-  function gamePlan(i) {
-    const sections = [];
-    if (i.pattern) {
-      const p = i.pattern;
-      const cls = lengthClass(p.lengthFt);
-      const lines = [`${p.name}: ${p.lengthFt} ft, a ${cls} pattern${p.volumeMl !== void 0 ? `, ${p.volumeMl} mL of oil` : ""}${p.ratio !== void 0 ? `, ratio ${p.ratio}:1 (${p.ratio <= SPORT_RATIO_LIMIT ? "within the 3:1 limit cited for sport patterns" : "a house-style pattern: more oil in the middle than on the outside"})` : ""}.`];
-      if (i.r31 !== null) lines.push(`Kegel's rule of 31 (length minus 31) puts a starting breakpoint near board ${i.r31}. It is a place to start looking, not a promise.`);
-      sections.push({ head: "Tonight's lanes", lines });
-    } else sections.push({ head: "Tonight's lanes", lines: ["No oil pattern is set. Add tonight's pattern under Target, then My patterns, and this section shows its length, ratio and a starting breakpoint."] });
-    if (i.memory && i.memory.arrows !== null) {
-      const m = i.memory;
-      const ar = i.memory.arrows;
-      sections.push({ head: "Where to start", lines: [`Last time here (${m.date}): you crossed the arrows near board ${ar.toFixed(0)}${m.stand !== null ? ` from board ${m.stand.toFixed(0)}` : ""}${m.ballNames.length ? ` with the ${m.ballNames.join(", ")}` : ""}${m.pocketPct !== null ? `, ${Math.round(m.pocketPct)}% in the pocket` : ""}. Start there and check after three shots; the lanes will have changed since.`] });
-    } else sections.push({ head: "Where to start", lines: ["Nothing on file for this pair of lanes. Set your centre and lane under Target so tonight is remembered next time. Start with your usual line and use the first three shots to see where it lands."] });
-    const ranked = i.balls.filter((b) => b.judged >= BALL_RANK_MIN && b.pocketPct !== null).sort((a, b) => b.pocketPct - a.pocketPct || (b.strikePct ?? 0) - (a.strikePct ?? 0));
-    const bl = [];
-    if (ranked.length) {
-      bl.push(...ranked.slice(0, 3).map((b, k2) => `${k2 + 1}. ${b.name}: ${Math.round(b.pocketPct)}% in the pocket over ${b.judged} judged shots${b.strikePct !== null ? `, ${Math.round(b.strikePct)}% strikes` : ""}.`));
-      bl.push("Ranked only by how each ball has done for you, on your own shots. How a ball has done is not how it will do tonight; watch the first frames.");
-    } else bl.push(`None of your balls has ${BALL_RANK_MIN} judged shots yet, so none is ranked. Open with the one you trust; the app ranks them from your own shots after tonight.`);
-    const short = i.balls.filter((b) => b.judged < BALL_RANK_MIN && b.judged > 0);
-    if (ranked.length && short.length) bl.push(`Not enough shots to rank: ${short.map((b) => `${b.name} (${b.judged})`).join(", ")}.`);
-    sections.push({ head: "Which ball to open with", lines: bl });
-    const towardLeft = i.hand === "R" ? "high" : "light";
-    const adj = [
-      `If you are consistently ${towardLeft}: move your feet and target left, the feet about twice as far as the target (the standard 2-and-1 move).`,
-      `If you are consistently ${towardLeft === "high" ? "light" : "high"}: move right the same way.`,
-      "Judge two shots after a move before making another, and do not chase a miss that goes both ways: that is execution, not the lane."
-    ];
-    for (const m of i.moves.filter((x) => x.n >= 3)) adj.push(`Your own record: ${m.label.toLowerCase()} helped ${m.helped} of ${m.n} times${m.hurt ? ` (hurt ${m.hurt})` : ""}.`);
-    sections.push({ head: "If it goes wrong", lines: adj });
-    sections.push({ head: "Before the real game", lines: ["Throw three shots, then check Your line and Your last move on the Live screen. A plan is a starting point to talk over with your coach, who has the last word."] });
-    return { title: i.pattern ? `Game plan: ${i.pattern.name}` : "Game plan", sections };
-  }
-  var BALL_RANK_MIN;
-  var init_gameplan = __esm({
-    "core/src/gameplan.ts"() {
-      init_patterns();
-      BALL_RANK_MIN = 10;
-    }
-  });
-
-  // camera/gameplanui.ts
-  function inputs() {
-    const pat = activePattern();
-    const onPat = pat ? S.shots.filter((s) => s.pattern === pat.id) : [];
-    const stats = (shots) => {
-      const judged = shots.filter((s) => s.m.zone !== null);
-      const res = shots.filter((s) => s.result);
-      return { judged: judged.length, pocketPct: judged.length ? 100 * judged.filter((s) => s.m.zone === "pocket").length / judged.length : null, strikePct: res.length >= 5 ? 100 * res.filter(isStrike).length / res.length : null };
-    };
-    const balls = S.arsenal.map((b) => {
-      const mine = S.shots.filter((s) => s.ballId === b.id);
-      const here2 = onPat.filter((s) => s.ballId === b.id);
-      return { name: b.name, ...stats(here2.length >= BALL_RANK_MIN ? here2 : mine) };
-    });
-    const mem = S.where.center && S.where.lane ? memoryFor(S.shots, S.where.center, S.where.lane, S.sessionId) : null;
-    const m = mem?.best ?? mem?.sessions[0] ?? null;
-    const rows2 = movePlaybook(sessionsOf2(S.shots).map((x) => x.shots));
-    return {
-      hand: S.profile?.hand ?? "R",
-      pattern: pat ? { name: pat.name, lengthFt: pat.lengthFt, volumeMl: pat.volumeMl, ratio: pat.ratio } : null,
-      memory: m ? { date: new Date(m.date).toLocaleDateString([], { month: "short", day: "numeric" }), stand: m.stand, arrows: m.arrows, pocketPct: m.pocketPct, ballNames: m.ballIds.map((id) => S.arsenal.find((b) => b.id === id)?.name ?? "").filter(Boolean) } : null,
-      balls,
-      moves: rows2,
-      r31: pat ? ruleOf31(pat.lengthFt) : null
-    };
-  }
-  function openGamePlan() {
-    bump("game-plan");
-    const p = gamePlan(inputs());
-    const el = $("report");
-    el.classList.add("on");
-    el.innerHTML = `<div class="row noprint"><button class="btn" onclick="window.print()">Print or save PDF</button><button class="btn ghost" id="gp-close">Close</button></div>
-    <h2>${esc2(p.title)}</h2>
-    <div class="note">${esc2(S.profile?.name ?? "")}${S.where.center ? ` \xB7 ${esc2(S.where.center)}${S.where.lane ? ` lane ${esc2(S.where.lane)}` : ""}` : ""} \xB7 ${esc2((/* @__PURE__ */ new Date()).toLocaleDateString([], { dateStyle: "full" }))}</div>
-    ${p.sections.map((s) => `<div class="card"><div class="k">${esc2(s.head)}</div>${s.lines.map((l) => `<div class="u" style="margin:4px 0">${esc2(l)}</div>`).join("")}</div>`).join("")}
-    <div class="note">Made by LaneIQ from this bowler's own shots and the pattern entered. Estimates, not instructions.</div>`;
-    $("gp-close").onclick = () => (el.classList.remove("on"), el.innerHTML = "");
-  }
-  var init_gameplanui = __esm({
-    "camera/gameplanui.ts"() {
-      init_gameplan();
-      init_movejudge();
-      init_debrief();
-      init_oilsheet();
-      init_lanememory();
-      init_coach();
-      init_health();
-      init_live();
-      init_oilview();
-      init_state();
-    }
-  });
-
-  // core/src/aimsolver.ts
-  function solveAim(shots, hand3) {
-    const none3 = (notes2, extra2 = {}) => ({ ok: false, n: 0, slope: null, r2: null, shotSd: null, currentArrows: null, arrowsFor: null, plusMinus: null, move: null, notes: notes2, ...extra2 });
-    const last3 = shots[shots.length - 1];
-    const same = last3?.ballId ? shots.filter((s2) => s2.ballId === last3.ballId) : shots;
-    const pts = same.slice(-WINDOW2).map((s2) => ({ x: s2.m.arrowsBoard, y: s2.m.entryBoard, seen: s2.m.pocketMiss !== null })).filter((p) => p.x !== null && p.y !== null && p.seen);
-    const n = pts.length;
-    if (n < AIM_MIN_SHOTS) return none3([`Needs ${AIM_MIN_SHOTS} shots with the same ball that were followed from the arrows to the pins (you have ${n}).`], { n });
-    const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
-    const xm = mean14(xs), ym = mean14(ys);
-    const sxx = xs.reduce((a, x) => a + (x - xm) ** 2, 0);
-    const spread = Math.sqrt(sxx / (n - 1));
-    const recent = xs.slice(-5).sort((a, b) => a - b)[Math.floor(Math.min(5, n) / 2)];
-    if (spread < AIM_MIN_SPREAD) return none3([`Your target at the arrows has stayed within about ${(spread * 2).toFixed(1)} boards, so there is not yet enough change to learn how moving it moves your hit. Throw a few shots a board or two either side to teach the app your line.`], { n, currentArrows: recent });
-    const sxy = xs.reduce((a, x, i) => a + (x - xm) * (ys[i] - ym), 0);
-    const slope = sxy / sxx;
-    const intercept = ym - slope * xm;
-    const rss = ys.reduce((a, y, i) => a + (y - (intercept + slope * xs[i])) ** 2, 0);
-    const sst = ys.reduce((a, y) => a + (y - ym) ** 2, 0);
-    const r2 = sst === 0 ? 0 : 1 - rss / sst;
-    const s = Math.sqrt(rss / (n - 2));
-    if (slope < 0.4 || slope > 3) return none3([`The line from your arrows board to your hit is ${slope.toFixed(2)} boards per board, which is outside what a rolling ball does (0.4 to 3), so it is more likely noise or two different shots mixed together. Not using it.`], { n, slope, r2, shotSd: s, currentArrows: recent });
-    const pocket = POCKET_BOARD[hand3];
-    const arrowsFor = (pocket - intercept) / slope;
-    const se = s / slope * Math.sqrt(1 / n + (arrowsFor - xm) ** 2 / sxx);
-    const plusMinus = t95(n - 2) * se;
-    const notes = [];
-    const lo = Math.min(...xs), hi = Math.max(...xs);
-    if (arrowsFor < lo - 3 || arrowsFor > hi + 3) notes.push(`That board is more than 3 boards outside where you have thrown (${lo.toFixed(0)} to ${hi.toFixed(0)}), so treat it as a direction, not a number, and re-check after two shots.`);
-    if (r2 < 0.3) notes.push(`Your target explains little of where the ball finishes (R\xB2 ${r2.toFixed(2)}): your shot-to-shot scatter is larger than the effect of moving, so the number is loose.`);
-    if (n < 12) notes.push(`Only ${n} shots so far; it sharpens as you throw more.`);
-    return { ok: true, n, slope, r2, shotSd: s, currentArrows: recent, arrowsFor, plusMinus, move: arrowsFor - recent, notes };
-  }
-  function aimLines(a) {
-    if (!a.ok) return a.notes;
-    const dir2 = a.move > 0 ? "left" : "right";
-    const head = Math.abs(a.move) < 0.5 ? `Your line is on the pocket: crossing the arrows near board ${a.arrowsFor.toFixed(1)} meets it.` : `To meet the pocket, cross the arrows near board ${a.arrowsFor.toFixed(1)} (\xB1${a.plusMinus.toFixed(1)}): about ${Math.abs(a.move).toFixed(1)} boards ${dir2} of where you have been (${a.currentArrows.toFixed(1)}).`;
-    return [head, `From your last ${a.n} shots with this ball: each board you move at the arrows moves your hit about ${a.slope.toFixed(1)} boards; your own scatter at the pins is \xB1${(a.shotSd * 2).toFixed(1)} boards.`, ...a.notes];
-  }
-  var AIM_MIN_SHOTS, AIM_MIN_SPREAD, WINDOW2, mean14;
-  var init_aimsolver = __esm({
-    "core/src/aimsolver.ts"() {
-      init_metrics();
-      init_abtest();
-      AIM_MIN_SHOTS = 8;
-      AIM_MIN_SPREAD = 0.6;
-      WINDOW2 = 30;
-      mean14 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
-    }
-  });
-
-  // camera/aimui.ts
-  function aimHtml(shots, hand3) {
-    if (shots.length < 3) return "";
-    const a = solveAim(shots, hand3);
-    const lines = aimLines(a);
-    return `<div class="lr-next"><b>Your line</b>${lines.map((l, i) => `<div class="${i === 0 ? "u" : "note"}">${esc2(l)}</div>`).join("")}</div>`;
-  }
-  var init_aimui = __esm({
-    "camera/aimui.ts"() {
-      init_aimsolver();
-      init_live();
-    }
-  });
-
-  // camera/voice.ts
-  function setVoice(v) {
-    on2 = v;
-    try {
-      localStorage.setItem(KEY7, v ? "1" : "0");
-    } catch {
-    }
-    if (v) say("Voice caddie on.");
-    else if ("speechSynthesis" in window) speechSynthesis.cancel();
-  }
-  function say(text) {
-    if (!("speechSynthesis" in window) || !text) return;
-    try {
-      const u = new SpeechSynthesisUtterance(text);
-      u.rate = 1.05;
-      u.lang = navigator.language || "en-US";
-      speechSynthesis.speak(u);
-    } catch {
-    }
-  }
-  var KEY7, on2, voiceOn, spokenNumber;
-  var init_voice = __esm({
-    "camera/voice.ts"() {
-      KEY7 = "laneiq.voice";
-      on2 = (() => {
-        try {
-          return localStorage.getItem(KEY7) === "1";
-        } catch {
-          return false;
-        }
-      })();
-      voiceOn = () => on2 && "speechSynthesis" in window;
-      spokenNumber = (n, digits = 1) => {
-        const s = n.toFixed(digits);
-        return s.endsWith(".0") ? s.slice(0, -2) : s.replace(".", " point ");
-      };
-    }
-  });
-
-  // camera/coachlive.ts
-  function moveNow() {
-    const shots = sessionShots();
-    return adviseMove(shots, hand2(), S.target, readLane(shots.map((x) => ({ a: x.a, ballId: x.ballId }))));
-  }
-  function openTarget(prefill) {
-    const el = $("target");
-    el.classList.add("on");
-    const t = { ...S.target ?? { arrows: 10, at: "" }, ...prefill ?? {} };
-    const field = (id, label2, v, hint) => `<div class="field"><label>${label2}</label><div class="chips" style="margin:0;align-items:center"><button class="chip" data-step="${id}" data-d="-1">\u2212</button><input id="${id}" inputmode="decimal" value="${v ?? ""}" placeholder="${hint}" style="width:80px;text-align:center"><button class="chip" data-step="${id}" data-d="1">+</button></div></div>`;
-    el.innerHTML = `<div class="row"><h2>My target</h2><button class="btn ghost" id="tg-close">Close</button></div>
-    <div class="note">Boards are counted from the right gutter, as everywhere in LaneIQ (board 1 on the right, 39 on the left; the arrows are on boards 5, 10, 15, 20, 25, 30, 35). Every shot from now on is graded against this, so the app can tell a bad line from a missed shot.</div>
-    <div class="card">
-      ${field("tg-stand", "Where my slide foot starts (board)", t.stand, "e.g. 25")}
-      ${field("tg-arrows", "Board I aim at, at the arrows", t.arrows, "e.g. 10")}
-      ${field("tg-bp", "Where I want it to break (board, optional)", t.breakpoint, "e.g. 7")}
-    </div>
-    <div class="card"><div class="k">Where I'm bowling</div>
-      <div class="two"><div class="field"><label>Centre</label><input id="tg-center" value="${esc2(S.where.center)}" placeholder="Centre name" autocomplete="off"></div><div class="field"><label>Lane</label><input id="tg-lane" inputmode="numeric" value="${esc2(S.where.lane)}" placeholder="e.g. 17"></div></div>
-      <div class="field"><label>Oil pattern tonight</label><div class="chips" style="margin:0;align-items:center"><select id="tg-pat" style="flex:1;min-width:0"><option value="">None / not known</option>${S.myPatterns.map((p) => `<option value="${esc2(p.id)}" ${S.where.patternId === p.id ? "selected" : ""}>${esc2(p.name)} \xB7 ${p.lengthFt} ft</option>`).join("")}</select><button class="chip" id="tg-pats">My patterns</button></div></div>
-      <div class="note">Used to remember how each pair played for you, and to draw the oil on your lane. It stays on this phone.</div></div>
-    <div class="chips"><button class="btn" id="tg-save">Save target</button>${S.target ? `<button class="btn ghost" id="tg-clear">No target</button>` : ""}</div>`;
-    const num10 = (id) => {
-      const v = parseFloat($(id).value);
-      return Number.isFinite(v) ? Math.max(1, Math.min(39, v)) : void 0;
-    };
-    el.querySelectorAll("[data-step]").forEach(
-      (b) => b.onclick = () => {
-        const i = $(b.dataset.step);
-        const v = parseFloat(i.value);
-        i.value = String(Math.max(1, Math.min(39, (Number.isFinite(v) ? v : b.dataset.step === "tg-stand" ? 25 : 10) + Number(b.dataset.d))));
-      }
-    );
-    $("tg-close").onclick = () => el.classList.remove("on");
-    $("tg-pats").onclick = () => openPatterns(() => openTarget(prefill));
-    $("tg-clear")?.addEventListener("click", async () => {
-      S.target = null;
-      await saveCoach();
-      el.classList.remove("on");
-      renderTonight();
-    });
-    $("tg-save").onclick = async () => {
-      const arrows = num10("tg-arrows");
-      if (arrows === void 0) return void $("tg-arrows").focus();
-      S.target = { arrows, stand: num10("tg-stand"), breakpoint: num10("tg-bp"), at: (/* @__PURE__ */ new Date()).toISOString() };
-      S.where = { center: $("tg-center").value.trim(), lane: $("tg-lane").value.trim(), patternId: $("tg-pat").value };
-      await saveCoach();
-      el.classList.remove("on");
-      renderTonight();
-      renderMove();
-    };
-  }
-  function paintDrill() {
-    const chip = $("drill-chip");
-    if (!chip) return;
-    const run = S.drill;
-    chip.classList.toggle("hide", !run);
-    if (!run) return;
-    const def = DRILLS2.find((d) => d.id === run.id);
-    const s = summarize2(run);
-    chip.textContent = `${def.name}: ${s.made}/${s.scored} \xB7 next ${drillTarget(run).label}`;
-  }
-  function openDrillStatus() {
-    const run = S.drill;
-    if (!run) return;
-    const el = $("target");
-    el.classList.add("on");
-    const def = DRILLS2.find((d) => d.id === run.id);
-    const s = summarize2(run);
-    el.innerHTML = `<div class="row"><h2>${esc2(def.name)}</h2><button class="btn ghost" id="dr-close">Close</button></div>
-    <div class="card"><div class="u">${esc2(def.blurb)}</div><div class="lr-head" style="margin-top:8px">${esc2(s.text)}</div><div class="u">Next: ${esc2(drillTarget(run).label)}</div>
-    <table>${run.results.map((r, i) => `<tr><td>${i + 1}</td><td>${r.ok === null ? "not judged" : r.ok ? "\u2713 made" : "\u2717 missed"}</td><td class="n">${esc2(r.note)}</td></tr>`).join("")}</table></div>
-    <div class="chips"><button class="btn ghost danger" id="dr-stop">Stop this drill</button></div>`;
-    $("dr-close").onclick = () => el.classList.remove("on");
-    $("dr-stop").onclick = async () => {
-      if (S.drill && S.drill.results.length) S.drills = [...S.drills, { ...S.drill, finishedAt: S.drill.finishedAt ?? (/* @__PURE__ */ new Date()).toISOString() }].slice(-200);
-      S.drill = null;
-      await saveCoach();
-      el.classList.remove("on");
-      paintDrill();
-    };
-  }
-  function renderTonight() {
-    const el = document.getElementById("tonight");
-    if (!el) return;
-    const t = S.target;
-    const mem = S.where.center && S.where.lane ? memoryFor(S.shots, S.where.center, S.where.lane, S.sessionId) : null;
-    const last3 = mem?.sessions[0];
-    const best2 = mem?.best;
-    const lineOf = (x) => [x.stand !== null ? `stood on ${x.stand.toFixed(0)}` : "", x.arrows !== null ? `crossed the arrows on ${x.arrows.toFixed(0)}` : ""].filter(Boolean).join(", ");
-    el.innerHTML = `<div class="card"><div class="row"><div><div class="k">My target</div><div class="lr-head" style="font-size:16px">${t ? `${t.stand !== void 0 ? `Stand ${t.stand} \xB7 ` : ""}aim ${t.arrows} at the arrows${t.breakpoint !== void 0 ? ` \xB7 break at ${t.breakpoint}` : ""}` : "No target set"}</div></div><div class="chips" style="margin:0"><button class="chip" id="tn-plan">Game plan</button><button class="chip" id="tn-edit">${t ? "Change" : "Set target"}</button></div></div>
-    ${S.where.center ? `<div class="note">${esc2(S.where.center)}${S.where.lane ? ` \xB7 lanes ${esc2(pairOf(S.where.lane))}` : ""}</div>` : `<div class="note">Set a target to have every shot graded against it, and your centre and lane so the app remembers how each pair played.</div>`}
-    ${(() => {
-      const p = activePattern();
-      return p ? `<div class="note">Oil: <b>${esc2(p.name)}</b>, ${p.lengthFt} ft${p.volumeMl !== void 0 ? `, ${p.volumeMl} mL` : ""}${p.ratio !== void 0 ? `, ${p.ratio}:1` : ""}. Rule of 31: break near board ${ruleOf31(p.lengthFt)}. ${p.rows?.length ? "Drawn on the lane from the sheet's load table." : "Shape on the lane is estimated."}</div>` : `<div class="note">Add tonight's oil pattern (Target, then My patterns) to see the oil drawn on your lane.</div>`;
-    })()}
-    ${last3 ? `<div class="lr-next"><b>Last time on this pair</b> (${esc2(day4(last3.date))}): ${esc2(lineOf(last3) || "no line recorded")}${last3.ballIds.length ? ` with the ${esc2(last3.ballIds.map(ballName5).join(", "))}` : ""}${last3.pocketPct !== null ? `, ${Math.round(last3.pocketPct)}% in the pocket` : ""}${last3.strikePct !== null ? `, ${Math.round(last3.strikePct)}% strikes` : ""}.${best2 && best2 !== last3 ? `<div class="u">Best here: ${esc2(day4(best2.date))}, ${esc2(lineOf(best2))}, ${Math.round(best2.pocketPct)}% in the pocket.</div>` : ""}${(best2 ?? last3).arrows !== null ? `<div class="chips"><button class="chip" id="tn-use">Start on that line</button></div>` : ""}</div>` : ""}</div>`;
-    $("tn-edit").onclick = () => openTarget();
-    $("tn-plan").onclick = () => openGamePlan();
-    $("tn-use")?.addEventListener("click", () => {
-      const src = best2 ?? last3;
-      openTarget({ stand: src.stand !== null ? Math.round(src.stand) : void 0, arrows: Math.round(src.arrows) });
-    });
-  }
-  function renderMove() {
-    const el = document.getElementById("move-card");
-    if (!el) return;
-    const m = moveNow();
-    el.innerHTML = `<div class="lr-head">${esc2(m.headline)}</div><span class="badge ${m.kind === "move" ? "good" : m.kind === "insufficient" ? "low" : "moderate"}">${m.kind === "move" ? "move" : m.kind === "fix-aim" ? "aim first" : m.kind === "ball" ? "ball change" : m.kind === "stay" ? "stay" : "waiting"} \xB7 ${m.shotsUsed} shot${m.shotsUsed === 1 ? "" : "s"}</span><ul>${m.why.map((w) => `<li>${esc2(w)}</li>`).join("")}</ul><div class="note" style="margin-top:6px">A starting point to try and talk over with your coach, not an instruction.</div>${aimHtml(S.shots.filter((x) => x.sessionId === S.sessionId), S.profile?.hand ?? "R")}${m.kind === "move" ? recordLine(m.feet > 0 ? "left" : "right") : ""}${lastMoveHtml(S.shots.filter((x) => x.sessionId === S.sessionId))}${m.kind === "move" && m.to.arrows !== null ? `<div class="chips"><button class="chip sel" id="mv-take">Make this my target</button></div>` : ""}`;
-    $("mv-take")?.addEventListener("click", async () => {
-      S.target = { arrows: m.to.arrows, stand: m.to.stand ?? S.target?.stand, breakpoint: S.target?.breakpoint, at: (/* @__PURE__ */ new Date()).toISOString() };
-      await saveCoach();
-      renderTonight();
-      renderMove();
-      if (voiceOn()) say(`Target set. ${m.to.stand !== null ? `Stand on ${m.to.stand}, ` : ""}aim at ${m.to.arrows}.`);
-    });
-  }
-  function caddieLine(s, move) {
-    const bits = [spokenNumber(s.a.speedMph)];
-    if (s.m.arrowsBoard !== null) bits.push(`board ${Math.round(s.m.arrowsBoard)} at the arrows`);
-    if (s.m.breakpointBoard !== null) bits.push(`breakpoint ${Math.round(s.m.breakpointBoard)}`);
-    if (s.m.pocketMiss !== null) bits.push(Math.abs(s.m.pocketMiss) <= 1 ? "pocket" : `${spokenNumber(Math.abs(s.m.pocketMiss))} ${s.m.pocketMiss > 0 ? "high" : "light"}`);
-    const g = gradeShot(s, s.plan);
-    if (g?.hitMark === true) bits.push("on your mark");
-    else if (g?.hitMark === false && g.markOff !== null) bits.push(`missed your mark ${Math.abs(g.markOff).toFixed(0)} ${g.markOff > 0 ? "left" : "right"}`);
-    if (s.drill) {
-      const run = S.drill ?? S.drills[S.drills.length - 1];
-      const def = DRILLS2.find((d) => d.id === s.drill.id);
-      if (run && def) bits.push(`${def.name}: ${s.drill.ok === null ? "not judged" : s.drill.ok ? "made it" : "missed"}, ${summarize2(run).made} of ${summarize2(run).scored}`);
-    }
-    if (move.kind === "move") bits.push(`a move to try: ${Math.abs(move.feet)} and ${Math.abs(move.eyes)} ${move.feet > 0 ? "left" : "right"}`);
-    else if (move.kind === "fix-aim") bits.push("the ball is missing your target, so hold off on a move");
-    return bits.join(". ") + ".";
-  }
-  function paintOil() {
-    const b = document.getElementById("oil-btn");
-    if (!b) return;
-    b.classList.toggle("hide", !activePattern());
-    b.textContent = oilOn() ? "Oil: on" : "Oil: off";
-    b.classList.toggle("sel", oilOn());
-  }
-  function paintVoice() {
-    const b = document.getElementById("voice-btn");
-    if (b) {
-      b.textContent = voiceOn() ? "Voice: on" : "Voice: off";
-      b.classList.toggle("sel", voiceOn());
-    }
-  }
-  function initCoachLive() {
-    onBeforeSave((s) => {
-      if (S.target) s.plan = { ...S.target };
-      if (S.where.center) s.center = S.where.center;
-      if (S.where.lane && !s.lane) s.lane = S.where.lane;
-      if (S.where.patternId) s.pattern = S.where.patternId;
-      if (S.drill) {
-        const run = addDrillShot(S.drill, s);
-        const r = run.results[run.results.length - 1];
-        s.drill = { id: run.id, ok: r?.ok ?? null };
-        if (run.finishedAt) {
-          S.drills = [...S.drills, run].slice(-200);
-          S.drill = null;
-        } else S.drill = run;
-        void saveCoach();
-      }
-    });
-    onAfterShot((s) => {
-      renderTonight();
-      const m = moveNow();
-      renderMove();
-      paintDrill();
-      if (voiceOn()) say(caddieLine(s, m));
-    });
-    document.getElementById("target-btn")?.addEventListener("click", () => openTarget());
-    document.getElementById("voice-btn")?.addEventListener("click", () => {
-      setVoice(!voiceOn());
-      paintVoice();
-    });
-    document.getElementById("drill-chip")?.addEventListener("click", () => openDrillStatus());
-    document.getElementById("oil-btn")?.addEventListener("click", () => {
-      setOilOn(!oilOn());
-      paintOil();
-    });
-    onChange(() => {
-      paintDrill();
-      paintOil();
-      if (document.getElementById("tab-live")?.classList.contains("on")) renderTonight();
-    });
-    paintVoice();
-    paintOil();
-    paintDrill();
-    renderTonight();
-    renderMove();
-  }
-  var hand2, ballName5, day4;
-  var init_coachlive = __esm({
-    "camera/coachlive.ts"() {
-      init_gameplanui();
-      init_aimui();
-      init_movejudgeui();
-      init_moves();
-      init_lanereads();
-      init_drills();
-      init_lanememory();
-      init_execution();
-      init_live();
-      init_state();
-      init_voice();
-      init_oilsheet();
-      init_oilview();
-      init_patternsheet();
-      hand2 = () => S.profile?.hand ?? "R";
-      ballName5 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "unknown ball";
-      day4 = (iso2) => new Date(iso2).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
     }
   });
 
@@ -33476,11 +34430,11 @@ ${t}`;
           if (!best2 || r2.cost < best2.cost) best2 = { rev, rot, cost: r2.cost };
         }
       };
-      const rng2 = (c, step, n) => Array.from({ length: 2 * n + 1 }, (_, i) => c + (i - n) * step);
+      const rng3 = (c, step, n) => Array.from({ length: 2 * n + 1 }, (_, i) => c + (i - n) * step);
       scan([200, 250, 300, 350, 400, 450, 500, 550, 600, 650], [10, 20, 30, 40, 50, 60, 70, 80]);
       if (!best2) return null;
-      scan(rng2(best2.rev, 25, 2), rng2(best2.rot, 5, 2));
-      scan(rng2(best2.rev, 12.5, 2), rng2(best2.rot, 2.5, 2));
+      scan(rng3(best2.rev, 25, 2), rng3(best2.rot, 5, 2));
+      scan(rng3(best2.rev, 12.5, 2), rng3(best2.rot, 2.5, 2));
       return { best: best2, near };
     };
     const main = search(variants[0]);
@@ -33569,7 +34523,7 @@ ${t}`;
   }
   function openReactionLab() {
     bump("reaction-lab");
-    const el = sheet18();
+    const el = sheet19();
     el.classList.add("on");
     const balls = choices();
     const bp = bowlerProfile();
@@ -33657,10 +34611,10 @@ ${t}`;
     }, 30);
   }
   function close14() {
-    sheet18().classList.remove("on");
-    sheet18().innerHTML = "";
+    sheet19().classList.remove("on");
+    sheet19().innerHTML = "";
   }
-  var sheet18, PRESETS2, state;
+  var sheet19, PRESETS2, state;
   var init_reactionui = __esm({
     "camera/reactionui.ts"() {
       init_health();
@@ -33669,7 +34623,7 @@ ${t}`;
       init_reaction();
       init_live();
       init_state();
-      sheet18 = () => $("review");
+      sheet19 = () => $("review");
       PRESETS2 = [
         { id: "len:36", label: "Short pattern, 36 ft (estimate)", lengthFt: 36 },
         { id: "len:41", label: "Typical house shot, 41 ft (estimate)", lengthFt: 41 },
@@ -33756,10 +34710,10 @@ ${t}`;
   function meHub() {
     const mine = S.shots;
     const last3 = mine[mine.length - 1];
-    const tile = (tab, title, line2) => `<button class="card" data-mypage="${tab}" style="text-align:left;cursor:pointer;color:inherit;font:inherit;width:100%"><div class="lr-head" style="font-size:16px">${title}</div><div class="note">${esc2(line2)}</div></button>`;
+    const tile2 = (tab, title, line2) => `<button class="card" data-mypage="${tab}" style="text-align:left;cursor:pointer;color:inherit;font:inherit;width:100%"><div class="lr-head" style="font-size:16px">${title}</div><div class="note">${esc2(line2)}</div></button>`;
     const ls = sessionList().find((x) => x.report);
     const lastCard = ls?.report ? `<button class="card" data-lastsess="${esc2(ls.id)}" style="text-align:left;cursor:pointer;color:inherit;font:inherit;width:100%;grid-column:1/-1;border-color:rgba(70,230,255,.35)"><div class="note">Your last session \xB7 ${esc2(new Date(ls.start).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }))}</div><div class="lr-head" style="font-size:18px">${ls.report.pocket ? `${ls.report.pocket.pct}% in the pocket` : `${ls.report.n} shots`} \xB7 ${ls.report.n} shots</div><div class="note">${esc2(ls.report.bests[0] ?? ls.report.focus ?? "Open the debrief")}</div></button>` : "";
-    return `<div id="me-hub" class="grid">${lastCard}${trainingTileHtml()}${progressTileHtml()}${spareTileHtml()}${accuracyTileHtml()}${betaTileHtml()}${tile("shots", "My shots", mine.length ? `${mine.length} shot${mine.length === 1 ? "" : "s"} with video \xB7 last ${when4(last3.at)}` : "Replays, lane view, top-down and 3D")}${tile("score", "My scores", "Scorecard, spare coach and statistics")}${tile("coach", "My coach", "What to work on, a move to try, ball advice, drills")}${tile("insights", "My insights", "Averages, common errors, plan, shot map, skills")}</div>`;
+    return `<div id="me-hub" class="grid">${lastCard}${trainingTileHtml()}${progressTileHtml()}${spareTileHtml()}${accuracyTileHtml()}${betaTileHtml()}${tile2("shots", "My shots", mine.length ? `${mine.length} shot${mine.length === 1 ? "" : "s"} with video \xB7 last ${when4(last3.at)}` : "Replays, lane view, top-down and 3D")}${tile2("score", "My scores", "Scorecard, spare coach and statistics")}${tile2("coach", "My coach", "What to work on, a move to try, ball advice, drills")}${tile2("insights", "My insights", "Averages, common errors, plan, shot map, skills")}</div>`;
   }
   function renderCommunity() {
     const el = $("community-page");
@@ -34190,9 +35144,9 @@ ${t}`;
       const b = S.arsenal.find((x) => x.id === card2.dataset.ball);
       safely(() => wireBallNotes(card2, b));
       card2.querySelector("[data-act=save]")?.addEventListener("click", async () => {
-        const num10 = (f2) => parseFloat(card2.querySelector(`[data-f=${f2}]`).value);
-        const rg = num10("rg");
-        const diff = num10("diff");
+        const num11 = (f2) => parseFloat(card2.querySelector(`[data-f=${f2}]`).value);
+        const rg = num11("rg");
+        const diff = num11("diff");
         b.rg = Number.isFinite(rg) ? rg : void 0;
         b.diff = Number.isFinite(diff) ? diff : void 0;
         b.cover = card2.querySelector("[data-f=cover]").value || void 0;
@@ -34251,7 +35205,7 @@ ${t}`;
       ${r.profile.length ? `<div class="k" style="margin-top:10px">What your numbers say</div><ul>${r.profile.map((x) => `<li>${esc2(x)}</li>`).join("")}</ul>` : ""}</div>
     <div class="card"><div class="k">Conditions and the ball that covers each</div><table>${r.scenarios.map((s) => `<tr><td>${esc2(s.name)}<div class="note">${esc2(s.blurb)}</div></td><td>${s.best ? esc2(s.best.ball.name) : "nothing yet"}</td><td class="n">${mark(s.status)}</td></tr>`).join("")}</table></div>
     ${r.overlaps.length ? `<div class="card"><div class="k">Overlap</div><ul>${r.overlaps.map((x) => `<li>${esc2(x)}</li>`).join("")}</ul></div>` : ""}
-    ${r.buys.length ? `<div class="card"><div class="k">Best next balls</div>${r.buys.map((b) => `<div style="padding:8px 0;border-top:1px solid var(--line)"><b>Fills: ${esc2(b.fixes.join(", "))}</b><div class="u">You're missing a ${b.direction} ball (motion index near ${b.target.toFixed(2)}).</div>${b.picks.map((c) => `<div style="margin-top:8px;display:flex;gap:12px">${ballThumb(c.ball, 64)}<div style="flex:1;min-width:0"><b>${esc2(c.ball.manufacturer)} ${esc2(c.ball.name)}</b> <span class="note">${esc2(specLine3(c.ball))}</span>${layoutHtml(c.ball, bowler, b.direction === "stronger" ? "carry" : "early")}</div></div>`).join("")}</div>`).join("")}</div>` : r.score !== null ? `<div class="card"><div class="u">Your arsenal covers every condition I check. Nothing to add right now.</div></div>` : ""}
+    ${r.buys.length ? `<div class="card"><div class="k">Best next balls</div>${r.buys.map((b) => `<div style="padding:8px 0;border-top:1px solid var(--line)"><b>Fills: ${esc2(b.fixes.join(", "))}</b><div class="u">You're missing a ${b.direction} ball (motion index near ${b.target.toFixed(2)}).</div>${b.picks.map((c) => `<div style="margin-top:8px;display:flex;gap:12px">${ballThumb(c.ball, 64)}<div style="flex:1;min-width:0"><b>${esc2(c.ball.manufacturer)} ${esc2(c.ball.name)}</b> <span class="note">${esc2(specLine3(c.ball))}</span>${layoutHtml2(c.ball, bowler, b.direction === "stronger" ? "carry" : "early")}</div></div>`).join("")}</div>`).join("")}</div>` : r.score !== null ? `<div class="card"><div class="u">Your arsenal covers every condition I check. Nothing to add right now.</div></div>` : ""}
     ${r.spare.has ? "" : `<div class="card"><div class="k">No spare ball</div><div class="u">A plastic spare ball keeps your strike balls from hooking on spares.${r.spare.picks.length ? ` From the catalog: ${r.spare.picks.map((c) => esc2(`${c.manufacturer} ${c.name}`)).join(", ")}.` : ""}</div></div>`}
     <div class="card"><div class="k">Read this first</div><ul>${r.notes.map((x) => `<li>${esc2(x)}</li>`).join("")}</ul></div>`;
     el.append(box);
@@ -34338,7 +35292,7 @@ ${t}`;
     }).join("")}</div>` : ""}
     <div class="card"><div class="k">Read this first</div><ul>${l.caveats.map((c) => `<li>${esc2(c)}</li>`).join("")}</ul></div>`;
   }
-  function layoutHtml(ball, bowler, role2) {
+  function layoutHtml2(ball, bowler, role2) {
     const adv = suggestLayouts(ball, bowler, role2);
     return `<details style="margin-top:6px"><summary class="u" style="cursor:pointer;color:var(--cy)">Suggested layout</summary>
     ${adv.layouts.map((l, i) => `<div style="padding:6px 0"><b>${i === 0 ? "Best fit: " : "Alternative: "}${esc2(l.name)}</b><div class="u">${esc2(l.notation)} (pin to PAP x ${l.valDeg ? "VAL angle x " : ""}pin buffer)</div><div class="note">${esc2(l.effect)}</div></div>`).join("")}
@@ -34352,7 +35306,7 @@ ${t}`;
     <div class="card"><div class="u">Catalog balls whose published specs best match what this role wants for ${esc2(pat.name)}, excluding balls you already own and at most two per brand. ${showOlder ? "Older and retired balls are included (for shopping used)." : "Only balls the manufacturer still sells that came out last year or this year are suggested."} ${S.catalog.length} balls in the catalog.</div>
       <div class="chips"><button class="chip ${showOlder ? "sel" : ""}" id="older-toggle">${showOlder ? "Showing older balls too" : "Include older or retired balls"}</button></div>
       <div class="chips">${Object.keys(ROLE_LABEL).map((r) => `<button class="chip ${r === nextRole ? "sel" : ""}" data-role="${r}">${ROLE_LABEL[r]}</button>`).join("")}</div>
-      ${cands.length ? cands.map((c, i) => `<div style="padding:10px 0;border-top:1px solid var(--line);display:flex;gap:12px">${ballThumb(c.ball)}<div style="flex:1;min-width:0"><div class="row"><b>${i + 1}. ${esc2(c.ball.manufacturer)} ${esc2(c.ball.name)}</b><span class="badge ${c.off <= 0.15 ? "good" : "moderate"}">motion ${c.index.toFixed(2)}</span></div><div class="u">${esc2(specLine3(c.ball))}${c.ball.releaseYear ? ` \xB7 ${c.ball.releaseYear.value}` : ""}</div><div class="note">Source: <a style="color:var(--cy)" href="${esc2(c.ball.rg.source.url)}" target="_blank" rel="noopener">${esc2(srcWord(c.ball.rg.source.kind))}</a>, ${esc2(c.ball.rg.source.retrievedOn)}${c.ball.releaseYear ? ` \xB7 ${esc2(String(c.ball.availableOn ? c.ball.availableOn.value : c.ball.releaseYear.value))}` : ""}</div>${layoutHtml(c.ball, bowler, nextRole)}<div class="chips"><button class="chip" data-lab="${esc2(c.ball.key)}">Preview a layout on this ball</button></div></div></div>`).join("") : `<div class="u">No catalog balls with RG and differential to rank.</div>`}
+      ${cands.length ? cands.map((c, i) => `<div style="padding:10px 0;border-top:1px solid var(--line);display:flex;gap:12px">${ballThumb(c.ball)}<div style="flex:1;min-width:0"><div class="row"><b>${i + 1}. ${esc2(c.ball.manufacturer)} ${esc2(c.ball.name)}</b><span class="badge ${c.off <= 0.15 ? "good" : "moderate"}">motion ${c.index.toFixed(2)}</span></div><div class="u">${esc2(specLine3(c.ball))}${c.ball.releaseYear ? ` \xB7 ${c.ball.releaseYear.value}` : ""}</div><div class="note">Source: <a style="color:var(--cy)" href="${esc2(c.ball.rg.source.url)}" target="_blank" rel="noopener">${esc2(srcWord(c.ball.rg.source.kind))}</a>, ${esc2(c.ball.rg.source.retrievedOn)}${c.ball.releaseYear ? ` \xB7 ${esc2(String(c.ball.availableOn ? c.ball.availableOn.value : c.ball.releaseYear.value))}` : ""}</div>${layoutHtml2(c.ball, bowler, nextRole)}<div class="chips"><button class="chip" data-lab="${esc2(c.ball.key)}">Preview a layout on this ball</button></div></div></div>`).join("") : `<div class="u">No catalog balls with RG and differential to rank.</div>`}
       <div class="note">Spec-based ranking. Confirm on the lanes: drill and test before buying.</div></div>
     <div class="chips"><button class="btn ghost" id="to-proshop">Pro shop tools: layouts, fitting report, playbook</button></div>`;
     el.append(box);
@@ -34463,22 +35417,22 @@ ${t}`;
     wireAccountCard(el);
     wireAccountSection(el);
     $("sp-save")?.addEventListener("click", () => {
-      const num10 = (id) => {
+      const num11 = (id) => {
         const v = parseFloat($(id).value);
         return Number.isFinite(v) ? v : void 0;
       };
-      updateProfile({ spin: { rpm: num10("sp-rpm"), axisRotation: num10("sp-rot"), axisTilt: num10("sp-tilt"), pap: $("sp-pap").value.trim() || void 0, source: "entered", at: (/* @__PURE__ */ new Date()).toISOString() } });
+      updateProfile({ spin: { rpm: num11("sp-rpm"), axisRotation: num11("sp-rot"), axisTilt: num11("sp-tilt"), pap: $("sp-pap").value.trim() || void 0, source: "entered", at: (/* @__PURE__ */ new Date()).toISOString() } });
     });
     $("sp-lab")?.addEventListener("click", () => openSpinLab(() => renderMe()));
     $("sp-papscan")?.addEventListener("click", () => openPapScan());
     $("me-quiz")?.addEventListener("click", () => showQuiz("retake", () => renderMe()));
     $("me-diag").onclick = async () => {
-      const txt3 = diagnosticsText();
+      const txt4 = diagnosticsText();
       try {
-        await navigator.clipboard.writeText(txt3);
+        await navigator.clipboard.writeText(txt4);
         $("me-diag").textContent = "Copied";
       } catch {
-        prompt("Copy these diagnostics:", txt3);
+        prompt("Copy these diagnostics:", txt4);
       }
     };
     wireBackup(el);
@@ -34760,6 +35714,7 @@ ${t}`;
         "Spare trainer: a leave appears and you say where your feet move under the 3-6-9 system. The answers come from the same code as the scorecard's spare coach, left-handers are reversed, and leaves you miss come up more often.",
         "Pro shop mode: a shop loads its stock from a spreadsheet and sends it to bowlers as a link or file. The bowler gets picks from that shop's shelves only, with a starting layout for the driller, and sends an order request back. The shop opens it and gets a drill sheet with the bowler's readings. Release video is never attached, the shop's driller makes the final call, and nothing needs an account.",
         "Customer profiles for pro shops: a bowler can choose to send their hand measurements (span, hole sizes, bridge and the four pitches) and the layouts saved for their other balls with an order. The shop keeps a profile for each customer on its own phone, with their notes, and can reopen it any time. The Layout Lab now has boxes for thumb and finger pitch.",
+        "Second screen: show the lane camera's numbers on an iPad, a TV or a monitor. Five layouts (Bowler, Lane board for a bowling center, Coach, Live video, Replay loop) draw the last shot's speed, breakpoint, entry, pocket, spin, path and pins, the session, the trends and the scorecard, with your center's name and colour on it. Link a screen directly (same Wi-Fi) for live video and a replay after each shot, or share by lane code so any browser can show it by address (?display=CODE) with nothing to pair. A screen opened that way reconnects by itself.",
         "Extra cameras: link an iPad or a second phone at another angle (Extra cameras, on the start screen). It joins straight to the lane camera, lines its clock up with it, records every throw at the same time, and sends each clip back. Every shot's replay then shows all the angles playing in step, with a nudge if one is a little early or late. The extra angles are synced for viewing; tracking, speed and spin still come from the lane camera.",
         "A spin number on every shot: when a clip is too coarse to read the spin, the rev rate and axis rotation tiles now show one number with a plus-or-minus, worked out from the shot's own path (how fast it was slowed, where it broke, the angle it hit the pins), instead of a range. A measured reading from the clip still comes first, and the tile says which one you're looking at. Axis tilt can't be told from a path, so it shows your own number or a typical one, labelled assumed.",
         "Framing examples: pictures of where to put the phone for the lane view, the skeleton and Spin mode, with the common mistakes beside them (zoomed in, too low, glare, feet cut off, the whole lane when you want the ball), on the start screen next to How to get a lock.",
@@ -35138,10 +36093,10 @@ ${t}`;
     const fresh2 = seen() !== LATEST_NOTE_ID;
     box.innerHTML = `<button class="chip" id="notes-open">${fresh2 ? "NEW \xB7 " : ""}What's new</button>`;
     document.getElementById("notes-open").onclick = () => {
-      const sheet19 = document.getElementById("notes");
-      sheet19.classList.add("on");
-      sheet19.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc2(n.title)} <span class="note">${esc2(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc2(i)}</li>`).join("")}</ul></div>`).join("")}`;
-      document.getElementById("notes-close").onclick = () => (sheet19.classList.remove("on"), sheet19.innerHTML = "");
+      const sheet20 = document.getElementById("notes");
+      sheet20.classList.add("on");
+      sheet20.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc2(n.title)} <span class="note">${esc2(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc2(i)}</li>`).join("")}</ul></div>`).join("")}`;
+      document.getElementById("notes-close").onclick = () => (sheet20.classList.remove("on"), sheet20.innerHTML = "");
       markSeen();
       document.getElementById("notes-open").textContent = "What's new";
     };
@@ -36969,6 +37924,7 @@ ${t}`;
   }
 
   // camera/camera.ts
+  init_displaylink();
   init_camlink();
   init_db();
   init_tabs();
@@ -38349,9 +39305,9 @@ ${t}`;
       }
     }
     if (mode === "choose") {
-      const r12 = overlay.getBoundingClientRect();
-      const px = (e.clientX - r12.left) / r12.width * overlay.width;
-      const py = (e.clientY - r12.top) / r12.height * overlay.height;
+      const r13 = overlay.getBoundingClientRect();
+      const px = (e.clientX - r13.left) / r13.width * overlay.width;
+      const py = (e.clientY - r13.top) / r13.height * overlay.height;
       const hit = chooseList.find((c) => polyHas(c, px, py)) ?? [...chooseList].sort((a, b) => Math.hypot(centerOf(a).x - px, centerOf(a).y - py) - Math.hypot(centerOf(b).x - px, centerOf(b).y - py))[0];
       chooseList = [];
       mode = "auto";
@@ -38419,6 +39375,7 @@ ${t}`;
   }, () => !document.body.classList.contains("live"));
   $("guide-open").onclick = openGuide;
   $("cams-open").onclick = () => openCameras();
+  $("screens-open").onclick = () => openScreens();
   $("framing-open").onclick = async () => (await Promise.resolve().then(() => (init_framing(), framing_exports))).openFraming();
   $("guide-hud").onclick = openGuide;
   $("confirm").onclick = () => {
@@ -39044,6 +40001,7 @@ ${t}`;
       logTrack("clip save failed", { error: String(e) });
     }
     await updateShot(p.shot);
+    void sendReplay(clip.blob, S.shots.indexOf(p.shot) + 1);
     if (p.shot.hasClip) {
       const busy = () => recActive || !!pendingClip;
       const sh = p.shot;
@@ -39527,6 +40485,7 @@ ${t}`;
     void handleIncoming();
   });
   (async () => {
+    if (isKiosk()) return void startKiosk();
     installSafety();
     if (await takeSessionFromHash()) setTimeout(() => notify("Signed in. Open Pro shop, then Shop mode, then Shop online."), 2500);
     captureIncomingHash();
@@ -39549,6 +40508,7 @@ ${t}`;
     if (has) {
       maybeAutoBackup();
       warmPose();
+      startScreens(() => stream);
       renderBall(void 0);
       renderResult(void 0);
       renderLane();
