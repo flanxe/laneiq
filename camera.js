@@ -34648,16 +34648,17 @@ ${t}`;
     return { map: oilMapFor({ lengthFt: pre.lengthFt, ratio: 3 }), label: pre.label };
   }
   function laneSvg(oil, hand3, paths) {
-    const X = (b) => 12 + (39.5 - b) / 39 * 176, Y = (ft) => 372 - ft * 5.9;
+    const LW = 140, PX = 9.5, X = (b) => 30 + (39.5 - b) / 39 * LW, Y = (ft) => 12 + (60 - ft) * PX;
     let cells = "";
     for (let b = 1; b <= 39; b += 2) for (let f2 = 0; f2 < 60; f2 += 3) {
       const v = (oil.cells[b - 1]?.[f2] ?? 0) / oil.max;
-      if (v > 0.04) cells += `<rect x="${X(b + 1.5).toFixed(1)}" y="${Y(f2 + 3).toFixed(1)}" width="${176 / 39 * 2 + 0.3}" height="${(5.9 * 3 + 0.3).toFixed(1)}" fill="#46e6ff" opacity="${(v * 0.28).toFixed(2)}"/>`;
+      if (v > 0.04) cells += `<rect x="${X(b + 1.5).toFixed(1)}" y="${Y(f2 + 3).toFixed(1)}" width="${(LW / 39 * 2 + 0.3).toFixed(1)}" height="${(PX * 3 + 0.3).toFixed(1)}" fill="#46e6ff" opacity="${(v * 0.28).toFixed(2)}"/>`;
     }
     const pocket = hand3 === "R" ? 17.5 : 22.5;
     const lines = paths.map((p) => `<polyline fill="none" stroke="${p.color}" stroke-width="2.2" points="${p.t.board.map((b, ft) => `${X(b).toFixed(1)},${Y(ft).toFixed(1)}`).join(" ")}"/><circle cx="${X(p.t.breakpointBoard).toFixed(1)}" cy="${Y(p.t.breakpointFt).toFixed(1)}" r="3.2" fill="${p.color}"/>`).join("");
     const arrows = [5, 10, 15, 20, 25, 30, 35].map((b) => `<path d="M${X(b)} ${Y(15) + 3} l-2 -5 l4 0z" fill="#9fb0cc"/>`).join("");
-    return `<svg viewBox="0 0 200 384" role="img" aria-label="Lane from behind the foul line with the predicted ball paths" style="width:100%;max-width:260px;display:block;margin:0 auto"><rect x="12" y="12" width="176" height="360" fill="#1a1410" stroke="#566" /> ${cells} ${arrows}<line x1="12" x2="188" y1="${Y(0)}" y2="${Y(0)}" stroke="#fff" stroke-opacity=".5"/><circle cx="${X(pocket)}" cy="${Y(60)}" r="3" fill="#ff5a6e"/>${lines}<text x="14" y="10" font-size="8" fill="#9fb0cc">pins</text><text x="14" y="383" font-size="8" fill="#9fb0cc">foul line</text></svg>`;
+    const H3 = 12 + 60 * PX + 14;
+    return `<svg viewBox="0 0 200 ${H3}" role="img" aria-label="Lane from behind the foul line with the predicted ball paths" style="width:100%;max-width:260px;display:block;margin:0 auto"><rect x="30" y="12" width="${LW}" height="${60 * PX}" fill="#1a1410" stroke="#566" /> ${cells} ${arrows}<line x1="30" x2="${30 + LW}" y1="${Y(0)}" y2="${Y(0)}" stroke="#fff" stroke-opacity=".5"/><circle cx="${X(pocket)}" cy="${Y(60)}" r="3" fill="#ff5a6e"/>${lines}<text x="30" y="9" font-size="8" fill="#9fb0cc">pins (60 ft)</text><text x="30" y="${H3 - 2}" font-size="8" fill="#9fb0cc">foul line</text></svg>`;
   }
   function openReactionLab() {
     bump("reaction-lab");
