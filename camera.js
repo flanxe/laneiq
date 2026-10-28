@@ -2033,7 +2033,7 @@
     const lkOk = lk && lk.rmse < 1.2;
     if (lkOk && Math.hypot(lk.omega.x, lk.omega.y, lk.omega.z) < 9 * Math.PI / 180) return { omega: lk.omega, score: 1, tx: 0, ty: 0 };
     const sr = searchOmega(a, b, c, maxDeg, lkOk ? [lk.omega] : []);
-    if (!sr || sr.score < 0.75 || sr.margin < 0.08 || sr.overlap < 0.45) return null;
+    if (!sr || sr.score < 0.68 || sr.margin < 0.06 || sr.overlap < 0.4) return null;
     return { omega: sr.omega, score: sr.score, tx: sr.tx, ty: sr.ty };
   }
   async function analyzeClipSpin(frames, fps, rs, basis, hand3, pause = async () => {
@@ -2063,7 +2063,7 @@
     const aligned = useable.map((h) => ({ t: h.t, g: normalized(h.g, h.c, rs) }));
     const omegas = [];
     let pairs = [];
-    let tried = 0, read2 = 0, inl = 0;
+    let tried = 0, read3 = 0, inl = 0;
     const period = 1 / fps;
     for (let i = 0; i + 1 < aligned.length; i++) {
       const dt = aligned[i + 1].t - aligned[i].t;
@@ -2075,7 +2075,7 @@
       const sol = readPair(aligned[i].g, aligned[i + 1].g, cenC);
       await pause();
       if (sol) {
-        read2++;
+        read3++;
         inl += sol.score * 100;
         omegas.push({ x: sol.omega.x * period / dt, y: sol.omega.y * period / dt, z: sol.omega.z * period / dt });
         pairs.push({ i, k: 1, tx: sol.tx, ty: sol.ty, dt });
@@ -2109,7 +2109,7 @@
         omegas.push(...longer);
         pairs = longPairs;
         tried = tr2;
-        read2 = rd2;
+        read3 = rd2;
       } else stride = 1;
     }
     let agreeN = 0, agreeOf = 0;
@@ -2135,23 +2135,23 @@
     const mn = Math.hypot(mx, my, mz) || 1;
     const steady = got.length ? got.filter((o, i) => (o.x * mx + o.y * my + o.z * mz) / (mags[i] * mn || 1) > Math.cos(35 * Math.PI / 180)).length / got.length : 0;
     const consistency = stride > 1 ? steady : agreeOf >= 2 ? agreeN / agreeOf : null;
-    const out = { ...base2, pairsRead: read2, pairsTried: tried, consistency, cameraPitchDeg: pitch2, t0: aligned[0].t, t1: aligned[aligned.length - 1].t };
-    if (read2 < 4 || tried === 0)
-      return none(fps, [`Only ${read2} of ${tried} frame pairs had enough surface detail to follow. A plain ball with no logo, or a clip too soft to show one, can't be read this way. ${MARKING_ADVICE}`], SLOW_ADVICE, "too-coarse", out);
+    const out = { ...base2, pairsRead: read3, pairsTried: tried, consistency, cameraPitchDeg: pitch2, t0: aligned[0].t, t1: aligned[aligned.length - 1].t };
+    if (read3 < 3 || tried === 0)
+      return none(fps, [`Only ${read3} of ${tried} frame pairs had enough surface detail to follow. A plain ball with no logo, or a clip too soft to show one, can't be read this way. ${MARKING_ADVICE}`], SLOW_ADVICE, "too-coarse", out);
     const magMed = med2(mags);
     const deg2 = magMed * 180 / Math.PI;
     const spread = mags.length > 2 ? Math.sqrt(mags.reduce((a, m) => a + (m - magMed) ** 2, 0) / mags.length) / (magMed || 1) : 1;
-    const usedFrac = read2 / tried;
+    const usedFrac = read3 / tried;
     const rpmNow = magMed * fps * 60 / (2 * Math.PI);
     const reasons = [];
     let advice = null;
     const implausible = rpmNow < 60 || rpmNow > 900;
-    const unsteady = steady < 0.6;
-    const coarse = deg2 > MAX_DEG_PER_FRAME || stride === 1 && consistency !== null && consistency < 0.5 || spread > 0.6 || usedFrac < 0.5 || implausible || unsteady;
+    const unsteady = steady < 0.5;
+    const coarse = deg2 > MAX_DEG_PER_FRAME || stride === 1 && consistency !== null && consistency < 0.35 || spread > 0.8 || usedFrac < 0.35 || implausible || unsteady;
     if (deg2 > MAX_DEG_PER_FRAME) reasons.push(`At ${fps.toFixed(0)} frames a second the surface turns about ${deg2.toFixed(0)}\xB0 between frames; the tracking only follows up to about ${MAX_DEG_PER_FRAME}\xB0, so the rev rate can't be trusted.`);
-    if (stride === 1 && consistency !== null && consistency < 0.5) reasons.push(`Two single frame steps don't add up to the direct two-step turn (${Math.round(consistency * 100)}% agree), which is what a spin too fast for the frame rate looks like.`);
-    if (usedFrac < 0.5) reasons.push(`Only ${read2} of ${tried} frame pairs could be read.`);
-    if (implausible || unsteady || spread > 0.6) {
+    if (stride === 1 && consistency !== null && consistency < 0.35) reasons.push(`Two single frame steps don't add up to the direct two-step turn (${Math.round(consistency * 100)}% agree), which is what a spin too fast for the frame rate looks like.`);
+    if (usedFrac < 0.35) reasons.push(`Only ${read3} of ${tried} frame pairs could be read.`);
+    if (implausible || unsteady || spread > 0.8) {
       const lo = 300 * 6 / fps, hi = 450 * 6 / fps;
       reasons.push(`The turn between frames could not be followed: ${implausible ? `it read as ${rpmNow.toFixed(0)} rpm, which no bowled ball does,` : "the spin axis it read jumps about from pair to pair,"} so what was followed is glare or shading rather than markings on the ball.`);
       if (hi > GOOD_DEG_PER_FRAME) reasons.push(`At ${fps.toFixed(0)} fps a ball spinning at 300 to 450 rpm turns ${lo.toFixed(0)}\xB0 to ${hi.toFixed(0)}\xB0 every frame, more than the ${GOOD_DEG_PER_FRAME}\xB0 or so that can be followed.`);
@@ -2199,8 +2199,8 @@
     else if (basis.agree < 0.6) caveats.push("The camera tilt taken from the lane lock is shaky, so axis tilt could be off by a few degrees.");
     if (ballPx < 40) caveats.push(`The ball is only about ${Math.round(ballPx)} pixels across, so axis rotation and tilt could be off by 10\xB0 or more.`);
     const sizeF = Math.min(1, ballPx / 60);
-    const confidence = Math.max(0, Math.min(1, s.quality * usedFrac * (consistency ?? 0.6) * (1 - Math.min(0.8, spread)) * (0.5 + 0.5 * sizeF) * (deg2 < MAX_DEG_PER_FRAME * 0.7 ? 1 : 0.8) * Math.min(1, inl / Math.max(1, read2) / 120 + 0.4)));
-    const status2 = confidence >= 0.55 ? "measured" : confidence >= 0.3 ? "rough" : "too-coarse";
+    const confidence = Math.max(0, Math.min(1, s.quality * usedFrac * (consistency ?? 0.6) * (1 - Math.min(0.8, spread)) * (0.5 + 0.5 * sizeF) * (deg2 < MAX_DEG_PER_FRAME * 0.7 ? 1 : 0.8) * Math.min(1, inl / Math.max(1, read3) / 120 + 0.4)));
+    const status2 = confidence >= 0.55 ? "measured" : confidence >= 0.2 ? "rough" : "too-coarse";
     if (status2 === "too-coarse") return none(fps, [...reasons, `Confidence only ${Math.round(confidence * 100)}%.`], SLOW_ADVICE, "too-coarse", { ...out, degPerFrame: deg2 });
     void rpmNow;
     return { ...none(fps, [...reasons, ...caveats], null, status2, out), status: status2, rpm: s.rpm, axisRotation: s.axisRotation, axisTilt: s.axisTilt, confidence, degPerFrame: deg2 };
@@ -2220,9 +2220,9 @@
         const fx = x - x0, fy = y - y0, i = y0 * g.w + x0;
         return g.data[i] * (1 - fx) * (1 - fy) + g.data[i + 1] * fx * (1 - fy) + g.data[i + g.w] * (1 - fx) * fy + g.data[i + g.w + 1] * fx * fy;
       };
-      MAX_DEG_PER_FRAME = 50;
-      GOOD_DEG_PER_FRAME = 25;
-      MIN_BALL_PX = 26;
+      MAX_DEG_PER_FRAME = 58;
+      GOOD_DEG_PER_FRAME = 32;
+      MIN_BALL_PX = 18;
       FAST_RPM = 500;
       fpsNeeded = (rpm = FAST_RPM) => Math.ceil(rpm / 60 * 360 / GOOD_DEG_PER_FRAME / 60) * 60;
       none = (fps, reasons, advice, status2, extra2 = {}) => ({
@@ -4094,6 +4094,27 @@
       logTrack("pose model warm-up failed", { error: String(e) });
     }), 12e3);
   }
+  function startLiveModel() {
+    if (liveReady || liveFailed === "stop") return;
+    getLandmarker().then(() => (liveReady = true, liveFailed = "")).catch((e) => {
+      liveFailed = String(e);
+      logTrack("live pose model failed", { error: liveFailed });
+      setTimeout(() => liveFailed = "", 2e4);
+    });
+  }
+  async function detectLive(v, near) {
+    if (!liveReady) return null;
+    const lm = await getLandmarker();
+    const res = lm.detectForVideo(v, clock += 50);
+    const people = (res.landmarks ?? []).filter((p) => p.length > 24);
+    if (!people.length) return { lm: [], people: 0 };
+    const scored = people.map((p) => {
+      const hipX = (p[23].x + p[24].x) / 2;
+      const size = Math.hypot((p[11].x + p[12].x) / 2 - hipX, (p[11].y + p[12].y) / 2 - (p[23].y + p[24].y) / 2);
+      return { p, ok: hipX >= near[0] && hipX <= near[1], size };
+    }).sort((a, b) => Number(b.ok) - Number(a.ok) || b.size - a.size);
+    return { lm: scored[0].p.map((l) => ({ x: l.x, y: l.y, v: l.visibility ?? 1 })), people: people.length };
+  }
   function pickBowler(people, s) {
     if (!people.length) return [];
     const fl = s.cal.length === 4 ? [s.cal[0].x / s.vw, s.cal[1].x / s.vw] : [0, 1];
@@ -4165,7 +4186,7 @@
           if (!blob) return resolve(void 0);
           const b = await measureBody(shot, blob, opts.onProgress);
           shot.body = b;
-          shot.skel = compactSkeleton(lastFrames) ?? void 0;
+          shot.skel = compactSkeleton(lastFrames) ?? shot.skel;
           await updateShot(shot);
           resolve(b);
         } catch (e) {
@@ -4180,7 +4201,7 @@
     waiting2.set(shot.id, job);
     return job;
   }
-  var VER, CDN, MODEL, AUTO_KEY, bodyAutoOn, setBodyAuto, landmarker, warmed, clock, lastFrames, sleep2, seekTo, waiting2, chain2, bodyPending;
+  var VER, CDN, MODEL, AUTO_KEY, bodyAutoOn, setBodyAuto, landmarker, warmed, clock, lastFrames, liveReady, liveFailed, liveModelState, sleep2, seekTo, waiting2, chain2, bodyPending;
   var init_pose = __esm({
     "camera/pose.ts"() {
       init_approach();
@@ -4209,6 +4230,9 @@
       warmed = false;
       clock = 0;
       lastFrames = [];
+      liveReady = false;
+      liveFailed = "";
+      liveModelState = () => liveReady ? "ready" : liveFailed ? "failed" : "loading";
       sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
       seekTo = (v, t) => new Promise((res) => {
         let done3 = false;
@@ -4357,7 +4381,10 @@
       }
       if (inf) return { id, label: label2, value: String(Math.round(inf.v)), unit: unit5, pm: inf.pm, note: inf.note, source: "estimated" };
       if (prof !== void 0) return { id, label: label2, value: String(Math.round(prof)), unit: unit5, pm: "", note: profile.source === "entered" ? "entered by you, not measured on this shot" : "from your Spin lab video", source: profile.source === "entered" ? "entered" : "estimated" };
-      if (ap) return { id, label: label2, value: approxText(ap), unit: unit5, pm: "", note: `${ap.basis}${ctx2?.queued ? "; measuring from the video now" : ""}`, source: ap.kind === "entered" ? "entered" : "estimated" };
+      if (ap) {
+        const one = ap.lo === ap.hi;
+        return { id, label: label2, value: String(Math.round((ap.lo + ap.hi) / 2)), unit: unit5, pm: "", note: one ? `${ap.basis}` : `assumed, middle of the usual ${approxText(ap)}; not measured on this shot${ctx2?.queued ? " (measuring from the video now)" : ""}`, source: ap.kind === "entered" ? "entered" : "estimated" };
+      }
       if (spin && spin.status === "none") return none2(id, label2, spin.reasons[0] ?? "the spin could not be read from this clip");
       if (spin && spin.status !== "measured" && spin.status !== "rough") return none2(id, label2, "this clip is too coarse; film slow-motion in Spin lab");
       if (ctx2 && !ctx2.hasClip) return none2(id, label2, "no video was saved for this shot, so there is nothing to read");
@@ -4670,7 +4697,7 @@
       const e = Math.abs(mean2(entry));
       points.push(`Observed: entry angle averages ${e.toFixed(1)}\xB0. ${e < 3 ? "Shallow: the ball is arriving with little angle, so pocket carry will be touchy." : e > 6.5 ? "Steep: plenty of angle; watch for over-hooking on slight misses." : "In a workable range."}`);
     }
-    let headline = "Lane looks stable so far";
+    let headline2 = "Lane looks stable so far";
     let next = "Keep the same ball and line; nothing here justifies a change.";
     let confidence = n >= 8 ? "good" : "moderate";
     if (bpFt.length >= MIN_SHOTS) {
@@ -4678,11 +4705,11 @@
       const total2 = tr.slope * (bpFt.length - 1);
       if (Math.abs(tr.t) >= 2 && Math.abs(total2) >= 2) {
         if (total2 < 0) {
-          headline = "Ball is reading the lane earlier: the track is drying out";
+          headline2 = "Ball is reading the lane earlier: the track is drying out";
           points.push(`Inferred: breakpoint moved about ${Math.abs(total2).toFixed(0)} ft closer to you over ${bpFt.length} shots (trend strength t=${tr.t.toFixed(1)}).`);
           next = "Test one change: move your feet 1\u20132 boards toward the oiled side (or a touch less rotation/speed up), keep the target, and judge the next two shots before changing anything else.";
         } else {
-          headline = "Ball is skidding farther: oil is carrying down";
+          headline2 = "Ball is skidding farther: oil is carrying down";
           points.push(`Inferred: breakpoint moved about ${total2.toFixed(0)} ft farther down-lane over ${bpFt.length} shots (trend strength t=${tr.t.toFixed(1)}).`);
           next = "Test one change: a smoother or more surface-sensitive ball, or move 1\u20132 boards toward the outside, and judge the next two shots.";
         }
@@ -4699,7 +4726,7 @@
       const drift = ta.slope * (arrows.length - 1);
       if (Math.abs(ta.t) >= 2 && Math.abs(drift) >= 1.5) points.push(`Observed: your ball is crossing the arrows ${Math.abs(drift).toFixed(1)} boards ${drift > 0 ? "farther left (toward board 39)" : "farther right (toward board 1)"} than at the start, so you may be drifting, not the lane.`);
     }
-    return { status: "ok", confidence, headline, points, next, shotsUsed: n };
+    return { status: "ok", confidence, headline: headline2, points, next, shotsUsed: n };
   }
   var MIN_SHOTS, mean2, sd2, bpShape;
   var init_lanereads = __esm({
@@ -4722,14 +4749,14 @@
     const cover = b.coverstockType ? COVER_BONUS[b.coverstockType.value] ?? 0 : 0;
     return (2.55 - rg) * 6 + (diff - 0.04) * 20 + cover;
   }
-  function recommendBall(read2, currentBallId, arsenal) {
+  function recommendBall(read3, currentBallId, arsenal) {
     const scored = arsenal.map((b) => ({ b, m: b.catalog ? motionIndex(b.catalog) : null })).filter((x) => x.m !== null);
-    if (read2.status !== "ok") return { status: "none", text: "No equipment change suggested yet: I need a lane read first.", basis: [] };
+    if (read3.status !== "ok") return { status: "none", text: "No equipment change suggested yet: I need a lane read first.", basis: [] };
     if (scored.length < 2) {
       return { status: "none", text: "I need at least two arsenal balls matched to the catalog to compare options.", basis: [`${scored.length} of your balls have catalog specs.`] };
     }
-    const drying = /earlier/.test(read2.headline);
-    const carrydown = /skidding farther/.test(read2.headline);
+    const drying = /earlier/.test(read3.headline);
+    const carrydown = /skidding farther/.test(read3.headline);
     if (!drying && !carrydown) return { status: "none", text: "The lane looks stable, so there is no reason in the numbers to change balls.", basis: [] };
     const cur2 = scored.find((x) => x.b.id === currentBallId);
     if (!cur2) return { status: "none", text: "Tell me which ball you're throwing so I can compare against it.", basis: [] };
@@ -4949,7 +4976,7 @@
   }
   function paintTiles(s) {
     const profSpin = S.profile?.spin;
-    const mk = (x) => readoutTiles(x.a, x.m, x.spin, profSpin ? { rpm: profSpin.rpm, axisRotation: profSpin.axisRotation, axisTilt: profSpin.axisTilt, source: profSpin.source === "video" ? "video" : "entered" } : null, { hasClip: x.hasClip, queued: spinPending(x.id), inferred: x.inf, approx: S.profile?.quiz ? approxSpin({ ...S.profile.quiz, revRpm: S.profile.revRpm ?? S.profile.quiz.revRpm }) : void 0 });
+    const mk = (x) => readoutTiles(x.a, x.m, x.spin, profSpin ? { rpm: profSpin.rpm, axisRotation: profSpin.axisRotation, axisTilt: profSpin.axisTilt, source: profSpin.source === "video" ? "video" : "entered" } : null, { hasClip: x.hasClip, queued: spinPending(x.id), inferred: x.inf, approx: approxSpin(S.profile?.quiz ? { ...S.profile.quiz, revRpm: S.profile.revRpm ?? S.profile.quiz.revRpm } : { style: "one-hand-thumb", revTier: "unsure", revRpm: S.profile?.revRpm }) });
     const tiles = mk(s);
     const sess = sessionShots();
     const i = sess.findIndex((x) => x.id === s.id);
@@ -9599,12 +9626,12 @@ Shop notes: ${c.shopNotes}` : ""
     for (let i = 1; i <= Math.min(pbs, 20); i++) out.push({ id: `pb-${i}`, title: `New high game (#${i})`, detail: "Beat your best game", points: 10 });
     const run = games2.reduce((m, g) => Math.max(m, strikeRun(g)), 0);
     for (const [n, pts, title] of STREAKS) if (run >= n) out.push({ id: `streak-${n}`, title, detail: `${n} strikes in a row in one game`, points: pts });
-    const clean7 = done3.filter((g) => {
+    const clean8 = done3.filter((g) => {
       const f2 = bowlingStats([g]);
       return f2.openFrames === 0;
     }).length;
-    if (clean7 >= 1) out.push({ id: "clean-1", title: "Clean game", detail: "A game with no open frames", points: 50 });
-    if (clean7 >= 5) out.push({ id: "clean-5", title: "Five clean games", detail: "Five games with no open frames", points: 150 });
+    if (clean8 >= 1) out.push({ id: "clean-1", title: "Clean game", detail: "A game with no open frames", points: 50 });
+    if (clean8 >= 5) out.push({ id: "clean-5", title: "Five clean games", detail: "Five games with no open frames", points: 150 });
     if (done3.length >= 10) {
       const avg3 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
       const gain = avg3(scores.slice(-5)) - avg3(scores.slice(0, 5));
@@ -22118,7 +22145,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
         qrcode3.createStringToBytes = function(unicodeData, numChars) {
           var unicodeMap = (function() {
             var bin = base64DecodeInputStream(unicodeData);
-            var read2 = function() {
+            var read3 = function() {
               var b = bin.read();
               if (b == -1) throw "eof";
               return b;
@@ -22128,9 +22155,9 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
             while (true) {
               var b0 = bin.read();
               if (b0 == -1) break;
-              var b1 = read2();
-              var b2 = read2();
-              var b3 = read2();
+              var b1 = read3();
+              var b2 = read3();
+              var b3 = read3();
               var k2 = String.fromCharCode(b0 << 8 | b1);
               var v = b2 << 8 | b3;
               unicodeMap2[k2] = v;
@@ -23717,10 +23744,10 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
         constructor(meta) {
           this.meta = meta;
         }
-        add(buf) {
-          if (this.got + buf.byteLength > this.meta.size) return false;
-          this.parts.push(buf);
-          this.got += buf.byteLength;
+        add(buf2) {
+          if (this.got + buf2.byteLength > this.meta.size) return false;
+          this.parts.push(buf2);
+          this.got += buf2.byteLength;
           return true;
         }
         get received() {
@@ -24895,8 +24922,8 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       }
     return { map, width };
   }
-  async function pdfText(buf) {
-    const s = latin1(buf);
+  async function pdfText(buf2) {
+    const s = latin1(buf2);
     if (!s.startsWith("%PDF")) return null;
     const enc = s.includes("/Encrypt") ? setupDecrypt(s) : null;
     if (enc?.unsupported) return null;
@@ -24916,7 +24943,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
         const a = start2 + sm.index + sm[0].length;
         const e = s.lastIndexOf("endstream", stop);
         if (e > a) {
-          raw = buf.subarray(a, e);
+          raw = buf2.subarray(a, e);
           if (enc && !/\/Type\s*\/XRef/.test(dict)) {
             try {
               raw = await decryptStream(raw, enc, num11, gen);
@@ -25037,8 +25064,8 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       };
       fromLatin1 = (s) => Uint8Array.from(s, (c) => c.charCodeAt(0) & 255);
       fromHex = (h) => {
-        const clean7 = h.replace(/[^0-9A-Fa-f]/g, "");
-        const even = clean7.length % 2 ? clean7 + "0" : clean7;
+        const clean8 = h.replace(/[^0-9A-Fa-f]/g, "");
+        const even = clean8.length % 2 ? clean8 + "0" : clean8;
         const out = new Uint8Array(even.length / 2);
         for (let i = 0; i < out.length; i++) out[i] = parseInt(even.slice(2 * i, 2 * i + 2), 16);
         return out;
@@ -25123,8 +25150,8 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       progress3(done3++, runs.length);
       const { data } = await T.recognize(prepare(src, c, ch, inv), "eng");
       for (const w of data.words) {
-        const clean7 = w.text.replace(/[^A-Za-z0-9]/g, "");
-        if (w.confidence > 40 && clean7.length >= 2 && /[A-Za-z]/.test(clean7)) words.set(clean7.toUpperCase(), Math.max(words.get(clean7.toUpperCase()) ?? 0, w.confidence));
+        const clean8 = w.text.replace(/[^A-Za-z0-9]/g, "");
+        if (w.confidence > 40 && clean8.length >= 2 && /[A-Za-z]/.test(clean8)) words.set(clean8.toUpperCase(), Math.max(words.get(clean8.toUpperCase()) ?? 0, w.confidence));
       }
     }
     return [...words.entries()].sort((a, b) => b[1] - a[1]).map(([w]) => w).join(" ");
@@ -25302,8 +25329,8 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       if (!f2) return;
       const prog = $("mp-prog");
       try {
-        const read2 = await readFile(f2, (m) => prog.textContent = m);
-        openEditor2(read2.sheet, read2.from, f2.name.replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ").trim());
+        const read3 = await readFile(f2, (m) => prog.textContent = m);
+        openEditor2(read3.sheet, read3.from, f2.name.replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ").trim());
       } catch (err) {
         prog.textContent = `Couldn't read that file: ${err instanceof Error ? err.message : String(err)}. You can type the numbers in instead.`;
       }
@@ -26082,16 +26109,16 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
   }
   async function sendReplay(blob, n) {
     if (blob.size > 60 * 1024 * 1024) return;
-    const buf = await blob.arrayBuffer().catch(() => null);
-    if (!buf) return;
+    const buf2 = await blob.arrayBuffer().catch(() => null);
+    if (!buf2) return;
     for (const s of screens) {
       const dc = s.dc;
       if (s.state !== "connected" || !dc || dc.readyState !== "open") continue;
       try {
-        dc.send(JSON.stringify({ t: "replay", rec: "r", size: buf.byteLength, mime: blob.type || "video/mp4", startMs: 0, n }));
-        for (let i = 0; i < buf.byteLength; i += CHUNK) {
+        dc.send(JSON.stringify({ t: "replay", rec: "r", size: buf2.byteLength, mime: blob.type || "video/mp4", startMs: 0, n }));
+        for (let i = 0; i < buf2.byteLength; i += CHUNK) {
           while (dc.bufferedAmount > 1e6) await new Promise((r) => setTimeout(r, 20));
-          dc.send(buf.slice(i, i + CHUNK));
+          dc.send(buf2.slice(i, i + CHUNK));
         }
         dc.send(JSON.stringify({ t: "replayend" }));
       } catch {
@@ -26882,10 +26909,10 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
         status2(`Sending the clip (${(blob.size / 1e6).toFixed(1)} MB)\u2026`);
         try {
           dc.send(JSON.stringify({ t: "clip", rec: rec2, size: blob.size, mime: blob.type, startMs: c.startMs }));
-          const buf = await blob.arrayBuffer();
-          for (let i = 0; i < buf.byteLength; i += CHUNK) {
+          const buf2 = await blob.arrayBuffer();
+          for (let i = 0; i < buf2.byteLength; i += CHUNK) {
             while (dc.bufferedAmount > 1e6) await new Promise((r) => setTimeout(r, 20));
-            dc.send(buf.slice(i, i + CHUNK));
+            dc.send(buf2.slice(i, i + CHUNK));
           }
           dc.send(JSON.stringify({ t: "clipend", rec: rec2 }));
           status2("Sent. Waiting for the next throw.");
@@ -26983,8 +27010,8 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
   });
 
   // core/src/training.ts
-  function dailyPlan(day6, where, focus) {
-    const n = dayNumber(day6);
+  function dailyPlan(day8, where, focus) {
+    const n = dayNumber(day8);
     const axes = focus.length ? focus : ["arrows", "pocket"];
     const first = axes[0], second = axes[1] ?? axes[0];
     const steps = [WARMUP];
@@ -27003,14 +27030,14 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       steps.push({ ...STUDY[n % STUDY.length] });
     }
     steps.push(REFLECT);
-    return { day: day6, where, steps, minutes: steps.reduce((a, s) => a + s.minutes, 0), focus: axes };
+    return { day: day8, where, steps, minutes: steps.reduce((a, s) => a + s.minutes, 0), focus: axes };
   }
-  function markStep(log, day6, id, done3) {
-    const rest = log.filter((d) => d.day !== day6);
-    const cur2 = new Set(log.find((d) => d.day === day6)?.done ?? []);
+  function markStep(log, day8, id, done3) {
+    const rest = log.filter((d) => d.day !== day8);
+    const cur2 = new Set(log.find((d) => d.day === day8)?.done ?? []);
     if (done3) cur2.add(id);
     else cur2.delete(id);
-    return cur2.size ? [...rest, { day: day6, done: [...cur2] }].sort((a, b) => a.day.localeCompare(b.day)) : rest;
+    return cur2.size ? [...rest, { day: day8, done: [...cur2] }].sort((a, b) => a.day.localeCompare(b.day)) : rest;
   }
   function trainStats(log, today3) {
     const days = new Set(log.filter(trained).map((d) => d.day));
@@ -27192,7 +27219,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
           return "home";
         }
       };
-      drillDone = (id, day6) => S.drills.some((r) => r.id === id && r.finishedAt && dayKey(new Date(r.finishedAt)) === day6);
+      drillDone = (id, day8) => S.drills.some((r) => r.id === id && r.finishedAt && dayKey(new Date(r.finishedAt)) === day8);
       AXIS_NAME = { strikes: "strikes", singles: "single-pin spares", closed: "closed frames", firstBall: "first-ball pins", pocket: "pocket hits", entry: "entry angle", arrows: "target control", start: "start position", speed: "speed control" };
       focusNames = (f2) => f2.map((x) => AXIS_NAME[x] ?? x).join(" and ");
     }
@@ -29151,8 +29178,8 @@ ${url}`);
     for (let w = weeks - 1; w >= 0; w--) {
       const week = [];
       for (let d = 0; d < 7; d++) {
-        const day6 = new Date(today3.getFullYear(), today3.getMonth(), today3.getDate() - mondayOffset - w * 7 + d);
-        week.push({ date: key2(day6), shots: per.get(key2(day6)) ?? 0, future: day6.getTime() > today3.getTime() });
+        const day8 = new Date(today3.getFullYear(), today3.getMonth(), today3.getDate() - mondayOffset - w * 7 + d);
+        week.push({ date: key2(day8), shots: per.get(key2(day8)) ?? 0, future: day8.getTime() > today3.getTime() });
       }
       grid2.push(week);
     }
@@ -29206,18 +29233,18 @@ ${url}`);
   function goalStatus(goal, sessions) {
     const def = goalDef(goal.kind);
     const since = Date.parse(goal.createdAt);
-    let best2 = null, latest = null, counted = 0, metAt = null;
+    let best2 = null, latest2 = null, counted = 0, metAt = null;
     sessions.forEach((s, i) => {
       if (Date.parse(s.start) < since || s.shots.length < GOAL_MIN_SHOTS) return;
       const v = valueOf(goal.kind, s, sessions.slice(0, i));
       if (v === null) return;
       counted++;
-      latest = v;
+      latest2 = v;
       if (best2 === null || (def.higherBetter ? v > best2 : v < best2)) best2 = v;
       if (metAt === null && reaches(def, v, goal.target)) metAt = s.end;
     });
     const progress3 = best2 === null ? 0 : reaches(def, best2, goal.target) ? 1 : def.higherBetter ? Math.max(0, best2 / goal.target) : Math.max(0, goal.target / Math.max(best2, 1e-9));
-    return { goal, def, counted, best: best2, latest, met: metAt !== null, metAt, progress: Math.min(1, progress3) };
+    return { goal, def, counted, best: best2, latest: latest2, met: metAt !== null, metAt, progress: Math.min(1, progress3) };
   }
   var GOAL_MIN_SHOTS, GOAL_DEFS, goalDef, reaches, goalsStatus, MIN_SHOTS_NOTE;
   var init_goals = __esm({
@@ -30025,8 +30052,8 @@ ${url}`);
     <div class="note">These figures describe the shots entered here. They are not a certification, and a reading the app did not give is counted apart, never as a hit.</div>`;
     $("ac-close").onclick = () => (el.classList.remove("on"), el.innerHTML = "");
     if (checked) {
-      const day6 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-      offerShare($("ac-share"), [new File([accuracyCsv(shots)], `laneiq-accuracy-${day6}.csv`, { type: "text/csv" })], { title: "LaneIQ accuracy checks", label: "Send or save the spreadsheet" });
+      const day8 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+      offerShare($("ac-share"), [new File([accuracyCsv(shots)], `laneiq-accuracy-${day8}.csv`, { type: "text/csv" })], { title: "LaneIQ accuracy checks", label: "Send or save the spreadsheet" });
     } else $("ac-share").innerHTML = `<div class="note">Nothing to send yet.</div>`;
   }
   var init_accuracyui = __esm({
@@ -30223,7 +30250,7 @@ ${url}`);
   function mergeTraining(have, incoming) {
     const by = /* @__PURE__ */ new Map();
     for (const d of [...have, ...incoming]) by.set(d.day, /* @__PURE__ */ new Set([...by.get(d.day) ?? [], ...d.done]));
-    return [...by.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([day6, s]) => ({ day: day6, done: [...s] }));
+    return [...by.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([day8, s]) => ({ day: day8, done: [...s] }));
   }
   function mergeSpare(have, incoming) {
     return { ...incoming, ...have };
@@ -30291,8 +30318,8 @@ ${url}`);
   function wireBackup(box) {
     $("me-backup").onclick = async () => {
       const b = await collectBackup();
-      const day6 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-      offerShare($("me-backup-share"), [new File([JSON.stringify(b)], `laneiq-backup-${(S.profile?.name ?? "me").replace(/\W+/g, "-")}-${day6}.json`, { type: "application/json" })], { title: "LaneIQ backup", label: "Save or send the backup file" });
+      const day8 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+      offerShare($("me-backup-share"), [new File([JSON.stringify(b)], `laneiq-backup-${(S.profile?.name ?? "me").replace(/\W+/g, "-")}-${day8}.json`, { type: "application/json" })], { title: "LaneIQ backup", label: "Save or send the backup file" });
       $("me-backup-msg").textContent = `${backupSummary(b)}. Videos are not in the backup. Keep the file somewhere safe (your files, cloud storage, an email to yourself).`;
     };
     const input = box.querySelector("#me-restore-file");
@@ -30399,7 +30426,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
   }
   function spinCardHtml2() {
     return `<div class="card"><div class="k">Camera and spin mode</div>
-    <div class="note">Rev rate and axis can only be read if the camera is fast enough: between two frames the ball's surface turns (rev rate x 6 / frames a second) degrees, and the reader follows about 25\xB0 cleanly. At 60 fps a hard hooker turns about ${turnPerFrame(450, 60).toFixed(0)}\xB0 a frame (too much); at 120 fps about ${turnPerFrame(450, 120).toFixed(0)}\xB0; at 240 fps about ${turnPerFrame(450, 240).toFixed(0)}\xB0. Modern phones can do 120 or 240 at 1080p.</div>
+    <div class="note">Rev rate and axis can only be read if the camera is fast enough: between two frames the ball's surface turns (rev rate x 6 / frames a second) degrees, and the reader follows about ${GOOD_DEG_PER_FRAME}\xB0 cleanly and up to about ${MAX_DEG_PER_FRAME}\xB0 roughly. At 60 fps a hard hooker turns about ${turnPerFrame(450, 60).toFixed(0)}\xB0 a frame (a rough read, with less certainty); at 120 fps about ${turnPerFrame(450, 120).toFixed(0)}\xB0; at 240 fps about ${turnPerFrame(450, 240).toFixed(0)}\xB0. The ball needs to be at least ${MIN_BALL_PX} pixels across. iPhones only give a web page up to 60 fps: for 120 or 240, film in the Camera app's slow-motion mode and use Analyze a recorded video.</div>
     <div class="chips"><button class="btn ghost" id="sm-toggle" aria-pressed="${spinModeOn()}">${esc2(spinLabel())}</button><button class="btn ghost" id="sm-test">Test this phone's camera</button></div>
     <div id="sm-out" class="u" aria-live="polite" style="margin-top:6px"></div>
     <div class="note">Spin mode asks for 120 fps or more at 1080p when you start the camera. If the phone can't keep up it drops back to 60 on its own. Ball speed, board and breakpoint read at 60.</div></div>`;
@@ -30429,6 +30456,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
   var init_spinmode = __esm({
     "camera/spinmode.ts"() {
       init_camadvice();
+      init_clipspin();
       init_live();
       SPIN_KEY = "laneiq.fastcam";
       spinModeOn = () => {
@@ -32155,6 +32183,116 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     }
   });
 
+  // core/src/releases.ts
+  function headline(items) {
+    if (!items.length) return "";
+    const names = items.slice(0, 3).map((n) => `${n.manufacturer} ${n.name}`);
+    return `${items.length === 1 ? "1 new ball" : `${items.length} new balls`}: ${names.join(", ")}${items.length > 3 ? ` and ${items.length - 3} more` : ""}`;
+  }
+  function parseNews(json) {
+    if (!json || typeof json !== "object") return null;
+    const o = json;
+    const updated = day5(o.updated);
+    if (!updated || !Array.isArray(o.items)) return null;
+    const items = [];
+    for (const x of o.items.slice(0, 200)) {
+      if (!x || typeof x !== "object") continue;
+      const r = x;
+      const kind2 = r.kind === "new" || r.kind === "upcoming" || r.kind === "released" ? r.kind : null;
+      const at4 = day5(r.at), key3 = clean7(r.key, 130), name = clean7(r.name, 80), manufacturer = clean7(r.manufacturer, 40);
+      if (!kind2 || !at4 || !key3 || !name) continue;
+      const url = clean7(r.url, 200);
+      items.push({ id: `${kind2}|${key3}`, kind: kind2, key: key3, manufacturer, name, at: at4, availableOn: day5(r.availableOn), releaseYear: nn(r.releaseYear, 1950, 2100), rg: nn(r.rg, 2, 3), differential: nn(r.differential, 0, 0.2), cover: clean7(r.cover, 60) || void 0, core: clean7(r.core, 40) || void 0, url: /^https:\/\//.test(url) ? url : void 0 });
+    }
+    return { updated, items };
+  }
+  var unseen, clean7, day5, nn;
+  var init_releases = __esm({
+    "core/src/releases.ts"() {
+      init_balls();
+      unseen = (news, seenAt) => news.filter((n) => !seenAt || n.at > seenAt);
+      clean7 = (s, max) => typeof s === "string" ? s.replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
+      day5 = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : void 0;
+      nn = (v, lo, hi) => typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi ? v : void 0;
+    }
+  });
+
+  // camera/releases.ts
+  async function checkReleases() {
+    try {
+      const ctl = new AbortController();
+      const t = setTimeout(() => ctl.abort(), 8e3);
+      const r = await fetch(`news.json?t=${Date.now()}`, { cache: "no-store", signal: ctl.signal });
+      clearTimeout(t);
+      if (r.ok) {
+        const n = parseNews(await r.json());
+        if (n) write2(NEWS, JSON.stringify(n));
+      }
+    } catch {
+    }
+    const c = cached();
+    if (!c) return;
+    const fresh2 = unseen(c.items, read2(SEEN));
+    const today3 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    if (fresh2.length && read2(TOLD) !== today3) {
+      write2(TOLD, today3);
+      notify(`${headline(fresh2)}. See Pro shop, then New and upcoming balls.`, 9e3);
+    }
+  }
+  function openReleases() {
+    const c = cached();
+    const el = sheet19();
+    el.classList.add("on");
+    const mine = new Set(ownedBalls().map((b) => b.specs?.manufacturer?.toLowerCase()).filter(Boolean));
+    const group2 = (kind2) => (c?.items ?? []).filter((n) => n.kind === kind2).sort((a, b) => (kind2 === "upcoming" ? (a.availableOn ?? "9").localeCompare(b.availableOn ?? "9") : b.at.localeCompare(a.at)) || Number(mine.has(b.manufacturer.toLowerCase())) - Number(mine.has(a.manufacturer.toLowerCase())));
+    const card2 = (n) => `<div class="card"><div class="row"><div class="lr-head">${esc2(n.manufacturer)} ${esc2(n.name)}</div>${mine.has(n.manufacturer.toLowerCase()) ? `<span class="badge good">your brand</span>` : ""}</div>
+    <div class="u">${n.kind === "upcoming" ? `On sale ${n.availableOn ? esc2(day6(n.availableOn)) : "date not announced"}` : n.kind === "released" ? `Went on sale${n.availableOn ? " " + esc2(day6(n.availableOn)) : ""}` : `Listed ${esc2(day6(n.at))}${n.releaseYear ? ` \xB7 ${n.releaseYear}` : ""}`}</div>
+    ${n.rg !== void 0 || n.cover ? `<div class="note">${n.rg !== void 0 ? `RG ${n.rg}${n.differential !== void 0 ? ` \xB7 differential ${n.differential}` : ""}` : ""}${n.cover ? `${n.rg !== void 0 ? " \xB7 " : ""}${esc2(n.cover)}` : ""}${n.core ? ` \xB7 ${esc2(n.core)}` : ""}</div>` : ""}
+    ${n.url ? `<div class="chips"><a class="btn ghost" href="${esc2(n.url)}" target="_blank" rel="noopener noreferrer">The maker's page</a></div>` : ""}</div>`;
+    const part = (title, list, empty) => `<h3>${esc2(title)}</h3>${list.length ? list.map(card2).join("") : `<div class="note">${esc2(empty)}</div>`}`;
+    el.innerHTML = `<div class="row"><h2>New and upcoming balls</h2><button class="btn ghost" id="nw-close">Close</button></div>
+    <div class="note">${c ? `Checked ${esc2(day6(c.updated))}.` : "Nothing fetched yet. Open the app with a connection and it will check."} Each morning the makers' own sites are read for balls that are new, announced or just released. Balls from the makers you already throw come first. Specs are the maker's published ones; always check a ball is allowed where you bowl.</div>
+    ${c ? `${part("Coming soon", group2("upcoming"), "No announced balls right now.")}${part("Just released", group2("released"), "Nothing newly on sale in the last two months.")}${part("Newly listed", group2("new"), "No new listings in the last two months.")}` : ""}`;
+    $("nw-close").onclick = () => (el.classList.remove("on"), el.innerHTML = "");
+    if (c) write2(SEEN, c.updated);
+    void S;
+  }
+  var NEWS, SEEN, TOLD, sheet19, read2, write2, cached, unseenCount, day6;
+  var init_releases2 = __esm({
+    "camera/releases.ts"() {
+      init_releases();
+      init_live();
+      init_state();
+      init_toast();
+      NEWS = "laneiq.news";
+      SEEN = "laneiq.newsSeen";
+      TOLD = "laneiq.newsToldOn";
+      sheet19 = () => $("review");
+      read2 = (k2) => {
+        try {
+          return localStorage.getItem(k2);
+        } catch {
+          return null;
+        }
+      };
+      write2 = (k2, v) => {
+        try {
+          localStorage.setItem(k2, v);
+        } catch {
+        }
+      };
+      cached = () => {
+        try {
+          return parseNews(JSON.parse(read2(NEWS) ?? "null"));
+        } catch {
+          return null;
+        }
+      };
+      unseenCount = () => unseen(cached()?.items ?? [], read2(SEEN)).length;
+      day6 = (d) => (/* @__PURE__ */ new Date(d + "T12:00:00")).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+    }
+  });
+
   // camera/editionui.ts
   function applyEdition() {
     const ed = editionOf(role());
@@ -32751,11 +32889,11 @@ ${t}`;
         e[f2.key] = v;
       }
       for (const k2 of ["pap", "text", "surface", "shop", "note"]) e[k2] = get(k2).value;
-      const clean7 = cleanLayout(e);
-      if (!clean7) return void (msg.textContent = "Fill in at least one thing you know.");
-      const prev = (b.layouts ?? []).find((x) => x.id === clean7.id);
-      if (prev?.fromLab) clean7.fromLab = true;
-      b.layouts = [...(b.layouts ?? []).filter((x) => x.id !== clean7.id), clean7];
+      const clean8 = cleanLayout(e);
+      if (!clean8) return void (msg.textContent = "Fill in at least one thing you know.");
+      const prev = (b.layouts ?? []).find((x) => x.id === clean8.id);
+      if (prev?.fromLab) clean8.fromLab = true;
+      b.layouts = [...(b.layouts ?? []).filter((x) => x.id !== clean8.id), clean8];
       await done3();
     };
     det.querySelectorAll(".bn-entry").forEach((row4) => {
@@ -33545,34 +33683,34 @@ ${t}`;
       const st2 = ballStats(mine);
       const index = b.specs ? motionIndex(b.specs) : null;
       const j = judgeBall(st2);
-      const read2 = { ballId: b.id, name: b.name, index, stats: st2, verdict: j.verdict, headline: "", why: j.why, want: null, owned: null, buys: [] };
+      const read3 = { ballId: b.id, name: b.name, index, stats: st2, verdict: j.verdict, headline: "", why: j.why, want: null, owned: null, buys: [] };
       if (j.verdict === "too-strong" || j.verdict === "too-weak") {
         if (index === null) {
-          read2.verdict = "no-specs";
-          read2.headline = `${b.name}: ${j.verdict === "too-strong" ? "reads the lane too early for you" : "doesn't read the lane enough for you"}`;
-          read2.why.push("It has no RG and differential on file, so there's nothing to measure a replacement against. Pick it from the catalog or enter its specs in Arsenal.");
-          return read2;
+          read3.verdict = "no-specs";
+          read3.headline = `${b.name}: ${j.verdict === "too-strong" ? "reads the lane too early for you" : "doesn't read the lane enough for you"}`;
+          read3.why.push("It has no RG and differential on file, so there's nothing to measure a replacement against. Pick it from the catalog or enter its specs in Arsenal.");
+          return read3;
         }
         const want = index + j.delta;
-        read2.want = want;
+        read3.want = want;
         const near = owned.filter((o) => o.id !== b.id && o.specs).map((o) => ({ o, m: motionIndex(o.specs) })).filter((x) => x.m !== null && Math.abs(x.m - want) <= 0.2).sort((a, c) => Math.abs(a.m - want) - Math.abs(c.m - want))[0];
-        read2.owned = near?.o ?? null;
-        read2.buys = rankCatalog(catalog, ownedKeys, want, 4, 1, filter);
-        read2.headline = `${b.name} is ${j.verdict === "too-strong" ? "too strong" : "too weak"} for how you're using it`;
-      } else if (j.verdict === "good") read2.headline = `${b.name} fits you`;
-      else if (j.verdict === "need-shots") read2.headline = `${b.name}: bowl more shots with it`;
-      else read2.headline = `${b.name}: no clear call yet`;
-      return read2;
+        read3.owned = near?.o ?? null;
+        read3.buys = rankCatalog(catalog, ownedKeys, want, 4, 1, filter);
+        read3.headline = `${b.name} is ${j.verdict === "too-strong" ? "too strong" : "too weak"} for how you're using it`;
+      } else if (j.verdict === "good") read3.headline = `${b.name} fits you`;
+      else if (j.verdict === "need-shots") read3.headline = `${b.name}: bowl more shots with it`;
+      else read3.headline = `${b.name}: no clear call yet`;
+      return read3;
     });
     const judged = reads.filter((r) => r.stats.seen >= 6);
     const best2 = judged.filter((r) => r.stats.pocketPct !== null).sort((a, c) => (c.stats.strikePct ?? c.stats.pocketPct) - (a.stats.strikePct ?? a.stats.pocketPct))[0] ?? null;
     const change = reads.find((r) => r.verdict === "too-strong" || r.verdict === "too-weak");
-    let headline;
-    if (!owned.length) headline = "Add the balls you throw (Arsenal) and bowl with them: the advisor learns how each one works for you.";
-    else if (!judged.length) headline = `Bowl ${BALL_MIN_SHOTS} shots with a ball and the advisor will say how it fits you.`;
-    else if (change) headline = change.owned ? `Worth trying: your ${change.owned.name} where you'd throw the ${change.name}` : change.buys.length ? `One to ask your pro shop about: ${change.verdict === "too-strong" ? "a cleaner" : "a stronger"} ball than the ${change.name}, such as the ${change.buys[0].ball.manufacturer} ${change.buys[0].ball.name}` : change.headline;
-    else headline = best2 ? `Your best ball right now is the ${best2.name}` : "Nothing in your bag needs replacing on this evidence.";
-    return { balls: reads, headline, best: best2, caveats };
+    let headline2;
+    if (!owned.length) headline2 = "Add the balls you throw (Arsenal) and bowl with them: the advisor learns how each one works for you.";
+    else if (!judged.length) headline2 = `Bowl ${BALL_MIN_SHOTS} shots with a ball and the advisor will say how it fits you.`;
+    else if (change) headline2 = change.owned ? `Worth trying: your ${change.owned.name} where you'd throw the ${change.name}` : change.buys.length ? `One to ask your pro shop about: ${change.verdict === "too-strong" ? "a cleaner" : "a stronger"} ball than the ${change.name}, such as the ${change.buys[0].ball.manufacturer} ${change.buys[0].ball.name}` : change.headline;
+    else headline2 = best2 ? `Your best ball right now is the ${best2.name}` : "Nothing in your bag needs replacing on this evidence.";
+    return { balls: reads, headline: headline2, best: best2, caveats };
   }
   var BALL_MIN_SHOTS, STEP, mean13, nums3;
   var init_balladvisor = __esm({
@@ -34020,7 +34158,7 @@ ${t}`;
       <div class="chips"><button class="chip" id="co-target">${S.target ? `Target: aim ${S.target.arrows}${S.target.stand !== void 0 ? ` from ${S.target.stand}` : ""}` : "Set my target"}</button></div></div>
 
     <h3>Move to try</h3>
-    <div class="card"><div class="lr-head" style="font-size:17px">${esc2(move.headline)}</div><div class="note">${sess.length ? `From your latest session (${day5(sess[0].at)}, ${sess.length} shots).` : "Bowl a session first."}</div><ul>${move.why.map((w) => `<li>${esc2(w)}</li>`).join("")}</ul></div>
+    <div class="card"><div class="lr-head" style="font-size:17px">${esc2(move.headline)}</div><div class="note">${sess.length ? `From your latest session (${day7(sess[0].at)}, ${sess.length} shots).` : "Bowl a session first."}</div><ul>${move.why.map((w) => `<li>${esc2(w)}</li>`).join("")}</ul></div>
 
     <h3>Ball advice, to take to your pro shop</h3>
     <div class="card"><div class="lr-head" style="font-size:17px">${esc2(balls.headline)}</div>
@@ -34044,7 +34182,7 @@ ${t}`;
     <div class="card"><div class="lr-head" style="font-size:17px">${esc2(tired.headline)}</div><ul>${tired.points.map((p) => `<li>${esc2(p)}</li>`).join("")}</ul></div>
 
     <h3>Lane-pair memory</h3>
-    <div class="card">${mems.length ? mems.slice(0, 8).map((m) => `<div style="padding:8px 0;border-top:1px solid var(--line)"><b>${esc2(m.center)} \xB7 lanes ${esc2(m.pair)}</b><div class="note">${m.sessions.length} session${m.sessions.length === 1 ? "" : "s"}, last ${esc2(day5(m.sessions[0].date))}${m.best ? ` \xB7 best: ${m.best.stand !== null ? `stood ${m.best.stand.toFixed(0)}, ` : ""}${m.best.arrows !== null ? `arrows ${m.best.arrows.toFixed(0)}, ` : ""}${Math.round(m.best.pocketPct)}% pocket with the ${esc2(m.best.ballIds.map(ballName6).join(", ") || "unknown ball")}` : ""}</div></div>`).join("") : `<div class="u">Type your centre and lane under Target on the Live screen. Next time you're on that pair, the app shows where you stood, what you aimed at and how it went.</div>`}</div>
+    <div class="card">${mems.length ? mems.slice(0, 8).map((m) => `<div style="padding:8px 0;border-top:1px solid var(--line)"><b>${esc2(m.center)} \xB7 lanes ${esc2(m.pair)}</b><div class="note">${m.sessions.length} session${m.sessions.length === 1 ? "" : "s"}, last ${esc2(day7(m.sessions[0].date))}${m.best ? ` \xB7 best: ${m.best.stand !== null ? `stood ${m.best.stand.toFixed(0)}, ` : ""}${m.best.arrows !== null ? `arrows ${m.best.arrows.toFixed(0)}, ` : ""}${Math.round(m.best.pocketPct)}% pocket with the ${esc2(m.best.ballIds.map(ballName6).join(", ") || "unknown ball")}` : ""}</div></div>`).join("") : `<div class="u">Type your centre and lane under Target on the Live screen. Next time you're on that pair, the app shows where you stood, what you aimed at and how it went.</div>`}</div>
 
     <h3>Share</h3>
     <div class="card"><div class="k">Bowler DNA card</div><div class="u">Your speed, rev rate, axis, PAP, entry angle, pocket and strike rate on one picture, each marked measured or entered. For your coach, your pro shop or your friends.</div><div class="chips"><button class="btn" id="co-dna">Make my card</button></div><div class="note" id="co-dna-note"></div></div>
@@ -34103,7 +34241,7 @@ ${t}`;
       }
     };
   }
-  var median13, mean15, day5, ballName6, specLine2, badge;
+  var median13, mean15, day7, ballName6, specLine2, badge;
   var init_coachhub = __esm({
     "camera/coachhub.ts"() {
       init_missfinder();
@@ -34130,7 +34268,7 @@ ${t}`;
         return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
       };
       mean15 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
-      day5 = (iso2) => new Date(iso2).toLocaleDateString([], { month: "short", day: "numeric" });
+      day7 = (iso2) => new Date(iso2).toLocaleDateString([], { month: "short", day: "numeric" });
       ballName6 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "unknown ball";
       specLine2 = (b) => [b.rg && `RG ${b.rg.value}`, b.differential && `diff ${b.differential.value}`, b.coverstock?.value ?? b.coverstockType?.value, b.core?.value].filter(Boolean).join(" \xB7 ");
       badge = (ok, text, warn = false) => `<span class="badge ${ok ? "good" : warn ? "low" : "moderate"}">${esc2(text)}</span>`;
@@ -34523,7 +34661,7 @@ ${t}`;
   }
   function openReactionLab() {
     bump("reaction-lab");
-    const el = sheet19();
+    const el = sheet20();
     el.classList.add("on");
     const balls = choices();
     const bp = bowlerProfile();
@@ -34611,10 +34749,10 @@ ${t}`;
     }, 30);
   }
   function close14() {
-    sheet19().classList.remove("on");
-    sheet19().innerHTML = "";
+    sheet20().classList.remove("on");
+    sheet20().innerHTML = "";
   }
-  var sheet19, PRESETS2, state;
+  var sheet20, PRESETS2, state;
   var init_reactionui = __esm({
     "camera/reactionui.ts"() {
       init_health();
@@ -34623,7 +34761,7 @@ ${t}`;
       init_reaction();
       init_live();
       init_state();
-      sheet19 = () => $("review");
+      sheet20 = () => $("review");
       PRESETS2 = [
         { id: "len:36", label: "Short pattern, 36 ft (estimate)", lengthFt: 36 },
         { id: "len:41", label: "Typical house shot, 41 ft (estimate)", lengthFt: 41 },
@@ -35244,6 +35382,7 @@ ${t}`;
     <div class="note">Tools for fitting, layout and drilling, for bowlers and for pro shop operators, plus what to look for at a pro shop.</div>
     ${rolePanelHtml()}
     <div class="card"><div class="row"><div><div class="k">My arsenal</div><div class="note">${S.arsenal.length} ball${S.arsenal.length === 1 ? "" : "s"} \xB7 add a ball, build a lineup for a pattern, find your next ball.</div></div><button class="btn" id="ps-arsenal">Open</button></div></div>
+    <div class="card"><div class="row"><div><div class="k">New and upcoming balls${unseenCount() ? ` <span class="badge good">${unseenCount()} new</span>` : ""}</div><div class="note">Checked every morning against the makers' own sites: what's coming soon, what just went on sale, and what's newly listed, with your brands first.</div></div><button class="btn" id="ps-news">Open</button></div></div>
     <div class="card"><div class="row"><div><div class="k">Ball motion lab</div><div class="note">A physics model of your ball on the lane: the lines that reach the pocket and how forgiving each is, what a move or a different ball would do. Fits itself to your shots.</div></div><button class="btn" id="ps-reaction">Open</button></div></div>
     <div class="card"><div class="k">Layout and drilling</div>
       <div class="chips"><button class="btn" id="ps-lab">Layout Lab: see a layout on the ball</button><button class="btn" id="ps-scan">Scan a drilled ball</button><button class="btn" id="ps-pap">Estimate my PAP from photos</button><button class="btn ghost" id="ps-report">Fitting report (print or save PDF)</button></div>
@@ -35265,6 +35404,7 @@ ${t}`;
     wireRolePanel(el);
     $("ps-arsenal").onclick = () => showTab("arsenal");
     $("ps-lab").onclick = () => openLayoutLab();
+    $("ps-news").onclick = () => (openReleases(), renderProshop());
     $("ps-reaction").onclick = async () => (await Promise.resolve().then(() => (init_reactionui(), reactionui_exports))).openReactionLab();
     $("ps-scan").onclick = () => openBallScan();
     $("ps-pap").onclick = () => openPapScan();
@@ -35446,8 +35586,8 @@ ${t}`;
       URL.revokeObjectURL(a.href);
     };
     $("me-csv").onclick = () => {
-      const day6 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10), who = (S.profile?.name ?? "me").replace(/\W+/g, "-");
-      const files = [new File([shotsCsv(S.shots, csvNames())], `laneiq-${who}-shots-${day6}.csv`, { type: "text/csv" }), new File([sessionsCsv(S.shots)], `laneiq-${who}-sessions-${day6}.csv`, { type: "text/csv" })];
+      const day8 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10), who = (S.profile?.name ?? "me").replace(/\W+/g, "-");
+      const files = [new File([shotsCsv(S.shots, csvNames())], `laneiq-${who}-shots-${day8}.csv`, { type: "text/csv" }), new File([sessionsCsv(S.shots)], `laneiq-${who}-sessions-${day8}.csv`, { type: "text/csv" })];
       offerShare($("me-csv-share"), files, { title: "My LaneIQ spreadsheet", label: "Send or save the two files" });
     };
     navigator.storage?.estimate?.().then((e) => {
@@ -35499,6 +35639,7 @@ ${t}`;
       init_quizui();
       init_signupui();
       init_accountui();
+      init_releases2();
       init_editionui();
       init_spinlab();
       init_clipspin2();
@@ -35691,6 +35832,17 @@ ${t}`;
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-11-01-real-lane",
+      date: "2026-11-01",
+      title: "Fixes from a real bowling center",
+      items: [
+        "Skeleton on the live picture: the bowler's bones are drawn over the camera as they move (a few times a second, paused while a ball is on the lane), and each shot keeps the skeleton it was drawn with, so a replay has it straight away. The status line says whether it is loading, tracking, or sees nobody.",
+        "Every shot shows a number for rev rate, axis rotation and axis tilt, never a range: measured from the clip when it can be, worked out from the ball's path when it can't, otherwise an assumed typical number clearly marked as assumed.",
+        "Lane lock asks when it is not sure: a single lane found off to the side of a row of lanes is no longer taken silently, you tap it to confirm or place the corners yourself, and Re-lock forgets the lane picked before.",
+        "A slow picture is now said out loud: if only a few frames a second reach the app (dim light makes a phone slow its camera), a message says so, because that is the usual reason a ball is not seen."
+      ]
+    },
+    {
       id: "2026-10-31-training",
       date: "2026-10-31",
       title: "Train every day, even away from the lanes",
@@ -35714,6 +35866,8 @@ ${t}`;
         "Spare trainer: a leave appears and you say where your feet move under the 3-6-9 system. The answers come from the same code as the scorecard's spare coach, left-handers are reversed, and leaves you miss come up more often.",
         "Pro shop mode: a shop loads its stock from a spreadsheet and sends it to bowlers as a link or file. The bowler gets picks from that shop's shelves only, with a starting layout for the driller, and sends an order request back. The shop opens it and gets a drill sheet with the bowler's readings. Release video is never attached, the shop's driller makes the final call, and nothing needs an account.",
         "Customer profiles for pro shops: a bowler can choose to send their hand measurements (span, hole sizes, bridge and the four pitches) and the layouts saved for their other balls with an order. The shop keeps a profile for each customer on its own phone, with their notes, and can reopen it any time. The Layout Lab now has boxes for thumb and finger pitch.",
+        "New and upcoming balls: every morning the makers' own sites are read, and the app tells you once a day when there's something new. Under Pro shop, New and upcoming balls lists what's coming soon (with the on-sale date), what just went on sale, and what's newly listed, with the makers you already throw shown first. The catalog also grew by more than 100 balls: newer Hammer, Columbia 300, Ebonite and Track balls that the collectors had been skipping (the Black Widow Mania, the 3.0, the 3.0 Dynasty and the Tour V1 are in now).",
+        "Spin mode, easier to satisfy: the ball can be smaller in the picture (18 pixels instead of 26), the reader follows a faster turn per frame (a rough reading up to about 58\xB0 a frame, so it works at 60 fps), and it shows a rough reading with its confidence where it used to say it couldn't read the clip.",
         "Second screen: show the lane camera's numbers on an iPad, a TV or a monitor. Five layouts (Bowler, Lane board for a bowling center, Coach, Live video, Replay loop) draw the last shot's speed, breakpoint, entry, pocket, spin, path and pins, the session, the trends and the scorecard, with your center's name and colour on it. Link a screen directly (same Wi-Fi) for live video and a replay after each shot, or share by lane code so any browser can show it by address (?display=CODE) with nothing to pair. A screen opened that way reconnects by itself.",
         "Extra cameras: link an iPad or a second phone at another angle (Extra cameras, on the start screen). It joins straight to the lane camera, lines its clock up with it, records every throw at the same time, and sends each clip back. Every shot's replay then shows all the angles playing in step, with a nudge if one is a little early or late. The extra angles are synced for viewing; tracking, speed and spin still come from the lane camera.",
         "A spin number on every shot: when a clip is too coarse to read the spin, the rev rate and axis rotation tiles now show one number with a plus-or-minus, worked out from the shot's own path (how fast it was slowed, where it broke, the angle it hit the pins), instead of a range. A measured reading from the clip still comes first, and the tile says which one you're looking at. Axis tilt can't be told from a path, so it shows your own number or a typical one, labelled assumed.",
@@ -36093,10 +36247,10 @@ ${t}`;
     const fresh2 = seen() !== LATEST_NOTE_ID;
     box.innerHTML = `<button class="chip" id="notes-open">${fresh2 ? "NEW \xB7 " : ""}What's new</button>`;
     document.getElementById("notes-open").onclick = () => {
-      const sheet20 = document.getElementById("notes");
-      sheet20.classList.add("on");
-      sheet20.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc2(n.title)} <span class="note">${esc2(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc2(i)}</li>`).join("")}</ul></div>`).join("")}`;
-      document.getElementById("notes-close").onclick = () => (sheet20.classList.remove("on"), sheet20.innerHTML = "");
+      const sheet21 = document.getElementById("notes");
+      sheet21.classList.add("on");
+      sheet21.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc2(n.title)} <span class="note">${esc2(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc2(i)}</li>`).join("")}</ul></div>`).join("")}`;
+      document.getElementById("notes-close").onclick = () => (sheet21.classList.remove("on"), sheet21.innerHTML = "");
       markSeen();
       document.getElementById("notes-open").textContent = "What's new";
     };
@@ -37878,6 +38032,82 @@ ${t}`;
   init_oilview();
   init_pose();
 
+  // camera/livepose.ts
+  init_skeleton();
+  init_pose();
+  var KEEP_S = 80;
+  var busy = false;
+  var nextAt = 0;
+  var every = 170;
+  var latest = null;
+  var buf = [];
+  function livePoseLine() {
+    if (!bodyAutoOn()) return "skeleton off";
+    const m = liveModelState();
+    if (m === "loading") return "skeleton: loading the model";
+    if (m === "failed") return "skeleton: model would not load (needs a connection once)";
+    if (!latest || performance.now() - latest.at > 2500) return "skeleton: waiting";
+    return latest.lm.length ? "skeleton: tracking" : "skeleton: nobody in the picture";
+  }
+  function tickLivePose(video2, now, clipClock, ballOut, laneAcross) {
+    if (!bodyAutoOn() || busy || now < nextAt || ballOut || !video2.videoWidth || video2.readyState < 2) return;
+    if (liveModelState() !== "ready") return void startLiveModel();
+    busy = true;
+    const began = performance.now();
+    void detectLive(video2, [laneAcross[0] - 0.3, laneAcross[1] + 0.3]).then((r) => {
+      if (!r) return;
+      latest = { at: performance.now(), lm: r.lm, people: r.people };
+      if (clipClock >= 0) {
+        const lm = [];
+        if (r.lm.length) for (const j of JOINTS) lm[j] = r.lm[j];
+        buf.push({ t: clipClock, lm });
+        while (buf.length && buf[0].t < clipClock - KEEP_S) buf.shift();
+      }
+    }).catch(() => {
+    }).finally(() => {
+      busy = false;
+      every = Math.max(170, Math.min(900, (performance.now() - began) * 4));
+      nextAt = performance.now() + every;
+    });
+  }
+  function drawLiveSkeleton(ctx2, W3, H3) {
+    if (!latest || !latest.lm.length || performance.now() - latest.at > 900) return;
+    const s = W3 / 1280;
+    ctx2.save();
+    ctx2.setTransform(1, 0, 0, 1, 0, 0);
+    ctx2.lineCap = "round";
+    const pt2 = (i) => {
+      const l = latest.lm[JOINTS[i]];
+      return l && l.v >= 0.4 ? { x: l.x * W3, y: l.y * H3 } : null;
+    };
+    ctx2.strokeStyle = "rgba(255,255,255,.95)";
+    ctx2.lineWidth = 5 * s;
+    ctx2.shadowColor = "rgba(0,0,0,.65)";
+    ctx2.shadowBlur = 6 * s;
+    for (const [a, b] of BONES) {
+      const p = pt2(a), q2 = pt2(b);
+      if (!p || !q2) continue;
+      ctx2.beginPath();
+      ctx2.moveTo(p.x, p.y);
+      ctx2.lineTo(q2.x, q2.y);
+      ctx2.stroke();
+    }
+    ctx2.shadowBlur = 0;
+    ctx2.fillStyle = "#5affb0";
+    for (let i = 0; i < JOINTS.length; i++) {
+      const p = pt2(i);
+      if (!p) continue;
+      ctx2.beginPath();
+      ctx2.arc(p.x, p.y, 6 * s, 0, 7);
+      ctx2.fill();
+    }
+    ctx2.restore();
+  }
+  function liveSkeletonFor(clipStart) {
+    const frames = buf.filter((f2) => f2.t >= clipStart - 0.05).map((f2) => ({ t: f2.t - clipStart, lm: f2.lm }));
+    return compactSkeleton(frames);
+  }
+
   // camera/spininfer.ts
   init_reaction();
   init_ballmodel();
@@ -37924,6 +38154,7 @@ ${t}`;
   }
 
   // camera/camera.ts
+  init_releases2();
   init_displaylink();
   init_camlink();
   init_db();
@@ -39008,8 +39239,8 @@ ${t}`;
     pill("TAP LANE", "ask");
     renderScan();
   }
-  function enterChoose(list) {
-    void saveLaneCase("asked", video, [], lastCandidates, `${list.length} lanes`);
+  function enterChoose(list, oneOff = false) {
+    void saveLaneCase("asked", video, [], lastCandidates, oneOff ? "off-centre lane" : `${list.length} lanes`);
     mode = "choose";
     chooseList = list;
     candidate = null;
@@ -39018,7 +39249,7 @@ ${t}`;
     setStep(0);
     setReady(false);
     $("manualbtn").classList.remove("hide");
-    status.textContent = `I can see ${list.length} lanes. Tap the one you are bowling on.`;
+    status.textContent = oneOff ? "I found one lane, but it is off to the side. Tap it if it is yours, or tap Place corners and mark your own lane." : `I can see ${list.length} lanes. Tap the one you are bowling on.`;
     pill("TAP YOUR LANE", "ask");
     renderScan();
   }
@@ -39053,6 +39284,7 @@ ${t}`;
       voter.reset();
       pending = null;
       locks = [];
+      if (rememberedLane() === null && Math.abs((c[0].x + c[1].x) / 2 / video.videoWidth - 0.5) > 0.2) return enterChoose([c], true);
       return applyCalibration(c, "automatic");
     }
     const ch = chooseLane(lastCandidates, video.videoWidth);
@@ -39079,8 +39311,9 @@ ${t}`;
       status.textContent = "Found the lane, confirming\u2026";
       renderScan("Hold still for a moment while I confirm it.");
       if ((ch.choices.length <= 1 || usedMemory) && locks.length === 3 && locks.every((l) => detectionsAgree(locks[0], l, tol))) {
-        applyCalibration(d.corners, "automatic");
         locks = [];
+        if (!usedMemory && rememberedLane() === null && Math.abs((d.corners[0].x + d.corners[1].x) / 2 / video.videoWidth - 0.5) > 0.2) return enterChoose([d.corners], true);
+        applyCalibration(d.corners, "automatic");
         return;
       }
     } else {
@@ -39359,8 +39592,8 @@ ${t}`;
     bar.querySelector("button").onclick = reload;
     let left = 12;
     const tick = setInterval(() => {
-      const busy = tracing || path.length > 0 || recActive || !!pendingClip || histActive;
-      if (busy) {
+      const busy2 = tracing || path.length > 0 || recActive || !!pendingClip || histActive;
+      if (busy2) {
         left = 12;
         return;
       }
@@ -39492,6 +39725,11 @@ ${t}`;
     if (logMiss) {
       if (corners.length === 4) void saveLaneCase("thrown-out", video, corners, lastCandidates, lastLockHow);
       markRedone();
+      try {
+        localStorage.removeItem("laneiq.pickedLane");
+        localStorage.removeItem("laneiq.pickedLaneAt");
+      } catch {
+      }
       const now = performance.now();
       redoStreak = now - lastRedoAt < 18e4 ? redoStreak + 1 : 1;
       if (redoStreak === 1) rejected = [];
@@ -39833,6 +40071,7 @@ ${t}`;
     if (H2 && armed && stab?.ready && viewMode === "lane") ctx.translate(shakeVX, shakeVY);
     if (viewMode === "3d") return sync3D();
     if (enrolling) return;
+    if (viewMode === "lane") drawLiveSkeleton(ctx, overlay.width, overlay.height);
     if (!H2) drawScanner(now);
     if (viewMode !== "lane") return;
     const v = view2();
@@ -39888,6 +40127,7 @@ ${t}`;
     confirmed = false;
   }
   var cameraFps = 0;
+  var slowWarned = false;
   var diag = { frames: 0, since: 0, perSec: 0, ballFrames: 0, ballSeen: 0 };
   function diagTick(now, analysed, ball) {
     if (analysed) diag.frames++;
@@ -39900,8 +40140,12 @@ ${t}`;
     diag.since = now;
     const el = document.getElementById("diag");
     const ts = tracker?.stats;
+    if (!fromFile && deliv.fps > 0 && deliv.fps < 40 && H2 && armed && !slowWarned) {
+      slowWarned = true;
+      notify(`Only ${deliv.fps} frames a second are reaching the app, too few to follow a ball. Dim light is the usual cause (the phone slows its camera to gather light): face the lights, close other apps, and Spin mode off.`, 12e3);
+    }
     const lockPct = laneMask ? Math.round(laneMask.reduce((a, m) => a + m, 0) / laneMask.length * 100) : 0;
-    if (el) el.textContent = `Camera ${cameraFps || "?"} fps${cameraFps && cameraFps < 50 ? capFps >= 50 ? " (the phone can do " + Math.round(capFps) + " but gave this: try more light)" : " (all this phone gave the browser)" : ""}${deliv.fps ? ` \xB7 arriving ${deliv.fps}/s` : ""} \xB7 analysing ${diag.perSec}/s \xB7 ball ${diag.ballSeen ? "seen" : "not seen"} \xB7 lane lock ${H2 ? armed ? `on, covers ${lockPct}% of the picture` : "paused" : "searching"}${ts && H2 && armed ? ` \xB7 moving pixels ${ts.fg}, blobs ${ts.blobs}, ball-like ${ts.cands} (dropped: wrong size ${ts.size}, wrong shape ${ts.shape}, off the lane ${ts.offLane})` : ""}`;
+    if (el) el.textContent = `Camera ${cameraFps || "?"} fps${cameraFps && cameraFps < 50 ? capFps >= 50 ? " (the phone can do " + Math.round(capFps) + " but gave this: try more light)" : " (all this phone gave the browser)" : ""}${deliv.fps ? ` \xB7 arriving ${deliv.fps}/s` : ""} \xB7 analysing ${diag.perSec}/s \xB7 ball ${diag.ballSeen ? "seen" : "not seen"} \xB7 lane lock ${H2 ? armed ? `on, covers ${lockPct}% of the picture` : "paused" : "searching"} \xB7 ${livePoseLine()}${ts && H2 && armed ? ` \xB7 moving pixels ${ts.fg}, blobs ${ts.blobs}, ball-like ${ts.cands} (dropped: wrong size ${ts.size}, wrong shape ${ts.shape}, off the lane ${ts.offLane})` : ""}`;
   }
   var shotsOn = true;
   var oneShot = false;
@@ -39993,6 +40237,9 @@ ${t}`;
     camRecordStop(rid2, p.shot, wallOfMedia(p.t0Abs));
     p.shot.recStartT = clip.startT - p.t0Abs;
     p.shot.hasClip = true;
+    const liveSkel = bodyAutoOn() ? liveSkeletonFor(clip.startT) : null;
+    if (liveSkel) p.shot.skel = liveSkel;
+    logTrack("live skeleton", { frames: liveSkel?.t.length ?? 0 });
     try {
       await saveClip(p.shot.id, clip.blob);
       logTrack("clip saved", { bytes: clip.blob.size });
@@ -40003,19 +40250,19 @@ ${t}`;
     await updateShot(p.shot);
     void sendReplay(clip.blob, S.shots.indexOf(p.shot) + 1);
     if (p.shot.hasClip) {
-      const busy = () => recActive || !!pendingClip;
+      const busy2 = () => recActive || !!pendingClip;
       const sh = p.shot;
       void (async () => {
         try {
-          const r = await queuePrecise(sh, { blob: clip.blob, busy });
+          const r = await queuePrecise(sh, { blob: clip.blob, busy: busy2 });
           logTrack(r.ok ? "precise pass done" : "precise pass kept the live reading", { why: r.why ?? null, offset: sh.precise?.offset ?? null, frames: sh.precise?.frames ?? null });
         } catch (e) {
           logTrack("precise pass failed", { error: String(e) });
         }
-        void Promise.resolve(queueSpin(sh, { blob: clip.blob, busy })).catch((e) => logTrack("spin read failed", { error: String(e) }));
+        void Promise.resolve(queueSpin(sh, { blob: clip.blob, busy: busy2 })).catch((e) => logTrack("spin read failed", { error: String(e) }));
         if (!bodyAutoOn()) return;
         let why = "";
-        await queueBody(sh, { blob: clip.blob, busy, auto: true, onProgress: (m) => {
+        await queueBody(sh, { blob: clip.blob, busy: busy2, auto: true, onProgress: (m) => {
           if (/couldn't|wouldn't|too long/i.test(m)) why = m;
         } }).catch((e) => why = String(e));
         if (!sh.skel) notify(`No skeleton for that shot${why ? `: ${why.replace(/^Couldn't read the approach: /, "")}` : ""}. Film from behind the bowler with the whole body in the picture (Framing guide on the start screen). Open the shot under Shots to try again.`, 9e3);
@@ -40101,6 +40348,7 @@ ${t}`;
     const now = performance.now();
     diagTick(now, !!(H2 && laneMask && armed && !enrolling), !!lastBlob);
     if (cameraFps <= 90 || now - lastOvDraw > 15) lastOvDraw = now, drawOverlay(now);
+    tickLivePose(video, now, H2 && armed && shotsOn && lastFrameT >= 0 ? lastFrameT : -1, confirmed || histActive, corners.length === 4 ? [Math.min(...corners.map((c) => c.x)) / video.videoWidth, Math.max(...corners.map((c) => c.x)) / video.videoWidth] : [0.2, 0.8]);
     enrollTick(now);
     if (!H2) autoDetectTick(now);
     else if (armed) driftCheck(now), pinWatch(now), pinRefineTick(now), arrowTick(now), resetWatch(now);
@@ -40508,6 +40756,7 @@ ${t}`;
     if (has) {
       maybeAutoBackup();
       warmPose();
+      setTimeout(() => void checkReleases(), 4e3);
       startScreens(() => stream);
       renderBall(void 0);
       renderResult(void 0);

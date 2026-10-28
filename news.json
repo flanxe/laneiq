@@ -1,0 +1,80 @@
+{
+ "updated": "2026-10-28",
+ "items": [
+  {
+   "id": "upcoming|hammer|blacklist",
+   "kind": "upcoming",
+   "key": "hammer|blacklist",
+   "manufacturer": "Hammer",
+   "name": "Blacklist",
+   "at": "2026-10-28",
+   "availableOn": "2026-11-19",
+   "releaseYear": 2026,
+   "rg": 2.545,
+   "differential": 0.047,
+   "cover": "HK22 - Cohesion Pearl",
+   "core": "Stacked LED",
+   "url": "https://hammerbowling.com/products/blacklist"
+  },
+  {
+   "id": "upcoming|ebonite|go time",
+   "kind": "upcoming",
+   "key": "ebonite|go time",
+   "manufacturer": "Ebonite",
+   "name": "Go Time",
+   "at": "2026-10-28",
+   "availableOn": "2026-11-19",
+   "releaseYear": 2026,
+   "rg": 2.508,
+   "differential": 0.054,
+   "cover": "HK22 - GB 13.7 Solid",
+   "core": "Big Time",
+   "url": "https://ebonite.com/products/go-time"
+  },
+  {
+   "id": "upcoming|radical|intel recon hybrid",
+   "kind": "upcoming",
+   "key": "radical|intel recon hybrid",
+   "manufacturer": "Radical",
+   "name": "Intel Recon Hybrid",
+   "at": "2026-10-28",
+   "availableOn": "2026-11-19",
+   "releaseYear": 2026,
+   "rg": 2.483,
+   "differential": 0.032,
+   "cover": "HK22 Hybrid",
+   "core": "Modified Intel Symmetric",
+   "url": "https://radicalbowling.com/products/balls/current/intel-recon-hybrid"
+  },
+  {
+   "id": "upcoming|storm|ion pro pearl",
+   "kind": "upcoming",
+   "key": "storm|ion pro pearl",
+   "manufacturer": "Storm",
+   "name": "Ion Pro Pearl",
+   "at": "2026-10-28",
+   "availableOn": "2026-11-06",
+   "releaseYear": 2026,
+   "rg": 2.47,
+   "differential": 0.035,
+   "cover": "NRG Pearl Reactive",
+   "core": "Element Tour A.I. Core",
+   "url": "https://www.bowlersmart.com/2026/01/09/new-bowling-balls-available-in-2026/"
+  },
+  {
+   "id": "upcoming|hammer|reckoning",
+   "kind": "upcoming",
+   "key": "hammer|reckoning",
+   "manufacturer": "Hammer",
+   "name": "Reckoning",
+   "at": "2026-10-28",
+   "availableOn": "2026-11-19",
+   "releaseYear": 2026,
+   "rg": 2.474,
+   "differential": 0.053,
+   "cover": "HK22C² Solid",
+   "core": "Vindicator",
+   "url": "https://hammerbowling.com/products/reckoning"
+  }
+ ]
+}
