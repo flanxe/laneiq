@@ -25796,6 +25796,72 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     }
   });
 
+  // camera/paircode.ts
+  function hostPairing(kind2, offer, onReply, onState) {
+    const code2 = newLaneCode();
+    let n = 0;
+    let timer3 = 0;
+    const announce = () => relay2.send("offer", { o: offer });
+    const relay2 = new Relay(`${kind2}-${code2}`, (ev, p) => {
+      const r = p?.r;
+      if (ev === "answer" && typeof r === "string") onReply(r);
+      else if (ev === "join") announce();
+    }, (s) => {
+      onState(s);
+      if (s === "connected") announce();
+    });
+    timer3 = window.setInterval(() => {
+      if (++n > 160) return stop();
+      if (relay2.state === "connected") announce();
+    }, 2500);
+    const stop = () => {
+      clearInterval(timer3);
+      relay2.close();
+    };
+    return { code: code2, stop };
+  }
+  function joinPairing(kind2, typed, onOffer, onState) {
+    const code2 = cleanLaneCode(typed);
+    if (!code2) return null;
+    let got = false;
+    let replyText = "";
+    let timer3 = 0;
+    let n = 0;
+    const relay2 = new Relay(`${kind2}-${code2}`, (ev, p) => {
+      const o = p?.o;
+      if (ev !== "offer" || typeof o !== "string") return;
+      if (!got) {
+        got = true;
+        onOffer(o);
+      } else if (replyText) relay2.send("answer", { r: replyText });
+    }, (s) => {
+      onState(s);
+      if (s === "connected") relay2.send("join", {});
+    });
+    return {
+      code: code2,
+      reply(r) {
+        replyText = r;
+        relay2.send("answer", { r });
+        clearInterval(timer3);
+        timer3 = window.setInterval(() => {
+          if (++n > 20) return clearInterval(timer3);
+          relay2.send("answer", { r });
+        }, 3e3);
+      },
+      stop() {
+        clearInterval(timer3);
+        relay2.close();
+      }
+    };
+  }
+  var init_paircode = __esm({
+    "camera/paircode.ts"() {
+      init_display();
+      init_displayrelay();
+    }
+  });
+
   // camera/displayui.ts
   function lastTiles(l, big = false) {
     if (!l) return `<div class="big-msg" style="margin:auto;color:#8a97b2">Waiting for the first shot\u2026</div>`;
@@ -25878,7 +25944,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
 .scr .tl .s{font-size:calc(var(--u)*1.5);color:#9fb0cc}
 .scr .big .tl .v{font-size:calc(var(--u)*5.8)}
 .scr .big .tl .v.w{font-size:calc(var(--u)*3.8)}
-.scr.hasctl .bd{padding-bottom:calc(var(--u)*5.6)}
+.scr.hasctl .bd{padding-bottom:max(70px,calc(var(--u)*5.6))}
 .scr .good{color:#5affb0!important}.scr .warn{color:#ffd25a!important}.scr .bad{color:#ff5a6e!important}.scr .ac{color:var(--ac)!important}
 .scr table{border-collapse:collapse;width:100%;table-layout:fixed}
 .scr td{border:1px solid rgba(255,255,255,.18);text-align:center;vertical-align:top;padding:calc(var(--u)*.5)}
@@ -25895,10 +25961,9 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
 .scr svg{width:100%;height:100%;display:block}
 .scr .big-msg{font-size:calc(var(--u)*5);font-weight:900;text-align:center}
 .scr .st{position:absolute;left:calc(var(--u)*2);bottom:calc(var(--u)*1.2);font-size:calc(var(--u)*1.5);color:#6b7690}
-.scr .ctl{position:absolute;right:calc(var(--u)*1.6);bottom:calc(var(--u)*1.2);display:flex;gap:calc(var(--u)*.8);opacity:.85}
-.scr .ctl button{font:700 calc(var(--u)*1.5) system-ui;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:calc(var(--u)*1);padding:calc(var(--u)*.7) calc(var(--u)*1.4)}
+.scr .ctl{position:absolute;right:max(10px,calc(var(--u)*1.6));bottom:max(10px,calc(var(--u)*1.2));display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;max-width:96%;opacity:1;z-index:5}
+.scr .ctl button{font:700 max(14px,calc(var(--u)*1.5)) system-ui;min-height:44px;color:#fff;background:rgba(20,28,48,.92);border:1px solid rgba(255,255,255,.35);border-radius:12px;padding:8px 14px}
 .scr .ctl button.on{background:var(--ac);color:#04121a;border-color:var(--ac)}
-.scr.hide .ctl{opacity:0;pointer-events:none}
 `;
       zoneLabel = (z) => ({ pocket: ["POCKET", "good"], high: ["HIGH", "warn"], light: ["LIGHT", "warn"], "very-high": ["VERY HIGH", "bad"], "very-light": ["VERY LIGHT", "bad"] })[z ?? ""] ?? ["", ""];
       n12 = (v, d = 1) => v === null ? "\u2013" : v.toFixed(d);
@@ -25938,13 +26003,6 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
           this.replay.loop = true;
           this.replay.autoplay = true;
           document.body.appendChild(this.el);
-          const wake = () => {
-            this.el.classList.remove("hide");
-            clearTimeout(this.idle);
-            this.idle = window.setTimeout(() => this.el.classList.add("hide"), 3500);
-          };
-          ["mousemove", "touchstart", "click"].forEach((e) => this.el.addEventListener(e, wake));
-          wake();
           window.addEventListener("keydown", this.onKey);
           this.draw();
         }
@@ -26144,7 +26202,8 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     <div class="card"><div class="k">A screen on your network (live video and replay)</div>
       ${live3.length ? live3.map((s) => `<div class="row"><div class="u">Screen \xB7 ${s.state === "connected" ? "connected" : "connecting\u2026"}${s.video ? " \xB7 live video on" : ""}</div><button class="chip danger" data-rm="${esc2(s.id)}">Disconnect</button></div>`).join("") : `<div class="note">None linked.</div>`}
       <div class="chips"><button class="btn" id="sc-add">Add a screen</button></div>
-      <div class="note">Open the link on the other device. It shows the live picture too, if the camera is already running when you add it, and a replay after each shot. Both devices on the same Wi-Fi or hotspot.</div></div>
+      <div class="note">Add a screen shows a code to type on the other device (or a link to open). It shows the live picture too, if the camera is already running when you add it, and a replay after each shot. Both devices on the same Wi-Fi or hotspot.</div></div>
+    ${joinScreenCard()}
     <div class="card"><div class="k">A screen by lane code (for a bowling center)</div>
       ${!relayAvailable() ? `<div class="note">Not available in this copy of LaneIQ.</div>` : relay ? `<div class="u">Sharing as <b style="font-size:20px;letter-spacing:.12em">${esc2(cfg.code)}</b> \xB7 ${relayState === "connected" ? "connected" : "connecting\u2026"}</div><div class="u" style="word-break:break-all;user-select:all">${esc2(url)}</div><div id="sc-qr" style="margin:8px 0"></div><div class="chips"><button class="btn" id="sc-copy">Copy the screen's address</button><button class="btn ghost" id="sc-stop">Stop sharing</button></div><div class="note" id="sc-msg"></div>` : `<div class="field"><label for="sc-code">A code you already use for this lane (optional)</label><input id="sc-code" maxlength="8" placeholder="leave empty for a new one" value="${esc2(cfg.code)}" autocapitalize="characters"></div><div class="chips"><button class="btn" id="sc-go">Start sharing</button></div><div class="note" id="sc-msg"></div>`}
       <div class="note">Any browser can show it: open the screen's address on a TV, a tablet or a computer. Add &layout=board&lock=1 to fix a layout. Only the numbers go through our relay (no video, nothing saved), and anyone who has the code can watch, so don't post it. A lane that always uses the same code keeps working after a restart.</div></div>`;
@@ -26176,6 +26235,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       setTimeout(flush, 0);
     };
     $("sc-add").onclick = () => void hostScreen();
+    wireJoinScreen();
     el.querySelectorAll("[data-rm]").forEach((b) => b.onclick = () => {
       const s = screens.find((x) => x.id === b.dataset.rm);
       if (s) {
@@ -26264,24 +26324,22 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     el.innerHTML = `<div class="row"><h2>Add a screen</h2><button class="btn ghost" id="sa-cancel">Cancel</button></div>
     <div class="card"><div class="k">1. Open this on the other screen</div><div class="u">${scr.video ? "The live video will be included." : "The camera isn't running yet, so only the numbers and replays will show. Start the camera first if you want the live picture."} On the iPad or computer, open this link.</div><div class="chips"><button class="btn" id="sa-send">Send the link</button></div><div class="note" id="sa-sent"></div></div>
     <div class="card"><div class="k">2. Paste its reply</div><div class="field"><input id="sa-reply" placeholder="Paste the reply code"></div><div class="chips"><button class="btn" id="sa-connect">Connect</button></div><div class="note" id="sa-msg"></div></div>`;
-    $("sa-cancel").onclick = () => {
-      pc.close();
-      scr.state = "ended";
-      openScreens();
-    };
-    $("sa-send").onclick = async () => ($("sa-sent").textContent = await shareLink("Use this as a second screen", "Open this on the device you want to use as a second screen for LaneIQ.", link), void 0);
-    $("sa-connect").onclick = async () => {
-      const code2 = $("sa-reply").value.trim().replace(/^SCR-/, "");
+    let pairing = null;
+    const useReply = async (raw) => {
+      const code2 = raw.trim().replace(/^SCR-/, "");
       const json = code2 ? await unpackText(code2) : null;
       let ans = null;
       try {
         ans = json ? JSON.parse(json) : null;
       } catch {
       }
-      if (!ans?.sdp) return void ($("sa-msg").textContent = "That reply code isn't right. Ask the other screen to show it again.");
+      const msg = $("sa-msg");
+      if (!ans?.sdp) return void (msg.textContent = "That reply code isn't right. Ask the other screen to show it again.");
+      if (pc.signalingState !== "have-local-offer") return;
       try {
         await pc.setRemoteDescription({ type: "answer", sdp: ans.sdp });
-        $("sa-msg").textContent = "Connecting\u2026";
+        msg.textContent = "Connecting\u2026";
+        pairing?.stop();
         const wait = setInterval(() => {
           if (scr.state === "connected") {
             clearInterval(wait);
@@ -26291,11 +26349,45 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
           if (scr.state === "ended") clearInterval(wait);
         }, 400);
       } catch {
-        $("sa-msg").textContent = "Couldn't use that reply. Start again.";
+        msg.textContent = "Couldn't use that reply. Start again.";
       }
     };
+    if (relayAvailable()) {
+      pairing = hostPairing("scr", offer, (r) => void useReply(r), (s) => {
+        const n = document.getElementById("sa-codestate");
+        if (n) n.textContent = s === "connected" ? "Waiting for the screen to enter the code\u2026" : "Getting ready\u2026";
+      });
+      el.querySelector(".card")?.insertAdjacentHTML("beforebegin", `<div class="card"><div class="k">Easiest: type this code on the screen</div><div class="u" style="font-size:34px;font-weight:900;letter-spacing:.18em;margin:6px 0">${esc2(pairing.code)}</div><div class="note">On the iPad or other device open LaneIQ, then Second screen, then "Use this device as a screen", and type the code. Nothing to send or paste. Both need an internet connection for this step only.</div><div class="note" id="sa-codestate">Getting ready\u2026</div></div>`);
+    }
+    $("sa-cancel").onclick = () => {
+      pairing?.stop();
+      pc.close();
+      scr.state = "ended";
+      openScreens();
+    };
+    $("sa-send").onclick = async () => ($("sa-sent").textContent = await shareLink("Use this as a second screen", "Open this on the device you want to use as a second screen for LaneIQ.", link), void 0);
+    $("sa-connect").onclick = () => void useReply($("sa-reply").value);
   }
-  async function joinScreenFrom(code2) {
+  function joinScreenCard() {
+    return relayAvailable() ? `<div class="card"><div class="k">Use this device as a screen</div><div class="u">The lane camera shows a six-letter code when you tap Add a screen. Type it here.</div><div class="field"><input id="sj-jcode" maxlength="8" placeholder="Code from the lane camera" autocapitalize="characters" autocomplete="off"></div><div class="chips"><button class="btn" id="sj-jgo">Join</button></div><div class="note" id="sj-jmsg"></div></div>` : "";
+  }
+  function wireJoinScreen() {
+    const go = document.getElementById("sj-jgo");
+    if (!go) return;
+    go.onclick = () => {
+      const msg = $("sj-jmsg");
+      let jp = null;
+      jp = joinPairing("scr", $("sj-jcode").value, (offer) => {
+        msg.textContent = "Found it.";
+        void joinScreenFrom(offer, (reply) => jp?.reply(reply), () => jp?.stop());
+      }, (s) => {
+        if (s === "connected") msg.textContent = "Looking for the lane camera\u2026";
+      });
+      if (!jp) return void (msg.textContent = "A code is six letters and numbers, without 0, 1, O or I.");
+      msg.textContent = "Connecting\u2026";
+    };
+  }
+  async function joinScreenFrom(code2, sendReply, done3) {
     const json = await unpackText(code2);
     let offer = null;
     try {
@@ -26322,6 +26414,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       };
       pc.ondatachannel = (e) => {
         const dc = e.channel;
+        done3?.();
         dc.binaryType = "arraybuffer";
         let asm = null;
         view3 ??= new ScreenView();
@@ -26362,6 +26455,17 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       const reply = await packText(JSON.stringify({ v: 1, sdp: await gathered2(pc) }));
       if (location.search.includes("screentest")) globalThis.__screenReply = reply;
       el.classList.add("on");
+      if (sendReply) {
+        sendReply(reply);
+        el.innerHTML = `<div class="row"><h2>Connecting\u2026</h2><button class="btn ghost" id="sj-close">Cancel</button></div><div class="card"><div class="u">Sent to the lane camera. Keep this screen open until it connects.</div></div>`;
+        $("sj-close").onclick = () => {
+          done3?.();
+          pc.close();
+          el.classList.remove("on");
+          el.innerHTML = "";
+        };
+        return;
+      }
       el.innerHTML = `<div class="row"><h2>Send this reply back</h2><button class="btn ghost" id="sj-close">Cancel</button></div><div class="card"><div class="u">Send this code to the lane camera and paste it in its Second screen panel. Keep this screen open until it connects.</div><div class="u" style="word-break:break-all;user-select:all;max-height:6em;overflow:auto">${esc2(reply)}</div><div class="chips"><button class="btn" id="sj-copy">Copy and share</button></div><div class="note" id="sj-sent"></div></div>`;
       $("sj-close").onclick = () => {
         pc.close();
@@ -26437,6 +26541,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       init_display();
       init_coachlive();
       init_displayrelay();
+      init_paircode();
       init_displayui();
       init_friends();
       init_live();
@@ -26706,12 +26811,14 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       <div class="note">${l.offset ? `Clocks lined up to within about ${Math.max(1, Math.round(l.offset.uncertaintyMs))} ms (${l.offset.n} checks).` : l.state === "connected" ? "Lining up clocks\u2026" : "Waiting for it to join."}${l.last ? ` Last: ${esc2(l.last)}.` : ""}</div>
       <div class="chips"><button class="btn ghost danger" data-rm="${esc2(l.id)}">Disconnect</button></div></div>`).join("") : `<div class="card"><div class="u">No extra cameras linked.</div></div>`}
     <div class="chips"><button class="btn" id="cl-add">Add a camera</button></div>
+    ${joinByCodeCard()}
     <div class="note">The extra camera's video isn't analysed yet: you get it synced in the replay. Tracking, speed and spin still come from this camera. Put it where it sees something this one can't, such as a close-up of the release or the approach from the side.</div>`;
     $("cl-close").onclick = () => {
       el.dataset.cams = "";
       closeSheet();
     };
     $("cl-add").onclick = () => void hostLink();
+    wireJoinByCode(el);
     el.querySelectorAll("[data-rm]").forEach((b) => b.onclick = () => {
       const l = links.find((x) => x.id === b.dataset.rm);
       if (l) {
@@ -26736,24 +26843,22 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     el.innerHTML = `<div class="row"><h2>Add a camera</h2><button class="btn ghost" id="cl-cancel">Cancel</button></div>
     <div class="card"><div class="k">1. Open this on the other device</div><div class="u">On the iPad or phone, open LaneIQ (add it to the home screen first if you like), then open this link there. AirDrop, a message or an email to yourself all work.</div><div class="chips"><button class="btn" id="cl-send">Send the link</button></div><div class="note" id="cl-sent"></div></div>
     <div class="card"><div class="k">2. Paste its reply</div><div class="u">The other device shows a reply code. Paste it here.</div><div class="field"><input id="cl-reply" placeholder="Paste the reply code"></div><div class="chips"><button class="btn" id="cl-connect">Connect</button></div><div class="note" id="cl-msg"></div></div>`;
-    $("cl-cancel").onclick = () => {
-      l.pc.close();
-      l.state = "ended";
-      openCameras();
-    };
-    $("cl-send").onclick = async () => ($("cl-sent").textContent = await shareLink("Add this device as a camera", "Open this in LaneIQ on the device you want to use as an extra camera.", link), void 0);
-    $("cl-connect").onclick = async () => {
-      const code2 = $("cl-reply").value.trim().replace(/^CAM-/, "");
+    let pairing = null;
+    const useReply = async (raw) => {
+      const code2 = raw.trim().replace(/^CAM-/, "");
       const json = code2 ? await unpackText(code2) : null;
       let ans = null;
       try {
         ans = json ? JSON.parse(json) : null;
       } catch {
       }
-      if (!ans?.sdp) return void ($("cl-msg").textContent = "That reply code isn't right. Ask the other device to show it again.");
+      const msg = $("cl-msg");
+      if (!ans?.sdp) return void (msg.textContent = "That reply code isn't right. Ask the other device to show it again.");
+      if (l.pc.signalingState !== "have-local-offer") return;
       try {
         await l.pc.setRemoteDescription({ type: "answer", sdp: ans.sdp });
-        $("cl-msg").textContent = "Connecting\u2026";
+        msg.textContent = "Connecting\u2026";
+        pairing?.stop();
         const wait = setInterval(() => {
           if (l.state === "connected") {
             clearInterval(wait);
@@ -26763,11 +26868,47 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
           if (l.state === "ended") clearInterval(wait);
         }, 400);
       } catch {
-        $("cl-msg").textContent = "Couldn't use that reply. Start again.";
+        msg.textContent = "Couldn't use that reply. Start again.";
       }
     };
+    if (relayAvailable()) {
+      pairing = hostPairing("cam", offer, (r) => void useReply(r), (s) => {
+        const n = document.getElementById("cl-codestate");
+        if (n) n.textContent = s === "connected" ? "Waiting for the other device to enter the code\u2026" : "Getting ready\u2026";
+      });
+      const first = el.querySelector(".card");
+      first?.insertAdjacentHTML("beforebegin", `<div class="card"><div class="k">Easiest: type this code on the other device</div><div class="u" style="font-size:34px;font-weight:900;letter-spacing:.18em;margin:6px 0">${esc2(pairing.code)}</div><div class="note">On the other device open LaneIQ, then Extra cameras, then "Use this device as a camera", and type the code. Nothing to send or paste. Both need an internet connection for this step only.</div><div class="note" id="cl-codestate">Getting ready\u2026</div></div>`);
+    }
+    $("cl-cancel").onclick = () => {
+      pairing?.stop();
+      l.pc.close();
+      l.state = "ended";
+      openCameras();
+    };
+    $("cl-send").onclick = async () => ($("cl-sent").textContent = await shareLink("Add this device as a camera", "Open this in LaneIQ on the device you want to use as an extra camera.", link), void 0);
+    $("cl-connect").onclick = () => void useReply($("cl-reply").value);
   }
-  async function joinCameraFrom(code2) {
+  function joinByCodeCard() {
+    return relayAvailable() ? `<div class="card"><div class="k">Use this device as a camera</div><div class="u">The lane camera shows a six-letter code when you tap Add a camera. Type it here.</div><div class="field"><input id="cl-jcode" maxlength="8" placeholder="Code from the lane camera" autocapitalize="characters" autocomplete="off"></div><div class="chips"><button class="btn" id="cl-jgo">Join</button></div><div class="note" id="cl-jmsg"></div></div>` : "";
+  }
+  function wireJoinByCode(el) {
+    const go = document.getElementById("cl-jgo");
+    if (!go) return;
+    go.onclick = () => {
+      const msg = $("cl-jmsg");
+      let jp = null;
+      jp = joinPairing("cam", $("cl-jcode").value, (offer) => {
+        msg.textContent = "Found it.";
+        void joinCameraFrom(offer, (reply) => jp?.reply(reply), () => jp?.stop());
+      }, (s) => {
+        if (s === "connected") msg.textContent = "Looking for the lane camera\u2026";
+      });
+      if (!jp) return void (msg.textContent = "A code is six letters and numbers, without 0, 1, O or I.");
+      msg.textContent = "Connecting\u2026";
+      void el;
+    };
+  }
+  async function joinCameraFrom(code2, sendReply, done3) {
     const json = await unpackText(code2);
     let offer = null;
     try {
@@ -26786,16 +26927,26 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     <div class="card"><div class="u">${esc2(from)}'s lane camera wants to use this device as another angle. It will record each throw and send the clip to that phone. Nothing leaves your devices.</div>
     <div class="field"><label for="cx-label">What is this angle?</label><select id="cx-label">${LABELS.map((x) => `<option>${esc2(x)}</option>`).join("")}</select></div>
     <div class="chips"><button class="btn" id="cx-yes">Use this device</button></div></div>`;
-    $("cx-close").onclick = closeSheet;
+    $("cx-close").onclick = () => (done3?.(), closeSheet());
     $("cx-yes").onclick = async () => {
       const label2 = $("cx-label").value;
       el.innerHTML = `<div class="row"><h2>Connecting\u2026</h2></div><div class="note">Getting your reply ready. Keep the app open.</div>`;
       const pc = new RTCPeerConnection({ iceServers: ICE3 });
-      pc.ondatachannel = (e) => startExtra(pc, e.channel, label2);
+      pc.ondatachannel = (e) => (done3?.(), void startExtra(pc, e.channel, label2));
       await pc.setRemoteDescription({ type: "offer", sdp: offer.sdp });
       await pc.setLocalDescription(await pc.createAnswer());
       const reply = await packText(JSON.stringify({ v: 1, sdp: await gathered3(pc) }));
       if (location.search.includes("camtest")) globalThis.__camReply = reply;
+      if (sendReply) {
+        sendReply(reply);
+        el.innerHTML = `<div class="row"><h2>Connecting\u2026</h2><button class="btn ghost" id="cx-close">Cancel</button></div><div class="card"><div class="u">Sent to the lane camera. Keep this screen open until it connects.</div></div>`;
+        $("cx-close").onclick = () => {
+          done3?.();
+          pc.close();
+          closeSheet();
+        };
+        return;
+      }
       el.innerHTML = `<div class="row"><h2>Send this reply back</h2><button class="btn ghost" id="cx-close">Cancel</button></div>
       <div class="card"><div class="u">Send this code to the lane camera and paste it in its Extra cameras screen. Keep this screen open until it connects.</div><div class="u" style="word-break:break-all;user-select:all;max-height:6em;overflow:auto">${esc2(reply)}</div><div class="chips"><button class="btn" id="cx-copy">Copy and share</button></div><div class="note" id="cx-sent"></div></div>`;
       $("cx-close").onclick = () => {
@@ -26946,6 +27097,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       init_live();
       init_friends();
       init_state();
+      init_paircode();
       init_toast();
       ICE3 = [{ urls: "stun:stun.l.google.com:19302" }];
       sheet10 = () => $("friends");
@@ -35839,6 +35991,8 @@ ${t}`;
       date: "2026-11-01",
       title: "Fixes from a real bowling center",
       items: [
+        "Pair extra cameras and second screens with a code: the lane camera shows a six-letter code, you type it on the other device, and they connect themselves. Nothing to send, paste or switch apps for (leaving the app was what lost the half-made link). The link and reply way is still there.",
+        "A second screen's buttons (layouts, Full screen, Close) no longer fade away after a few seconds: they stay on, and are bigger and easier to hit.",
         "Skeleton on the live picture: the bowler's bones are drawn over the camera as they move (a few times a second, paused while a ball is on the lane), and each shot keeps the skeleton it was drawn with, so a replay has it straight away. The status line says whether it is loading, tracking, or sees nobody.",
         "Every shot shows a number for rev rate, axis rotation and axis tilt, never a range: measured from the clip when it can be, worked out from the ball's path when it can't, otherwise an assumed typical number clearly marked as assumed.",
         "Lane lock asks when it is not sure: a single lane found off to the side of a row of lanes is no longer taken silently, you tap it to confirm or place the corners yourself, and Re-lock forgets the lane picked before.",
