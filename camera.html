@@ -156,6 +156,9 @@
   .prog>i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--mint))}
   .sheet{position:fixed;inset:0;background:rgba(4,7,12,.99);z-index:40;overflow:auto;padding:calc(env(safe-area-inset-top) + 12px) 12px 24px;display:none}
   .sheet.on{display:block}
+  .rv-top{position:sticky;top:calc(-1 * env(safe-area-inset-top) - 12px);z-index:3;margin:calc(-1 * env(safe-area-inset-top) - 12px) -12px 0;padding:calc(env(safe-area-inset-top) + 10px) 12px 10px;background:rgba(4,7,12,.96);backdrop-filter:blur(8px)}
+  .rv-x{min-height:44px;padding:0 18px;font-weight:800;background:linear-gradient(90deg,#ff6a7a,#ff4fd8);color:#fff}
+  .rv-done{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 14px);z-index:5;min-height:50px;padding:0 26px;border-radius:26px;font-weight:800;box-shadow:0 6px 24px rgba(0,0,0,.6)}
   .skin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
   .skin{background:var(--card,#0f1626);border:1px solid var(--line);border-radius:14px;padding:6px;color:inherit;text-align:center;cursor:pointer;font:inherit}
   .skin canvas{width:100%;height:auto;border-radius:10px;display:block}.skin.on{border-color:#46e6ff;box-shadow:0 0 0 1px #46e6ff}
@@ -291,6 +294,6 @@
   <button class="tb" data-tab="proshop"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14.5 5.5a4 4 0 0 0-5 5L4 16l4 4 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5z"/></svg>Pro shop</button>
   <button class="tb" data-tab="learn"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 19V5.5M8.5 7.5h7M8.5 11h5"/></svg>Learn</button>
   <button class="tb" data-tab="me"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/></svg>Me</button></nav>
-<script src="camera.js?v=mvs1a729"></script>
+<script src="camera.js?v=mvs1njn5"></script>
 </body>
 </html>

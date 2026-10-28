@@ -34935,7 +34935,8 @@ ${t}`;
     let modeSel = clip ? canOverlay ? "lane" : "raw" : "top";
     let skelOn = true;
     el.innerHTML = `
-    <div class="row"><h2>${esc2(when4(s.at))}</h2><button class="btn ghost" id="rv-close">Close</button></div>
+    <div class="row rv-top"><h2>${esc2(when4(s.at))}</h2><button class="btn rv-x" id="rv-close" aria-label="Close this clip">\u2715 Close</button></div>
+    <button class="btn rv-done" id="rv-done">Done: back to the lane</button>
     <div class="note">${esc2(ballName7(s.ballId))} \xB7 ${s.a.speedMph.toFixed(1)} mph \xB7 ${s.a.entryMeasured ? `entry board ${f1(s.a.entryBoard)}` : s.a.lastSeen ? `last seen on board ${f1(s.a.lastSeen.board)}, ${s.a.lastSeen.ft.toFixed(0)} ft down` : "entry board not seen"}${s.m.zone ? ` \xB7 ${esc2(zoneText(s.m.zone, s.m.pocketMiss, s.m.hand))}` : " \xB7 hit not judged (the ball was not seen reaching the pins)"} \xB7 ${s.m.hand === "L" ? "left-handed: pocket 1-2" : "right-handed: pocket 1-3"} <a href="#" data-learn="${s.m.zone ? ZONE_LABEL[s.m.zone] : "Pocket"}">what is this?</a></div>
     <div class="chips" id="rv-modes">
       ${clip && canOverlay ? `<button class="chip ${modeSel === "lane" ? "sel" : ""}" data-m="lane">Lane view</button>` : ""}
@@ -35111,6 +35112,7 @@ ${t}`;
     }
     $("rv-replay").onclick = replay3D;
     $("rv-close").onclick = closeReview;
+    $("rv-done").onclick = closeReview;
     $("rv-del").onclick = async () => {
       if (confirm("Delete this shot and its video?")) {
         await removeShot(s.id);
