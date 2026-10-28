@@ -51,17 +51,17 @@
         if (Math.hypot(x - cx, y - cx) > r) continue;
         const i = (y * size + x) * 4;
         const R3 = rgba[i] / 255;
-        const G2 = rgba[i + 1] / 255;
+        const G3 = rgba[i + 1] / 255;
         const B = rgba[i + 2] / 255;
-        const max = Math.max(R3, G2, B);
-        const min = Math.min(R3, G2, B);
+        const max = Math.max(R3, G3, B);
+        const min = Math.min(R3, G3, B);
         const v = max;
         const s = max === 0 ? 0 : (max - min) / max;
         if (v < 0.25) c[HUE_BINS]++;
         else if (s < 0.25) c[v > 0.7 ? HUE_BINS + 2 : HUE_BINS + 1]++;
         else {
           const d = max - min;
-          let h = max === R3 ? (G2 - B) / d % 6 : max === G2 ? (B - R3) / d + 2 : (R3 - G2) / d + 4;
+          let h = max === R3 ? (G3 - B) / d % 6 : max === G3 ? (B - R3) / d + 2 : (R3 - G3) / d + 4;
           h = (h * 60 + 360) % 360;
           c[Math.min(HUE_BINS - 1, Math.floor(h / 360 * HUE_BINS))]++;
         }
@@ -352,18 +352,18 @@
   }
   function wireLaneCases() {
     const line2 = document.getElementById("lc-line");
-    const send2 = document.getElementById("lc-send");
+    const send3 = document.getElementById("lc-send");
     const clear = document.getElementById("lc-clear");
-    if (!line2 || !send2 || !clear) return;
+    if (!line2 || !send3 || !clear) return;
     const paint2 = async () => {
       const c = await laneCaseCount();
       const names = { "thrown-out": "lock you threw away", "hand-placed": "lane you placed by hand", "gave-up": "time it gave up", asked: "time it asked you to tap" };
       line2.textContent = c.total ? `${c.total} saved: ${Object.entries(c.byKind).map(([k2, n]) => `${n} ${names[k2] ?? k2}${n === 1 ? "" : "s"}`).join(", ")}.` : "None yet. They appear after a lock fails or you fix one.";
-      send2.disabled = clear.disabled = !c.total;
+      send3.disabled = clear.disabled = !c.total;
     };
     void paint2();
-    send2.onclick = async () => {
-      send2.disabled = true;
+    send3.onclick = async () => {
+      send3.disabled = true;
       try {
         const db = await open();
         const rows2 = await listCases(db);
@@ -371,7 +371,7 @@
         const file = new File([JSON.stringify({ app: "LaneIQ lane lock reports", exportedAt: (/* @__PURE__ */ new Date()).toISOString(), userAgent: navigator.userAgent, screen: `${screen.width}x${screen.height}`, cases: rows2 }, null, 1)], `laneiq-lane-reports-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`, { type: "application/json" });
         offerShare(document.getElementById("lc-share"), [file], { title: "LaneIQ lane lock reports", label: "Send the reports" });
       } finally {
-        send2.disabled = false;
+        send3.disabled = false;
       }
     };
     clear.onclick = async () => {
@@ -1381,17 +1381,17 @@
     const fa = S3(inp.fingerA), fb = S3(inp.fingerB);
     const F = unit([fa[0] + fb[0], fa[1] + fb[1], fa[2] + fb[2]]);
     const T = inp.thumb ? S3(inp.thumb) : null;
-    const G2 = T ? unit([F[0] + T[0], F[1] + T[1], F[2] + T[2]]) : F;
-    const up = T ? tangentToward(G2, F) : tangentToward(G2, [0, 1, 0]);
-    return { ex: cross(up, G2), up, g: G2 };
+    const G3 = T ? unit([F[0] + T[0], F[1] + T[1], F[2] + T[2]]) : F;
+    const up = T ? tangentToward(G3, F) : tangentToward(G3, [0, 1, 0]);
+    return { ex: cross(up, G3), up, g: G3 };
   }
   function layoutFromScan(inp) {
     const warnings = [];
     const S3 = (p) => toSphere(p, inp.circle);
     const T = inp.thumb ? S3(inp.thumb) : null;
     const F = unit([S3(inp.fingerA)[0] + S3(inp.fingerB)[0], S3(inp.fingerA)[1] + S3(inp.fingerB)[1], S3(inp.fingerA)[2] + S3(inp.fingerB)[2]]);
-    const { ex: e_x, up, g: G2 } = scanFrame(inp);
-    const map = (v) => [dot(v, e_x), dot(v, up), dot(v, G2)];
+    const { ex: e_x, up, g: G3 } = scanFrame(inp);
+    const map = (v) => [dot(v, e_x), dot(v, up), dot(v, G3)];
     const pinCam = S3(inp.pin);
     const refPt = inp.asymmetric ? inp.mb ?? inp.cg ?? inp.baseline ?? null : inp.cg ?? inp.baseline ?? null;
     const reference = !refPt ? null : inp.asymmetric && inp.mb && refPt === inp.mb ? "mb" : "cg";
@@ -1798,8 +1798,8 @@
 
   // core/src/clipspin.ts
   function laneToPicture(cal) {
-    const lane = [{ x: 0, y: 0 }, { x: LANE_BOARDS, y: 0 }, { x: LANE_BOARDS, y: LANE_LENGTH_FT }, { x: 0, y: LANE_LENGTH_FT }];
-    const Hinv2 = solveHomography(lane, cal);
+    const lane2 = [{ x: 0, y: 0 }, { x: LANE_BOARDS, y: 0 }, { x: LANE_BOARDS, y: LANE_LENGTH_FT }, { x: 0, y: LANE_LENGTH_FT }];
+    const Hinv2 = solveHomography(lane2, cal);
     return (x, y) => applyHomography(Hinv2, { x, y });
   }
   function ballInPicture(P, x, y) {
@@ -1810,8 +1810,8 @@
   }
   function laneBasis(cal, vw, vh) {
     if (cal.length !== 4) return null;
-    const lane = [{ x: 0, y: 0 }, { x: LANE_BOARDS * BOARD_IN2, y: 0 }, { x: LANE_BOARDS * BOARD_IN2, y: LANE_LENGTH_FT * 12 }, { x: 0, y: LANE_LENGTH_FT * 12 }];
-    const H3 = solveHomography(lane, cal);
+    const lane2 = [{ x: 0, y: 0 }, { x: LANE_BOARDS * BOARD_IN2, y: 0 }, { x: LANE_BOARDS * BOARD_IN2, y: LANE_LENGTH_FT * 12 }, { x: 0, y: LANE_LENGTH_FT * 12 }];
+    const H3 = solveHomography(lane2, cal);
     const cx = vw / 2, cy = vh / 2;
     const col = (j) => [H3[j], H3[3 + j], H3[6 + j]];
     const h1 = col(0), h2 = col(1), h3 = col(2);
@@ -2191,8 +2191,8 @@
       const m0 = Math.hypot(om.x, om.y, om.z), m1 = Math.hypot(best2.x, best2.y, best2.z);
       if (bj > start2 && Math.abs(m1 - m0) / (m0 || 1) < 0.2) om = best2;
     }
-    const lane = basis ? omegaInLane(om, basis) : om;
-    const s = spinFromOmega(lane, fps, "behind", hand3);
+    const lane2 = basis ? omegaInLane(om, basis) : om;
+    const s = spinFromOmega(lane2, fps, "behind", hand3);
     if (!s) return none(fps, ["The rotation came out as zero."], SLOW_ADVICE, "too-coarse", out);
     const caveats = [...s.notes];
     if (!basis) caveats.push("The lane lock can't say how far the camera tilts down, so axis tilt assumes it looks level down the lane and is off by roughly that tilt.");
@@ -2225,7 +2225,7 @@
       MIN_BALL_PX = 26;
       FAST_RPM = 500;
       fpsNeeded = (rpm = FAST_RPM) => Math.ceil(rpm / 60 * 360 / GOOD_DEG_PER_FRAME / 60) * 60;
-      none = (fps, reasons, advice, status2, extra = {}) => ({
+      none = (fps, reasons, advice, status2, extra2 = {}) => ({
         status: status2,
         rpm: null,
         axisRotation: null,
@@ -2244,7 +2244,7 @@
         reasons,
         advice,
         at: (/* @__PURE__ */ new Date()).toISOString(),
-        ...extra
+        ...extra2
       });
       angleOf = (m) => Math.acos(Math.max(-1, Math.min(1, (m[0][0] + m[1][1] + m[2][2] - 1) / 2)));
       mulM = (a, b) => a.map((row4) => [0, 1, 2].map((j) => row4[0] * b[0][j] + row4[1] * b[1][j] + row4[2] * b[2][j]));
@@ -2354,9 +2354,9 @@
       URL.revokeObjectURL(url);
     }
   }
-  function spinCardHtml(s, state = "idle") {
+  function spinCardHtml(s, state2 = "idle") {
     if (!s)
-      return `<div class="card"><div class="k">Spin</div><div class="u">${state === "running" ? "Measuring the spin from this shot's video\u2026" : state === "pending" ? "The spin will be measured from this shot's video shortly." : "Not measured yet."}</div></div>`;
+      return `<div class="card"><div class="k">Spin</div><div class="u">${state2 === "running" ? "Measuring the spin from this shot's video\u2026" : state2 === "pending" ? "The spin will be measured from this shot's video shortly." : "Not measured yet."}</div></div>`;
     if (s.status === "measured" || s.status === "rough") {
       const bad = s.status === "rough";
       return `<div class="card"><div class="k">Spin (${STATUS_LABEL[s.status]})</div>
@@ -2513,12 +2513,12 @@
       idx.push(k2);
       phase = 0.9 * phase + 0.1 * (times[i] - k2 * dt0);
     }
-    const W2 = Math.max(8, Math.round(0.8 / dt0));
+    const W3 = Math.max(8, Math.round(0.8 / dt0));
     const out = times.slice();
     for (let i = 0; i < n; i++) {
       let lo = i, hi = i;
-      while (lo > 0 && idx[i] - idx[lo - 1] <= W2) lo--;
-      while (hi < n - 1 && idx[hi + 1] - idx[i] <= W2) hi++;
+      while (lo > 0 && idx[i] - idx[lo - 1] <= W3) lo--;
+      while (hi < n - 1 && idx[hi + 1] - idx[i] <= W3) hi++;
       if (hi - lo < 7) continue;
       let a = 0, b = dt0, keep = new Array(hi - lo + 1).fill(true);
       for (let pass = 0; pass < 3; pass++) {
@@ -2551,9 +2551,9 @@
     return out;
   }
   function laneMaps(cal) {
-    const lane = [{ x: 0, y: 0 }, { x: LANE_BOARDS, y: 0 }, { x: LANE_BOARDS, y: LANE_LENGTH_FT }, { x: 0, y: LANE_LENGTH_FT }];
-    const toPic = solveHomography(lane, cal);
-    const toLane = solveHomography(cal, lane);
+    const lane2 = [{ x: 0, y: 0 }, { x: LANE_BOARDS, y: 0 }, { x: LANE_BOARDS, y: LANE_LENGTH_FT }, { x: 0, y: LANE_LENGTH_FT }];
+    const toPic = solveHomography(lane2, cal);
+    const toLane = solveHomography(cal, lane2);
     return { toPic, toLane };
   }
   function pixelSigma(cal, px) {
@@ -3242,6 +3242,38 @@
   });
 
   // camera/state.ts
+  var state_exports = {};
+  __export(state_exports, {
+    S: () => S,
+    addShot: () => addShot,
+    bootProfile: () => bootProfile,
+    bowlerProfile: () => bowlerProfile,
+    changed: () => changed,
+    createProfile: () => createProfile,
+    insightGames: () => insightGames,
+    insightShots: () => insightShots,
+    loadClip: () => loadClip,
+    loadProfile: () => loadProfile,
+    loadReference: () => loadReference,
+    onChange: () => onChange,
+    onShot: () => onShot,
+    ownedBalls: () => ownedBalls,
+    profiles: () => profiles,
+    recomputeMetrics: () => recomputeMetrics,
+    removeShot: () => removeShot,
+    resetInsights: () => resetInsights,
+    restoreInsights: () => restoreInsights,
+    saveArsenal: () => saveArsenal,
+    saveClip: () => saveClip,
+    saveCoach: () => saveCoach,
+    savePlan: () => savePlan,
+    saveSocial: () => saveSocial,
+    updateProfile: () => updateProfile,
+    updateShot: () => updateShot
+  });
+  function profiles() {
+    return listProfiles();
+  }
   async function loadProfile(id) {
     const p = listProfiles().find((x) => x.id === id) ?? null;
     S.profile = p;
@@ -3283,9 +3315,9 @@
     await loadProfile(pick.id);
     return true;
   }
-  function createProfile(a, extra = {}) {
+  function createProfile(a, extra2 = {}) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
-    const p = { id: extra.id && /^[\w-]{4,64}$/.test(extra.id) ? extra.id : newId(), name: a.name.trim() || "Bowler", username: a.username || void 0, hand: a.hand, revRpm: a.revRpm, quiz: a, ...extra.role ? { role: extra.role, roleSince: now } : {}, ...extra.business ? { business: extra.business } : {}, created: now };
+    const p = { id: extra2.id && /^[\w-]{4,64}$/.test(extra2.id) ? extra2.id : newId(), name: a.name.trim() || "Bowler", username: a.username || void 0, hand: a.hand, revRpm: a.revRpm, quiz: a, ...extra2.role ? { role: extra2.role, roleSince: now } : {}, ...extra2.business ? { business: extra2.business } : {}, created: now };
     saveProfiles([...listProfiles(), p]);
     return p;
   }
@@ -4054,6 +4086,14 @@
       });
     return landmarker;
   }
+  function warmPose() {
+    if (warmed || !bodyAutoOn() || !navigator.onLine) return;
+    warmed = true;
+    setTimeout(() => void getLandmarker().then(() => logTrack("pose model ready", {})).catch((e) => {
+      warmed = false;
+      logTrack("pose model warm-up failed", { error: String(e) });
+    }), 12e3);
+  }
   function pickBowler(people, s) {
     if (!people.length) return [];
     const fl = s.cal.length === 4 ? [s.cal[0].x / s.vw, s.cal[1].x / s.vw] : [0, 1];
@@ -4140,7 +4180,7 @@
     waiting2.set(shot.id, job);
     return job;
   }
-  var VER, CDN, MODEL, AUTO_KEY, bodyAutoOn, setBodyAuto, landmarker, clock, lastFrames, sleep2, seekTo, waiting2, chain2, bodyPending;
+  var VER, CDN, MODEL, AUTO_KEY, bodyAutoOn, setBodyAuto, landmarker, warmed, clock, lastFrames, sleep2, seekTo, waiting2, chain2, bodyPending;
   var init_pose = __esm({
     "camera/pose.ts"() {
       init_approach();
@@ -4166,6 +4206,7 @@
         }
       };
       landmarker = null;
+      warmed = false;
       clock = 0;
       lastFrames = [];
       sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -4309,11 +4350,12 @@
     );
     const clipOk = spin && (spin.status === "measured" || spin.status === "rough") && spin.rpm !== null;
     const rough = clipOk && spin.status === "rough";
-    const fromClip = (v, id, label2, unit5, note, prof, ap) => {
+    const fromClip = (v, id, label2, unit5, note, prof, ap, inf) => {
       if (clipOk && v !== null) {
         const pm = `${Math.round(spin.confidence * 100)}% confidence`;
         return { id, label: label2, value: String(Math.round(v)), unit: unit5, pm, note: rough ? `${note}, rough read` : `${note}, from this shot's clip (${spin.fps} fps)`, source: rough ? "estimated" : "measured" };
       }
+      if (inf) return { id, label: label2, value: String(Math.round(inf.v)), unit: unit5, pm: inf.pm, note: inf.note, source: "estimated" };
       if (prof !== void 0) return { id, label: label2, value: String(Math.round(prof)), unit: unit5, pm: "", note: profile.source === "entered" ? "entered by you, not measured on this shot" : "from your Spin lab video", source: profile.source === "entered" ? "entered" : "estimated" };
       if (ap) return { id, label: label2, value: approxText(ap), unit: unit5, pm: "", note: `${ap.basis}${ctx2?.queued ? "; measuring from the video now" : ""}`, source: ap.kind === "entered" ? "entered" : "estimated" };
       if (spin && spin.status === "none") return none2(id, label2, spin.reasons[0] ?? "the spin could not be read from this clip");
@@ -4322,9 +4364,10 @@
       if (ctx2?.queued) return none2(id, label2, "measuring from this shot's video now\u2026");
       return none2(id, label2, "will be read from this shot's saved video");
     };
-    tiles.push(fromClip(clipOk ? spin.rpm : null, "rev", "Rev rate", "rpm", "", profile?.rpm, ctx2?.approx?.rev));
-    tiles.push(fromClip(clipOk ? spin.axisRotation : null, "rot", "Axis rotation", "\xB0", "0\xB0 = forward roll", profile?.axisRotation, ctx2?.approx?.rotation));
-    tiles.push(fromClip(clipOk ? spin.axisTilt : null, "tilt", "Axis tilt", "\xB0", "above horizontal", profile?.axisTilt, ctx2?.approx?.tilt));
+    const iv = ctx2?.inferred;
+    tiles.push(fromClip(clipOk ? spin.rpm : null, "rev", "Rev rate", "rpm", "", profile?.rpm, ctx2?.approx?.rev, iv ? { v: iv.revRpm, pm: `\xB1 ${iv.revPm} rpm`, note: iv.basis } : void 0));
+    tiles.push(fromClip(clipOk ? spin.axisRotation : null, "rot", "Axis rotation", "\xB0", "0\xB0 = forward roll", profile?.axisRotation, ctx2?.approx?.rotation, iv ? { v: iv.rotationDeg, pm: `\xB1 ${iv.rotationPm}\xB0`, note: iv.basis } : void 0));
+    tiles.push(fromClip(clipOk ? spin.axisTilt : null, "tilt", "Axis tilt", "\xB0", "above horizontal", profile?.axisTilt, ctx2?.approx?.tilt, iv ? { v: iv.tiltDeg, pm: "", note: iv.tiltAssumed ? "assumed (typical): tilt can't be told from a path" : "your own number: tilt can't be told from a path" } : void 0));
     tiles.push(
       m?.pocketMiss != null ? { id: "pocket", label: "Pocket", value: sgn(m.pocketMiss), unit: "boards", pm: far !== null ? pmTxt(far, " bd") : "", note: m.zone ? { pocket: "In the pocket", high: "High", light: "Light", "very-high": "Very high", "very-light": "Very light" }[m.zone] : "+ high, \u2212 light", source: a.entryMeasured ? "measured" : "estimated" } : none2("pocket", "Pocket", "needs the pins")
     );
@@ -4417,9 +4460,9 @@
   });
 
   // core/src/lanememory.ts
-  function pairOf(lane) {
-    const n = parseInt(lane, 10);
-    if (!Number.isFinite(n) || String(n) !== lane.trim()) return lane.trim();
+  function pairOf(lane2) {
+    const n = parseInt(lane2, 10);
+    if (!Number.isFinite(n) || String(n) !== lane2.trim()) return lane2.trim();
     const lo = n % 2 ? n : n - 1;
     return `${lo}-${lo + 1}`;
   }
@@ -4455,15 +4498,15 @@
       return { center: g.center, pair: g.pair, sessions, best: best2 };
     }).sort((a, b) => b.sessions[0].date.localeCompare(a.sessions[0].date));
   }
-  function memoryFor(shots, center, lane, excludeSession) {
-    const k2 = placeKey(center, lane);
+  function memoryFor(shots, center, lane2, excludeSession) {
+    const k2 = placeKey(center, lane2);
     return laneMemories(shots, excludeSession).find((m) => placeKey(m.center, m.pair) === k2 || placeKey(m.center, m.pair.split("-")[0]) === k2) ?? null;
   }
   var placeKey, median4;
   var init_lanememory = __esm({
     "core/src/lanememory.ts"() {
       init_coach();
-      placeKey = (center, lane) => `${center.trim().toLowerCase()}|${pairOf(lane)}`;
+      placeKey = (center, lane2) => `${center.trim().toLowerCase()}|${pairOf(lane2)}`;
       median4 = (v) => {
         if (!v.length) return null;
         const s = [...v].sort((a, b) => a - b);
@@ -4632,15 +4675,15 @@
     let confidence = n >= 8 ? "good" : "moderate";
     if (bpFt.length >= MIN_SHOTS) {
       const tr = trend(bpFt);
-      const total = tr.slope * (bpFt.length - 1);
-      if (Math.abs(tr.t) >= 2 && Math.abs(total) >= 2) {
-        if (total < 0) {
+      const total2 = tr.slope * (bpFt.length - 1);
+      if (Math.abs(tr.t) >= 2 && Math.abs(total2) >= 2) {
+        if (total2 < 0) {
           headline = "Ball is reading the lane earlier: the track is drying out";
-          points.push(`Inferred: breakpoint moved about ${Math.abs(total).toFixed(0)} ft closer to you over ${bpFt.length} shots (trend strength t=${tr.t.toFixed(1)}).`);
+          points.push(`Inferred: breakpoint moved about ${Math.abs(total2).toFixed(0)} ft closer to you over ${bpFt.length} shots (trend strength t=${tr.t.toFixed(1)}).`);
           next = "Test one change: move your feet 1\u20132 boards toward the oiled side (or a touch less rotation/speed up), keep the target, and judge the next two shots before changing anything else.";
         } else {
           headline = "Ball is skidding farther: oil is carrying down";
-          points.push(`Inferred: breakpoint moved about ${total.toFixed(0)} ft farther down-lane over ${bpFt.length} shots (trend strength t=${tr.t.toFixed(1)}).`);
+          points.push(`Inferred: breakpoint moved about ${total2.toFixed(0)} ft farther down-lane over ${bpFt.length} shots (trend strength t=${tr.t.toFixed(1)}).`);
           next = "Test one change: a smoother or more surface-sensitive ball, or move 1\u20132 boards toward the outside, and judge the next two shots.";
         }
         if (sloppy) confidence = "low";
@@ -4906,7 +4949,7 @@
   }
   function paintTiles(s) {
     const profSpin = S.profile?.spin;
-    const mk = (x) => readoutTiles(x.a, x.m, x.spin, profSpin ? { rpm: profSpin.rpm, axisRotation: profSpin.axisRotation, axisTilt: profSpin.axisTilt, source: profSpin.source === "video" ? "video" : "entered" } : null, { hasClip: x.hasClip, queued: spinPending(x.id), approx: S.profile?.quiz ? approxSpin({ ...S.profile.quiz, revRpm: S.profile.revRpm ?? S.profile.quiz.revRpm }) : void 0 });
+    const mk = (x) => readoutTiles(x.a, x.m, x.spin, profSpin ? { rpm: profSpin.rpm, axisRotation: profSpin.axisRotation, axisTilt: profSpin.axisTilt, source: profSpin.source === "video" ? "video" : "entered" } : null, { hasClip: x.hasClip, queued: spinPending(x.id), inferred: x.inf, approx: S.profile?.quiz ? approxSpin({ ...S.profile.quiz, revRpm: S.profile.revRpm ?? S.profile.quiz.revRpm }) : void 0 });
     const tiles = mk(s);
     const sess = sessionShots();
     const i = sess.findIndex((x) => x.id === s.id);
@@ -5716,10 +5759,10 @@
     if (!st) return;
     const s = st;
     const { g, rgb } = pixels(s.img);
-    const W2 = s.img.width, H3 = s.img.height;
+    const W3 = s.img.width, H3 = s.img.height;
     const notes = [];
-    const rough = { x: W2 / 2, y: H3 / 2, r: Math.min(W2, H3) * 0.48 };
-    const blobs = detectHoles(g, W2, H3, rough);
+    const rough = { x: W3 / 2, y: H3 / 2, r: Math.min(W3, H3) * 0.48 };
+    const blobs = detectHoles(g, W3, H3, rough);
     const grip = pickGrip(blobs, rough, s.noThumb);
     s.thumb = s.fingerA = s.fingerB = null;
     s.guessed.holes = false;
@@ -5735,11 +5778,11 @@
     if (grip) {
       const pts = [s.fingerA, s.fingerB, ...s.thumb ? [s.thumb] : []];
       const mid2 = { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length };
-      const rGuess = Math.max(Math.min(W2, H3) * 0.2, Math.min(Math.min(W2, H3) * 0.5, s.holeR * 9.2));
-      s.outlines = findBalls(g, W2, H3, mid2, rGuess, rgb, 3);
+      const rGuess = Math.max(Math.min(W3, H3) * 0.2, Math.min(Math.min(W3, H3) * 0.5, s.holeR * 9.2));
+      s.outlines = findBalls(g, W3, H3, mid2, rGuess, rgb, 3);
     }
     if (!s.outlines.length) {
-      const edge = detectBall(g, W2, H3);
+      const edge = detectBall(g, W3, H3);
       if (edge) s.outlines = [edge];
     }
     s.outlineIx = 0;
@@ -5747,7 +5790,7 @@
     notes.push(s.outlines.length ? `I found the ball's outline${s.outlines.length > 1 ? ` (and ${s.outlines.length - 1} other possible one${s.outlines.length > 2 ? "s" : ""}: try them if it's wrong)` : ""}.` : "I couldn't find the ball's outline on my own: drag the circle to fit the ball.");
     notes.push(grip ? `I found the grip holes (${s.noThumb ? "two finger holes" : "thumb and two finger holes"}).` : "I couldn't pick out the grip holes on my own: tap them.");
     if (grip && s.outlines.length) {
-      const again = pickGrip(detectHoles(g, W2, H3, s.circle), s.circle, s.noThumb);
+      const again = pickGrip(detectHoles(g, W3, H3, s.circle), s.circle, s.noThumb);
       if (again) {
         s.thumb = again.thumb ? { x: again.thumb.x, y: again.thumb.y } : null;
         s.fingerA = { x: again.fingers[0].x, y: again.fingers[0].y };
@@ -5757,7 +5800,7 @@
       }
     }
     const holes = [s.thumb, s.fingerA, s.fingerB].filter((p) => !!p);
-    const dots = detectDots(rgb, W2, H3, s.circle, holes, s.holeR ? s.holeR * 2.2 : 0);
+    const dots = detectDots(rgb, W3, H3, s.circle, holes, s.holeR ? s.holeR * 2.2 : 0);
     s.marks = dots.map((d) => ({ x: d.x, y: d.y }));
     notes.push(s.marks.length ? `I found ${s.marks.length} small colored dot${s.marks.length === 1 ? "" : "s"}. I took the most vivid as the pin${s.marks.length > 1 ? s.asym ? ", the next as the mass bias" : ", the next as the CG" : ""}. Check ${s.marks.length === 1 ? "it" : "them"}.` : "I didn't see a pin dot: tap where the pin is.");
     assignDots();
@@ -6142,9 +6185,9 @@
   }
   function drawBall(canvas, l, s, f2, m, opts = {}) {
     const ctx2 = canvas.getContext("2d");
-    const W2 = canvas.width, H3 = canvas.height;
-    const cx = W2 / 2, cy = H3 / 2, r = Math.min(W2, H3) * 0.44;
-    ctx2.clearRect(0, 0, W2, H3);
+    const W3 = canvas.width, H3 = canvas.height;
+    const cx = W3 / 2, cy = H3 / 2, r = Math.min(W3, H3) * 0.44;
+    ctx2.clearRect(0, 0, W3, H3);
     const proj = (v) => {
       const p = apply(m, v);
       return { x: cx + p[0] * r, y: cy - p[1] * r, z: p[2] };
@@ -7146,9 +7189,9 @@
     return e.length === 13 && eanCheckDigit(e.slice(0, 12)) === Number(e[12]) ? e : null;
   }
   function best(runs, set) {
-    const total = runs.reduce((a, b) => a + b, 0);
-    if (total <= 0) return null;
-    const n = runs.map((r) => r * 7 / total);
+    const total2 = runs.reduce((a, b) => a + b, 0);
+    if (total2 <= 0) return null;
+    const n = runs.map((r) => r * 7 / total2);
     let bi = -1, be = 1e9;
     for (let d = 0; d < 10; d++) {
       const c = set[d];
@@ -8121,7 +8164,7 @@ Shop notes: ${c.shopNotes}` : ""
     const { ctx: ctx2, P } = v;
     const s = k(v);
     const q2 = [P(0, 0), P(LANE_BOARDS, 0), P(LANE_BOARDS, DECK_END_FT), P(0, DECK_END_FT)];
-    const W2 = ctx2.canvas.width, Hh = ctx2.canvas.height;
+    const W3 = ctx2.canvas.width, Hh = ctx2.canvas.height;
     const path2 = () => {
       ctx2.beginPath();
       q2.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
@@ -8129,7 +8172,7 @@ Shop notes: ${c.shopNotes}` : ""
     };
     ctx2.save();
     ctx2.beginPath();
-    ctx2.rect(-W2, -Hh, W2 * 3, Hh * 3);
+    ctx2.rect(-W3, -Hh, W3 * 3, Hh * 3);
     q2.forEach((p, i) => i ? ctx2.lineTo(p.x, p.y) : ctx2.moveTo(p.x, p.y));
     ctx2.closePath();
     ctx2.fillStyle = "rgba(4,8,16,.42)";
@@ -8964,8 +9007,8 @@ Shop notes: ${c.shopNotes}` : ""
       if (f2 < 10) {
         if (a === 10) {
           const b = counts[i + 1], c = counts[i + 2];
-          const total = b !== void 0 && c !== void 0 ? running += 10 + b + c : null;
-          frames.push({ pins: [10], marks: ["X"], total });
+          const total2 = b !== void 0 && c !== void 0 ? running += 10 + b + c : null;
+          frames.push({ pins: [10], marks: ["X"], total: total2 });
           i += 1;
         } else {
           const b = counts[i + 1];
@@ -8976,8 +9019,8 @@ Shop notes: ${c.shopNotes}` : ""
           }
           const spare = a + b === 10;
           const nxt = counts[i + 2];
-          const total = spare ? nxt !== void 0 ? running += 10 + nxt : null : running += a + b;
-          frames.push({ pins: [a, b], marks: [a === 0 ? "-" : String(a), spare ? "/" : b === 0 ? "-" : String(b)], total });
+          const total2 = spare ? nxt !== void 0 ? running += 10 + nxt : null : running += a + b;
+          frames.push({ pins: [a, b], marks: [a === 0 ? "-" : String(a), spare ? "/" : b === 0 ? "-" : String(b)], total: total2 });
           i += 2;
         }
       } else {
@@ -9123,7 +9166,7 @@ Shop notes: ${c.shopNotes}` : ""
     const lastActive = all.length ? new Date(Math.max(...all)).toISOString().slice(0, 10) : null;
     const avg3 = st2.completeGames >= 3 ? st2.average : null;
     const avgChange = st2.completeGames >= 3 && prevSt.completeGames >= 3 && st2.average !== null && prevSt.average !== null ? st2.average - prevSt.average : null;
-    const card = {
+    const card2 = {
       v: 1,
       t: "progress",
       name: display,
@@ -9148,8 +9191,8 @@ Shop notes: ${c.shopNotes}` : ""
       lastActive,
       highlights: []
     };
-    card.highlights = highlightsFor(card, prevSt.high);
-    return card;
+    card2.highlights = highlightsFor(card2, prevSt.high);
+    return card2;
   }
   function highlightsFor(c, prevHigh) {
     const out = [];
@@ -9175,9 +9218,9 @@ Shop notes: ${c.shopNotes}` : ""
     return tips;
   }
   function coachRoster(cards, now = /* @__PURE__ */ new Date()) {
-    return cards.map((card) => {
-      const quietDays = card.lastActive ? Math.floor((now.getTime() - Date.parse(card.lastActive)) / DAY) : null;
-      return { card, quietDays, quiet: quietDays === null || quietDays >= WEEKS_QUIET * 7, improved: (card.avgChange ?? 0) >= 3 || (card.pocketChange ?? 0) >= 5 };
+    return cards.map((card2) => {
+      const quietDays = card2.lastActive ? Math.floor((now.getTime() - Date.parse(card2.lastActive)) / DAY) : null;
+      return { card: card2, quietDays, quiet: quietDays === null || quietDays >= WEEKS_QUIET * 7, improved: (card2.avgChange ?? 0) >= 3 || (card2.pocketChange ?? 0) >= 5 };
     }).sort((a, b) => a.card.name.localeCompare(b.card.name));
   }
   function parseProgress(json) {
@@ -9556,12 +9599,12 @@ Shop notes: ${c.shopNotes}` : ""
     for (let i = 1; i <= Math.min(pbs, 20); i++) out.push({ id: `pb-${i}`, title: `New high game (#${i})`, detail: "Beat your best game", points: 10 });
     const run = games2.reduce((m, g) => Math.max(m, strikeRun(g)), 0);
     for (const [n, pts, title] of STREAKS) if (run >= n) out.push({ id: `streak-${n}`, title, detail: `${n} strikes in a row in one game`, points: pts });
-    const clean6 = done3.filter((g) => {
+    const clean7 = done3.filter((g) => {
       const f2 = bowlingStats([g]);
       return f2.openFrames === 0;
     }).length;
-    if (clean6 >= 1) out.push({ id: "clean-1", title: "Clean game", detail: "A game with no open frames", points: 50 });
-    if (clean6 >= 5) out.push({ id: "clean-5", title: "Five clean games", detail: "Five games with no open frames", points: 150 });
+    if (clean7 >= 1) out.push({ id: "clean-1", title: "Clean game", detail: "A game with no open frames", points: 50 });
+    if (clean7 >= 5) out.push({ id: "clean-5", title: "Five clean games", detail: "Five games with no open frames", points: 150 });
     if (done3.length >= 10) {
       const avg3 = (v) => v.reduce((a, b) => a + b, 0) / v.length;
       const gain = avg3(scores.slice(-5)) - avg3(scores.slice(0, 5));
@@ -9838,9 +9881,9 @@ Shop notes: ${c.shopNotes}` : ""
   function drawSkinScene(c, tracerId, pinsId, laneId, clock2 = 0, ballT = 1) {
     const g = c.getContext("2d");
     const w = c.width, h = c.height;
-    const lane = LANES[laneId] ?? LANES["lane-house"], pins = PINS[pinsId] ?? PINS["pins-classic"], tr = TRACERS[tracerId] ?? TRACERS["tracer-aurora"];
+    const lane2 = LANES[laneId] ?? LANES["lane-house"], pins = PINS[pinsId] ?? PINS["pins-classic"], tr = TRACERS[tracerId] ?? TRACERS["tracer-aurora"];
     g.clearRect(0, 0, w, h);
-    g.fillStyle = lane.backdrop;
+    g.fillStyle = lane2.backdrop;
     g.fillRect(0, 0, w, h);
     const P = (u, v) => {
       const half = (0.46 - v * 0.2) * w;
@@ -9849,11 +9892,11 @@ Shop notes: ${c.shopNotes}` : ""
     g.beginPath();
     [P(0, 0), P(1, 0), P(1, 1), P(0, 1)].forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y));
     g.closePath();
-    g.fillStyle = lane.fill;
+    g.fillStyle = lane2.fill;
     g.fill();
     for (let i = 0; i <= 39; i++) {
       const edge = i === 0 || i === 39, major = (39 - i) % 5 === 0;
-      g.strokeStyle = edge ? lane.edge : major ? lane.major : lane.minor;
+      g.strokeStyle = edge ? lane2.edge : major ? lane2.major : lane2.minor;
       g.lineWidth = edge ? 2 : 1;
       g.beginPath();
       const a = P(i / 39, 0), b = P(i / 39, 1);
@@ -9861,13 +9904,13 @@ Shop notes: ${c.shopNotes}` : ""
       g.lineTo(b.x, b.y);
       g.stroke();
     }
-    g.strokeStyle = lane.foul;
+    g.strokeStyle = lane2.foul;
     g.lineWidth = 3;
     g.beginPath();
     g.moveTo(P(0, 0).x, P(0, 0).y);
     g.lineTo(P(1, 0).x, P(1, 0).y);
     g.stroke();
-    g.fillStyle = lane.arrow;
+    g.fillStyle = lane2.arrow;
     for (let b = 1; b <= 7; b++) {
       const u = b / 8, v = 0.2 + 0.05 * (1 - Math.abs(b - 4) / 3), p = P(u, v);
       g.beginPath();
@@ -9985,7 +10028,7 @@ Shop notes: ${c.shopNotes}` : ""
     const nx = nextUnlocks(p);
     const eq = skinsEnabled() ? equippedSkins() : { tracer: "", pins: "", lane: "" };
     const base2 = activeSkins();
-    const grid = (kind2, title) => `<h3>${title}</h3><div class="skin-grid">${SKINS.filter((s) => s.kind === kind2).map((s) => {
+    const grid2 = (kind2, title) => `<h3>${title}</h3><div class="skin-grid">${SKINS.filter((s) => s.kind === kind2).map((s) => {
       const open4 = isUnlocked(s, p);
       return `<button class="skin ${open4 ? "" : "locked"} ${eq[kind2] === s.id ? "on" : ""}" data-skin="${s.id}" data-kind="${kind2}" ${open4 ? "" : "disabled"}><canvas width="150" height="170" data-c="${s.id}"></canvas><div class="n">${esc2(s.name)}</div><div class="r ${"points" in s.unlock ? "rare" : ""}">${open4 ? eq[kind2] === s.id ? "Equipped" : "Tap to equip" : "Locked: " + esc2(unlockText(s))}</div></button>`;
     }).join("")}</div>`;
@@ -9999,7 +10042,7 @@ Shop notes: ${c.shopNotes}` : ""
       <div class="u" style="margin-top:6px">${nx.play ? `<b>Play:</b> ${esc2(nx.play.skin.name)} (${nx.play.skin.kind}): ${nx.play.need.toLocaleString()} more pins` : "Every play skin unlocked."}</div>
       <div class="u">${nx.improve ? `<b>Improve:</b> ${esc2(nx.improve.skin.name)} (${nx.improve.skin.kind}): ${nx.improve.need} more points` : "Every improvement skin unlocked."}</div></div>
     <div class="card"><div class="k">Your look</div><div class="chips"><button class="chip ${skinsEnabled() ? "sel" : ""}" id="rw-skins">Skins: ${skinsEnabled() ? "on" : "off"}</button><button class="chip ${glowEnabled() ? "sel" : ""}" id="rw-glow">Glow: ${glowEnabled() ? "on" : "off"}</button></div><div class="note">${skinsEnabled() ? "Your skins are showing in the app." : "Skins are off: the app keeps its standard look. Tap one below to try it."} Turn glow off for crisp lines and no halos, so you can read each shot exactly.</div><canvas id="rw-big" width="360" height="300" style="width:100%;max-width:420px;display:block;margin:0 auto"></canvas></div>
-    ${grid("tracer", "Ball tracers")}${grid("pins", "Pins")}${grid("lane", "Lanes")}
+    ${grid2("tracer", "Ball tracers")}${grid2("pins", "Pins")}${grid2("lane", "Lanes")}
     <div class="card"><div class="k">How you earned your points</div>
       ${p.earned.length ? `<ul>${p.earned.map((a) => `<li><b>+${a.points}</b> ${esc2(a.title)} <span class="note">${esc2(a.detail)}</span></li>`).join("")}</ul>` : `<div class="u">Nothing yet. Finish a game in My scores, or reach a target on the skills chart.</div>`}
       <div class="note">Points come from new high games, strike streaks, clean games, scoring milestones, a rising average, converted splits and skills reaching their targets.</div></div>`;
@@ -10051,8 +10094,8 @@ Shop notes: ${c.shopNotes}` : ""
     } catch {
     }
   }
-  function startGame(lane) {
-    const g = { id: newId(), at: (/* @__PURE__ */ new Date()).toISOString(), rolls: [], lane, ...nextFormat && !formatProblem(nextFormat) ? { format: { id: nextFormat.id, players: [...nextFormat.players] } } : {} };
+  function startGame(lane2) {
+    const g = { id: newId(), at: (/* @__PURE__ */ new Date()).toISOString(), rolls: [], lane: lane2, ...nextFormat && !formatProblem(nextFormat) ? { format: { id: nextFormat.id, players: [...nextFormat.players] } } : {} };
     games.push(g);
     return g;
   }
@@ -10546,8 +10589,8 @@ Games: ${p.games.join(", ")}`)) return;
       const w = l.weeks.find((x) => x.n === weekSel);
       const games2 = mine ? w?.scores[mine.id] ?? [] : [];
       if (!mine || !games2.length) return void (msg.textContent = `Enter your games for week ${weekSel} above and save first (your name on the roster must be ${myName()}).`);
-      const card = { v: 1, t: "night", leagueId: l.id, leagueName: l.name, week: weekSel, date: w.date, name: mine.name, games: games2 };
-      msg.textContent = await shareLink(`${mine.name}, week ${weekSel}`, `${mine.name}'s games for ${l.name}, week ${weekSel}: ${games2.join(", ")}. Open it in LaneIQ on the secretary's phone.`, await linkFor(card));
+      const card2 = { v: 1, t: "night", leagueId: l.id, leagueName: l.name, week: weekSel, date: w.date, name: mine.name, games: games2 };
+      msg.textContent = await shareLink(`${mine.name}, week ${weekSel}`, `${mine.name}'s games for ${l.name}, week ${weekSel}: ${games2.join(", ")}. Open it in LaneIQ on the secretary's phone.`, await linkFor(card2));
     };
     $("lo-del").onclick = async () => {
       if (!confirm(`Delete ${l.name} and all its scores from this phone?`)) return;
@@ -10567,19 +10610,19 @@ Games: ${p.games.join(", ")}`)) return;
     $("bd-close").onclick = close4;
   }
   async function boardPicture(b) {
-    const W2 = 1080;
+    const W3 = 1080;
     const rowH = 64;
     const rows2 = b.rows.slice(0, 24);
     const H3 = 360 + rows2.length * rowH + (b.awards.length ? 90 + b.awards.length * 52 : 0) + 100;
     const c = document.createElement("canvas");
-    c.width = W2;
+    c.width = W3;
     c.height = H3;
     const g = c.getContext("2d");
-    const bg = g.createLinearGradient(0, 0, W2, H3);
+    const bg = g.createLinearGradient(0, 0, W3, H3);
     bg.addColorStop(0, "#070b18");
     bg.addColorStop(1, "#1a0b2a");
     g.fillStyle = bg;
-    g.fillRect(0, 0, W2, H3);
+    g.fillRect(0, 0, W3, H3);
     const t = (s, x, y2, size, color = "#fff", weight2 = 800, align = "left") => {
       g.font = `${weight2} ${size}px system-ui, -apple-system, sans-serif`;
       g.fillStyle = color;
@@ -10600,7 +10643,7 @@ Games: ${p.games.join(", ")}`)) return;
     rows2.forEach((r, i) => {
       const y2 = top + 56 + i * rowH;
       g.fillStyle = i % 2 ? "rgba(255,255,255,.035)" : "rgba(255,255,255,.07)";
-      g.fillRect(40, y2, W2 - 80, rowH - 6);
+      g.fillRect(40, y2, W3 - 80, rowH - 6);
       t(String(r.rank), 60, y2 + 40, 30, r.rank <= 3 ? "#ffd25a" : "#fff", 900);
       t(r.name + (r.team ? `  \xB7  ${r.team}` : ""), 130, y2 + 40, 30, "#fff", 700);
       t(r.avg === null ? "\u2013" : String(Math.round(r.avg)), 640, y2 + 40, 30, "#c9d4ee", 700, "right");
@@ -10615,7 +10658,7 @@ Games: ${p.games.join(", ")}`)) return;
       for (const a of b.awards) {
         y += 52;
         t(`${a.title}: ${a.who}`, 60, y, 28, "#ffd25a", 800);
-        t(a.detail, W2 - 60, y, 24, "#c9d4ee", 600, "right");
+        t(a.detail, W3 - 60, y, 24, "#c9d4ee", 600, "right");
       }
     }
     return new Promise((r) => c.toBlob((x) => r(x), "image/png"));
@@ -10656,7 +10699,7 @@ Games: ${p.games.join(", ")}`)) return;
     const el = sheet5();
     el.classList.add("on");
     const j = S.profile?.junior;
-    const card = j ? await myCard() : null;
+    const card2 = j ? await myCard() : null;
     const roster = coachRoster(S.cards);
     el.innerHTML = `<div class="row"><h2>Juniors, parents and coaches</h2><button class="btn ghost" id="jr-close">Close</button></div>
     <div class="note">LaneIQ is a tool for families and coaches to use together. It shows a young bowler's growth against their own earlier weeks, never against other children, and the coach and the family decide what to do with it.</div>
@@ -10667,7 +10710,7 @@ Games: ${p.games.join(", ")}`)) return;
       <div class="chips"><button class="btn" id="jr-on">${j ? "Save" : "Make this a junior profile"}</button>${j ? `<button class="chip danger" id="jr-off">Turn junior mode off</button>` : ""}</div>
       <div class="note">For a bowler under 13, a parent or guardian should set this up and decide who the progress card goes to. Nothing here is uploaded.</div></div>
 
-    ${card ? `<h3>Progress card</h3><div class="card"><div class="u">The card for the last ${card.days} days. A parent or coach opens it from the link in LaneIQ.</div>${cardHtml2(card)}<div class="chips"><button class="btn" id="jr-send">Send to a parent or coach (link)</button><button class="chip" id="jr-pic">As a picture</button><button class="chip" id="jr-view">See what they'll see</button></div><div id="jr-share"></div><div class="note" id="jr-msg"></div></div>` : ""}
+    ${card2 ? `<h3>Progress card</h3><div class="card"><div class="u">The card for the last ${card2.days} days. A parent or coach opens it from the link in LaneIQ.</div>${cardHtml2(card2)}<div class="chips"><button class="btn" id="jr-send">Send to a parent or coach (link)</button><button class="chip" id="jr-pic">As a picture</button><button class="chip" id="jr-view">See what they'll see</button></div><div id="jr-share"></div><div class="note" id="jr-msg"></div></div>` : ""}
 
     <h3>My group (for a coach)</h3>
     <div class="card">${roster.length ? `<div class="note">In name order, not score order. A quiet bowler is one who hasn't bowled or practised in two weeks: a good moment for a friendly message.</div><table>${roster.map((r, i) => `<tr data-i="${i}" style="cursor:pointer"><td><b>${esc2(r.card.name)}</b><div class="note">last ${esc2(dayText(r.card.lastActive))}</div></td><td class="n">${r.card.avg ?? "\u2013"}${r.card.avgChange !== null ? `<div class="note" style="color:${r.card.avgChange >= 0 ? "var(--mint)" : "var(--dim)"}">${r.card.avgChange >= 0 ? "+" : ""}${r.card.avgChange}</div>` : ""}</td><td class="n">${r.improved ? `<span class="badge good">improving</span>` : ""}${r.quiet ? `<span class="badge low">quiet</span>` : ""}</td></tr>`).join("")}</table>` : `<div class="u">No cards yet. When a parent or bowler sends you a progress link and you open it, you can save it here.</div>`}</div>
@@ -10693,16 +10736,16 @@ Friends, live sharing and sharing data are switched off, and anything shared sho
       else notify("That doesn't look like a progress link.");
     };
     el.querySelectorAll("tr[data-i]").forEach((tr) => tr.onclick = () => openProgress(roster[Number(tr.dataset.i)].card, false));
-    if (card) {
-      $("jr-view").onclick = () => openProgress(withHighlights(card), false, true);
+    if (card2) {
+      $("jr-view").onclick = () => openProgress(withHighlights(card2), false, true);
       $("jr-send").onclick = async () => {
-        const url = `${appLink()}/#progress=${await packText(JSON.stringify(card))}`;
-        $("jr-msg").textContent = await shareLink(`${card.name}'s bowling progress`, `${card.name}'s bowling progress from LaneIQ. Open it in LaneIQ to see how they're getting on.`, url);
+        const url = `${appLink()}/#progress=${await packText(JSON.stringify(card2))}`;
+        $("jr-msg").textContent = await shareLink(`${card2.name}'s bowling progress`, `${card2.name}'s bowling progress from LaneIQ. Open it in LaneIQ to see how they're getting on.`, url);
       };
       $("jr-pic").onclick = async () => {
-        const blob = await cardPicture(card);
+        const blob = await cardPicture(card2);
         if (!blob) return void ($("jr-msg").textContent = "Couldn't draw the picture.");
-        offerShare($("jr-share"), [new File([blob], "bowling-progress.png", { type: "image/png" })], { title: `${card.name}'s bowling progress` });
+        offerShare($("jr-share"), [new File([blob], "bowling-progress.png", { type: "image/png" })], { title: `${card2.name}'s bowling progress` });
       };
     }
   }
@@ -10732,17 +10775,17 @@ Friends, live sharing and sharing data are switched off, and anything shared sho
     });
   }
   async function cardPicture(c) {
-    const W2 = 1080;
+    const W3 = 1080;
     const H3 = 1350;
     const cv = document.createElement("canvas");
-    cv.width = W2;
+    cv.width = W3;
     cv.height = H3;
     const g = cv.getContext("2d");
-    const bg = g.createLinearGradient(0, 0, W2, H3);
+    const bg = g.createLinearGradient(0, 0, W3, H3);
     bg.addColorStop(0, "#070b18");
     bg.addColorStop(1, "#1a0b2a");
     g.fillStyle = bg;
-    g.fillRect(0, 0, W2, H3);
+    g.fillRect(0, 0, W3, H3);
     const t = (s, x, y2, size, color = "#fff", weight2 = 800, align = "left") => {
       g.font = `${weight2} ${size}px system-ui, -apple-system, sans-serif`;
       g.fillStyle = color;
@@ -10755,7 +10798,7 @@ Friends, live sharing and sharing data are switched off, and anything shared sho
     let y = 340;
     for (const h of c.highlights.slice(0, 4)) {
       g.fillStyle = "rgba(255,255,255,.07)";
-      g.fillRect(50, y - 44, W2 - 100, 76);
+      g.fillRect(50, y - 44, W3 - 100, 76);
       t("\u2605 " + h, 80, y + 6, 32, "#ffd25a", 800);
       y += 96;
     }
@@ -10776,7 +10819,7 @@ Friends, live sharing and sharing data are switched off, and anything shared sho
       g.fillRect(x, y + 340 - bh, 90, bh);
       if (w.avg !== null) t(String(w.avg), x + 45, y + 332 - bh, 26, "#fff", 800, "center");
     });
-    t("Growth against their own earlier weeks. No video, location or full name on this card.", W2 / 2, H3 - 60, 24, "#8a97b2", 600, "center");
+    t("Growth against their own earlier weeks. No video, location or full name on this card.", W3 / 2, H3 - 60, 24, "#8a97b2", 600, "center");
     return new Promise((r) => cv.toBlob((x) => r(x), "image/png"));
   }
   var sheet5, close5, dayText;
@@ -11399,28 +11442,28 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     const p = computeProfile(i.shots);
     const st2 = bowlingStats(i.games);
     const seen2 = i.shots.filter((s) => s.m.pocketMiss !== null);
-    const card = { v: 1, t: "card", code: i.code, name: i.name, username: i.username, hand: i.hand, style: i.style, asOf: (i.now ?? /* @__PURE__ */ new Date()).toISOString().slice(0, 10), shots: i.shots.length };
+    const card2 = { v: 1, t: "card", code: i.code, name: i.name, username: i.username, hand: i.hand, style: i.style, asOf: (i.now ?? /* @__PURE__ */ new Date()).toISOString().slice(0, 10), shots: i.shots.length };
     const speed = p.stats.launchSpeed;
     if (o.speed) {
       if (speed && speed.n >= 5) {
-        card.speedMph = r1(speed.mean);
-        card.speedSteady = r1(speed.sd);
+        card2.speedMph = r1(speed.mean);
+        card2.speedSteady = r1(speed.sd);
       }
-      if (i.revRpm) card.revRpm = Math.round(i.revRpm);
+      if (i.revRpm) card2.revRpm = Math.round(i.revRpm);
     }
     if (o.accuracy) {
-      if (p.stats.entryAngle && p.stats.entryAngle.n >= 5) card.entryAngle = r1(p.stats.entryAngle.mean);
-      if (p.stats.breakpointFt && p.stats.breakpointFt.n >= 5) card.breakpointFt = Math.round(p.stats.breakpointFt.mean);
-      if (seen2.length >= 5) card.pocketPct = Math.round(seen2.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / seen2.length * 100);
+      if (p.stats.entryAngle && p.stats.entryAngle.n >= 5) card2.entryAngle = r1(p.stats.entryAngle.mean);
+      if (p.stats.breakpointFt && p.stats.breakpointFt.n >= 5) card2.breakpointFt = Math.round(p.stats.breakpointFt.mean);
+      if (seen2.length >= 5) card2.pocketPct = Math.round(seen2.filter((s) => Math.abs(s.m.pocketMiss) <= 1).length / seen2.length * 100);
     }
     if (o.scores && st2.completeGames >= 3) {
-      if (st2.average !== null) card.avg = Math.round(st2.average);
-      if (st2.high !== null) card.high = st2.high;
-      if (st2.strikePct !== null) card.strikePct = Math.round(st2.strikePct);
-      card.games = st2.completeGames;
+      if (st2.average !== null) card2.avg = Math.round(st2.average);
+      if (st2.high !== null) card2.high = st2.high;
+      if (st2.strikePct !== null) card2.strikePct = Math.round(st2.strikePct);
+      card2.games = st2.completeGames;
     }
-    if (o.balls && i.ballNames.length) card.balls = i.ballNames.slice(0, 8).map((b) => b.slice(0, 40));
-    return card;
+    if (o.balls && i.ballNames.length) card2.balls = i.ballNames.slice(0, 8).map((b) => b.slice(0, 40));
+    return card2;
   }
   function parseCard(json) {
     let o;
@@ -23616,23 +23659,590 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     }
   });
 
+  // core/src/camsync.ts
+  function offsetFrom(s) {
+    return { offset: (s.t1 - s.t0 + (s.t2 - s.t3)) / 2, rtt: s.t3 - s.t0 - (s.t2 - s.t1) };
+  }
+  function estimateOffset(samples) {
+    const ok = samples.map(offsetFrom).filter((x) => Number.isFinite(x.offset) && Number.isFinite(x.rtt) && x.rtt >= 0 && x.rtt < 5e3);
+    if (ok.length < MIN_PINGS) return null;
+    ok.sort((a, b) => a.rtt - b.rtt);
+    const quick = ok.slice(0, Math.max(3, Math.ceil(ok.length * 0.3)));
+    const offs = quick.map((q2) => q2.offset).sort((a, b) => a - b);
+    const med4 = offs[Math.floor(offs.length / 2)];
+    const spread = Math.max(...offs.map((o) => Math.abs(o - med4)));
+    return { offsetMs: med4, uncertaintyMs: Math.max(ok[0].rtt / 2, spread), n: ok.length, bestRttMs: ok[0].rtt };
+  }
+  function clipOffsetSec(secStartMs, offset, releaseMs) {
+    return (secStartMs - offset.offsetMs - releaseMs) / 1e3;
+  }
+  function cleanViews(v) {
+    if (!Array.isArray(v)) return [];
+    const out = [];
+    for (const x of v.slice(0, 6)) {
+      if (!x || typeof x !== "object") continue;
+      const o = x;
+      const id = clean3(o.id, 40), clipKey = clean3(o.clipKey, 80);
+      const offsetSec = Number(o.offsetSec);
+      if (!id || !clipKey || !Number.isFinite(offsetSec) || Math.abs(offsetSec) > 600) continue;
+      const nudge = Number(o.nudgeSec);
+      out.push({ id, label: clean3(o.label, 30) || "Camera", clipKey, offsetSec, nudgeSec: Number.isFinite(nudge) ? Math.max(-5, Math.min(5, nudge)) : 0, uncertaintyMs: Math.max(0, Math.min(5e3, Number(o.uncertaintyMs) || 0)), bytes: Math.max(0, Number(o.bytes) || 0), mime: clean3(o.mime, 40) });
+    }
+    return out;
+  }
+  function parseClipMeta(m) {
+    if (!m || typeof m !== "object") return null;
+    const o = m;
+    const rec2 = clean3(o.rec, 40), mime = clean3(o.mime, 40);
+    const size = Number(o.size), startMs = Number(o.startMs);
+    if (!rec2 || !Number.isFinite(size) || size <= 0 || size > 200 * 1024 * 1024 || !Number.isFinite(startMs)) return null;
+    return { rec: rec2, size, mime: mime || "video/mp4", startMs };
+  }
+  var MIN_PINGS, viewTime, mainTime, clean3, CHUNK, ClipAssembler;
+  var init_camsync = __esm({
+    "core/src/camsync.ts"() {
+      MIN_PINGS = 6;
+      viewTime = (shotClock, offsetSec, nudgeSec = 0) => shotClock - offsetSec - nudgeSec;
+      mainTime = (shotClock, recStartT) => shotClock - recStartT;
+      clean3 = (s, max) => typeof s === "string" ? s.replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
+      CHUNK = 16 * 1024;
+      ClipAssembler = class {
+        meta;
+        parts = [];
+        got = 0;
+        constructor(meta) {
+          this.meta = meta;
+        }
+        add(buf) {
+          if (this.got + buf.byteLength > this.meta.size) return false;
+          this.parts.push(buf);
+          this.got += buf.byteLength;
+          return true;
+        }
+        get received() {
+          return this.got;
+        }
+        get done() {
+          return this.got === this.meta.size;
+        }
+        progress() {
+          return this.meta.size ? this.got / this.meta.size : 0;
+        }
+        blob() {
+          return this.done ? new Blob(this.parts, { type: this.meta.mime }) : null;
+        }
+      };
+    }
+  });
+
+  // camera/multiviewui.ts
+  var multiviewui_exports = {};
+  __export(multiviewui_exports, {
+    paintViews: () => paintViews
+  });
+  async function paintViews(shot, player, host2) {
+    const views = cleanViews(shot.views);
+    if (!views.length) return void (host2.innerHTML = "");
+    host2.innerHTML = `<h3>Other angles</h3>${views.map((v) => `<div class="card" data-view="${esc2(v.id)}"><div class="row"><div class="lr-head">${esc2(v.label)}</div><span class="note">clocks within about ${Math.max(1, v.uncertaintyMs)} ms</span></div>
+    <div class="stagebox"><video playsinline muted preload="auto" style="width:100%;border-radius:10px;background:#000"></video></div>
+    <div class="chips" role="group" aria-label="Line this angle up"><span class="note">Out of step?</span><button class="chip" data-n="-1">&minus;1 s</button><button class="chip" data-n="-0.1">&minus;0.1</button><span class="note nv" aria-live="polite">${v.nudgeSec ? (v.nudgeSec > 0 ? "+" : "") + v.nudgeSec.toFixed(2) + " s" : "0"}</span><button class="chip" data-n="0.1">+0.1</button><button class="chip" data-n="1">+1 s</button></div></div>`).join("")}
+    <div class="note">Press play on the main replay and every angle follows. If an angle is a little early or late, nudge it; it's remembered for this shot.</div>`;
+    const urls = [];
+    const track = [];
+    for (const v of views) {
+      const card2 = host2.querySelector(`[data-view="${CSS.escape(v.id)}"]`);
+      const el = card2?.querySelector("video");
+      const blob = await loadClip(v.clipKey).catch(() => void 0);
+      if (!card2 || !el) continue;
+      if (!blob) {
+        card2.querySelector(".stagebox").innerHTML = `<div class="note">This angle's clip couldn't be loaded.</div>`;
+        continue;
+      }
+      const url = URL.createObjectURL(blob.type ? blob : new Blob([blob], { type: v.mime || "video/mp4" }));
+      urls.push(url);
+      el.src = url;
+      track.push({ v, el });
+      card2.querySelectorAll("[data-n]").forEach((b) => b.onclick = async () => {
+        v.nudgeSec = Math.max(-5, Math.min(5, Math.round((v.nudgeSec + Number(b.dataset.n)) * 100) / 100));
+        shot.views = views;
+        await updateShot(shot);
+        const n = card2.querySelector(".nv");
+        if (n) n.textContent = v.nudgeSec ? (v.nudgeSec > 0 ? "+" : "") + v.nudgeSec.toFixed(2) + " s" : "0";
+        follow(true);
+      });
+    }
+    const target = (t) => viewTime(player.currentTime + shot.recStartT, t.v.offsetSec, t.v.nudgeSec);
+    const follow = (hard = false) => {
+      for (const t of track) {
+        const want = target(t);
+        const dur = Number.isFinite(t.el.duration) ? t.el.duration : Infinity;
+        if (want < 0 || want > dur) {
+          if (!t.el.paused) t.el.pause();
+          if (hard || Math.abs(t.el.currentTime - Math.max(0, Math.min(dur === Infinity ? 0 : dur, want))) > 0.05) t.el.currentTime = Math.max(0, Math.min(Number.isFinite(dur) ? dur : 0, want));
+          continue;
+        }
+        if (hard || Math.abs(t.el.currentTime - want) > 0.15) t.el.currentTime = want;
+        t.el.playbackRate = player.playbackRate;
+        if (!player.paused && t.el.paused) void t.el.play().catch(() => {
+        });
+        if (player.paused && !t.el.paused) t.el.pause();
+      }
+    };
+    player.addEventListener("play", () => follow(true));
+    player.addEventListener("pause", () => follow(true));
+    player.addEventListener("seeked", () => follow(true));
+    player.addEventListener("ratechange", () => follow());
+    player.addEventListener("timeupdate", () => follow());
+    follow(true);
+    void mainTime;
+    window.addEventListener("pagehide", () => urls.forEach((u) => URL.revokeObjectURL(u)), { once: true });
+  }
+  var init_multiviewui = __esm({
+    "camera/multiviewui.ts"() {
+      init_camsync();
+      init_live();
+      init_state();
+    }
+  });
+
+  // camera/camlink.ts
+  var camlink_exports = {};
+  __export(camlink_exports, {
+    camRecordCancel: () => camRecordCancel,
+    camRecordStart: () => camRecordStart,
+    camRecordStop: () => camRecordStop,
+    cameraCount: () => cameraCount,
+    joinCameraFrom: () => joinCameraFrom,
+    noteFrame: () => noteFrame,
+    openCameras: () => openCameras,
+    wallOfMedia: () => wallOfMedia
+  });
+  function noteFrame(wall, media) {
+    lastWall = wall;
+    lastMedia = media;
+  }
+  async function gathered2(pc) {
+    if (pc.iceGatheringState !== "complete")
+      await new Promise((res) => {
+        const done3 = () => pc.iceGatheringState === "complete" && (pc.removeEventListener("icegatheringstatechange", done3), res());
+        pc.addEventListener("icegatheringstatechange", done3);
+        setTimeout(res, 5e3);
+      });
+    return pc.localDescription.sdp;
+  }
+  function startPings(l) {
+    let n = 0;
+    const burst = () => {
+      if (l.state !== "connected") return;
+      l.samples = [];
+      for (let i = 0; i < 16; i++) setTimeout(() => send2(l, { t: "ping", n: n++, t0: performance.now() }), i * 90);
+    };
+    burst();
+    l.timer = window.setInterval(burst, 45e3);
+  }
+  function onPrimaryMessage(l, e) {
+    if (typeof e.data !== "string") {
+      l.asm?.add(e.data);
+      return;
+    }
+    try {
+      const m = JSON.parse(e.data);
+      if (m.t === "hello") {
+        l.label = String(m.label ?? "Camera").slice(0, 30);
+        l.device = String(m.device ?? "").slice(0, 40);
+      } else if (m.t === "pong" && typeof m.t0 === "number") {
+        l.samples.push({ t0: m.t0, t1: Number(m.t1), t2: Number(m.t2), t3: performance.now() });
+        const o = estimateOffset(l.samples);
+        if (o) l.offset = o;
+      } else if (m.t === "clip") {
+        const meta = parseClipMeta(m);
+        l.asm = meta ? new ClipAssembler(meta) : null;
+      } else if (m.t === "clipend" && l.asm?.done) {
+        const meta = l.asm.meta, blob = l.asm.blob();
+        l.asm = null;
+        const r = recs.get(meta.rec);
+        if (blob && r) {
+          r.got.push({ link: l, blob, startMs: meta.startMs });
+          l.last = `received ${(blob.size / 1e6).toFixed(1)} MB`;
+          void tryAttach(meta.rec);
+        }
+      } else if (m.t === "nocam") {
+        l.last = `can't record: ${String(m.reason ?? "").slice(0, 80)}`;
+      }
+      renderPanel();
+    } catch {
+    }
+  }
+  function camRecordStart(rec2) {
+    const r = { sent: /* @__PURE__ */ new Set(), got: [], done: false };
+    for (const l of connected()) {
+      send2(l, { t: "rec", rec: rec2 });
+      r.sent.add(l.id);
+    }
+    if (r.sent.size) recs.set(rec2, r);
+  }
+  function camRecordStop(rec2, shot, releaseWall) {
+    const r = recs.get(rec2);
+    if (!r) return;
+    r.shot = shot;
+    r.releaseWall = releaseWall;
+    for (const l of links) if (r.sent.has(l.id)) send2(l, { t: "stop", rec: rec2, tail: 250 });
+    void tryAttach(rec2);
+    setTimeout(() => recs.delete(rec2), 12e4);
+  }
+  function camRecordCancel(rec2) {
+    const r = recs.get(rec2);
+    if (!r) return;
+    for (const l of links) if (r.sent.has(l.id)) send2(l, { t: "cancel", rec: rec2 });
+    recs.delete(rec2);
+  }
+  async function tryAttach(recId2) {
+    const r = recs.get(recId2);
+    if (!r?.shot || r.releaseWall === void 0) return;
+    const shot = r.shot;
+    while (r.got.length) {
+      const c = r.got.shift();
+      const off = c.link.offset;
+      if (!off) {
+        notify(`The ${c.link.label} clip arrived before its clock was lined up, so it can't be placed on the shot. It will work next time.`);
+        continue;
+      }
+      const view3 = { id: newId(), label: c.link.label, clipKey: `${shot.id}~${c.link.id}`, offsetSec: clipOffsetSec(c.startMs, off, r.releaseWall), nudgeSec: 0, uncertaintyMs: Math.round(off.uncertaintyMs), bytes: c.blob.size, mime: c.blob.type || "video/mp4" };
+      try {
+        await saveClip(view3.clipKey, c.blob);
+        shot.views = cleanViews([...(shot.views ?? []).filter((v) => v.clipKey !== view3.clipKey), view3]);
+        await updateShot(shot);
+        c.link.last = `added to your last shot (clocks within about ${view3.uncertaintyMs} ms)`;
+        notify(`${view3.label} added to that shot.`);
+        logTrack("extra camera clip attached", { label: view3.label, bytes: c.blob.size, offsetSec: +view3.offsetSec.toFixed(3), uncertaintyMs: view3.uncertaintyMs });
+      } catch (e) {
+        logTrack("extra camera clip not saved", { error: String(e) });
+      }
+    }
+    renderPanel();
+  }
+  function newLink() {
+    const pc = new RTCPeerConnection({ iceServers: ICE2 });
+    const l = { id: newId().slice(0, 8), pc, dc: null, label: "Camera", device: "", state: "waiting", samples: [], offset: null, asm: null, last: "", timer: 0 };
+    pc.onconnectionstatechange = () => {
+      if (["failed", "disconnected", "closed"].includes(pc.connectionState) && l.state === "connected") {
+        l.state = "ended";
+        clearInterval(l.timer);
+        renderPanel();
+      }
+    };
+    links.push(l);
+    return l;
+  }
+  function wirePrimary(l, dc) {
+    l.dc = dc;
+    dc.binaryType = "arraybuffer";
+    dc.onopen = () => {
+      l.state = "connected";
+      send2(l, { t: "hi", name: S.profile?.name ?? "LaneIQ" });
+      startPings(l);
+      renderPanel();
+    };
+    dc.onclose = () => {
+      l.state = "ended";
+      clearInterval(l.timer);
+      renderPanel();
+    };
+    dc.onmessage = (e) => onPrimaryMessage(l, e);
+  }
+  function openCameras() {
+    const el = sheet8();
+    el.classList.add("on");
+    el.dataset.cams = "1";
+    renderPanel();
+  }
+  function renderPanel() {
+    const el = sheet8();
+    if (!el.classList.contains("on") || el.dataset.cams !== "1") return;
+    const live3 = links.filter((l) => l.state !== "ended");
+    el.innerHTML = `<div class="row"><h2>Extra cameras</h2><button class="btn ghost" id="cl-close">Close</button></div>
+    <div class="note">Link an iPad or a second phone at another angle. While they're linked, they record every throw together with this camera, send the clips back, and every shot's replay shows all the angles in step. They connect directly to this phone: nothing goes through a server. Keep them on the same Wi-Fi or hotspot, with the app open and the screen on.</div>
+    ${live3.length ? live3.map((l) => `<div class="card"><div class="row"><div class="lr-head">${esc2(l.label)}${l.device ? ` <span class="note">${esc2(l.device)}</span>` : ""}</div><span class="badge ${l.state === "connected" ? "good" : "tentative"}">${l.state === "connected" ? "connected" : "connecting\u2026"}</span></div>
+      <div class="note">${l.offset ? `Clocks lined up to within about ${Math.max(1, Math.round(l.offset.uncertaintyMs))} ms (${l.offset.n} checks).` : l.state === "connected" ? "Lining up clocks\u2026" : "Waiting for it to join."}${l.last ? ` Last: ${esc2(l.last)}.` : ""}</div>
+      <div class="chips"><button class="btn ghost danger" data-rm="${esc2(l.id)}">Disconnect</button></div></div>`).join("") : `<div class="card"><div class="u">No extra cameras linked.</div></div>`}
+    <div class="chips"><button class="btn" id="cl-add">Add a camera</button></div>
+    <div class="note">The extra camera's video isn't analysed yet: you get it synced in the replay. Tracking, speed and spin still come from this camera. Put it where it sees something this one can't, such as a close-up of the release or the approach from the side.</div>`;
+    $("cl-close").onclick = () => {
+      el.dataset.cams = "";
+      closeSheet();
+    };
+    $("cl-add").onclick = () => void hostLink();
+    el.querySelectorAll("[data-rm]").forEach((b) => b.onclick = () => {
+      const l = links.find((x) => x.id === b.dataset.rm);
+      if (l) {
+        send2(l, { t: "bye" });
+        l.pc.close();
+        l.state = "ended";
+        clearInterval(l.timer);
+      }
+      renderPanel();
+    });
+  }
+  async function hostLink() {
+    const el = sheet8();
+    el.dataset.cams = "";
+    el.innerHTML = `<div class="row"><h2>Starting\u2026</h2></div><div class="note">Getting your connection ready. Keep the app open.</div>`;
+    const l = newLink();
+    wirePrimary(l, l.pc.createDataChannel("laneiq-cam"));
+    await l.pc.setLocalDescription(await l.pc.createOffer());
+    const offer = await packText(JSON.stringify({ v: 1, sdp: await gathered2(l.pc), name: S.profile?.name ?? "LaneIQ" }));
+    const link = `${appLink()}/#cam=${offer}`;
+    if (location.search.includes("camtest")) globalThis.__camLink = link;
+    el.innerHTML = `<div class="row"><h2>Add a camera</h2><button class="btn ghost" id="cl-cancel">Cancel</button></div>
+    <div class="card"><div class="k">1. Open this on the other device</div><div class="u">On the iPad or phone, open LaneIQ (add it to the home screen first if you like), then open this link there. AirDrop, a message or an email to yourself all work.</div><div class="chips"><button class="btn" id="cl-send">Send the link</button></div><div class="note" id="cl-sent"></div></div>
+    <div class="card"><div class="k">2. Paste its reply</div><div class="u">The other device shows a reply code. Paste it here.</div><div class="field"><input id="cl-reply" placeholder="Paste the reply code"></div><div class="chips"><button class="btn" id="cl-connect">Connect</button></div><div class="note" id="cl-msg"></div></div>`;
+    $("cl-cancel").onclick = () => {
+      l.pc.close();
+      l.state = "ended";
+      openCameras();
+    };
+    $("cl-send").onclick = async () => ($("cl-sent").textContent = await shareLink("Add this device as a camera", "Open this in LaneIQ on the device you want to use as an extra camera.", link), void 0);
+    $("cl-connect").onclick = async () => {
+      const code2 = $("cl-reply").value.trim().replace(/^CAM-/, "");
+      const json = code2 ? await unpackText(code2) : null;
+      let ans = null;
+      try {
+        ans = json ? JSON.parse(json) : null;
+      } catch {
+      }
+      if (!ans?.sdp) return void ($("cl-msg").textContent = "That reply code isn't right. Ask the other device to show it again.");
+      try {
+        await l.pc.setRemoteDescription({ type: "answer", sdp: ans.sdp });
+        $("cl-msg").textContent = "Connecting\u2026";
+        const wait = setInterval(() => {
+          if (l.state === "connected") {
+            clearInterval(wait);
+            el.dataset.cams = "1";
+            renderPanel();
+          }
+          if (l.state === "ended") clearInterval(wait);
+        }, 400);
+      } catch {
+        $("cl-msg").textContent = "Couldn't use that reply. Start again.";
+      }
+    };
+  }
+  async function joinCameraFrom(code2) {
+    const json = await unpackText(code2);
+    let offer = null;
+    try {
+      offer = json ? JSON.parse(json) : null;
+    } catch {
+    }
+    const el = sheet8();
+    el.classList.add("on");
+    if (!offer?.sdp) {
+      el.innerHTML = `<div class="row"><h2>Extra camera</h2><button class="btn ghost" id="cx-close">Close</button></div><div class="card"><div class="u">That link is damaged or isn't a LaneIQ camera link.</div></div>`;
+      $("cx-close").onclick = closeSheet;
+      return;
+    }
+    const from = String(offer.name ?? "LaneIQ").slice(0, 40);
+    el.innerHTML = `<div class="row"><h2>Use this as an extra camera?</h2><button class="btn ghost" id="cx-close">Not now</button></div>
+    <div class="card"><div class="u">${esc2(from)}'s lane camera wants to use this device as another angle. It will record each throw and send the clip to that phone. Nothing leaves your devices.</div>
+    <div class="field"><label for="cx-label">What is this angle?</label><select id="cx-label">${LABELS.map((x) => `<option>${esc2(x)}</option>`).join("")}</select></div>
+    <div class="chips"><button class="btn" id="cx-yes">Use this device</button></div></div>`;
+    $("cx-close").onclick = closeSheet;
+    $("cx-yes").onclick = async () => {
+      const label2 = $("cx-label").value;
+      el.innerHTML = `<div class="row"><h2>Connecting\u2026</h2></div><div class="note">Getting your reply ready. Keep the app open.</div>`;
+      const pc = new RTCPeerConnection({ iceServers: ICE2 });
+      pc.ondatachannel = (e) => startExtra(pc, e.channel, label2);
+      await pc.setRemoteDescription({ type: "offer", sdp: offer.sdp });
+      await pc.setLocalDescription(await pc.createAnswer());
+      const reply = await packText(JSON.stringify({ v: 1, sdp: await gathered2(pc) }));
+      if (location.search.includes("camtest")) globalThis.__camReply = reply;
+      el.innerHTML = `<div class="row"><h2>Send this reply back</h2><button class="btn ghost" id="cx-close">Cancel</button></div>
+      <div class="card"><div class="u">Send this code to the lane camera and paste it in its Extra cameras screen. Keep this screen open until it connects.</div><div class="u" style="word-break:break-all;user-select:all;max-height:6em;overflow:auto">${esc2(reply)}</div><div class="chips"><button class="btn" id="cx-copy">Copy and share</button></div><div class="note" id="cx-sent"></div></div>`;
+      $("cx-close").onclick = () => {
+        pc.close();
+        closeSheet();
+      };
+      $("cx-copy").onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(reply);
+        } catch {
+        }
+        const nav = navigator;
+        try {
+          if (nav.share) await nav.share({ title: "LaneIQ camera reply", text: reply });
+        } catch {
+        }
+        $("cx-sent").textContent = "Reply copied. Paste it into a message to the lane camera.";
+      };
+    };
+  }
+  function pickMime() {
+    for (const m of ["video/mp4", "video/webm;codecs=vp9", "video/webm"]) if (window.MediaRecorder?.isTypeSupported?.(m)) return m;
+    return void 0;
+  }
+  async function startExtra(pc, dc, label2) {
+    dc.binaryType = "arraybuffer";
+    const ex = { pc, dc, stream: null, cur: null, label: label2 };
+    extra = ex;
+    const ov = document.createElement("div");
+    ov.id = "camx";
+    ov.style.cssText = "position:fixed;inset:0;z-index:99999;background:#000;display:flex;flex-direction:column";
+    ov.innerHTML = `<video id="camx-v" playsinline muted autoplay style="flex:1;width:100%;object-fit:contain;background:#000"></video>
+    <div style="padding:10px 14px;background:rgba(5,7,13,.92);color:#e8f0ff;font:600 14px system-ui"><div id="camx-s">Starting the camera\u2026</div><div class="note" style="color:#9fb0cc;font-weight:500;margin-top:2px">${esc2(label2)} \xB7 recording starts and stops by itself when the lane camera does. Keep this screen on.</div><button id="camx-x" style="margin-top:8px;padding:8px 14px;border-radius:10px;border:0;background:#2a3350;color:#fff;font:600 14px system-ui">Disconnect</button></div>`;
+    document.body.appendChild(ov);
+    const status2 = (m) => {
+      const s = document.getElementById("camx-s");
+      if (s) s.textContent = m;
+    };
+    const finish2 = () => {
+      try {
+        dc.close();
+        pc.close();
+      } catch {
+      }
+      ex.stream?.getTracks().forEach((t) => t.stop());
+      try {
+        wake?.release();
+      } catch {
+      }
+      ov.remove();
+      extra = null;
+    };
+    document.getElementById("camx-x").onclick = finish2;
+    dc.onclose = () => {
+      status2("Disconnected.");
+      setTimeout(finish2, 1500);
+    };
+    let wake = null;
+    try {
+      wake = await navigator.wakeLock?.request("screen") ?? null;
+    } catch {
+    }
+    try {
+      ex.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } }, audio: false });
+      const v = document.getElementById("camx-v");
+      v.srcObject = ex.stream;
+      await v.play().catch(() => {
+      });
+      status2("Connected. Waiting for the next throw.");
+    } catch (e) {
+      status2("This device's camera isn't available. Allow the camera for LaneIQ and link again.");
+      dc.send(JSON.stringify({ t: "nocam", reason: e instanceof Error ? e.message : "camera unavailable" }));
+    }
+    const hello = () => dc.send(JSON.stringify({ t: "hello", label: label2, device: /iPad/.test(navigator.userAgent) || navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1 ? "iPad" : /iPhone/.test(navigator.userAgent) ? "iPhone" : "device" }));
+    if (dc.readyState === "open") hello();
+    else dc.onopen = hello;
+    const startRec = (rec2) => {
+      if (!ex.stream || !window.MediaRecorder) return;
+      stopCur(true);
+      const mime = pickMime();
+      const mr = new MediaRecorder(ex.stream, mime ? { mimeType: mime, videoBitsPerSecond: 8e6 } : void 0);
+      const chunks = [];
+      const cur2 = { rec: rec2, mr, chunks, startMs: performance.now(), kill: window.setTimeout(() => stopCur(true), 12e4) };
+      mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+      mr.onstart = () => cur2.startMs = performance.now();
+      mr.start(1e3);
+      ex.cur = cur2;
+      status2("Recording this throw\u2026");
+    };
+    const stopCur = (discard) => {
+      const c = ex.cur;
+      if (!c) return;
+      ex.cur = null;
+      clearTimeout(c.kill);
+      if (discard) {
+        try {
+          c.mr.ondataavailable = null;
+          c.mr.state !== "inactive" && c.mr.stop();
+        } catch {
+        }
+      }
+    };
+    const finishRec = (rec2, tail) => {
+      const c = ex.cur;
+      if (!c || c.rec !== rec2) return;
+      ex.cur = null;
+      clearTimeout(c.kill);
+      c.mr.onstop = async () => {
+        const blob = new Blob(c.chunks, { type: c.mr.mimeType || "video/mp4" });
+        if (!blob.size) return status2("Nothing was recorded.");
+        status2(`Sending the clip (${(blob.size / 1e6).toFixed(1)} MB)\u2026`);
+        try {
+          dc.send(JSON.stringify({ t: "clip", rec: rec2, size: blob.size, mime: blob.type, startMs: c.startMs }));
+          const buf = await blob.arrayBuffer();
+          for (let i = 0; i < buf.byteLength; i += CHUNK) {
+            while (dc.bufferedAmount > 1e6) await new Promise((r) => setTimeout(r, 20));
+            dc.send(buf.slice(i, i + CHUNK));
+          }
+          dc.send(JSON.stringify({ t: "clipend", rec: rec2 }));
+          status2("Sent. Waiting for the next throw.");
+        } catch {
+          status2("Couldn't send the clip. Check the connection.");
+        }
+      };
+      setTimeout(() => c.mr.state !== "inactive" && c.mr.stop(), Math.max(0, Math.min(2e3, tail)));
+    };
+    dc.onmessage = (e) => {
+      if (typeof e.data !== "string") return;
+      try {
+        const m = JSON.parse(e.data);
+        if (m.t === "ping") dc.send(JSON.stringify({ t: "pong", n: m.n, t0: m.t0, t1: performance.now(), t2: performance.now() }));
+        else if (m.t === "rec") startRec(String(m.rec).slice(0, 40));
+        else if (m.t === "stop") finishRec(String(m.rec).slice(0, 40), Number(m.tail) || 250);
+        else if (m.t === "cancel") {
+          stopCur(true);
+          status2("Connected. Waiting for the next throw.");
+        } else if (m.t === "bye") finish2();
+      } catch {
+      }
+    };
+  }
+  var ICE2, sheet8, closeSheet, LABELS, lastWall, lastMedia, wallOfMedia, links, recs, connected, cameraCount, send2, extra;
+  var init_camlink = __esm({
+    "camera/camlink.ts"() {
+      init_camsync();
+      init_db();
+      init_health();
+      init_live();
+      init_friends();
+      init_state();
+      init_toast();
+      ICE2 = [{ urls: "stun:stun.l.google.com:19302" }];
+      sheet8 = () => $("friends");
+      closeSheet = () => (sheet8().classList.remove("on"), sheet8().innerHTML = "");
+      LABELS = ["Close-up of the release", "Side view", "Approach from behind", "Pins end", "Other angle"];
+      lastWall = 0;
+      lastMedia = 0;
+      wallOfMedia = (media) => lastWall + (media - lastMedia) * 1e3;
+      links = [];
+      recs = /* @__PURE__ */ new Map();
+      connected = () => links.filter((l) => l.state === "connected" && l.dc?.readyState === "open");
+      cameraCount = () => connected().length;
+      send2 = (l, m) => {
+        if (l.dc?.readyState === "open") l.dc.send(JSON.stringify(m));
+      };
+      if (typeof location !== "undefined" && location.search.includes("camtest")) globalThis.__cam = { camRecordStart, camRecordStop, links, wallOfMedia, perf: () => performance.now(), ui: () => Promise.resolve().then(() => (init_multiviewui(), multiviewui_exports)), state: () => Promise.resolve().then(() => (init_state(), state_exports)) };
+      extra = null;
+    }
+  });
+
   // core/src/coachplan.ts
   function cleanStep(s) {
     if (!s || typeof s !== "object") return null;
     const drill = typeof s.drill === "string" && DRILL_IDS.has(s.drill) ? s.drill : void 0;
     const def = drill ? DRILLS2.find((d) => d.id === drill) : null;
-    const title = clean3(s.title, PLAN_LIMITS.title) || def?.name || "";
+    const title = clean4(s.title, PLAN_LIMITS.title) || def?.name || "";
     if (!title) return null;
     const board = def?.needs.includes("board") ? num6(s.board, 1, 39) : void 0;
     const mph = def?.needs.includes("mph") ? num6(s.mph, 5, 25) : void 0;
-    return { ...drill ? { drill } : {}, title, detail: clean3(s.detail, PLAN_LIMITS.detail), minutes: Math.round(num6(s.minutes, 1, PLAN_LIMITS.maxMinutes) ?? 5), ...board !== void 0 ? { board: Math.round(board) } : {}, ...mph !== void 0 ? { mph: Math.round(mph * 10) / 10 } : {} };
+    return { ...drill ? { drill } : {}, title, detail: clean4(s.detail, PLAN_LIMITS.detail), minutes: Math.round(num6(s.minutes, 1, PLAN_LIMITS.maxMinutes) ?? 5), ...board !== void 0 ? { board: Math.round(board) } : {}, ...mph !== void 0 ? { mph: Math.round(mph * 10) / 10 } : {} };
   }
   function newPlan(from, title, note, steps, now = /* @__PURE__ */ new Date(), id = Math.random().toString(36).slice(2, 10)) {
     const cleaned = steps.map(cleanStep).filter((s) => !!s).slice(0, PLAN_LIMITS.steps);
-    const name = clean3(from, PLAN_LIMITS.name);
-    const t = clean3(title, PLAN_LIMITS.title);
+    const name = clean4(from, PLAN_LIMITS.name);
+    const t = clean4(title, PLAN_LIMITS.title);
     if (!cleaned.length || !name || !t) return null;
-    return { v: 1, t: "plan", id: clean3(id, 16) || "plan", from: name, title: t, note: clean3(note, PLAN_LIMITS.note), steps: cleaned, at: now.toISOString() };
+    return { v: 1, t: "plan", id: clean4(id, 16) || "plan", from: name, title: t, note: clean4(note, PLAN_LIMITS.note), steps: cleaned, at: now.toISOString() };
   }
   function parsePlan(json) {
     let j;
@@ -23645,14 +24255,14 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     const o = j;
     if (o.v !== 1 || o.t !== "plan" || !Array.isArray(o.steps)) return null;
     const at4 = typeof o.at === "string" && !Number.isNaN(Date.parse(o.at)) ? new Date(o.at) : /* @__PURE__ */ new Date();
-    return newPlan(clean3(o.from, PLAN_LIMITS.name), clean3(o.title, PLAN_LIMITS.title), clean3(o.note, PLAN_LIMITS.note), o.steps, at4, clean3(o.id, 16));
+    return newPlan(clean4(o.from, PLAN_LIMITS.name), clean4(o.title, PLAN_LIMITS.title), clean4(o.note, PLAN_LIMITS.note), o.steps, at4, clean4(o.id, 16));
   }
-  var PLAN_LIMITS, clean3, num6, DRILL_IDS, planMinutes;
+  var PLAN_LIMITS, clean4, num6, DRILL_IDS, planMinutes;
   var init_coachplan = __esm({
     "core/src/coachplan.ts"() {
       init_drills();
       PLAN_LIMITS = { title: 60, note: 400, detail: 240, name: 40, steps: 8, maxMinutes: 60 };
-      clean3 = (s, max) => typeof s === "string" ? s.replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
+      clean4 = (s, max) => typeof s === "string" ? s.replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
       num6 = (n, lo, hi) => typeof n === "number" && Number.isFinite(n) && n >= lo && n <= hi ? n : void 0;
       DRILL_IDS = new Set(DRILLS2.map((d) => d.id));
       planMinutes = (p) => p.steps.reduce((a, s) => a + s.minutes, 0);
@@ -24047,8 +24657,8 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       };
       fromLatin1 = (s) => Uint8Array.from(s, (c) => c.charCodeAt(0) & 255);
       fromHex = (h) => {
-        const clean6 = h.replace(/[^0-9A-Fa-f]/g, "");
-        const even = clean6.length % 2 ? clean6 + "0" : clean6;
+        const clean7 = h.replace(/[^0-9A-Fa-f]/g, "");
+        const even = clean7.length % 2 ? clean7 + "0" : clean7;
         const out = new Uint8Array(even.length / 2);
         for (let i = 0; i < out.length; i++) out[i] = parseInt(even.slice(2 * i, 2 * i + 2), 16);
         return out;
@@ -24194,8 +24804,8 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       progress3(done3++, runs.length);
       const { data } = await T.recognize(prepare(src, c, ch, inv), "eng");
       for (const w of data.words) {
-        const clean6 = w.text.replace(/[^A-Za-z0-9]/g, "");
-        if (w.confidence > 40 && clean6.length >= 2 && /[A-Za-z]/.test(clean6)) words.set(clean6.toUpperCase(), Math.max(words.get(clean6.toUpperCase()) ?? 0, w.confidence));
+        const clean7 = w.text.replace(/[^A-Za-z0-9]/g, "");
+        if (w.confidence > 40 && clean7.length >= 2 && /[A-Za-z]/.test(clean7)) words.set(clean7.toUpperCase(), Math.max(words.get(clean7.toUpperCase()) ?? 0, w.confidence));
       }
     }
     return [...words.entries()].sort((a, b) => b[1] - a[1]).map(([w]) => w).join(" ");
@@ -24303,7 +24913,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       out.innerHTML = `
       ${myBall ? `<div class="card"><div class="k">Looks like a ball you already have</div><div class="lr-head">${esc2(myBall.name)}</div><div class="u">${Math.round(mine.confidence * 100)}% match to the looks you've taught it.</div></div>` : ""}
       <div class="card"><div class="k">${text ? "Best matches in the catalog" : "Possible matches from colors alone"}</div>
-        ${found.length ? found.map((f2, i) => card(f2, i)).join("") : `<div class="u">No confident match. Type the name printed on the ball and tap Identify again.</div>`}
+        ${found.length ? found.map((f2, i) => card2(f2, i)).join("") : `<div class="u">No confident match. Type the name printed on the ball and tap Identify again.</div>`}
         ${text ? "" : `<div class="note">Colors alone are weak evidence. Add the name on the ball for a real answer.</div>`}</div>`;
       out.querySelectorAll("[data-add]").forEach(
         (b) => b.onclick = async () => {
@@ -24320,7 +24930,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
         }
       );
     };
-    function card(f2, i) {
+    function card2(f2, i) {
       const b = f2.ball;
       const inArsenal = S.arsenal.some((x) => x.catalogKey === b.key);
       return `<div style="padding:10px 0;border-top:1px solid var(--line)"><div class="row"><b>${esc2(b.manufacturer)} ${esc2(b.name)}</b><span class="badge ${f2.confidence === "strong" ? "good" : f2.confidence === "likely" ? "moderate" : "tentative"}">${f2.confidence}</span></div>
@@ -24342,8 +24952,8 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
 
   // camera/patternsheet.ts
   function close8() {
-    sheet8().classList.remove("on");
-    sheet8().innerHTML = "";
+    sheet9().classList.remove("on");
+    sheet9().innerHTML = "";
     onDone?.();
   }
   function preview(canvas, p) {
@@ -24351,7 +24961,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
   }
   function openPatterns(done3) {
     onDone = done3 ?? null;
-    const el = sheet8();
+    const el = sheet9();
     el.classList.add("on");
     const list = S.myPatterns;
     el.innerHTML = `<div class="row"><h2>My oil patterns</h2><button class="btn ghost" id="mp-close">Close</button></div>
@@ -24383,20 +24993,20 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       const p = S.myPatterns.find((x) => x.id === c.dataset.prev);
       if (p) preview(c, p);
     });
-    el.querySelectorAll("[data-p]").forEach((card) => {
-      const p = S.myPatterns.find((x) => x.id === card.dataset.p);
-      card.querySelector("[data-act=use]")?.addEventListener("click", async () => {
+    el.querySelectorAll("[data-p]").forEach((card2) => {
+      const p = S.myPatterns.find((x) => x.id === card2.dataset.p);
+      card2.querySelector("[data-act=use]")?.addEventListener("click", async () => {
         S.where = { ...S.where, patternId: p.id };
         await saveCoach();
         openPatterns(done3);
       });
-      card.querySelector("[data-act=off]")?.addEventListener("click", async () => {
+      card2.querySelector("[data-act=off]")?.addEventListener("click", async () => {
         S.where = { ...S.where, patternId: "" };
         await saveCoach();
         openPatterns(done3);
       });
-      card.querySelector("[data-act=edit]")?.addEventListener("click", () => openEditor2({ rows: p.rows ?? [], tableOk: !!p.rows?.length, notes: [], lengthFt: p.lengthFt, volumeMl: p.volumeMl, ratio: p.ratio, forwardMl: p.forwardMl, reverseMl: p.reverseMl, brushDropFt: p.brushDropFt }, p.from, p.name, p));
-      card.querySelector("[data-act=del]")?.addEventListener("click", async () => {
+      card2.querySelector("[data-act=edit]")?.addEventListener("click", () => openEditor2({ rows: p.rows ?? [], tableOk: !!p.rows?.length, notes: [], lengthFt: p.lengthFt, volumeMl: p.volumeMl, ratio: p.ratio, forwardMl: p.forwardMl, reverseMl: p.reverseMl, brushDropFt: p.brushDropFt }, p.from, p.name, p));
+      card2.querySelector("[data-act=del]")?.addEventListener("click", async () => {
         if (!confirm(`Delete ${p.name}?`)) return;
         S.myPatterns = S.myPatterns.filter((x) => x.id !== p.id);
         if (S.where.patternId === p.id) S.where = { ...S.where, patternId: "" };
@@ -24428,7 +25038,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     return { sheet: readSheetText(text), from: "photo" };
   }
   function openEditor2(r, from, name, existing) {
-    const el = sheet8();
+    const el = sheet9();
     el.classList.add("on");
     const field = (id, label2, v, hint) => `<div class="field"><label>${label2}</label><input id="${id}" inputmode="decimal" value="${v ?? ""}" placeholder="${hint}"></div>`;
     el.innerHTML = `<div class="row"><h2>${existing ? "Edit pattern" : "Check the pattern"}</h2><button class="btn ghost" id="pe-back">Back</button></div>
@@ -24493,7 +25103,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       openPatterns(onDone ?? void 0);
     };
   }
-  var sheet8, onDone, describe;
+  var sheet9, onDone, describe;
   var init_patternsheet = __esm({
     "camera/patternsheet.ts"() {
       init_pdftext();
@@ -24505,7 +25115,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       init_oilview();
       init_scanlab();
       init_db();
-      sheet8 = () => $("coachsheet");
+      sheet9 = () => $("coachsheet");
       onDone = null;
       describe = (p) => [`${p.lengthFt} ft (${lengthClass(p.lengthFt)})`, p.volumeMl !== void 0 ? `${p.volumeMl} mL` : "", p.ratio !== void 0 ? `${p.ratio}:1` : ""].filter(Boolean).join(" \xB7 ");
     }
@@ -24652,19 +25262,19 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
     const json = await unpackText(value);
     const p = json ? parsePlan(json) : null;
     if (!p) return void notify("That plan link is damaged or isn't from LaneIQ.");
-    const el = sheet9();
+    const el = sheet10();
     el.classList.add("on");
     el.innerHTML = `<div class="row"><h2>A plan from ${esc2(p.from)}</h2><button class="btn ghost" id="cp-no">Not now</button></div>
     <div class="card"><div class="lr-head">${esc2(p.title)}</div>${p.note ? `<div class="u">${esc2(p.note)}</div>` : ""}<div class="note">${p.steps.length} step${p.steps.length === 1 ? "" : "s"} \xB7 about ${planMinutes(p)} minutes</div>
     ${p.steps.map((s) => `<div class="drow"><div><b>${esc2(s.title)}</b> <small>${s.minutes} min</small></div><div class="note dnote">${esc2(s.detail)}${s.drill ? ` Scored by the camera${s.board !== void 0 ? `, board ${s.board}` : ""}${s.mph !== void 0 ? `, ${s.mph} mph` : ""}.` : ""}</div></div>`).join("")}</div>
     <div class="note">${S.coachPlan ? `This replaces the plan you have now (${esc2(S.coachPlan.title)} from ${esc2(S.coachPlan.from)}). ` : ""}It becomes your Today's training; you can go back to your own routine any time. Nothing about you is sent back to ${esc2(p.from)}.</div>
     <div class="chips"><button class="btn" id="cp-yes">Use this plan</button></div>`;
-    const close14 = () => (el.classList.remove("on"), el.innerHTML = "");
-    $("cp-no").onclick = close14;
+    const close15 = () => (el.classList.remove("on"), el.innerHTML = "");
+    $("cp-no").onclick = close15;
     $("cp-yes").onclick = async () => {
       S.coachPlan = p;
       await saveCoach();
-      close14();
+      close15();
       notify(`Plan from ${p.from} is now your Today's training.`);
       const { openTraining: openTraining2 } = await Promise.resolve().then(() => (init_trainingui(), trainingui_exports));
       void openTraining2();
@@ -24672,7 +25282,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
   }
   function openPlanWriter() {
     bump("plan-writer");
-    const el = sheet9();
+    const el = sheet10();
     el.classList.add("on");
     const row4 = (i) => `<div class="card" data-row="${i}"><div class="k">Step ${i + 1}</div>
     <div class="field"><label for="pw-d${i}">What</label><select id="pw-d${i}">${DRILL_OPTS}</select></div>
@@ -24705,7 +25315,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       $("pw-msg").textContent = await shareLink(plan.title, `${plan.from} sent you a practice plan: ${plan.title}. Open it in LaneIQ.`, url);
     };
   }
-  var sheet9, DRILL_OPTS;
+  var sheet10, DRILL_OPTS;
   var init_coachplanui = __esm({
     "camera/coachplanui.ts"() {
       init_health();
@@ -24715,7 +25325,7 @@ ${p.crew.members.length} bowler${p.crew.members.length === 1 ? "" : "s"}: ${p.cr
       init_live();
       init_state();
       init_friends();
-      sheet9 = () => $("review");
+      sheet10 = () => $("review");
       DRILL_OPTS = `<option value="">My own instruction</option>${DRILLS2.map((d) => `<option value="${d.id}">${esc2(d.name)} (camera-scored)</option>`).join("")}`;
     }
   });
@@ -24813,7 +25423,7 @@ ${url}`);
     return json === null ? null : decodeSession(b64urlEncode(json));
   }
   function askForUsername(then) {
-    const el = sheet10();
+    const el = sheet11();
     el.classList.add("on");
     el.innerHTML = `<div class="row"><h2>Choose an account name</h2><button class="btn ghost" id="fr-close">Close</button></div>
     <div class="note">Friends add you by account name plus your friend code. Pick one (3 to 20 letters, numbers or underscores).</div>
@@ -24830,7 +25440,7 @@ ${url}`);
     if (!myUser2()) return askForUsername(openInvite);
     const link = `${appLink()}/#invite=${encodeInvite(myName3(), myCode2(), myUser2())}`;
     const warn = isPrivateHost(appLink());
-    const el = sheet10();
+    const el = sheet11();
     el.classList.add("on");
     el.innerHTML = `
     <div class="row"><h2>Invite a player</h2><button class="btn ghost" id="fr-close">Close</button></div>
@@ -24856,7 +25466,7 @@ ${url}`);
     copy("fr-copylink", link, "Your invite link:");
   }
   function openFriendRequest(from, kind2) {
-    const el = sheet10();
+    const el = sheet11();
     el.classList.add("on");
     const already = S.friends.some((f2) => f2.code === from.code);
     const self2 = from.code === myCode2();
@@ -24875,29 +25485,29 @@ ${url}`);
       await saveSocial();
       if (kind2 === "reply") return close9();
       $("fr-msg").innerHTML = `Added ${esc2(from.name)}. Send the confirmation so they can add you back.`;
-      const send2 = async () => $("fr-msg").textContent = await shareLink("Friend request accepted", `${myName3()} accepted your friend request on LaneIQ. Tap to add them back.`, `${appLink()}/#reply=${encodeInvite(myName3(), myCode2(), myUser2())}`);
-      void send2();
+      const send3 = async () => $("fr-msg").textContent = await shareLink("Friend request accepted", `${myName3()} accepted your friend request on LaneIQ. Tap to add them back.`, `${appLink()}/#reply=${encodeInvite(myName3(), myCode2(), myUser2())}`);
+      void send3();
       const btn = document.createElement("button");
       btn.className = "btn";
       btn.textContent = "Send confirmation again";
-      btn.onclick = () => void send2();
+      btn.onclick = () => void send3();
       $("fr-msg").append(document.createElement("br"), btn);
     });
   }
-  function buildSession(sessionId, lane) {
+  function buildSession(sessionId, lane2) {
     const shots = S.shots.filter((s) => s.sessionId === sessionId).slice(-40);
     if (!shots.length) return null;
     return {
       v: 1,
       from: { name: myName3(), code: myCode2() },
-      lane,
+      lane: lane2,
       date: new Date(shots[0].at).toISOString().slice(0, 10),
       hand: S.profile?.hand ?? "R",
       shots: shots.map(sharedShotOf)
     };
   }
   function openShareSession() {
-    const el = sheet10();
+    const el = sheet11();
     el.classList.add("on");
     const list = sessionsOf().reverse();
     const warn = isPrivateHost(appLink());
@@ -24912,18 +25522,18 @@ ${url}`);
     $("fr-close").onclick = close9;
     el.querySelectorAll("[data-id]").forEach(
       (b) => b.onclick = async () => {
-        const lane = $("fr-lane").value.trim();
-        if (!lane) return $("fr-msg").textContent = "Add where it was bowled first, so your friend can tell if it's the same lane.";
-        S.laneLabels[b.dataset.id] = lane;
+        const lane2 = $("fr-lane").value.trim();
+        if (!lane2) return $("fr-msg").textContent = "Add where it was bowled first, so your friend can tell if it's the same lane.";
+        S.laneLabels[b.dataset.id] = lane2;
         await saveSocial();
-        const sess = buildSession(b.dataset.id, lane);
+        const sess = buildSession(b.dataset.id, lane2);
         if (!sess) return;
-        $("fr-msg").textContent = await shareLink("My shots on LaneIQ", `${myName3()} shared a session from ${lane}. Open it in LaneIQ to compare with yours.`, `${appLink()}/#session=${await packSession(sess)}`);
+        $("fr-msg").textContent = await shareLink("My shots on LaneIQ", `${myName3()} shared a session from ${lane2}. Open it in LaneIQ to compare with yours.`, `${appLink()}/#session=${await packSession(sess)}`);
       }
     );
   }
   function openReceivedSession(sess) {
-    const el = sheet10();
+    const el = sheet11();
     el.classList.add("on");
     const known = S.friends.some((f2) => f2.code === sess.from.code);
     el.innerHTML = `
@@ -24941,7 +25551,7 @@ ${url}`);
     };
   }
   function openCompare(theirs) {
-    const el = sheet10();
+    const el = sheet11();
     el.classList.add("on");
     const mine = sessionsOf().reverse();
     if (!S.shared.length || !mine.length) {
@@ -24981,7 +25591,7 @@ ${url}`);
     draw3();
   }
   function captureIncomingHash() {
-    if (/^#(invite|reply|session|live|league|progress|crew|card|plan|shop|order)=/.test(location.hash)) {
+    if (/^#(invite|reply|session|live|league|progress|crew|card|plan|shop|order|cam)=/.test(location.hash)) {
       const h = location.hash;
       writePendingHash(h);
       installManifestFor(h);
@@ -24993,8 +25603,9 @@ ${url}`);
     const h = readPendingHash();
     if (!h || !S.profile) return;
     clearPendingHash();
-    const [, kind2, value] = /^#(invite|reply|session|live|league|progress|crew|card|plan|shop|order)=(.+)$/.exec(h) ?? [];
+    const [, kind2, value] = /^#(invite|reply|session|live|league|progress|crew|card|plan|shop|order|cam)=(.+)$/.exec(h) ?? [];
     if (!kind2) return;
+    if (kind2 === "cam") return void (await Promise.resolve().then(() => (init_camlink(), camlink_exports))).joinCameraFrom(value);
     if (kind2 === "shop") return void (await Promise.resolve().then(() => (init_shopui(), shopui_exports))).handleShopLink(value);
     if (kind2 === "order") return void (await Promise.resolve().then(() => (init_shopui(), shopui_exports))).handleOrderLink(value);
     if (kind2 === "league") return void handleLeagueLink(value);
@@ -25082,7 +25693,7 @@ ${url}`);
       }
     );
   }
-  var LINK_KEY, baseUrl, PUBLIC_APP, bytesToB64, b64ToBytes, packSession, sheet10, close9, myName3, myUser2, myCode2, sharedShotOf, sessionsOf, DEFER_KEY, deferred, setDeferred;
+  var LINK_KEY, baseUrl, PUBLIC_APP, bytesToB64, b64ToBytes, packSession, sheet11, close9, myName3, myUser2, myCode2, sharedShotOf, sessionsOf, DEFER_KEY, deferred, setDeferred;
   var init_friends = __esm({
     "camera/friends.ts"() {
       init_toast();
@@ -25106,8 +25717,8 @@ ${url}`);
       };
       b64ToBytes = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
       packSession = (sess) => packText(JSON.stringify(sess));
-      sheet10 = () => $("friends");
-      close9 = () => (sheet10().classList.remove("on"), sheet10().innerHTML = "");
+      sheet11 = () => $("friends");
+      close9 = () => (sheet11().classList.remove("on"), sheet11().innerHTML = "");
       myName3 = () => S.profile?.name ?? "A bowler";
       myUser2 = () => S.profile?.username ?? "";
       myCode2 = () => {
@@ -25277,7 +25888,7 @@ ${url}`);
   });
   async function openBoxScanner() {
     bump("shop-scan");
-    const el = sheet11();
+    const el = sheet12();
     el.classList.add("on");
     el.innerHTML = `<div class="row"><h2>Receive boxes</h2><button class="btn" id="bx-done">Done</button></div>
     <div class="note">Hold the barcode on the box inside the picture, steady, with good light. A beep and a short buzz mean it was counted.</div>
@@ -25403,7 +26014,7 @@ ${url}`);
   }
   function openStockEditor() {
     bump("shop-edit");
-    const el = sheet11();
+    const el = sheet12();
     el.classList.add("on");
     const shop = load();
     const items = shop?.items ?? [];
@@ -25447,7 +26058,7 @@ ${url}`);
       });
     };
   }
-  var sheet11;
+  var sheet12;
   var init_shopbox = __esm({
     "camera/shopbox.ts"() {
       init_health();
@@ -25457,7 +26068,7 @@ ${url}`);
       init_live();
       init_state();
       init_shopui();
-      sheet11 = () => $("review");
+      sheet12 = () => $("review");
     }
   });
 
@@ -25475,7 +26086,7 @@ ${url}`);
   }
   async function openShopOnline() {
     bump("shop-online");
-    const el = sheet12();
+    const el = sheet13();
     el.classList.add("on");
     if (!backendOn()) {
       el.innerHTML = `<div class="row"><h2>Shop online</h2><button class="btn ghost" id="so-close">Back</button></div><div class="note">The online shop service isn't set up in this copy of LaneIQ.</div>`;
@@ -25562,7 +26173,7 @@ ${url}`);
     $("so-inbox").onclick = () => void openInbox();
   }
   function signInScreen(email = "") {
-    const el = sheet12();
+    const el = sheet13();
     el.innerHTML = `<div class="row"><h2>Shop sign-in</h2><button class="btn ghost" id="si-close">Back</button></div>
     <div class="note">Put your shop online with your email. No password: we email you a sign-in code. Bowlers never need to sign in.</div>
     <div class="field"><label for="si-email">Your email</label><input id="si-email" type="email" autocomplete="email" value="${esc2(email)}"></div>
@@ -25592,7 +26203,7 @@ ${url}`);
   }
   async function openInbox() {
     bump("shop-inbox");
-    const el = sheet12();
+    const el = sheet13();
     el.classList.add("on");
     el.innerHTML = `<div class="row"><h2>Orders</h2><button class="btn ghost" id="ib-close">Back</button></div><div class="note">Loading\u2026</div>`;
     $("ib-close").onclick = () => void openShopOnline();
@@ -25627,7 +26238,7 @@ ${url}`);
       $("ib-close").onclick = () => void openShopOnline();
     }
   }
-  var sheet12, slugify, STATUSES, statusLabel;
+  var sheet13, slugify, STATUSES, statusLabel;
   var init_shopcloud = __esm({
     "camera/shopcloud.ts"() {
       init_health();
@@ -25636,7 +26247,7 @@ ${url}`);
       init_backend();
       init_shopui();
       init_toast();
-      sheet12 = () => $("review");
+      sheet13 = () => $("review");
       slugify = (name) => {
         const base2 = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30) || "shop";
         return `${base2.length < 3 ? base2 + "-shop" : base2}-${Math.random().toString(36).slice(2, 6)}`.slice(0, 40);
@@ -25658,7 +26269,7 @@ ${url}`);
   }
   function addr(t) {
     const line2 = [[t["addr:housenumber"], t["addr:street"]].filter(Boolean).join(" "), t["addr:city"], t["addr:state"]].filter(Boolean).join(", ");
-    return clean4(line2, 120) || void 0;
+    return clean5(line2, 120) || void 0;
   }
   function parseOverpass(json, here2) {
     const els = json?.elements;
@@ -25667,16 +26278,16 @@ ${url}`);
     const seen2 = /* @__PURE__ */ new Set();
     for (const e of els) {
       const t = e?.tags && typeof e.tags === "object" ? e.tags : {};
-      const name = clean4(t.name, 80);
+      const name = clean5(t.name, 80);
       const lat = finite2(e?.lat ?? e?.center?.lat, -90, 90), lon = finite2(e?.lon ?? e?.center?.lon, -180, 180);
       if (!name || lat === void 0 || lon === void 0) continue;
       const kind2 = t.shop ? "pro shop" : "center";
-      const id = `${clean4(e.type, 8)}${clean4(String(e.id ?? ""), 16)}`;
+      const id = `${clean5(e.type, 8)}${clean5(String(e.id ?? ""), 16)}`;
       const dup = `${name.toLowerCase()}|${lat.toFixed(3)}|${lon.toFixed(3)}`;
       if (!id || seen2.has(dup)) continue;
       seen2.add(dup);
-      const web = clean4(t.website ?? t["contact:website"], 200);
-      out.push({ id, name, lat, lon, kind: kind2, address: addr(t), phone: clean4(t.phone ?? t["contact:phone"], 30) || void 0, website: /^https?:\/\//i.test(web) ? web : void 0, ...here2 ? { km: distanceKm(here2.lat, here2.lon, lat, lon) } : {} });
+      const web = clean5(t.website ?? t["contact:website"], 200);
+      out.push({ id, name, lat, lon, kind: kind2, address: addr(t), phone: clean5(t.phone ?? t["contact:phone"], 30) || void 0, website: /^https?:\/\//i.test(web) ? web : void 0, ...here2 ? { km: distanceKm(here2.lat, here2.lon, lat, lon) } : {} });
     }
     return out;
   }
@@ -25684,10 +26295,10 @@ ${url}`);
     if (!Array.isArray(rows2)) return [];
     const out = [];
     for (const r of rows2) {
-      const name = clean4(r?.name, 60), slug2 = clean4(r?.slug, 40);
+      const name = clean5(r?.name, 60), slug2 = clean5(r?.slug, 40);
       const lat = finite2(r?.lat, -90, 90), lon = finite2(r?.lng, -180, 180);
       if (!name || !slug2 || lat === void 0 || lon === void 0) continue;
-      out.push({ id: `laneiq-${slug2}`, name, lat, lon, kind: "pro shop", address: clean4(r?.address, 120) || void 0, phone: clean4(r?.phone, 30) || void 0, laneiq: { slug: slug2, acceptsOrders: r?.accepts_orders !== false }, ...here2 ? { km: distanceKm(here2.lat, here2.lon, lat, lon) } : {} });
+      out.push({ id: `laneiq-${slug2}`, name, lat, lon, kind: "pro shop", address: clean5(r?.address, 120) || void 0, phone: clean5(r?.phone, 30) || void 0, laneiq: { slug: slug2, acceptsOrders: r?.accepts_orders !== false }, ...here2 ? { km: distanceKm(here2.lat, here2.lon, lat, lon) } : {} });
     }
     return out;
   }
@@ -25698,10 +26309,10 @@ ${url}`);
     const b = rest.sort((x, y) => x.kind === y.kind ? byKm(x, y) : x.kind === "pro shop" ? -1 : 1);
     return { laneiq: a, others: b };
   }
-  var clean4, finite2, miles, norm5;
+  var clean5, finite2, miles, norm5;
   var init_shopfind = __esm({
     "core/src/shopfind.ts"() {
-      clean4 = (s, max) => typeof s === "string" ? s.replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
+      clean5 = (s, max) => typeof s === "string" ? s.replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
       finite2 = (n, lo, hi) => typeof n === "number" && Number.isFinite(n) && n >= lo && n <= hi ? n : void 0;
       miles = (km) => km * 0.621371;
       norm5 = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\b(pro|shop|bowling|the|and|inc|llc)\b/g, "").replace(/\s+/g, " ").trim();
@@ -25746,7 +26357,7 @@ ${url}`);
     bump("shop-near");
     choosing = !!opts.pick;
     const found = /* @__PURE__ */ new Map();
-    const el = sheet13();
+    const el = sheet14();
     el.classList.add("on");
     el.innerHTML = `<div class="row"><h2>${opts.pick ? "Pick your bowling center" : "Find a pro shop near me"}</h2><button class="btn ghost" id="sn-close">Close</button></div>
     <div class="note">Shops that use LaneIQ come first, then the rest. When you search, your position (or the city you type) is sent to OpenStreetMap${SHOP_DIRECTORY.url ? " and the LaneIQ shop list" : ""} to find shops around it. Nothing else about you is sent and nothing is saved.</div>
@@ -25793,15 +26404,15 @@ ${url}`);
       void run(() => geocode2(q2));
     };
   }
-  var sheet13, close10, here, choosing, row;
+  var sheet14, close10, here, choosing, row;
   var init_shopfinderui = __esm({
     "camera/shopfinderui.ts"() {
       init_health();
       init_shopfind();
       init_live();
       init_shopconfig();
-      sheet13 = () => $("review");
-      close10 = () => (sheet13().classList.remove("on"), sheet13().innerHTML = "");
+      sheet14 = () => $("review");
+      close10 = () => (sheet14().classList.remove("on"), sheet14().innerHTML = "");
       here = () => new Promise((res, rej) => {
         if (!navigator.geolocation) return rej(new Error("This phone can't share its location here."));
         navigator.geolocation.getCurrentPosition((p) => res({ lat: p.coords.latitude, lon: p.coords.longitude }), () => rej(new Error("Location is off for LaneIQ. Type a city or ZIP code instead.")), { timeout: 12e3, maximumAge: 3e5 });
@@ -25832,7 +26443,7 @@ ${url}`);
   });
   function openShop() {
     bump("shop");
-    const el = sheet14();
+    const el = sheet15();
     el.classList.add("on");
     const cur2 = load();
     const items = cur2?.items ?? [];
@@ -25858,12 +26469,12 @@ ${url}`);
     <div class="card"><div class="k">Customers \xB7 ${loadCustomers().length}</div>${loadCustomers().length ? loadCustomers().map((c) => `<button class="chip" data-cust="${esc2(c.key)}" style="display:block;width:100%;text-align:left;margin:4px 0">${esc2(c.name)} <small>${c.layouts.length} layout${c.layouts.length === 1 ? "" : "s"} \xB7 ${c.orders.length} order${c.orders.length === 1 ? "" : "s"}</small></button>`).join("") : `<div class="note">A customer is added here the first time they order. You can reopen their hand, pitches and the layouts on their other balls any time. This list stays on this phone.</div>`}</div>`;
     $("sh-close").onclick = close11;
     el.querySelectorAll("[data-cust]").forEach((b) => b.onclick = () => openCustomer(b.dataset.cust));
-    const persist2 = (extra) => {
+    const persist2 = (extra2) => {
       const v = (id) => $(id).value;
       const special = { accepts: $("sh-sp").checked, brands: v("sh-spb").split(",").map((b) => b.trim()).filter(Boolean), leadDays: Number(v("sh-spd")) || 0 };
       const p = newShopProfile(v("sh-name"), v("sh-contact"), Number(v("sh-drill")) || 0, v("sh-note"), cur2?.id, special);
       if (!p) return null;
-      const s = { name: p.name, contact: p.contact, drillPrice: p.drillPrice, note: p.note, id: p.id, items: extra ?? load()?.items ?? cur2?.items ?? [], ...p.special ? { special: p.special } : {}, boxes: load()?.boxes ?? cur2?.boxes, remoteId: load()?.remoteId ?? cur2?.remoteId };
+      const s = { name: p.name, contact: p.contact, drillPrice: p.drillPrice, note: p.note, id: p.id, items: extra2 ?? load()?.items ?? cur2?.items ?? [], ...p.special ? { special: p.special } : {}, boxes: load()?.boxes ?? cur2?.boxes, remoteId: load()?.remoteId ?? cur2?.remoteId };
       save2(s);
       return s;
     };
@@ -25906,7 +26517,7 @@ ${url}`);
   }
   function openShopFinder() {
     bump("shop-finder");
-    const el = sheet14();
+    const el = sheet15();
     el.classList.add("on");
     el.innerHTML = `<div class="row"><h2>Fit a ball from a pro shop</h2><button class="btn ghost" id="sf-close">Close</button></div>
     <div class="note">Your pro shop can send you a link or a stock file. Open it here and LaneIQ suggests balls from what they actually have, with a starting layout for their driller. The shop makes the final call.</div>
@@ -25924,7 +26535,7 @@ ${url}`);
   function openFitting(stock) {
     current3 = stock;
     bump("shop-fitting");
-    const el = sheet14();
+    const el = sheet15();
     el.classList.add("on");
     const bp = bowlerProfile();
     const p = stock.profile;
@@ -25944,13 +26555,13 @@ ${url}`);
       const picks = [...inStock, ...special];
       const out = $("sf-out");
       if (!picks.length) return void (out.innerHTML = `<div class="note">Nothing in this shop's stock matches that. Try another weight or budget, or ask the shop what else they can order.</div>`);
-      const card = (k2, i) => `<div class="card"><div class="lr-head">${esc2(k2.item.manufacturer)} ${esc2(k2.item.name)}${k2.item.price ? ` \xB7 $${k2.item.price}` : ""}</div><div class="u">${esc2(k2.why[k2.why.length - 1])}</div><div class="note">${esc2(k2.why[0])}${k2.item.weights.length ? ` Weights: ${k2.item.weights.join(", ")} lb.` : ""}</div><div class="chips"><button class="btn" data-o="${i}">${k2.special ? "Ask them to order it in" : "Order this"}</button></div></div>`;
-      out.innerHTML = `${inStock.length ? `<h3>On their shelf</h3>${inStock.map((k2, i) => card(k2, i)).join("")}` : `<div class="note">Nothing on their shelf fits that.</div>`}${special.length ? `<h3>Not on the shelf: they can order it in</h3><div class="note">${stock.profile.special?.leadDays ? `Usually about ${stock.profile.special.leadDays} days. ` : ""}It's sent to your bowling center. The shop confirms the price and the wait with you before anything is ordered or paid.</div>${special.map((k2, i) => card(k2, inStock.length + i)).join("")}` : ""}<div class="note">Picks come from published specs, not from how a ball reacts for you.</div>`;
+      const card2 = (k2, i) => `<div class="card"><div class="lr-head">${esc2(k2.item.manufacturer)} ${esc2(k2.item.name)}${k2.item.price ? ` \xB7 $${k2.item.price}` : ""}</div><div class="u">${esc2(k2.why[k2.why.length - 1])}</div><div class="note">${esc2(k2.why[0])}${k2.item.weights.length ? ` Weights: ${k2.item.weights.join(", ")} lb.` : ""}</div><div class="chips"><button class="btn" data-o="${i}">${k2.special ? "Ask them to order it in" : "Order this"}</button></div></div>`;
+      out.innerHTML = `${inStock.length ? `<h3>On their shelf</h3>${inStock.map((k2, i) => card2(k2, i)).join("")}` : `<div class="note">Nothing on their shelf fits that.</div>`}${special.length ? `<h3>Not on the shelf: they can order it in</h3><div class="note">${stock.profile.special?.leadDays ? `Usually about ${stock.profile.special.leadDays} days. ` : ""}It's sent to your bowling center. The shop confirms the price and the wait with you before anything is ordered or paid.</div>${special.map((k2, i) => card2(k2, inStock.length + i)).join("")}` : ""}<div class="note">Picks come from published specs, not from how a ball reacts for you.</div>`;
       out.querySelectorAll("[data-o]").forEach((b) => b.onclick = () => openOrderForm(stock, picks[Number(b.dataset.o)], w));
     };
   }
   function openOrderForm(stock, pick, weightLb) {
-    const el = sheet14();
+    const el = sheet15();
     const bp = bowlerProfile();
     const pap = S.profile?.spin?.pap;
     const fit = S.profile?.fit && Object.keys(cleanFit(S.profile.fit)).length ? cleanFit(S.profile.fit) : void 0;
@@ -26004,7 +26615,7 @@ ${url}`);
     const c = all.find((x) => x.key === key3);
     if (!c) return void openShop();
     bump("shop-customer");
-    const el = sheet14();
+    const el = sheet15();
     el.classList.add("on");
     const fit = c.fit ? fitLines(c.fit) : [];
     const r = c.readings;
@@ -26053,7 +26664,7 @@ ${url}`);
     const key3 = customerKey(o.customer.contact);
     const rec2 = mergeCustomer(customers.find((c) => c.key === key3), o);
     saveCustomers([rec2, ...customers.filter((c) => c.key !== key3)]);
-    const el = sheet14();
+    const el = sheet15();
     el.classList.add("on");
     el.innerHTML = `<div class="row"><h2>Order from ${esc2(o.customer.name)}</h2><button class="btn ghost" id="od-close">Close</button></div>
     <div class="card"><div class="lr-head">${esc2(o.ball.manufacturer)} ${esc2(o.ball.name)}${o.ball.price ? ` \xB7 $${o.ball.price}` : ""}</div><div class="u">${esc2(o.customer.contact)} \xB7 ${new Date(o.at).toLocaleDateString()}</div></div>
@@ -26078,7 +26689,7 @@ ${url}`);
       }
     };
   }
-  var sheet14, close11, KEY5, load, save2, CKEY, loadCustomers, saveCustomers, stockOf, current3, CENTER, lastCenter, rememberCenter;
+  var sheet15, close11, KEY5, load, save2, CKEY, loadCustomers, saveCustomers, stockOf, current3, CENTER, lastCenter, rememberCenter;
   var init_shopui = __esm({
     "camera/shopui.ts"() {
       init_health();
@@ -26089,8 +26700,8 @@ ${url}`);
       init_friends();
       init_sharefiles();
       init_backend();
-      sheet14 = () => $("review");
-      close11 = () => (sheet14().classList.remove("on"), sheet14().innerHTML = "");
+      sheet15 = () => $("review");
+      close11 = () => (sheet15().classList.remove("on"), sheet15().innerHTML = "");
       KEY5 = "laneiq.shop";
       load = () => {
         try {
@@ -26346,29 +26957,29 @@ ${url}`);
     const games2 = insightGames(await loadGames());
     const axes = skillsProfile(games2, insightShots());
     const scored = axes.filter((a) => a.score !== null);
-    const card = document.createElement("div");
-    card.className = "card";
-    card.id = "skills-card";
+    const card2 = document.createElement("div");
+    card2.className = "card";
+    card2.id = "skills-card";
     host2.querySelectorAll("#skills-card").forEach((x) => x.remove());
     const focus = focusList(axes);
     let sel2 = focus.length ? axes.indexOf(focus[0].axis) : 0;
     const draw3 = () => {
-      card.innerHTML = `<div class="k">Your skills</div>
+      card2.innerHTML = `<div class="k">Your skills</div>
       ${scored.length ? radarSvg(axes, sel2) : `<div class="u">Your skills chart fills in as you bowl. Scoring axes come from games in My scores; accuracy and repeatability axes come from tracked camera shots.</div>${radarSvg(axes, sel2)}`}
       <div class="note" style="text-align:center"><span style="color:#46e6ff">\u2501 now</span> \xB7 ${axes.some((a) => a.earlierScore !== null) ? '<span style="color:#ccc">\u2505 when you started</span> \xB7 ' : ""}<span style="color:#ffd25a">\u25C6 200-average bowler</span> \xB7 outer ring = target. Tap a skill.</div>
       <div id="sk-detail" style="margin-top:8px">${detail(axes[sel2])}</div>
       ${focus.length ? `<div class="k" style="margin-top:12px">Work on these first</div><ol>${focus.slice(0, 3).map((f2) => `<li><b>${esc2(f2.axis.label)}</b> (${f2.axis.score}/100): ${esc2(f2.axis.drill)}</li>`).join("")}</ol>` : scored.length ? `<div class="u">Every scored skill is at its target. Raise the bar by bowling more games.</div>` : ""}
       ${strongest(axes).length ? `<div class="k" style="margin-top:8px">Your strengths</div><div class="u">${strongest(axes).map((a) => `${esc2(a.label)} (${a.score})`).join(" \xB7 ")}</div>` : ""}
       ${axes.some((a) => a.score === null) ? `<div class="note" style="margin-top:8px">Not scored yet: ${axes.filter((a) => a.score === null).map((a) => esc2(a.label)).join(", ")}. They need more games or more tracked shots.</div>` : ""}`;
-      card.querySelectorAll("[data-ax]").forEach((g) => g.addEventListener("click", () => {
+      card2.querySelectorAll("[data-ax]").forEach((g) => g.addEventListener("click", () => {
         sel2 = Number(g.getAttribute("data-ax"));
         draw3();
       }));
     };
     draw3();
     const h = host2.querySelector("h2");
-    if (h) h.after(card);
-    else host2.prepend(card);
+    if (h) h.after(card2);
+    else host2.prepend(card2);
   }
   var SIZE, C, RAD, pt, poly, fmt3, targetText;
   var init_skills2 = __esm({
@@ -27009,21 +27620,21 @@ ${url}`);
     for (const s of sessions) for (const sh of s.shots) per.set(key2(new Date(sh.at)), (per.get(key2(new Date(sh.at))) ?? 0) + 1);
     const today3 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const mondayOffset = (today3.getDay() + 6) % 7;
-    const grid = [];
+    const grid2 = [];
     for (let w = weeks - 1; w >= 0; w--) {
       const week = [];
       for (let d = 0; d < 7; d++) {
         const day6 = new Date(today3.getFullYear(), today3.getMonth(), today3.getDate() - mondayOffset - w * 7 + d);
         week.push({ date: key2(day6), shots: per.get(key2(day6)) ?? 0, future: day6.getTime() > today3.getTime() });
       }
-      grid.push(week);
+      grid2.push(week);
     }
     const has = (week) => week.some((d) => d.shots > 0);
-    let i = grid.length - 1;
-    if (!has(grid[i])) i--;
+    let i = grid2.length - 1;
+    if (!has(grid2[i])) i--;
     let weekStreak = 0;
-    while (i >= 0 && has(grid[i])) weekStreak++, i--;
-    return { grid, weekStreak, daysBowled: grid.flat().filter((d) => d.shots > 0).length };
+    while (i >= 0 && has(grid2[i])) weekStreak++, i--;
+    return { grid: grid2, weekStreak, daysBowled: grid2.flat().filter((d) => d.shots > 0).length };
   }
   var TREND_SIDE, TREND_MIN_SESSIONS, mean7, median8, day3, TRENDS, vals3, key2;
   var init_progress = __esm({
@@ -27163,11 +27774,11 @@ ${url}`);
   function traceSvg(values, o) {
     const pts = values.map((v, i) => ({ v, i })).filter((p) => p.v !== null);
     if (pts.length < 6) return "";
-    const W2 = 320, H3 = 96, L3 = 34, R3 = 8, T = 8, B = 16;
+    const W3 = 320, H3 = 96, L3 = 34, R3 = 8, T = 8, B = 16;
     const lo = Math.min(...pts.map((p) => p.v)), hi = Math.max(...pts.map((p) => p.v));
     const pad = (hi - lo || 1) * 0.12;
     const y0 = lo - pad, y1 = hi + pad;
-    const x = (i) => L3 + i * (W2 - L3 - R3) / Math.max(1, values.length - 1);
+    const x = (i) => L3 + i * (W3 - L3 - R3) / Math.max(1, values.length - 1);
     const y = (v) => T + (H3 - T - B) * (1 - (v - y0) / (y1 - y0));
     const color = o.color ?? "#46e6ff";
     const d = o.digits ?? 1;
@@ -27176,7 +27787,7 @@ ${url}`);
     const third = Math.max(3, Math.floor(pts.length / 3));
     const a = median9(pts.slice(0, third).map((p) => p.v)), b = median9(pts.slice(-third).map((p) => p.v));
     const label2 = `${o.label} through the session: first third median ${a.toFixed(d)} ${o.unit}, last third ${b.toFixed(d)} ${o.unit}, over ${pts.length} shots`;
-    return `<div class="trace"><div class="row" style="align-items:baseline"><div>${esc2(o.label)}</div><div class="note">${a.toFixed(d)} \u2192 ${b.toFixed(d)} ${esc2(o.unit)}</div></div><svg viewBox="0 0 ${W2} ${H3}" role="img" aria-label="${esc2(label2)}" style="width:100%;height:auto;color:${color}"><text x="${L3 - 4}" y="${T + 6}" text-anchor="end" font-size="9" fill="currentColor" opacity=".6">${hi.toFixed(d)}</text><text x="${L3 - 4}" y="${H3 - B}" text-anchor="end" font-size="9" fill="currentColor" opacity=".6">${lo.toFixed(d)}</text><line x1="${L3}" x2="${W2 - R3}" y1="${H3 - B + 3}" y2="${H3 - B + 3}" stroke="currentColor" opacity=".25"/>${pts.map((p) => `<circle cx="${x(p.i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="2.2" fill="currentColor" opacity=".45"/>`).join("")}<path d="${line2}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><text x="${L3}" y="${H3 - 2}" font-size="9" fill="currentColor" opacity=".6">shot 1</text><text x="${W2 - R3}" y="${H3 - 2}" text-anchor="end" font-size="9" fill="currentColor" opacity=".6">shot ${values.length}</text></svg></div>`;
+    return `<div class="trace"><div class="row" style="align-items:baseline"><div>${esc2(o.label)}</div><div class="note">${a.toFixed(d)} \u2192 ${b.toFixed(d)} ${esc2(o.unit)}</div></div><svg viewBox="0 0 ${W3} ${H3}" role="img" aria-label="${esc2(label2)}" style="width:100%;height:auto;color:${color}"><text x="${L3 - 4}" y="${T + 6}" text-anchor="end" font-size="9" fill="currentColor" opacity=".6">${hi.toFixed(d)}</text><text x="${L3 - 4}" y="${H3 - B}" text-anchor="end" font-size="9" fill="currentColor" opacity=".6">${lo.toFixed(d)}</text><line x1="${L3}" x2="${W3 - R3}" y1="${H3 - B + 3}" y2="${H3 - B + 3}" stroke="currentColor" opacity=".25"/>${pts.map((p) => `<circle cx="${x(p.i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="2.2" fill="currentColor" opacity=".45"/>`).join("")}<path d="${line2}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><text x="${L3}" y="${H3 - 2}" font-size="9" fill="currentColor" opacity=".6">shot 1</text><text x="${W3 - R3}" y="${H3 - 2}" text-anchor="end" font-size="9" fill="currentColor" opacity=".6">shot ${values.length}</text></svg></div>`;
   }
   var median9;
   var init_charts = __esm({
@@ -27432,12 +28043,12 @@ ${url}`);
   function spark(p) {
     const pts = p.points.filter((x2) => x2.pocketPct !== null).slice(-12);
     if (pts.length < 2) return "";
-    const W2 = 300, H3 = 70, pad = 6;
-    const x = (i) => pad + i * (W2 - 2 * pad) / (pts.length - 1);
+    const W3 = 300, H3 = 70, pad = 6;
+    const x = (i) => pad + i * (W3 - 2 * pad) / (pts.length - 1);
     const y = (v) => H3 - pad - (H3 - 2 * pad) * v / 100;
     const d = pts.map((q2, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(q2.pocketPct).toFixed(1)}`).join(" ");
     const label2 = `Pocket rate by session: ${pts.map((q2) => `${dayText5(q2.start)} ${q2.pocketPct}%`).join(", ")}`;
-    return `<svg viewBox="0 0 ${W2} ${H3}" role="img" aria-label="${esc2(label2)}" style="width:100%;height:auto;max-height:90px"><line x1="${pad}" x2="${W2 - pad}" y1="${y(50)}" y2="${y(50)}" stroke="rgba(255,255,255,.12)" stroke-dasharray="3 4"/><path d="${d}" fill="none" stroke="#46e6ff" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${pts.map((q2, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(q2.pocketPct).toFixed(1)}" r="3.2" fill="#46e6ff"/>`).join("")}</svg>`;
+    return `<svg viewBox="0 0 ${W3} ${H3}" role="img" aria-label="${esc2(label2)}" style="width:100%;height:auto;max-height:90px"><line x1="${pad}" x2="${W3 - pad}" y1="${y(50)}" y2="${y(50)}" stroke="rgba(255,255,255,.12)" stroke-dasharray="3 4"/><path d="${d}" fill="none" stroke="#46e6ff" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${pts.map((q2, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(q2.pocketPct).toFixed(1)}" r="3.2" fill="#46e6ff"/>`).join("")}</svg>`;
   }
   function csvNames() {
     return {
@@ -27705,7 +28316,7 @@ ${url}`);
     const hand3 = S.profile?.hand ?? "R";
     let leave = nextLeave(S.spareStats, Math.random);
     let asked = 0, right = 0;
-    const close14 = () => {
+    const close15 = () => {
       el.classList.remove("on");
       el.innerHTML = "";
     };
@@ -27727,7 +28338,7 @@ ${url}`);
       <div class="note" id="sp-score">This session ${right} of ${asked}${t.pct !== null ? ` \xB7 all time ${t.pct}% over ${t.seen}` : ""}</div>
       ${trouble5()}
       <div class="note">The answers come from the 3-6-9 system taught by USA Bowling, using the pin closest to you as the key pin. It assumes your first ball hits the pocket, so treat it as a starting point and let your coach adjust it.</div>`;
-      $("sp-close").onclick = close14;
+      $("sp-close").onclick = close15;
       el.querySelectorAll("[data-mv]").forEach((b) => b.onclick = () => answer(Number(b.dataset.mv)));
     };
     const answer = async (m) => {
@@ -27906,14 +28517,14 @@ ${url}`);
     const ids = new Set(CHECKLIST.map((c) => c.id));
     const checklist = {};
     for (const [k2, v] of Object.entries(i.checklist)) if (ids.has(k2)) checklist[k2] = !!v;
-    const b = { kind: "laneiq-beta", v: 1, at: (i.now ?? /* @__PURE__ */ new Date()).toISOString(), version: i.version, device: clean5(i.device, MAX2.device), note: { kind: clean5(i.kind, 40), text: clean5(i.text, MAX2.text) }, checklist };
+    const b = { kind: "laneiq-beta", v: 1, at: (i.now ?? /* @__PURE__ */ new Date()).toISOString(), version: i.version, device: clean6(i.device, MAX2.device), note: { kind: clean6(i.kind, 40), text: clean6(i.text, MAX2.text) }, checklist };
     if (i.diagnostics !== void 0) b.diagnostics = i.diagnostics;
-    if (i.usage) b.usage = Object.fromEntries(Object.entries(i.usage).filter(([, n]) => Number.isFinite(n)).slice(0, MAX2.usageKeys).map(([k2, n]) => [clean5(k2, 40), Math.round(n)]));
-    if (i.errors) b.errors = i.errors.slice(-MAX2.errors).map((e) => ({ at: e.at, message: clean5(e.message, MAX2.message) }));
+    if (i.usage) b.usage = Object.fromEntries(Object.entries(i.usage).filter(([, n]) => Number.isFinite(n)).slice(0, MAX2.usageKeys).map(([k2, n]) => [clean6(k2, 40), Math.round(n)]));
+    if (i.errors) b.errors = i.errors.slice(-MAX2.errors).map((e) => ({ at: e.at, message: clean6(e.message, MAX2.message) }));
     if (i.accuracyCsv) b.accuracyCsv = i.accuracyCsv;
     return b;
   }
-  var CHECKLIST, FEEDBACK_KINDS, MAX2, clean5, doneCount;
+  var CHECKLIST, FEEDBACK_KINDS, MAX2, clean6, doneCount;
   var init_betabundle = __esm({
     "core/src/betabundle.ts"() {
       CHECKLIST = [
@@ -27930,7 +28541,7 @@ ${url}`);
       ];
       FEEDBACK_KINDS = ["Something is wrong", "Something is confusing", "An idea", "It worked really well"];
       MAX2 = { text: 4e3, device: 300, errors: 30, message: 200, usageKeys: 60 };
-      clean5 = (s, max) => typeof s === "string" ? s.replace(/[\u0000-\u0008\u000b-\u001f]/g, " ").trim().slice(0, max) : "";
+      clean6 = (s, max) => typeof s === "string" ? s.replace(/[\u0000-\u0008\u000b-\u001f]/g, " ").trim().slice(0, max) : "";
       doneCount = (c) => CHECKLIST.filter((x) => c[x.id]).length;
     }
   });
@@ -28406,11 +29017,11 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
   });
   function openEvent() {
     bump("event-night");
-    const el = sheet15();
+    const el = sheet16();
     const keep = el.classList.contains("on") ? el.scrollTop : 0;
     el.classList.add("on");
     const e = load2();
-    const close14 = () => (el.classList.remove("on"), el.innerHTML = "");
+    const close15 = () => (el.classList.remove("on"), el.innerHTML = "");
     if (!e) {
       el.innerHTML = `<div class="row"><h2>Event night</h2><button class="btn ghost" id="ev-close">Close</button></div>
       <div class="note">Run a small tournament from this phone: you type the scores, it does the points, the handicaps and who plays whom. Stays on this phone.</div>
@@ -28424,7 +29035,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
       const note = () => $("ev-fmtnote").textContent = notes[sel2.value];
       sel2.onchange = note;
       note();
-      $("ev-close").onclick = close14;
+      $("ev-close").onclick = close15;
       $("ev-start").onclick = () => {
         const players = parsePlayers($("ev-players").value);
         const format = sel2.value;
@@ -28470,7 +29081,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     <div class="note">${FORMATS[e.format]} \xB7 ${n} bowlers${e.format !== "stepladder" ? ` \xB7 ${e.games} game${e.games === 1 ? "" : "s"}` : ""}${e.hcp ? " \xB7 handicap" : ""}</div>${body}
     <div class="chips"><button class="btn ghost danger" id="ev-reset">Start a different event</button></div>`;
     el.scrollTop = keep;
-    $("ev-close").onclick = close14;
+    $("ev-close").onclick = close15;
     $("ev-reset").onclick = () => {
       if (!confirm("Clear this event and start another?")) return;
       save3(null);
@@ -28508,7 +29119,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
       redo({ ...e, poa });
     });
   }
-  var KEY6, load2, save3, sheet15, FORMATS, hc;
+  var KEY6, load2, save3, sheet16, FORMATS, hc;
   var init_eventui = __esm({
     "camera/eventui.ts"() {
       init_events();
@@ -28530,7 +29141,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
         } catch {
         }
       };
-      sheet15 = () => $("review");
+      sheet16 = () => $("review");
       FORMATS = { roundrobin: "Round robin (match play)", stepladder: "Stepladder final", poa: "Pins over average" };
       hc = (e, i) => e.hcp ? handicap(e.players[i].avg) : 0;
     }
@@ -28628,30 +29239,30 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
       return [ca * a[0] + sa * (c * u[0] + s * w[0]), ca * a[1] + sa * (c * u[1] + s * w[1]), ca * a[2] + sa * (c * u[2] + s * w[2])];
     });
   }
-  function blur(g, W2, H3) {
-    const out = new Float32Array(W2 * H3);
-    const tmp = new Float32Array(W2 * H3);
+  function blur(g, W3, H3) {
+    const out = new Float32Array(W3 * H3);
+    const tmp = new Float32Array(W3 * H3);
     const k2 = 2;
-    for (let y = 0; y < H3; y++) for (let x = 0; x < W2; x++) {
+    for (let y = 0; y < H3; y++) for (let x = 0; x < W3; x++) {
       let s = 0, n = 0;
       for (let i = -k2; i <= k2; i++) {
         const xx = x + i;
-        if (xx >= 0 && xx < W2) s += g[y * W2 + xx], n++;
+        if (xx >= 0 && xx < W3) s += g[y * W3 + xx], n++;
       }
-      tmp[y * W2 + x] = s / n;
+      tmp[y * W3 + x] = s / n;
     }
-    for (let y = 0; y < H3; y++) for (let x = 0; x < W2; x++) {
+    for (let y = 0; y < H3; y++) for (let x = 0; x < W3; x++) {
       let s = 0, n = 0;
       for (let i = -k2; i <= k2; i++) {
         const yy = y + i;
-        if (yy >= 0 && yy < H3) s += tmp[yy * W2 + x], n++;
+        if (yy >= 0 && yy < H3) s += tmp[yy * W3 + x], n++;
       }
-      out[y * W2 + x] = s / n;
+      out[y * W3 + x] = s / n;
     }
     return out;
   }
-  function findRings(gray, W2, H3, circle, avoid = [], max = 3) {
-    const g = blur(gray, W2, H3);
+  function findRings(gray, W3, H3, circle, avoid = [], max = 3) {
+    const g = blur(gray, W3, H3);
     const axes = Array.from({ length: N_AXES }, (_, i) => {
       const z = 1 - 2 * (i + 0.5) / N_AXES, rr = Math.sqrt(1 - z * z), ph = i * 2.399963;
       return [rr * Math.cos(ph), rr * Math.sin(ph), z];
@@ -28669,7 +29280,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
           if (v[2] < MIN_Z || inner[i][2] < MIN_Z * 0.5 || outer2[i][2] < MIN_Z * 0.5) continue;
           const p = px(v), pi = px(inner[i]), po = px(outer2[i]);
           if (bad(p) || bad(pi) || bad(po)) continue;
-          const a = at3(g, W2, H3, p.x, p.y), b = at3(g, W2, H3, pi.x, pi.y), c = at3(g, W2, H3, po.x, po.y);
+          const a = at3(g, W3, H3, p.x, p.y), b = at3(g, W3, H3, pi.x, pi.y), c = at3(g, W3, H3, po.x, po.y);
           if (!Number.isFinite(a + b + c)) continue;
           vals4.push(a - 0.5 * (b + c));
         }
@@ -28701,7 +29312,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
             if (v[2] < MIN_Z || inner[i][2] < MIN_Z * 0.5 || outer2[i][2] < MIN_Z * 0.5) continue;
             const p = px(v), pi = px(inner[i]), po = px(outer2[i]);
             if (bad(p) || bad(pi) || bad(po)) continue;
-            const a = at3(g, W2, H3, p.x, p.y), b = at3(g, W2, H3, pi.x, pi.y), c = at3(g, W2, H3, po.x, po.y);
+            const a = at3(g, W3, H3, p.x, p.y), b = at3(g, W3, H3, pi.x, pi.y), c = at3(g, W3, H3, po.x, po.y);
             if (!Number.isFinite(a + b + c)) continue;
             vals4.push(a - 0.5 * (b + c));
           }
@@ -28767,8 +29378,8 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     }
     return picks;
   }
-  function findLines(gray, W2, H3, circle, avoid = [], max = 3) {
-    const g = blur(gray, W2, H3);
+  function findLines(gray, W3, H3, circle, avoid = [], max = 3) {
+    const g = blur(gray, W3, H3);
     const R3 = circle.r;
     const bad = (p) => avoid.some((h) => Math.hypot(p.x - h.x, p.y - h.y) < h.r * 1.8);
     const N2 = 64;
@@ -28783,7 +29394,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
           const t = -half + 2 * half * i / (N2 - 1);
           const px = circle.x + nx * off + tx * t, py = circle.y + ny * off + ty * t;
           if (bad({ x: px, y: py })) continue;
-          const a = at3(g, W2, H3, px, py), b = at3(g, W2, H3, px + nx * dl, py + ny * dl), c = at3(g, W2, H3, px - nx * dl, py - ny * dl);
+          const a = at3(g, W3, H3, px, py), b = at3(g, W3, H3, px + nx * dl, py + ny * dl), c = at3(g, W3, H3, px - nx * dl, py - ny * dl);
           if (!Number.isFinite(a + b + c)) continue;
           vals4.push(a - 0.5 * (b + c));
         }
@@ -28876,11 +29487,11 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
       };
       cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
       toPixel = (v, c) => ({ x: c.x + v[0] * c.r, y: c.y - v[1] * c.r });
-      at3 = (g, W2, H3, x, y) => {
+      at3 = (g, W3, H3, x, y) => {
         const x0 = Math.floor(x), y0 = Math.floor(y);
-        if (x0 < 0 || y0 < 0 || x0 >= W2 - 1 || y0 >= H3 - 1) return NaN;
-        const fx = x - x0, fy = y - y0, i = y0 * W2 + x0;
-        return g[i] * (1 - fx) * (1 - fy) + g[i + 1] * fx * (1 - fy) + g[i + W2] * (1 - fx) * fy + g[i + W2 + 1] * fx * fy;
+        if (x0 < 0 || y0 < 0 || x0 >= W3 - 1 || y0 >= H3 - 1) return NaN;
+        const fx = x - x0, fy = y - y0, i = y0 * W3 + x0;
+        return g[i] * (1 - fx) * (1 - fy) + g[i + 1] * fx * (1 - fy) + g[i + W3] * (1 - fx) * fy + g[i + W3 + 1] * fx * fy;
       };
     }
   });
@@ -28895,7 +29506,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     intro();
   }
   function intro() {
-    const el = sheet16();
+    const el = sheet17();
     el.classList.add("on");
     el.innerHTML = `
     <div class="row"><h2>PAP from flare rings</h2><button class="btn ghost" id="pp-close">Close</button></div>
@@ -28955,13 +29566,13 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     return { g, rgb };
   }
   function begin2(img) {
-    const W2 = img.width, H3 = img.height;
+    const W3 = img.width, H3 = img.height;
     const { g, rgb } = grayOf(img);
     const noThumb = kind !== "thumb";
-    const rough = { x: W2 / 2, y: H3 / 2, r: Math.min(W2, H3) * 0.48 };
-    const grip = pickGrip(detectHoles(g, W2, H3, rough), rough, noThumb);
+    const rough = { x: W3 / 2, y: H3 / 2, r: Math.min(W3, H3) * 0.48 };
+    const grip = pickGrip(detectHoles(g, W3, H3, rough), rough, noThumb);
     let thumb = null;
-    let fa = { x: W2 * 0.42, y: H3 * 0.36 }, fb = { x: W2 * 0.58, y: H3 * 0.36 };
+    let fa = { x: W3 * 0.42, y: H3 * 0.36 }, fb = { x: W3 * 0.58, y: H3 * 0.36 };
     let holeR = 0;
     const notes = [];
     if (grip) {
@@ -28972,23 +29583,23 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
       holeR = (grip.fingers[0].r + grip.fingers[1].r) / 2;
       notes.push("I found the grip holes.");
     } else {
-      thumb = noThumb ? null : { x: W2 * 0.5, y: H3 * 0.62 };
+      thumb = noThumb ? null : { x: W3 * 0.5, y: H3 * 0.62 };
       notes.push("I couldn't pick out the grip holes: pick Thumb / Finger 1 / Finger 2 below and tap each hole.");
     }
     let outlines = [];
     if (grip) {
       const pts = [fa, fb, ...thumb ? [thumb] : []];
       const mid2 = { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length };
-      outlines = findBalls(g, W2, H3, mid2, Math.max(Math.min(W2, H3) * 0.2, Math.min(Math.min(W2, H3) * 0.5, holeR * 9.2)), rgb, 3);
+      outlines = findBalls(g, W3, H3, mid2, Math.max(Math.min(W3, H3) * 0.2, Math.min(Math.min(W3, H3) * 0.5, holeR * 9.2)), rgb, 3);
     }
     if (!outlines.length) {
-      const edge = detectBall(g, W2, H3);
+      const edge = detectBall(g, W3, H3);
       if (edge) outlines = [edge];
     }
     notes.push(outlines.length ? "I found the ball's outline." : "I couldn't find the ball's outline: use Ball outline below and tap the ball's center, then adjust the size.");
-    const holeRad = holeR || Math.min(W2, H3) * 0.045;
+    const holeRad = holeR || Math.min(W3, H3) * 0.045;
     const avoid = [{ ...fa, r: holeRad }, { ...fb, r: holeRad }, ...thumb ? [{ ...thumb, r: holeRad * 1.2 }] : []];
-    cur = { img, gray: g, avoid, circle: outlines[0] ?? { x: W2 / 2, y: H3 / 2, r: Math.min(W2, H3) * 0.4 }, outlines, outlineIx: 0, thumb, fingerA: fa, fingerB: fb, shape: "line", line: null, ring: [], hist: [], lineCands: [], cands: [], mode: "move", found: notes.join(" "), drag: null, pointer: null };
+    cur = { img, gray: g, avoid, circle: outlines[0] ?? { x: W3 / 2, y: H3 / 2, r: Math.min(W3, H3) * 0.4 }, outlines, outlineIx: 0, thumb, fingerA: fa, fingerB: fb, shape: "line", line: null, ring: [], hist: [], lineCands: [], cands: [], mode: "move", found: notes.join(" "), drag: null, pointer: null };
     if (outlines.length) autoRing(cur, true);
     edit();
   }
@@ -29027,7 +29638,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     if (!cur) return;
     const c = cur;
     const n = done2.length + 1;
-    sheet16().innerHTML = `
+    sheet17().innerHTML = `
     <div class="row"><h2>Photo ${n} of ${WANT}</h2><button class="btn ghost" id="pp-close">Close</button></div>
     <div class="note" id="pp-found" aria-live="polite"></div>
     <div class="card"><canvas id="pp-cv" width="${c.img.width}" height="${c.img.height}" style="width:100%;height:auto;touch-action:none;border-radius:10px" aria-label="The ball photo. Drag the ends of the gold line onto the flare ring."></canvas>
@@ -29041,7 +29652,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
       <div class="chips"><button class="btn" id="pp-use" disabled>Use this photo</button></div></div>`;
     $("pp-close").onclick = close12;
     const cv = $("pp-cv");
-    const bindModes = () => sheet16().querySelectorAll("[data-mode]").forEach((b) => b.onclick = () => (c.mode = b.dataset.mode, refresh2()));
+    const bindModes = () => sheet17().querySelectorAll("[data-mode]").forEach((b) => b.onclick = () => (c.mode = b.dataset.mode, refresh2()));
     const refresh2 = () => {
       $("pp-found").textContent = c.found;
       const pts = ringOf(c);
@@ -29059,11 +29670,11 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
         tb.dataset.have = want;
         bindModes();
       }
-      sheet16().querySelectorAll("[data-mode]").forEach((b) => {
+      sheet17().querySelectorAll("[data-mode]").forEach((b) => {
         b.classList.toggle("sel", b.dataset.mode === c.mode);
         b.setAttribute("aria-pressed", String(b.dataset.mode === c.mode));
       });
-      sheet16().querySelectorAll("[data-shape]").forEach((b) => {
+      sheet17().querySelectorAll("[data-shape]").forEach((b) => {
         b.classList.toggle("sel", b.dataset.shape === c.shape);
         b.setAttribute("aria-pressed", String(b.dataset.shape === c.shape));
       });
@@ -29079,7 +29690,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
       });
       paint(cv, c);
     };
-    sheet16().querySelectorAll("[data-shape]").forEach((b) => b.onclick = () => {
+    sheet17().querySelectorAll("[data-shape]").forEach((b) => b.onclick = () => {
       const to = b.dataset.shape;
       if (to === c.shape) return;
       snapshot(c);
@@ -29200,12 +29811,12 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     if (pts.length <= n) return pts;
     const len = [0];
     for (let i = 1; i < pts.length; i++) len.push(len[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
-    const total = len[len.length - 1];
-    if (total === 0) return [pts[0]];
+    const total2 = len[len.length - 1];
+    if (total2 === 0) return [pts[0]];
     const out = [];
     let j = 1;
     for (let k2 = 0; k2 < n; k2++) {
-      const target = total * k2 / (n - 1);
+      const target = total2 * k2 / (n - 1);
       while (j < pts.length - 1 && len[j] < target) j++;
       const a = pts[j - 1], b = pts[j], seg = len[j] - len[j - 1] || 1;
       const f2 = Math.max(0, Math.min(1, (target - len[j - 1]) / seg));
@@ -29344,7 +29955,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     }
   }
   function between() {
-    sheet16().innerHTML = `
+    sheet17().innerHTML = `
     <div class="row"><h2>Photo ${done2.length} saved</h2><button class="btn ghost" id="pp-close">Close</button></div>
     <div class="card"><div class="u">${done2.length} of ${WANT} photos done. Turn the ball a little so a different stretch of the ring faces the camera, with the grip still in view, then take the next one.</div>
       <div class="chips"><label class="btn" style="display:inline-block;cursor:pointer">Take or choose photo ${done2.length + 1}<input id="pp-file" type="file" accept="image/*" capture="environment" style="display:none"></label><button class="btn ghost" id="pp-finish">Use ${done2.length === 1 ? "this one photo" : `these ${done2.length}`}</button></div>
@@ -29356,12 +29967,12 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
   function result() {
     const e = papEstimate(done2, hand);
     if ("error" in e) {
-      sheet16().innerHTML = `<div class="row"><h2>PAP from flare rings</h2><button class="btn ghost" id="pp-close">Close</button></div><div class="card"><div class="u">${esc2(e.error)}</div><div class="chips"><button class="btn" id="pp-again">Start over</button></div></div>`;
+      sheet17().innerHTML = `<div class="row"><h2>PAP from flare rings</h2><button class="btn ghost" id="pp-close">Close</button></div><div class="card"><div class="u">${esc2(e.error)}</div><div class="chips"><button class="btn" id="pp-again">Start over</button></div></div>`;
       $("pp-close").onclick = close12;
       $("pp-again").onclick = openPapScan;
       return;
     }
-    sheet16().innerHTML = `
+    sheet17().innerHTML = `
     <div class="row"><h2>Your estimated PAP</h2><button class="btn ghost" id="pp-close">Close</button></div>
     <div class="card"><div class="k">Average of ${e.picks.length} photo${e.picks.length === 1 ? "" : "s"}</div>
       <div class="lr-head" style="font-size:24px">${esc2(e.text)}</div>
@@ -29378,7 +29989,7 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
     };
     $("pp-lab").onclick = () => (close12(), openLayoutLab());
   }
-  var KINDS2, WANT, MAX_W2, sheet16, kind, hand, done2, cur, close12, TOOLS_LINE, TOOLS_CURVE, PLACE, gold, ringOf, live2, canvasPt;
+  var KINDS2, WANT, MAX_W2, sheet17, kind, hand, done2, cur, close12, TOOLS_LINE, TOOLS_CURVE, PLACE, gold, ringOf, live2, canvasPt;
   var init_papscan2 = __esm({
     "camera/papscan.ts"() {
       init_ballscan();
@@ -29394,12 +30005,12 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
       ];
       WANT = 3;
       MAX_W2 = 960;
-      sheet16 = () => $("papscan");
+      sheet17 = () => $("papscan");
       kind = "thumb";
       hand = "R";
       done2 = [];
       cur = null;
-      close12 = () => (sheet16().classList.remove("on"), sheet16().innerHTML = "", cur = null);
+      close12 = () => (sheet17().classList.remove("on"), sheet17().innerHTML = "", cur = null);
       TOOLS_LINE = [
         { id: "move", label: "Move the line" },
         { id: "draw", label: "Draw along the ring" }
@@ -30054,19 +30665,19 @@ Only what is missing on this phone is added. Nothing here is replaced or deleted
   function openRoleChange(chosen) {
     const el = $("review");
     el.classList.add("on");
-    const close14 = () => (el.classList.remove("on"), el.innerHTML = "");
+    const close15 = () => (el.classList.remove("on"), el.innerHTML = "");
     if (!chosen) {
       el.innerHTML = `<div class="row"><h2>Account type</h2><button class="btn ghost" id="rc-close">Close</button></div>
       <div class="note">This changes which version of LaneIQ you see. Your shots, balls and data stay as they are.</div>
       ${ROLES.map((r) => `<button class="opt ${editionOf(role()).role === r ? "sel" : ""}" data-role="${r}"><b>${esc2(EDITIONS[r].label)}</b><span>${esc2(EDITIONS[r].blurb)}</span><span class="note">${esc2(r === "bowler" ? "Free" : planStatus(r).label)}</span></button>`).join("")}`;
-      $("rc-close").onclick = close14;
+      $("rc-close").onclick = close15;
       el.querySelectorAll("[data-role]").forEach((b) => b.onclick = () => openRoleChange(b.dataset.role));
       return;
     }
     const apply2 = async (business) => {
       updateProfile({ role: chosen, roleSince: (/* @__PURE__ */ new Date()).toISOString(), ...business ? { business } : {} });
       applyEdition();
-      close14();
+      close15();
       const { showTab: showTab2 } = await Promise.resolve().then(() => (init_tabs(), tabs_exports));
       showTab2(editionOf(chosen).home);
     };
@@ -30586,8 +31197,8 @@ ${t}`;
     <div class="field" style="margin-top:8px"><label>Notes on this ball</label><textarea data-bn="notes" rows="3" placeholder="grip, how it reads on different patterns, when you got it, anything you want to remember">${esc3(b.notes ?? "")}</textarea></div>
     <div class="note">Kept only on this phone. Fill in only what you know; your driller's sheet is the record.</div></details>`;
   }
-  function wireBallNotes(card, b) {
-    const det = card.querySelector("details.bn");
+  function wireBallNotes(card2, b) {
+    const det = card2.querySelector("details.bn");
     if (!det) return;
     det.addEventListener("toggle", () => det.open ? open3.add(b.id) : open3.delete(b.id));
     const form = det.querySelector(".bn-form");
@@ -30613,11 +31224,11 @@ ${t}`;
         e[f2.key] = v;
       }
       for (const k2 of ["pap", "text", "surface", "shop", "note"]) e[k2] = get(k2).value;
-      const clean6 = cleanLayout(e);
-      if (!clean6) return void (msg.textContent = "Fill in at least one thing you know.");
-      const prev = (b.layouts ?? []).find((x) => x.id === clean6.id);
-      if (prev?.fromLab) clean6.fromLab = true;
-      b.layouts = [...(b.layouts ?? []).filter((x) => x.id !== clean6.id), clean6];
+      const clean7 = cleanLayout(e);
+      if (!clean7) return void (msg.textContent = "Fill in at least one thing you know.");
+      const prev = (b.layouts ?? []).find((x) => x.id === clean7.id);
+      if (prev?.fromLab) clean7.fromLab = true;
+      b.layouts = [...(b.layouts ?? []).filter((x) => x.id !== clean7.id), clean7];
       await done3();
     };
     det.querySelectorAll(".bn-entry").forEach((row4) => {
@@ -31089,9 +31700,9 @@ ${t}`;
     }
     const g = cv.getContext("2d");
     g.clearRect(0, 0, cv.width, cv.height);
-    const W2 = cv.width;
+    const W3 = cv.width;
     const H3 = cv.height;
-    const P = (p) => ({ x: p.x * W2, y: p.y * H3 });
+    const P = (p) => ({ x: p.x * W3, y: p.y * H3 });
     g.lineWidth = 3 * dpr;
     g.strokeStyle = "#ffd25a";
     g.fillStyle = "#ffd25a";
@@ -31108,7 +31719,7 @@ ${t}`;
         g.fill();
       }
       if (s.tool === "angle" && s.pts.length === 3) {
-        const deg2 = angleAt(s.pts[0], s.pts[1], s.pts[2], W2, H3);
+        const deg2 = angleAt(s.pts[0], s.pts[1], s.pts[2], W3, H3);
         g.fillText(`${deg2.toFixed(0)}\xB0`, p[1].x + 8 * dpr, p[1].y - 8 * dpr);
       }
     }
@@ -31435,7 +32046,7 @@ ${t}`;
   });
 
   // core/src/moves.ts
-  function adviseMove(recent, hand3, plan, lane) {
+  function adviseMove(recent, hand3, plan, lane2) {
     const last3 = recent[recent.length - 1];
     const sameBall2 = last3?.ballId ? recent.filter((s) => s.ballId === last3.ballId) : recent;
     const window2 = sameBall2.slice(-6);
@@ -31468,8 +32079,8 @@ ${t}`;
     const side2 = entries.length ? Math.sign(mean11(entries) - pocket) : hand3 === "R" ? Math.sign(bias) : -Math.sign(bias);
     const size = Math.abs(bias);
     const high = bias > 0;
-    if (lane?.status === "ok" && /earlier/.test(lane.headline) && high) why.push("The lane read agrees: the ball is reading the lane earlier as the oil dries up.");
-    if (lane?.status === "ok" && /skidding farther/.test(lane.headline) && !high) why.push("The lane read agrees: oil is carrying down and the ball is skidding farther.");
+    if (lane2?.status === "ok" && /earlier/.test(lane2.headline) && high) why.push("The lane read agrees: the ball is reading the lane earlier as the oil dries up.");
+    if (lane2?.status === "ok" && /skidding farther/.test(lane2.headline) && !high) why.push("The lane read agrees: oil is carrying down and the ball is skidding farther.");
     if (size > 4.5) {
       return { ...base2, kind: "ball", ball: high ? "cleaner" : "stronger", headline: `Worth asking about a ball change: ${size.toFixed(1)} boards ${high ? "high" : "light"} is more than a move usually fixes`, why: [...why, high ? "A cleaner, later-reading ball may let you stay on a line you can repeat. Your pro shop can say what fits your game." : "A stronger, earlier-reading ball may get back the hook you're missing. Your pro shop can say what fits your game."], feet: 0, eyes: 0 };
     }
@@ -31692,16 +32303,16 @@ ${t}`;
   function revBand(rpm) {
     return rpm < 300 ? "Stroker (under 300 RPM)" : rpm <= 400 ? "Tweener (300\u2013400 RPM)" : "Cranker (over 400 RPM)";
   }
-  function bowlerDna(name, bowler, shots, extra = {}) {
+  function bowlerDna(name, bowler, shots, extra2 = {}) {
     const p = computeProfile(shots);
     const rows2 = [];
     const st2 = (k2) => p.stats[k2];
     const sp = st2("launchSpeed");
     if (sp && sp.n >= 5) rows2.push({ label: "Ball speed", value: `${sp.mean.toFixed(1)} mph \xB1${sp.sd.toFixed(1)}`, source: "measured" });
     if (bowler.revRpm) rows2.push({ label: "Rev rate", value: `${Math.round(bowler.revRpm)} RPM`, source: bowler.revSource === "measured" ? "measured" : bowler.revSource === "entered" ? "entered" : "estimated" });
-    if (bowler.axisRotation !== void 0) rows2.push({ label: "Axis rotation", value: `${Math.round(bowler.axisRotation)}\xB0`, source: extra.spinSource ?? "entered" });
-    if (bowler.axisTilt !== void 0) rows2.push({ label: "Axis tilt", value: `${Math.round(bowler.axisTilt)}\xB0`, source: extra.spinSource ?? "entered" });
-    if (extra.pap) rows2.push({ label: "PAP", value: extra.pap, source: "entered" });
+    if (bowler.axisRotation !== void 0) rows2.push({ label: "Axis rotation", value: `${Math.round(bowler.axisRotation)}\xB0`, source: extra2.spinSource ?? "entered" });
+    if (bowler.axisTilt !== void 0) rows2.push({ label: "Axis tilt", value: `${Math.round(bowler.axisTilt)}\xB0`, source: extra2.spinSource ?? "entered" });
+    if (extra2.pap) rows2.push({ label: "PAP", value: extra2.pap, source: "entered" });
     const ea = st2("entryAngle");
     if (ea && ea.n >= 5) rows2.push({ label: "Entry angle", value: `${ea.mean.toFixed(1)}\xB0`, source: "measured" });
     const bp = st2("breakpointFt");
@@ -31719,7 +32330,7 @@ ${t}`;
       const d = median12(drift);
       rows2.push({ label: "Drift", value: Math.abs(d) < 1 ? "straight" : `${Math.abs(d).toFixed(1)} boards ${d > 0 ? "left" : "right"}`, source: "measured" });
     }
-    if (extra.bestBall) rows2.push({ label: "Best ball", value: extra.bestBall, source: "measured" });
+    if (extra2.bestBall) rows2.push({ label: "Best ball", value: extra2.bestBall, source: "measured" });
     return { name, hand: bowler.hand, revBand: bowler.revRpm ? revBand(bowler.revRpm) : null, rows: rows2, shots: shots.length };
   }
   var median12;
@@ -31833,7 +32444,7 @@ ${t}`;
 
   // core/src/aimsolver.ts
   function solveAim(shots, hand3) {
-    const none3 = (notes2, extra = {}) => ({ ok: false, n: 0, slope: null, r2: null, shotSd: null, currentArrows: null, arrowsFor: null, plusMinus: null, move: null, notes: notes2, ...extra });
+    const none3 = (notes2, extra2 = {}) => ({ ok: false, n: 0, slope: null, r2: null, shotSd: null, currentArrows: null, arrowsFor: null, plusMinus: null, move: null, notes: notes2, ...extra2 });
     const last3 = shots[shots.length - 1];
     const same = last3?.ballId ? shots.filter((s2) => s2.ballId === last3.ballId) : shots;
     const pts = same.slice(-WINDOW2).map((s2) => ({ x: s2.m.arrowsBoard, y: s2.m.entryBoard, seen: s2.m.pocketMiss !== null })).filter((p) => p.x !== null && p.y !== null && p.seen);
@@ -32152,7 +32763,7 @@ ${t}`;
   });
 
   // camera/reel.ts
-  function pickMime() {
+  function pickMime2() {
     const MR = window.MediaRecorder;
     if (!MR) return void 0;
     return ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find((m) => MR.isTypeSupported?.(m));
@@ -32165,7 +32776,7 @@ ${t}`;
   async function makeReel(sess, progress3) {
     const picks = reelPicks(sess);
     if (!picks.length) return "No clips in this session.";
-    const mime = pickMime();
+    const mime = pickMime2();
     const c = document.createElement("canvas");
     c.width = W;
     c.height = H;
@@ -32187,7 +32798,7 @@ ${t}`;
       g.fillStyle = "#46e6ff";
       g.fillText("IQ", 36 + w, 70);
     };
-    const card = async (lines, secs) => {
+    const card2 = async (lines, secs) => {
       const t0 = performance.now();
       while (performance.now() - t0 < secs * 1e3) {
         const bg = g.createLinearGradient(0, 0, W, H);
@@ -32215,7 +32826,7 @@ ${t}`;
     document.body.append(host2);
     try {
       const date = new Date(picks[0].at).toLocaleDateString([], { month: "long", day: "numeric" });
-      await card([[S.profile?.name ?? "Highlights", 64, "#fff"], [date, 36, "#c9d4ee"]], 1.2);
+      await card2([[S.profile?.name ?? "Highlights", 64, "#fff"], [date, 36, "#c9d4ee"]], 1.2);
       for (const [i, s] of picks.entries()) {
         progress3(`Recording shot ${i + 1} of ${picks.length}\u2026`);
         const stored = await loadClip(s.id);
@@ -32286,7 +32897,7 @@ ${t}`;
           URL.revokeObjectURL(url);
         }
       }
-      await card([["Every shot, measured.", 50, "#fff"], ["LaneIQ", 44, "#46e6ff"]], 1.6);
+      await card2([["Every shot, measured.", 50, "#fff"], ["LaneIQ", 44, "#46e6ff"]], 1.6);
     } finally {
       rec2.stop();
       await stopped;
@@ -32322,19 +32933,19 @@ ${t}`;
     g.closePath();
   }
   function drawDnaCard(d) {
-    const W2 = 1080;
+    const W3 = 1080;
     const H3 = 1350;
     const c = document.createElement("canvas");
-    c.width = W2;
+    c.width = W3;
     c.height = H3;
     const g = c.getContext("2d");
-    const bg = g.createLinearGradient(0, 0, W2, H3);
+    const bg = g.createLinearGradient(0, 0, W3, H3);
     bg.addColorStop(0, "#070b18");
     bg.addColorStop(1, "#1a0b2a");
     g.fillStyle = bg;
-    g.fillRect(0, 0, W2, H3);
+    g.fillRect(0, 0, W3, H3);
     g.strokeStyle = "rgba(255,255,255,.05)";
-    for (let x = 0; x < W2; x += 54) {
+    for (let x = 0; x < W3; x += 54) {
       g.beginPath();
       g.moveTo(x, 0);
       g.lineTo(x, H3);
@@ -32355,7 +32966,7 @@ ${t}`;
     g.font = "900 64px system-ui";
     g.fillStyle = gr;
     g.fillText("IQ", 80 + w1, 130);
-    text("BOWLER DNA", W2 - 80, 128, 34, "#ffd25a", 900, "right");
+    text("BOWLER DNA", W3 - 80, 128, 34, "#ffd25a", 900, "right");
     text(d.name, 80, 240, 76, "#fff", 900);
     text(`${d.hand === "R" ? "Right" : "Left"}-handed${d.revBand ? ` \xB7 ${d.revBand}` : ""}`, 80, 300, 34, "#c9d4ee", 600);
     const rows2 = d.rows.slice(0, 12);
@@ -32364,13 +32975,13 @@ ${t}`;
     rows2.forEach((r, i) => {
       const y = top + i * rowH;
       g.fillStyle = i % 2 ? "rgba(255,255,255,.035)" : "rgba(255,255,255,.07)";
-      rounded(g, 60, y, W2 - 120, rowH - 10, 18);
+      rounded(g, 60, y, W3 - 120, rowH - 10, 18);
       g.fill();
       text(r.label, 90, y + rowH / 2 + 8, 34, "#c9d4ee", 700);
-      text(r.value, W2 - 250, y + rowH / 2 + 10, 40, "#fff", 900, "right");
-      text(r.source, W2 - 90, y + rowH / 2 + 8, 22, r.source === "measured" ? "#5affb0" : r.source === "entered" ? "#46e6ff" : "#ffd25a", 800, "right");
+      text(r.value, W3 - 250, y + rowH / 2 + 10, 40, "#fff", 900, "right");
+      text(r.source, W3 - 90, y + rowH / 2 + 8, 22, r.source === "measured" ? "#5affb0" : r.source === "entered" ? "#46e6ff" : "#ffd25a", 800, "right");
     });
-    text(`${d.shots} tracked shots \xB7 measured with one phone camera, so treat as estimates`, W2 / 2, H3 - 70, 24, "#8a97b2", 600, "center");
+    text(`${d.shots} tracked shots \xB7 measured with one phone camera, so treat as estimates`, W3 / 2, H3 - 70, 24, "#8a97b2", 600, "center");
     return c;
   }
   async function dnaCardFile(d) {
@@ -32572,6 +33183,502 @@ ${t}`;
     }
   });
 
+  // camera/ballmodel.ts
+  function ballModelOf(b) {
+    const c = b.specs;
+    const rg = c?.rg?.value, diff = c?.differential?.value;
+    if (!c || rg === void 0 || diff === void 0) return null;
+    const lb = S.arsenal.find((a) => a.id === b.id)?.weightLb ?? 15;
+    const sp = specForWeight(c, lb);
+    const grit = Number(/(\d{3,4})/.exec(c.factoryFinish?.value ?? "")?.[1]) || (/polish/i.test(c.factoryFinish?.value ?? "") ? 4e3 : void 0);
+    return { rg: sp.rg ?? rg, totalDiff: sp.differential ?? diff, intDiff: sp.intermediateDifferential ?? c.intermediateDifferential?.value ?? 0, weightLb: lb, cover: c.coverstockType?.value, grit };
+  }
+  function currentOil() {
+    const mine = S.myPatterns.find((p) => p.id === S.where.patternId);
+    if (mine) return { map: oilMapFor({ lengthFt: mine.lengthFt, ratio: mine.ratio, rows: mine.rows }), label: mine.name, known: true };
+    return { map: oilMapFor({ lengthFt: 41, ratio: 3 }), label: "a typical 41 ft house shot", known: false };
+  }
+  var ballModelFor, TYPICAL_BALL;
+  var init_ballmodel = __esm({
+    "camera/ballmodel.ts"() {
+      init_balls();
+      init_oilsheet();
+      init_state();
+      ballModelFor = (ballId) => {
+        const b = ballId ? ownedBalls().find((x) => x.id === ballId) : void 0;
+        return b ? ballModelOf(b) : null;
+      };
+      TYPICAL_BALL = { rg: 2.52, totalDiff: 0.045, intDiff: 0.012, weightLb: 15, cover: "hybrid" };
+    }
+  });
+
+  // core/src/reaction.ts
+  function surfaceFactor(grit) {
+    if (!grit) return 1;
+    if (grit >= 4e3) return 0.88;
+    if (grit >= 2e3) return 0.96;
+    if (grit >= 1e3) return 1.04;
+    if (grit >= 500) return 1.1;
+    return 1.15;
+  }
+  function oilUnits(map, board, ft, mirror) {
+    const b = Math.max(1, Math.min(39, Math.round(mirror ? 40 - board : board)));
+    const f2 = Math.max(0, Math.min(59, Math.floor(ft)));
+    const v = map.cells[b - 1]?.[f2] ?? 0;
+    return map.source === "loads" ? v / 15 : v;
+  }
+  function simulate(ball, bowler, oil, rel, params = TYPICAL, opt = {}) {
+    const mirror = bowler.hand === "L";
+    const start2 = mirror ? 40 - rel.startBoard : rel.startBoard;
+    const launch = mirror ? -rel.launchDeg : rel.launchDeg;
+    const m = ball.weightLb * 0.45359237;
+    const R3 = 0.10795;
+    const rgMean = (ball.rg + (ball.rg + (ball.intDiff ?? 0)) + (ball.rg + ball.totalDiff)) / 3;
+    const I = m * (rgMean * 0.0254) ** 2;
+    const muDry = PHYS.dry * (COVER[ball.cover ?? "hybrid"] ?? 1) * surfaceFactor(ball.grit) * params.grip;
+    const flare2 = Math.max(0, opt.flare30In ?? 3.5);
+    const dt = opt.dt ?? 5e-4;
+    let x = (39.5 - start2) * W2, y = 0;
+    const a = launch * Math.PI / 180;
+    const v0 = bowler.speedMph / MPH2;
+    let vx = -v0 * Math.sin(a), vy = v0 * Math.cos(a);
+    const w0 = bowler.revRpm * 2 * Math.PI / 60;
+    const tilt = bowler.axisTiltDeg * Math.PI / 180, rot = bowler.axisRotationDeg * Math.PI / 180;
+    let wx = -w0 * Math.cos(tilt) * Math.cos(rot), wy = -w0 * Math.cos(tilt) * Math.sin(rot);
+    const wz = w0 * Math.sin(tilt);
+    void wz;
+    const board = [], speed = [], rev = [];
+    let nextFt = 0, gutter = false, slip0 = 0, skidEnd = -1, rollStart = null;
+    const eps = 0.04;
+    const N2 = m * G2;
+    for (let step = 0; step < 12e3 && y < LANE3; step++) {
+      const ft = y / FT2;
+      const b = 39.5 - x / W2;
+      if (b < 0.5 || b > 39.5) {
+        gutter = true;
+        break;
+      }
+      if (ft >= nextFt && nextFt <= 60) {
+        board.push(b);
+        speed.push(Math.hypot(vx, vy) * MPH2);
+        rev.push(Math.hypot(wx, wy, wz) * 60 / (2 * Math.PI));
+        nextFt++;
+      }
+      const ux = vx - R3 * wy, uy = vy + R3 * wx;
+      const um = Math.hypot(ux, uy);
+      if (step === 0) slip0 = um;
+      if (skidEnd < 0 && um < slip0 * 0.5) skidEnd = ft;
+      if (rollStart === null && um < 0.15) rollStart = ft;
+      const sat = 1 - Math.exp(-oilUnits(oil, b, ft, mirror) / Math.max(0.05, params.oilScale));
+      const fresh2 = 0.25 * Math.min(1, flare2 / 4) * Math.min(1, ft / 30);
+      const mu = muDry * (1 - PHYS.oilCut * sat * (1 - fresh2));
+      const k2 = mu * N2 / Math.sqrt(um * um + eps * eps);
+      const fx = -k2 * ux, fy = -k2 * uy;
+      vx += fx / m * dt;
+      vy += fy / m * dt;
+      wx += R3 * fy / I * dt;
+      wy += -R3 * fx / I * dt;
+      vy -= 15e-4 * G2 * dt;
+      x += vx * dt;
+      y += vy * dt;
+    }
+    const out = (bb) => mirror ? 40 - bb : bb;
+    const boards = board.map(out);
+    let bpi = 0;
+    for (let i = 1; i < board.length; i++) if (board[i] < board[bpi]) bpi = i;
+    const last3 = board.length - 1;
+    const reached = !gutter && y >= LANE3 - 1e-6 && last3 >= 58;
+    const entryB = reached ? out(board[last3] + (board[last3] - board[last3 - 1]) * 0.5) : null;
+    const vEnd = reached ? Math.hypot(vx, vy) : null;
+    const entryAngle = reached ? Math.atan2(Math.abs(vx), Math.max(1e-6, vy)) * 180 / Math.PI : null;
+    void vEnd;
+    const arrows = boards[15] ?? boards[boards.length - 1] ?? rel.startBoard;
+    return {
+      board: boards,
+      speedMph: speed,
+      revRpm: rev,
+      arrowsBoard: arrows,
+      breakpointBoard: boards[bpi] ?? rel.startBoard,
+      breakpointFt: bpi,
+      entryBoard: entryB,
+      entryAngleDeg: entryAngle,
+      hookBoards: entryB === null ? null : Math.abs(entryB - (boards[bpi] ?? entryB)),
+      speedLossPct: speed.length > 3 ? (speed[3] - speed[Math.min(speed.length - 1, 58)]) / speed[3] * 100 : 0,
+      skidEndFt: skidEnd < 0 ? 60 : skidEnd,
+      rollStartFt: rollStart,
+      gutter
+    };
+  }
+  function solveNear(ball, bowler, oil, startBoard, target, atFt, guessDeg, params, opt) {
+    const f2 = (deg2) => (simulate(ball, bowler, oil, { startBoard, launchDeg: deg2 }, params, opt).board[atFt] ?? NaN) - target;
+    let a = guessDeg, b = guessDeg + 0.4, fa = f2(a), fb = f2(b);
+    if (!Number.isFinite(fa)) return null;
+    for (let i = 0; i < 8; i++) {
+      if (!Number.isFinite(fb)) return null;
+      if (Math.abs(fb) < 0.02) return b;
+      const d = fb - fa;
+      if (Math.abs(d) < 1e-9) return null;
+      const c = b - fb * (b - a) / d;
+      a = b;
+      fa = fb;
+      b = Math.max(-12, Math.min(12, c));
+      fb = f2(b);
+    }
+    return Number.isFinite(fb) && Math.abs(fb) < 0.1 ? b : null;
+  }
+  function solveLaunch(ball, bowler, oil, startBoard, targetBoard, atFt = 15, params = TYPICAL, opt = {}) {
+    return solveBy(ball, bowler, oil, startBoard, targetBoard, (t) => t.board[atFt] ?? NaN, params, opt);
+  }
+  function solveToPocket(ball, bowler, oil, startBoard, pocketBoard, params = TYPICAL, opt = {}) {
+    return solveBy(ball, bowler, oil, startBoard, pocketBoard, (t) => t.entryBoard === null ? NaN : t.entryBoard, params, opt);
+  }
+  function solveBy(ball, bowler, oil, startBoard, target, measure2, params, opt) {
+    const targetBoard = target;
+    const at4 = (deg2) => measure2(simulate(ball, bowler, oil, { startBoard, launchDeg: deg2 }, params, opt));
+    let lo = NaN, hi = NaN, flo = NaN;
+    let prevA = NaN, prevF = NaN;
+    for (let a = -10; a <= 10.001; a += 0.5) {
+      const f2 = at4(a) - targetBoard;
+      if (Number.isFinite(f2) && Number.isFinite(prevF) && f2 * prevF <= 0) {
+        lo = prevA;
+        hi = a;
+        flo = prevF;
+        break;
+      }
+      prevA = Number.isFinite(f2) ? a : NaN;
+      prevF = f2;
+    }
+    if (!Number.isFinite(lo)) return null;
+    for (let i = 0; i < 22; i++) {
+      const mid2 = (lo + hi) / 2, f2 = at4(mid2) - targetBoard;
+      if (!Number.isFinite(f2)) return null;
+      if (f2 * flo <= 0) {
+        hi = mid2;
+      } else {
+        lo = mid2;
+        flo = f2;
+      }
+    }
+    return (lo + hi) / 2;
+  }
+  function lineTable(ball, bowler, oil, stands, params = TYPICAL, opt = {}) {
+    const pocket = POCKET[bowler.hand];
+    const out = [];
+    for (const stand of stands) {
+      const deg2 = solveToPocket(ball, bowler, oil, stand, pocket, params, opt);
+      if (deg2 === null) continue;
+      const t = simulate(ball, bowler, oil, { startBoard: stand, launchDeg: deg2 }, params, opt);
+      if (t.entryBoard === null || t.entryAngleDeg === null) continue;
+      const at4 = (d) => simulate(ball, bowler, oil, { startBoard: stand + d, launchDeg: deg2 }, params, opt).entryBoard;
+      const lo = at4(-1), hi = at4(1);
+      const slope = lo !== null && hi !== null ? Math.abs(hi - lo) / 2 : NaN;
+      const forgive = Number.isFinite(slope) && slope > 0.01 ? 1 / slope : 0;
+      const early = t.breakpointFt < 32, late = t.breakpointFt > 46;
+      const note = t.entryAngleDeg < 3 ? "A flat entry angle: it hits the pocket but carries less." : t.entryAngleDeg > 7 ? "A steep entry angle: strong, and easy to overhook." : early ? "Breaks early: the ball is reading the lane sooner than the oil ends." : late ? "Breaks late: little room to recover if it skids." : "A balanced shape.";
+      out.push({ stand, launchDeg: deg2, arrowsBoard: t.arrowsBoard, breakpointBoard: t.breakpointBoard, breakpointFt: t.breakpointFt, entryBoard: t.entryBoard, entryAngleDeg: t.entryAngleDeg, forgiveBoards: Math.round(forgive * 10) / 10, note });
+    }
+    const score = (l) => l.forgiveBoards + (l.entryAngleDeg >= 4 && l.entryAngleDeg <= 6.5 ? 0.5 : 0);
+    return out.sort((a, b) => score(b) - score(a));
+  }
+  function predictLine(ball, bowler, oil, stand, arrows, params = TYPICAL, opt = {}) {
+    const deg2 = solveLaunch(ball, bowler, oil, stand, arrows, 15, params, opt);
+    if (deg2 === null) return null;
+    return toPredicted(simulate(ball, bowler, oil, { startBoard: stand, launchDeg: deg2 }, params, opt), bowler.hand);
+  }
+  function residual(ball, bowler, oil, s, p, opt) {
+    const mirror = bowler.hand === "L";
+    const dir2 = mirror ? -1 : 1;
+    const guess = Math.atan((s.startBoard - s.arrowsBoard) * 1.0625 / 180) * 180 / Math.PI * -dir2;
+    const deg2 = solveNear(ball, bowler, oil, s.startBoard, s.arrowsBoard, 15, guess, p, opt);
+    if (deg2 === null) return null;
+    const t = simulate(ball, bowler, oil, { startBoard: s.startBoard, launchDeg: deg2 }, p, opt);
+    let cost = 0;
+    const boards = [];
+    if (s.breakpointBoard != null) {
+      const e = t.breakpointBoard - s.breakpointBoard;
+      cost += (e / SIG.bpBoard) ** 2;
+      boards.push(e);
+    }
+    if (s.breakpointFt != null) cost += ((t.breakpointFt - s.breakpointFt) / SIG.bpFt) ** 2;
+    if (s.entryBoard != null && t.entryBoard !== null) {
+      const e = t.entryBoard - s.entryBoard;
+      cost += (e / SIG.entry) ** 2;
+      boards.push(e);
+    } else if (s.entryBoard != null) cost += 25;
+    if (s.entryAngleDeg != null && t.entryAngleDeg !== null) cost += ((t.entryAngleDeg - s.entryAngleDeg) / SIG.angle) ** 2;
+    if (s.entrySpeedMph != null && t.speedMph.length > 56) {
+      const w = t.speedMph.slice(40, 57);
+      cost += ((w.reduce((a, b) => a + b, 0) / w.length - s.entrySpeedMph) / SIG.speed) ** 2;
+    }
+    return { cost, boards };
+  }
+  function total(ball, bowler, oil, shots, p, opt) {
+    let cost = 0, sq = 0, k2 = 0, ok = 0;
+    for (const s of shots) {
+      const r = residual(ball, bowler, oil, s, p, opt);
+      if (!r) {
+        cost += 40;
+        continue;
+      }
+      ok++;
+      cost += r.cost;
+      for (const b of r.boards) {
+        sq += b * b;
+        k2++;
+      }
+    }
+    return { cost, rms: k2 ? Math.sqrt(sq / k2) : null, ok };
+  }
+  function fitModel(ball, bowler, oil, shots, opt = {}) {
+    const usable = shots.filter((s) => Number.isFinite(s.startBoard) && Number.isFinite(s.arrowsBoard) && (s.breakpointBoard != null || s.entryBoard != null)).slice(-40);
+    if (usable.length < MIN_FIT_SHOTS) return { params: TYPICAL, n: usable.length, fitErrorBoards: null, heldOutErrorBoards: null, heldOutN: 0, status: "typical" };
+    const search = (set) => {
+      let best2 = TYPICAL, bestCost = Infinity;
+      const grips = [0.6, 0.8, 1, 1.25, 1.55], oils = [0.08, 0.15, 0.25, 0.4, 0.7];
+      for (const grip of grips) for (const oilScale of oils) {
+        const c = total(ball, bowler, oil, set, { grip, oilScale }, opt).cost;
+        if (c < bestCost) bestCost = c, best2 = { grip, oilScale };
+      }
+      const centre = best2;
+      for (const dg of [-0.12, 0, 0.12]) for (const dO of [-0.4, 0, 0.4]) {
+        const p = { grip: Math.max(0.4, centre.grip * (1 + dg)), oilScale: Math.max(0.04, centre.oilScale * (1 + dO)) };
+        const c = total(ball, bowler, oil, set, p, opt).cost;
+        if (c < bestCost) bestCost = c, best2 = p;
+      }
+      return best2;
+    };
+    const params = search(usable);
+    const fit = total(ball, bowler, oil, usable, params, opt);
+    const cut = Math.floor(usable.length * 2 / 3);
+    let held = null, heldN = 0;
+    if (usable.length - cut >= 3) {
+      const p2 = search(usable.slice(0, cut));
+      const test = total(ball, bowler, oil, usable.slice(cut), p2, opt);
+      held = test.rms;
+      heldN = usable.length - cut;
+    }
+    return { params, n: usable.length, fitErrorBoards: fit.rms, heldOutErrorBoards: held, heldOutN: heldN, status: "fitted" };
+  }
+  async function inferSpin(ball, bowler, oil, shot, fitted = TYPICAL, opt = {}) {
+    const tick = () => new Promise((r2) => setTimeout(r2, 0));
+    if (shot.entryAngleDeg == null || shot.entryBoard == null && shot.breakpointBoard == null) return null;
+    const variants = [fitted, { ...fitted, grip: fitted.grip * 0.8 }, { ...fitted, grip: fitted.grip * 1.25 }, { ...fitted, oilScale: fitted.oilScale * 0.5 }, { ...fitted, oilScale: fitted.oilScale * 2 }];
+    const costAt = (p, rev, rot) => residual(ball, { ...bowler, revRpm: rev, axisRotationDeg: rot }, oil, shot, p, opt);
+    const search = (p) => {
+      let best2 = null;
+      const near = [];
+      const scan = (revs, rots) => {
+        for (const rev of revs) for (const rot of rots) {
+          if (rev < 120 || rev > 800 || rot < 0 || rot > 85) continue;
+          const r2 = costAt(p, rev, rot);
+          if (!r2) continue;
+          near.push({ rev, rot, cost: r2.cost });
+          if (!best2 || r2.cost < best2.cost) best2 = { rev, rot, cost: r2.cost };
+        }
+      };
+      const rng2 = (c, step, n) => Array.from({ length: 2 * n + 1 }, (_, i) => c + (i - n) * step);
+      scan([200, 250, 300, 350, 400, 450, 500, 550, 600, 650], [10, 20, 30, 40, 50, 60, 70, 80]);
+      if (!best2) return null;
+      scan(rng2(best2.rev, 25, 2), rng2(best2.rot, 5, 2));
+      scan(rng2(best2.rev, 12.5, 2), rng2(best2.rot, 2.5, 2));
+      return { best: best2, near };
+    };
+    const main = search(variants[0]);
+    if (!main) return null;
+    await tick();
+    let dRev = 0, dRot = 0;
+    for (const v of variants.slice(1)) {
+      await tick();
+      const s = search(v);
+      if (s) {
+        dRev = Math.max(dRev, Math.abs(s.best.rev - main.best.rev));
+        dRot = Math.max(dRot, Math.abs(s.best.rot - main.best.rot));
+      }
+    }
+    const close15 = main.near.filter((n) => n.cost <= main.best.cost + 2.3);
+    const sRev = Math.max(...close15.map((n) => Math.abs(n.rev - main.best.rev)));
+    const sRot = Math.max(...close15.map((n) => Math.abs(n.rot - main.best.rot)));
+    const r = residual(ball, { ...bowler, revRpm: main.best.rev, axisRotationDeg: main.best.rot }, oil, shot, variants[0], opt);
+    const e = r && r.boards.length ? Math.sqrt(r.boards.reduce((a, b) => a + b * b, 0) / r.boards.length) : null;
+    return {
+      revRpm: Math.round(main.best.rev),
+      revPm: Math.round(Math.max(15, dRev, sRev) / 5) * 5,
+      rotationDeg: Math.round(main.best.rot),
+      rotationPm: Math.max(3, Math.round(Math.max(dRot, sRot))),
+      tiltDeg: Math.round(bowler.axisTiltDeg),
+      errorBoards: e
+    };
+  }
+  var TYPICAL, W2, G2, FT2, MPH2, LANE3, PHYS, COVER, POCKET, toPredicted, SIG, MIN_FIT_SHOTS;
+  var init_reaction = __esm({
+    "core/src/reaction.ts"() {
+      TYPICAL = { grip: 1, oilScale: 0.2 };
+      W2 = 0.0269875;
+      G2 = 9.80665;
+      FT2 = 0.3048;
+      MPH2 = 2.2369363;
+      LANE3 = 18.288;
+      PHYS = { oilCut: 0.97, dry: 0.3 };
+      COVER = { solid: 1.1, hybrid: 1, pearl: 0.92, urethane: 0.8, plastic: 0.55 };
+      POCKET = { R: 17.5, L: 22.5 };
+      toPredicted = (t, hand3) => ({
+        breakpointBoard: t.breakpointBoard,
+        breakpointFt: t.breakpointFt,
+        entryBoard: t.entryBoard,
+        entryAngleDeg: t.entryAngleDeg,
+        pocketMiss: t.entryBoard === null ? null : hand3 === "R" ? t.entryBoard - POCKET.R : POCKET.L - t.entryBoard
+      });
+      SIG = { bpBoard: 1.5, bpFt: 5, entry: 1.5, angle: 1, speed: 0.5 };
+      MIN_FIT_SHOTS = 8;
+    }
+  });
+
+  // camera/reactionui.ts
+  var reactionui_exports = {};
+  __export(reactionui_exports, {
+    openReactionLab: () => openReactionLab
+  });
+  function choices() {
+    const out = [];
+    for (const b of ownedBalls()) {
+      const model = ballModelOf(b);
+      if (!model) continue;
+      const lb = model.weightLb;
+      const shots = S.shots.filter((s) => s.ballId === b.id && s.m.startBoard != null && s.m.arrowsBoard != null).map((s) => ({ startBoard: s.m.startBoard, arrowsBoard: s.m.arrowsBoard, breakpointBoard: s.m.breakpointBoard, breakpointFt: s.m.breakpointFt, entryBoard: s.m.entryBoard, entryAngleDeg: s.m.entryAngle }));
+      out.push({ id: b.id, name: b.name, weightLb: lb, shots, model });
+    }
+    return out;
+  }
+  function oilFor(choice) {
+    const mine = S.myPatterns.find((p) => `p:${p.id}` === choice);
+    if (mine) return { map: oilMapFor({ lengthFt: mine.lengthFt, ratio: mine.ratio, rows: mine.rows }), label: `${mine.name}${mine.rows?.length ? " (from the sheet's loads)" : " (estimated from length and ratio)"}` };
+    const pre = PRESETS2.find((p) => p.id === choice) ?? PRESETS2[1];
+    return { map: oilMapFor({ lengthFt: pre.lengthFt, ratio: 3 }), label: pre.label };
+  }
+  function laneSvg(oil, hand3, paths) {
+    const X = (b) => 12 + (39.5 - b) / 39 * 176, Y = (ft) => 372 - ft * 5.9;
+    let cells = "";
+    for (let b = 1; b <= 39; b += 2) for (let f2 = 0; f2 < 60; f2 += 3) {
+      const v = (oil.cells[b - 1]?.[f2] ?? 0) / oil.max;
+      if (v > 0.04) cells += `<rect x="${X(b + 1.5).toFixed(1)}" y="${Y(f2 + 3).toFixed(1)}" width="${176 / 39 * 2 + 0.3}" height="${(5.9 * 3 + 0.3).toFixed(1)}" fill="#46e6ff" opacity="${(v * 0.28).toFixed(2)}"/>`;
+    }
+    const pocket = hand3 === "R" ? 17.5 : 22.5;
+    const lines = paths.map((p) => `<polyline fill="none" stroke="${p.color}" stroke-width="2.2" points="${p.t.board.map((b, ft) => `${X(b).toFixed(1)},${Y(ft).toFixed(1)}`).join(" ")}"/><circle cx="${X(p.t.breakpointBoard).toFixed(1)}" cy="${Y(p.t.breakpointFt).toFixed(1)}" r="3.2" fill="${p.color}"/>`).join("");
+    const arrows = [5, 10, 15, 20, 25, 30, 35].map((b) => `<path d="M${X(b)} ${Y(15) + 3} l-2 -5 l4 0z" fill="#9fb0cc"/>`).join("");
+    return `<svg viewBox="0 0 200 384" role="img" aria-label="Lane from behind the foul line with the predicted ball paths" style="width:100%;max-width:260px;display:block;margin:0 auto"><rect x="12" y="12" width="176" height="360" fill="#1a1410" stroke="#566" /> ${cells} ${arrows}<line x1="12" x2="188" y1="${Y(0)}" y2="${Y(0)}" stroke="#fff" stroke-opacity=".5"/><circle cx="${X(pocket)}" cy="${Y(60)}" r="3" fill="#ff5a6e"/>${lines}<text x="14" y="10" font-size="8" fill="#9fb0cc">pins</text><text x="14" y="383" font-size="8" fill="#9fb0cc">foul line</text></svg>`;
+  }
+  function openReactionLab() {
+    bump("reaction-lab");
+    const el = sheet18();
+    el.classList.add("on");
+    const balls = choices();
+    const bp = bowlerProfile();
+    const p = S.profile;
+    if (!balls.length) {
+      el.innerHTML = `<div class="row"><h2>Ball motion lab</h2><button class="btn ghost" id="rl-close">Close</button></div><div class="note">Add a ball with published specs (RG and differential) to your arsenal first. The model needs them. Balls you add from the catalog have them.</div>`;
+      $("rl-close").onclick = close14;
+      return;
+    }
+    if (!balls.some((b) => b.id === state.ballId)) state.ballId = balls.slice().sort((a, b) => b.shots.length - a.shots.length)[0].id;
+    const ball = balls.find((b) => b.id === state.ballId);
+    let vs = balls.find((b) => b.id === state.vs && b.id !== state.ballId);
+    const rev = bp.revRpm ?? 350, spd = bp.launchSpeed ?? 16.5;
+    const rot = bp.axisRotation ?? 45, tilt = bp.axisTilt ?? 12;
+    const assumed = [bp.revRpm === void 0 ? "rev rate" : "", bp.launchSpeed === void 0 ? "speed" : "", bp.axisRotation === void 0 ? "axis rotation" : "", bp.axisTilt === void 0 ? "axis tilt" : ""].filter(Boolean);
+    const hand3 = bp.hand;
+    const lo = hand3 === "R" ? 15 : 5, hi = hand3 === "R" ? 35 : 25;
+    el.innerHTML = `<div class="row"><h2>Ball motion lab</h2><button class="btn ghost" id="rl-close">Close</button></div>
+    <div class="note">A physics model of the ball on the lane. It compares lines, moves and balls; it is an estimate, not a measurement. It starts with typical values and fits itself to your own shots with a ball once it has ${MIN_FIT_SHOTS}.</div>
+    <div class="two"><div class="field"><label for="rl-ball">Ball</label><select id="rl-ball">${balls.map((b) => `<option value="${esc2(b.id)}"${b.id === state.ballId ? " selected" : ""}>${esc2(b.name)} (${b.shots.length} shots)</option>`).join("")}</select></div>
+    <div class="field"><label for="rl-pat">Pattern</label><select id="rl-pat">${S.myPatterns.map((m) => `<option value="p:${esc2(m.id)}"${`p:${m.id}` === state.pattern ? " selected" : ""}>${esc2(m.name)}</option>`).join("")}${PRESETS2.map((m) => `<option value="${m.id}"${m.id === state.pattern ? " selected" : ""}>${esc2(m.label)}</option>`).join("")}</select></div></div>
+    <div class="card"><div class="k">You</div><div class="u">${Math.round(rev)} rpm \xB7 ${spd.toFixed(1)} mph \xB7 axis ${Math.round(rot)}\xB0 rotation, ${Math.round(tilt)}\xB0 tilt \xB7 ${hand3 === "R" ? "right" : "left"}-handed</div>${assumed.length ? `<div class="note">Typical values are used for your ${assumed.join(", ")}, because they haven't been measured or entered. Add them under Me (ball motion) and the model gets more exact.</div>` : ""}</div>
+    <div class="card" id="rl-fit"><div class="k">How much to trust it</div><div class="note">Fitting to your shots\u2026</div></div>
+    <div class="card"><div class="k">Lines to the pocket with ${esc2(ball.name)}</div><div id="rl-lines" class="note">Working it out\u2026</div></div>
+    <div class="card"><div class="k">Try a line</div>
+    <div class="two"><div class="field"><label for="rl-stand">Where you stand (board)</label><input id="rl-stand" inputmode="decimal" value="${state.stand}"></div><div class="field"><label for="rl-arrows">Board at the arrows</label><input id="rl-arrows" inputmode="decimal" value="${state.arrows}"></div></div>
+    <div class="field"><label for="rl-vs">Compare with another ball (optional)</label><select id="rl-vs"><option value="">No comparison</option>${balls.filter((b) => b.id !== ball.id).map((b) => `<option value="${esc2(b.id)}"${b.id === state.vs ? " selected" : ""}>${esc2(b.name)}</option>`).join("")}</select></div>
+    <div id="rl-try"></div></div>
+    <div class="note">Oil is taken from the pattern you pick: the sheet's own loads where you added one, otherwise an estimate from its length and ratio. The model leaves out oil carrying down and the ball's surface wearing; both change the answer over a night.</div>`;
+    $("rl-close").onclick = close14;
+    const again = () => {
+      state.ballId = $("rl-ball").value;
+      state.pattern = $("rl-pat").value;
+      openReactionLab();
+    };
+    $("rl-ball").onchange = again;
+    $("rl-pat").onchange = again;
+    const bowler = { hand: hand3, revRpm: rev, speedMph: spd, axisRotationDeg: rot, axisTiltDeg: tilt };
+    const oil = oilFor(state.pattern);
+    let params = TYPICAL;
+    let fit = null;
+    const showTry = () => {
+      const stand = Number($("rl-stand").value), arrows = Number($("rl-arrows").value);
+      state.stand = stand;
+      state.arrows = arrows;
+      state.vs = $("rl-vs").value;
+      vs = balls.find((x) => x.id === state.vs && x.id !== ball.id);
+      const out = $("rl-try");
+      if (!Number.isFinite(stand) || !Number.isFinite(arrows) || stand < 1 || stand > 39 || arrows < 1 || arrows > 39) return void (out.innerHTML = `<div class="note">Type boards between 1 and 39.</div>`);
+      const run = (b2, par = params) => {
+        const deg2 = solveLaunch(b2.model, bowler, oil.map, stand, arrows, 15, par);
+        return deg2 === null ? null : simulate(b2.model, bowler, oil.map, { startBoard: stand, launchDeg: deg2 }, par);
+      };
+      const a = run(ball);
+      const b = vs ? run(vs, params) : null;
+      if (!a) return void (out.innerHTML = `<div class="note">No path runs from board ${stand} over board ${arrows} at the arrows (it would leave the lane). Try a smaller angle.</div>`);
+      const pr = predictLine(ball.model, bowler, oil.map, stand, arrows, params);
+      const say2 = (t, pre) => !t ? "" : t.entryBoard === null ? `Goes into the gutter before the pins.` : `Breakpoint board ${t.breakpointBoard.toFixed(1)} at ${t.breakpointFt} ft, enters at board ${t.entryBoard.toFixed(1)} at ${t.entryAngleDeg.toFixed(1)}\xB0${pre && pre.pocketMiss !== null ? ` (${Math.abs(pre.pocketMiss) < 0.75 ? "in the pocket" : pre.pocketMiss > 0 ? `${pre.pocketMiss.toFixed(1)} boards high` : `${Math.abs(pre.pocketMiss).toFixed(1)} boards light`})` : ""}.`;
+      out.innerHTML = `${laneSvg(oil.map, hand3, [{ t: a, color: "#ffd25a", label: ball.name }, ...b ? [{ t: b, color: "#ff4fd8", label: vs.name }] : []])}
+      <div class="u"><span style="color:#ffd25a">\u25CF</span> ${esc2(ball.name)}: ${esc2(say2(a, pr))}</div>
+      ${b ? `<div class="u"><span style="color:#ff4fd8">\u25CF</span> ${esc2(vs.name)}: ${esc2(say2(b, null))}</div>${a.entryBoard !== null && b.entryBoard !== null ? `<div class="note">${esc2(vs.name)} reads ${Math.abs(b.breakpointFt - a.breakpointFt)} ft ${b.breakpointFt < a.breakpointFt ? "earlier" : "later"} and ends ${Math.abs(b.entryBoard - a.entryBoard).toFixed(1)} boards ${b.entryBoard > a.entryBoard ? "further toward the head pin side" : "further toward the gutter"} on the same line.</div>` : ""}` : ""}
+      <div class="note">Yellow dot: the breakpoint. Blue shading: oil. Red dot: the pocket.</div>`;
+    };
+    ["rl-stand", "rl-arrows"].forEach((id) => $(id).addEventListener("change", () => {
+      state.touched = true;
+      showTry();
+    }));
+    $("rl-vs").addEventListener("change", showTry);
+    setTimeout(() => {
+      fit = fitModel(ball.model, bowler, oil.map, ball.shots);
+      params = fit.params;
+      const f2 = $("rl-fit");
+      f2.innerHTML = `<div class="k">How much to trust it</div>${fit.status === "typical" ? `<div class="u">Typical values: not fitted to you yet.</div><div class="note">${fit.n} of the ${MIN_FIT_SHOTS} shots it needs with ${esc2(ball.name)} (shots that have a start board, arrows board and a breakpoint or entry). Until then the numbers show the shape of a reaction, not your exact one.</div>` : `<div class="u">Fitted to ${fit.n} of your shots with ${esc2(ball.name)}. Typical error on those: ${fit.fitErrorBoards === null ? "n/a" : fit.fitErrorBoards.toFixed(1) + " boards"}.</div><div class="note">${fit.heldOutErrorBoards === null ? "Too few shots to test it on shots it hasn't seen." : `On the last ${fit.heldOutN} shots, held back and predicted, the model was off by ${fit.heldOutErrorBoards.toFixed(1)} boards.`} Fitted to the pattern you chose; if your shots were on a different one, pick it above.</div>`}`;
+      const stands = [];
+      for (let s = lo; s <= hi; s++) stands.push(s);
+      const lines = lineTable(ball.model, bowler, oil.map, stands, params).slice(0, 5);
+      $("rl-lines").innerHTML = lines.length ? `<table><tr><td class="note">Stand</td><td class="n note">Arrows</td><td class="n note">Break</td><td class="n note">Angle</td><td class="n note">Forgives</td></tr>${lines.map((l) => `<tr><td>${l.stand}</td><td class="n">${l.arrowsBoard.toFixed(1)}</td><td class="n">${l.breakpointBoard.toFixed(1)} @ ${l.breakpointFt}</td><td class="n">${l.entryAngleDeg.toFixed(1)}\xB0</td><td class="n">${l.forgiveBoards}</td></tr>`).join("")}</table><div class="note">Forgives: how many boards your start can be off before the ball is more than a board from the pocket. ${esc2(lines[0].note)}</div>` : `<div class="u">No line reaches the pocket with this ball on this pattern.</div><div class="note">It hooks more than the oil allows (or less than it needs). A cleaner or more polished ball for a short or light pattern, or a stronger one for a long or heavy one, is what the model points to. Your coach or pro shop decides.</div>`;
+      if (!state.touched && lines.length) {
+        state.stand = lines[0].stand;
+        state.arrows = Math.round(lines[0].arrowsBoard * 10) / 10;
+        $("rl-stand").value = String(state.stand);
+        $("rl-arrows").value = String(state.arrows);
+      }
+      showTry();
+    }, 30);
+  }
+  function close14() {
+    sheet18().classList.remove("on");
+    sheet18().innerHTML = "";
+  }
+  var sheet18, PRESETS2, state;
+  var init_reactionui = __esm({
+    "camera/reactionui.ts"() {
+      init_health();
+      init_ballmodel();
+      init_oilsheet();
+      init_reaction();
+      init_live();
+      init_state();
+      sheet18 = () => $("review");
+      PRESETS2 = [
+        { id: "len:36", label: "Short pattern, 36 ft (estimate)", lengthFt: 36 },
+        { id: "len:41", label: "Typical house shot, 41 ft (estimate)", lengthFt: 41 },
+        { id: "len:45", label: "Long pattern, 45 ft (estimate)", lengthFt: 45 }
+      ];
+      state = { ballId: "", pattern: "len:41", stand: 25, arrows: 12, vs: "", touched: false };
+    }
+  });
+
   // camera/tabs.ts
   var tabs_exports = {};
   __export(tabs_exports, {
@@ -32744,7 +33851,7 @@ ${t}`;
       <button class="chip ${modeSel === "top" ? "sel" : ""}" data-m="top">Top-down</button>
       <button class="chip" data-m="3d">3D</button>
     </div>
-    ${clip ? `<div class="stagebox" id="rv-video"><video id="rv-v" src="${reviewUrl}" playsinline controls muted></video><canvas class="ov" id="rv-ov" width="${s.vw}" height="${s.vh}"></canvas></div><div class="chips" id="rv-skelrow"><button class="chip ${s.skel ? "sel" : ""}" id="rv-skel" aria-pressed="${!!s.skel}">Skeleton</button><span class="note" id="rv-skelnote">${s.skel ? "The bowler's joints, followed through the approach and release." : "Reading the bowler's body from this clip\u2026"}</span></div>` : `<div class="note">${s.hasClip ? "The video clip couldn't be loaded." : "No video was saved for this shot (the browser may not support recording)."}</div>`}
+    ${clip ? `<div class="stagebox" id="rv-video"><video id="rv-v" src="${reviewUrl}" playsinline controls muted></video><canvas class="ov" id="rv-ov" width="${s.vw}" height="${s.vh}"></canvas></div><div class="chips" id="rv-skelrow"><button class="chip ${s.skel ? "sel" : ""}" id="rv-skel" aria-pressed="${!!s.skel}">Skeleton</button><span class="note" id="rv-skelnote">${s.skel ? "The bowler's joints, followed through the approach and release." : "Reading the bowler's body from this clip\u2026"}</span></div><div id="rv-views"></div>` : `<div class="note">${s.hasClip ? "The video clip couldn't be loaded." : "No video was saved for this shot (the browser may not support recording)."}</div>`}
     <div class="stagebox" id="rv-top" style="display:none"><canvas id="rv-topc" width="360" height="600" style="width:100%;height:auto;aspect-ratio:360/600"></canvas></div>
     <div id="rv-3d" style="display:none"><div class="stagebox"><div id="rv-3d-host" style="position:relative;width:100%;aspect-ratio:4/3"></div></div><div class="chips"><button class="chip" id="rv-replay">Replay shot in 3D</button></div></div>
     <h3>Metrics</h3>
@@ -32771,10 +33878,10 @@ ${t}`;
         showLearn(a.dataset.learn);
       }
     );
-    const paintSpin = (state) => {
+    const paintSpin = (state2) => {
       const box = document.getElementById("rv-spin");
       if (!box || reviewShotId !== s.id) return;
-      box.innerHTML = spinCardHtml(s.spin, state) + (clip ? `<div class="chips"><button class="btn ghost" id="rv-respin" ${state === "running" ? "disabled" : ""}>Measure the spin again</button></div><div class="note" id="rv-spinprog"></div>` : "");
+      box.innerHTML = spinCardHtml(s.spin, state2) + (clip ? `<div class="chips"><button class="btn ghost" id="rv-respin" ${state2 === "running" ? "disabled" : ""}>Measure the spin again</button></div><div class="note" id="rv-spinprog"></div>` : "");
       document.getElementById("rv-respin")?.addEventListener("click", () => runSpin(true));
       box.querySelector("[data-act=slowmo]")?.addEventListener("click", () => openSpinLab(() => {
       }));
@@ -32830,6 +33937,7 @@ ${t}`;
     });
     document.getElementById("rv-compare")?.addEventListener("click", () => void openCompare2(s));
     const player = document.getElementById("rv-v");
+    if (player && s.views?.length) void Promise.resolve().then(() => (init_multiviewui(), multiviewui_exports)).then((m) => m.paintViews(s, player, document.getElementById("rv-views")));
     if (player) {
       player.addEventListener("error", () => {
         const err = player.error;
@@ -33078,19 +34186,19 @@ ${t}`;
       ${S.myPatterns.length ? "" : `<div class="note">Add the pattern your centre posts (My patterns: a PDF, a screenshot or a photo of the sheet) and it appears here, and on your lane in the Live view.</div>`}
     </div>
     <div id="lineup"></div>`;
-    el.querySelectorAll("[data-ball]").forEach((card) => {
-      const b = S.arsenal.find((x) => x.id === card.dataset.ball);
-      safely(() => wireBallNotes(card, b));
-      card.querySelector("[data-act=save]")?.addEventListener("click", async () => {
-        const num10 = (f2) => parseFloat(card.querySelector(`[data-f=${f2}]`).value);
+    el.querySelectorAll("[data-ball]").forEach((card2) => {
+      const b = S.arsenal.find((x) => x.id === card2.dataset.ball);
+      safely(() => wireBallNotes(card2, b));
+      card2.querySelector("[data-act=save]")?.addEventListener("click", async () => {
+        const num10 = (f2) => parseFloat(card2.querySelector(`[data-f=${f2}]`).value);
         const rg = num10("rg");
         const diff = num10("diff");
         b.rg = Number.isFinite(rg) ? rg : void 0;
         b.diff = Number.isFinite(diff) ? diff : void 0;
-        b.cover = card.querySelector("[data-f=cover]").value || void 0;
+        b.cover = card2.querySelector("[data-f=cover]").value || void 0;
         await saveArsenal();
       });
-      card.querySelector("[data-act=del]")?.addEventListener("click", async () => {
+      card2.querySelector("[data-act=del]")?.addEventListener("click", async () => {
         if (confirm(`Remove ${b.name} from your arsenal?`)) {
           S.arsenal = S.arsenal.filter((x) => x.id !== b.id);
           await saveArsenal();
@@ -33182,6 +34290,7 @@ ${t}`;
     <div class="note">Tools for fitting, layout and drilling, for bowlers and for pro shop operators, plus what to look for at a pro shop.</div>
     ${rolePanelHtml()}
     <div class="card"><div class="row"><div><div class="k">My arsenal</div><div class="note">${S.arsenal.length} ball${S.arsenal.length === 1 ? "" : "s"} \xB7 add a ball, build a lineup for a pattern, find your next ball.</div></div><button class="btn" id="ps-arsenal">Open</button></div></div>
+    <div class="card"><div class="row"><div><div class="k">Ball motion lab</div><div class="note">A physics model of your ball on the lane: the lines that reach the pocket and how forgiving each is, what a move or a different ball would do. Fits itself to your shots.</div></div><button class="btn" id="ps-reaction">Open</button></div></div>
     <div class="card"><div class="k">Layout and drilling</div>
       <div class="chips"><button class="btn" id="ps-lab">Layout Lab: see a layout on the ball</button><button class="btn" id="ps-scan">Scan a drilled ball</button><button class="btn" id="ps-pap">Estimate my PAP from photos</button><button class="btn ghost" id="ps-report">Fitting report (print or save PDF)</button></div>
       <div class="note">The Layout Lab draws the ball with its holes, pin, PSA, PAP and VAL in Dual Angle, Pin Buffer and 2LS, previews the flare, and prints a drill sheet. Scan reads the layout off a photo of a drilled ball.</div></div>
@@ -33202,6 +34311,7 @@ ${t}`;
     wireRolePanel(el);
     $("ps-arsenal").onclick = () => showTab("arsenal");
     $("ps-lab").onclick = () => openLayoutLab();
+    $("ps-reaction").onclick = async () => (await Promise.resolve().then(() => (init_reactionui(), reactionui_exports))).openReactionLab();
     $("ps-scan").onclick = () => openBallScan();
     $("ps-pap").onclick = () => openPapScan();
     $("ps-report").onclick = () => openReport(pat, bp, lineup, ownedKeys);
@@ -33495,6 +34605,99 @@ ${t}`;
     }
   });
 
+  // camera/framing.ts
+  var framing_exports = {};
+  __export(framing_exports, {
+    openFraming: () => openFraming
+  });
+  function openFraming() {
+    const el = $("guide");
+    el.classList.add("on");
+    const topDown = `<svg viewBox="0 0 320 250" style="width:100%;height:auto;display:block;margin-top:8px" role="img" aria-label="Top-down map of where to put the phone for lane view, approach and Spin mode">
+    <rect x="4" y="4" width="312" height="242" rx="12" fill="#0b1220" stroke="rgba(255,255,255,.2)"/>
+    <rect x="120" y="14" width="80" height="150" fill="${LANE4}" stroke="${CY}"/><rect x="108" y="14" width="12" height="150" fill="${GUT}"/><rect x="200" y="14" width="12" height="150" fill="${GUT}"/>
+    <rect x="96" y="164" width="128" height="68" fill="rgba(255,255,255,.07)"/><line x1="108" y1="164" x2="212" y2="164" stroke="${BAD}" stroke-width="3"/>
+    ${[0, 1, 2, 3].map((r) => Array.from({ length: 4 - r }, (_, i) => `<circle cx="${160 + (i - (3 - r) / 2) * 9}" cy="${22 + r * 7}" r="2.6" fill="#fff"/>`).join("")).join("")}
+    <g font-family="system-ui" font-size="6.5" font-weight="700" fill="#9fb0cc"><text x="226" y="170" fill="${BAD}">foul line</text><text x="226" y="24" fill="#fff">pins</text><text x="100" y="244">approach</text></g>
+    <g><rect x="146" y="218" width="28" height="14" rx="3" fill="#ffd25a"/><text x="160" y="228" font-size="6" font-weight="800" text-anchor="middle" fill="#1a1100" font-family="system-ui">A</text><path d="M160 218 L112 30 M160 218 L208 30" stroke="#ffd25a" stroke-opacity=".5" fill="none"/></g>
+    <g><rect x="228" y="200" width="28" height="14" rx="3" fill="${CY}"/><text x="242" y="210" font-size="6" font-weight="800" text-anchor="middle" fill="#001a20" font-family="system-ui">B</text><path d="M242 200 L168 150" stroke="${CY}" stroke-opacity=".6" fill="none"/></g>
+    <g><rect x="146" y="188" width="28" height="14" rx="3" fill="#ff4fd8"/><text x="160" y="198" font-size="6" font-weight="800" text-anchor="middle" fill="#200018" font-family="system-ui">C</text><path d="M160 188 L130 150 M160 188 L190 150" stroke="#ff4fd8" stroke-opacity=".7" fill="none"/></g>
+
+  </svg>`;
+    const side2 = `<svg viewBox="0 0 320 130" style="width:100%;height:auto;display:block;margin-top:8px" role="img" aria-label="Side view: phone on a tripod behind the approach at chest height, the bowler's whole body in the picture">
+    <rect x="4" y="4" width="312" height="122" rx="12" fill="#0b1220" stroke="rgba(255,255,255,.2)"/>
+    <line x1="14" y1="108" x2="306" y2="108" stroke="rgba(255,255,255,.35)"/><rect x="190" y="108" width="116" height="4" fill="${LANE4}"/><line x1="190" y1="104" x2="190" y2="112" stroke="${BAD}" stroke-width="3"/>
+    <g stroke="#9fb0cc" stroke-width="2" fill="none"><path d="M40 108 L48 78 L56 108 M48 78 L48 56"/></g><rect x="40" y="46" width="18" height="11" rx="2" fill="#ffd25a"/>
+    <path d="M58 52 L200 18 M58 52 L200 108" stroke="#ffd25a" stroke-opacity=".5" fill="none"/>
+    ${person(172, 108, 1.6)}
+    <g font-family="system-ui" font-size="6.5" font-weight="700"><text x="14" y="30" fill="#ffd25a">phone at chest height</text><text x="14" y="42" fill="#9fb0cc">on a tripod, or leaned on something steady</text>
+    <text x="96" y="120" fill="#9fb0cc">8 to 12 ft behind the foul line</text><text x="210" y="96" fill="${GOOD}">head to feet</text><text x="226" y="126" fill="#ff5a6e">foul line</text></g>
+  </svg>`;
+    el.innerHTML = `
+    <div class="row"><h2>Framing examples</h2><button class="btn ghost" id="fr-close">Close</button></div>
+    <div class="note">How the phone is placed decides how good every number is. These pictures show where to put it for each thing the app does, and what to avoid.</div>
+
+    ${card("Where to put the phone", `${topDown}<ul><li><b style="color:#ffd25a">A, lane view and tracking:</b> straight behind the bowler, 8 to 12 ft back from the foul line, at chest height, with the whole lane in the picture. The best place for almost everything.</li><li><b style="color:#46e6ff">B, off to one side:</b> also works if both gutters and the pins stay in view.</li><li><b style="color:#ff4fd8">C, Spin mode:</b> close and low behind the bowler, zoomed on the first 10 to 15 ft past the foul line.</li></ul><div class="note">Landscape (turned sideways), steady, and left alone once it has locked.</div>`)}
+
+    ${card("Lane view: tracking, speed, breakpoint, entry angle, pins", grid(
+      screen2(lane() + person(80, 88, 1.5).replace("scale(1.5)", "scale(0)"), true, "centred, both gutters, foul line to pins"),
+      screen2(lane({ wb: 38, wt: 11 }), true, "off to one side also works if the whole lane shows"),
+      screen2(lane({ top: -6, bot: 96, wb: 50, wt: 22, pins: false }), false, "zoomed in: the pins are cut off"),
+      screen2(lane({ bot: 80, skew: 34, cx: 60 }) + `<rect x="6" y="70" width="148" height="20" fill="#000" opacity=".7"/><text x="80" y="84" font-size="7" fill="#ccc" text-anchor="middle" font-family="system-ui">ball return in the way</text>`, false, "too low and too far to the side: the lane is slanted and blocked"),
+      screen2(lane() + `<circle cx="104" cy="40" r="26" fill="#fff" opacity=".55"/><circle cx="104" cy="40" r="12" fill="#fff" opacity=".8"/>`, false, "glare or a light behind the pins"),
+      screen2(`<g opacity=".45">${lane()}</g>${person(124, 92, 1.8)}`, false, "someone walking in front of the lane")
+    ))}
+
+    ${card("Skeleton and approach (steps, timing, slide)", `${side2}${grid(
+      screen2(lane({ wb: 30, wt: 8 }) + person(64, 90, 2.1), true, "the bowler's whole body, head to feet, at the foul line"),
+      screen2(lane({ wb: 30, wt: 8 }) + person(64, 112, 2.6), false, "feet cut off: the slide can't be read")
+    )}<div class="note">The skeleton needs the bowler in the picture from the stance to the release. Stand back far enough that the full body fits, and keep the lane in view too. Good light on the bowler matters more than anything else here. If it still can't be drawn, the app says so after the shot and you can try again from Shots.</div>`)}
+
+    ${card("Spin mode: rev rate and axis", grid(
+      screen2(`<polygon points="40,86 120,86 98,6 62,6" fill="${LANE4}" stroke="${CY}" stroke-width="1.5"/><circle cx="80" cy="48" r="17" fill="#2a3d6e"/><circle cx="73" cy="42" r="2" fill="#fff"/><circle cx="86" cy="52" r="2" fill="#ffd25a"/><circle cx="78" cy="56" r="1.6" fill="#fff"/><circle cx="88" cy="40" r="1.6" fill="#fff"/><line x1="40" y1="82" x2="120" y2="82" stroke="${BAD}" stroke-width="2"/>`, true, "only the first 10 to 15 ft of lane, the ball big and sharp"),
+      screen2(lane() + `<circle cx="80" cy="64" r="2.6" fill="#2a3d6e"/>`, false, "the whole lane: the ball is a few pixels, too small to read its turning")
+    ) + `<div class="note">For rev rate and axis the camera must see the ball's surface turn. Move the phone in close and low behind the bowler, zoom in on the first 10 to 15 feet past the foul line, and use Spin mode (the chip on the start screen) at its highest frame rate. Good light, and a ball with a stripe or a few dots of tape or a bright marker makes the turning much easier to see.</div>`)}
+
+    ${card("Quick checks before you throw", `<ul>
+      <li>Turn the phone sideways (landscape) and keep it still: a tripod, or lean it on something. Don't hold it.</li>
+      <li>Wait for the lane to lock (the READY mark) before the first throw.</li>
+      <li>Don't zoom, pan or move it after the lock, except in Spin mode before you start.</li>
+      <li>Keep the lens clean, and keep the ball return, other people and bright lights out of the lane's part of the picture.</li>
+      <li>The pins must be in the picture at the end of the roll. A shot that doesn't reach them has no entry angle or pocket reading.</li>
+      <li>Film in the best light you can get: bright lanes and a lit bowler read better than a dark corner.</li>
+    </ul>`)}
+  `;
+    $("fr-close").onclick = () => (el.classList.remove("on"), el.innerHTML = "");
+  }
+  var GOOD, BAD, LANE4, GUT, CY, screen2, lane, person, card, grid;
+  var init_framing = __esm({
+    "camera/framing.ts"() {
+      init_live();
+      GOOD = "#5affb0";
+      BAD = "#ff5a6e";
+      LANE4 = "rgba(214,170,110,.38)";
+      GUT = "rgba(120,160,255,.38)";
+      CY = "#46e6ff";
+      screen2 = (inner, ok, label2) => `<div style="text-align:center"><svg viewBox="0 0 160 100" style="width:100%;height:auto;display:block" role="img" aria-label="${label2}">
+  <rect x="2" y="2" width="156" height="96" rx="8" fill="#0b1220" stroke="${ok ? GOOD : BAD}" stroke-width="2"/>
+  <clipPath id="c${label2.length}${ok ? 1 : 0}"><rect x="6" y="6" width="148" height="83" rx="4"/></clipPath><g clip-path="url(#c${label2.length}${ok ? 1 : 0})">${inner}</g>
+  <g transform="translate(138 88)"><circle r="8" fill="${ok ? GOOD : BAD}"/>${ok ? `<path d="M-4 0 L-1 3 L4 -3" stroke="#04110a" stroke-width="2" fill="none"/>` : `<path d="M-3 -3 L3 3 M3 -3 L-3 3" stroke="#1a0206" stroke-width="2"/>`}</g></svg>
+  <div class="note" style="margin-top:2px"><b style="color:${ok ? GOOD : BAD}">${ok ? "Good" : "Avoid"}</b> \xB7 ${label2}</div></div>`;
+      lane = (o = {}) => {
+        const top = o.top ?? 16, bot = o.bot ?? 80, cx = o.cx ?? 80, wb = o.wb ?? 34, wt = o.wt ?? 9, sk = o.skew ?? 0;
+        const L3 = `${cx - wb + sk * 0.2},${bot} ${cx + wb + sk * 0.2},${bot} ${cx + wt + sk},${top} ${cx - wt + sk},${top}`;
+        return `<polygon points="${L3}" fill="${LANE4}" stroke="${CY}" stroke-width="1.5"/>
+    <polygon points="${cx - wb - 10 + sk * 0.2},${bot} ${cx - wb + sk * 0.2},${bot} ${cx - wt + sk},${top} ${cx - wt - 3 + sk},${top}" fill="${GUT}"/>
+    <polygon points="${cx + wb + sk * 0.2},${bot} ${cx + wb + 10 + sk * 0.2},${bot} ${cx + wt + 3 + sk},${top} ${cx + wt + sk},${top}" fill="${GUT}"/>
+    <line x1="${cx - wb - 8 + sk * 0.2}" y1="${bot - 2}" x2="${cx + wb + 8 + sk * 0.2}" y2="${bot - 2}" stroke="${BAD}" stroke-width="2"/>
+    ${o.pins === false ? "" : [0, 1, 2, 3].map((r) => Array.from({ length: 4 - r }, (_, i) => `<circle cx="${cx + sk + (i - (3 - r) / 2) * 3.2}" cy="${top - 2 - r * 2.4}" r="1.3" fill="#fff"/>`).join("")).join("")}`;
+      };
+      person = (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"><circle cx="0" cy="-26" r="3.2" fill="#ffd25a" stroke="none"/><path d="M0 -22 L0 -9 M0 -9 L-4 0 M0 -9 L4 0 M0 -19 L-6 -12 M0 -19 L7 -14"/></g>`;
+      card = (title, body) => `<div class="card"><div class="k">${title}</div>${body}</div>`;
+      grid = (...cells) => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">${cells.join("")}</div>`;
+    }
+  });
+
   // camera/camera.ts
   init_ballid();
 
@@ -33557,6 +34760,11 @@ ${t}`;
         "Spare trainer: a leave appears and you say where your feet move under the 3-6-9 system. The answers come from the same code as the scorecard's spare coach, left-handers are reversed, and leaves you miss come up more often.",
         "Pro shop mode: a shop loads its stock from a spreadsheet and sends it to bowlers as a link or file. The bowler gets picks from that shop's shelves only, with a starting layout for the driller, and sends an order request back. The shop opens it and gets a drill sheet with the bowler's readings. Release video is never attached, the shop's driller makes the final call, and nothing needs an account.",
         "Customer profiles for pro shops: a bowler can choose to send their hand measurements (span, hole sizes, bridge and the four pitches) and the layouts saved for their other balls with an order. The shop keeps a profile for each customer on its own phone, with their notes, and can reopen it any time. The Layout Lab now has boxes for thumb and finger pitch.",
+        "Extra cameras: link an iPad or a second phone at another angle (Extra cameras, on the start screen). It joins straight to the lane camera, lines its clock up with it, records every throw at the same time, and sends each clip back. Every shot's replay then shows all the angles playing in step, with a nudge if one is a little early or late. The extra angles are synced for viewing; tracking, speed and spin still come from the lane camera.",
+        "A spin number on every shot: when a clip is too coarse to read the spin, the rev rate and axis rotation tiles now show one number with a plus-or-minus, worked out from the shot's own path (how fast it was slowed, where it broke, the angle it hit the pins), instead of a range. A measured reading from the clip still comes first, and the tile says which one you're looking at. Axis tilt can't be told from a path, so it shows your own number or a typical one, labelled assumed.",
+        "Framing examples: pictures of where to put the phone for the lane view, the skeleton and Spin mode, with the common mistakes beside them (zoomed in, too low, glare, feet cut off, the whole lane when you want the ball), on the start screen next to How to get a lock.",
+        "Skeleton on live shots: a failure in an earlier step no longer stops the skeleton from being read, the pose model is fetched ahead of time while you have a connection so it works at a lane with no signal, and a shot with no skeleton now says why.",
+        "Ball motion lab: a physics model of the ball on the lane (friction against the oil map, the ball's weight and spin, your rev rate and axis). It shows the lines that reach the pocket and how forgiving each one is, what a different line or a different ball would do, and where the ball breaks. It starts with typical values and fits itself to your own shots with a ball once it has eight, then tells you how closely it predicted shots it hadn't seen. It is an estimate for comparing choices, not a measurement.",
         "Sign in with Google or Apple: where those are switched on, the sign-in screen offers them next to the emailed code.",
         "Accounts for everyone: you sign in with your email (a code is mailed to you, no password) before using LaneIQ. Your shots, balls, games and settings are backed up to your account, automatically once a day unless you turn it off, so a new phone picks up where the old one left off. Videos are never uploaded. Under Me you can back up now, restore, sign out, or delete your account and every backup in it.",
         "Account types: sign-up now asks what kind of user you are. Bowlers get the full bowler app, free. Coaches, pro shops, bowling centers and brands get an edition built for them, with their own tab names, home tab and tools, and a plan of their own. Nothing is charged while the app is in open beta, and you can change your account type any time under Me.",
@@ -33930,10 +35138,10 @@ ${t}`;
     const fresh2 = seen() !== LATEST_NOTE_ID;
     box.innerHTML = `<button class="chip" id="notes-open">${fresh2 ? "NEW \xB7 " : ""}What's new</button>`;
     document.getElementById("notes-open").onclick = () => {
-      const sheet17 = document.getElementById("notes");
-      sheet17.classList.add("on");
-      sheet17.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc2(n.title)} <span class="note">${esc2(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc2(i)}</li>`).join("")}</ul></div>`).join("")}`;
-      document.getElementById("notes-close").onclick = () => (sheet17.classList.remove("on"), sheet17.innerHTML = "");
+      const sheet19 = document.getElementById("notes");
+      sheet19.classList.add("on");
+      sheet19.innerHTML = `<div class="row"><h2>Patch notes</h2><button class="btn ghost" id="notes-close">Close</button></div>${PATCH_NOTES.map((n) => `<div class="card"><div class="k">${esc2(n.title)} <span class="note">${esc2(n.date)}</span></div><ul>${n.items.map((i) => `<li>${esc2(i)}</li>`).join("")}</ul></div>`).join("")}`;
+      document.getElementById("notes-close").onclick = () => (sheet19.classList.remove("on"), sheet19.innerHTML = "");
       markSeen();
       document.getElementById("notes-open").textContent = "What's new";
     };
@@ -34080,9 +35288,9 @@ ${t}`;
     const cv = root.querySelector("#tl-cv");
     const hint = root.querySelector("#tl-hint");
     const g = cv.getContext("2d");
-    const W2 = o.frame.width, Hh = o.frame.height;
-    const k0 = Math.min(1, 1280 / Math.max(W2, Hh));
-    cv.width = Math.round(W2 * k0);
+    const W3 = o.frame.width, Hh = o.frame.height;
+    const k0 = Math.min(1, 1280 / Math.max(W3, Hh));
+    cv.width = Math.round(W3 * k0);
     cv.height = Math.round(Hh * k0);
     const fit = () => {
       const wrap2 = root.querySelector("#tl-wrap");
@@ -34370,12 +35578,12 @@ ${t}`;
     };
     cv.addEventListener("pointerup", up);
     cv.addEventListener("pointercancel", up);
-    const close14 = () => {
+    const close15 = () => {
       cancelAnimationFrame(raf3);
       window.removeEventListener("resize", onResize);
       root.remove();
     };
-    root.querySelector("#tl-cancel").onclick = () => (close14(), o.onCancel());
+    root.querySelector("#tl-cancel").onclick = () => (close15(), o.onCancel());
     root.querySelectorAll(".tl-mode").forEach((b) => b.onclick = () => setMode2(b.dataset.mode));
     root.querySelector("#tl-reset").onclick = () => (c = initial2.map((p) => ({ ...p })), anchors = makeAnchors(), touched = false, setMode2("lane"));
     root.querySelector("#tl-snap").onclick = () => {
@@ -34392,7 +35600,7 @@ ${t}`;
       const area2 = Math.abs(c.reduce((a, p, i) => a + (p.x * c[(i + 1) % 4].y - c[(i + 1) % 4].x * p.y), 0)) / 2;
       if (area2 < cv.width * cv.height * 0.01) return void (hint.textContent = "The lane outline is too small. Drag the dots out onto the lane.");
       const out = c.map((p) => ({ x: p.x / k0, y: p.y / k0 }));
-      close14();
+      close15();
       o.onConfirm(out);
     };
   }
@@ -34585,7 +35793,7 @@ ${t}`;
     </div>`;
     document.body.append(root);
     const spot = root.querySelector("#tour-spot");
-    const card = root.querySelector("#tour-card");
+    const card2 = root.querySelector("#tour-card");
     const q2 = (id) => root.querySelector(id);
     const visible = (e) => e.offsetParent !== null || getComputedStyle(e).position === "fixed";
     const find = (sel2) => {
@@ -34608,13 +35816,13 @@ ${t}`;
         const w = Math.min(window.innerWidth - 8, r.width + pad * 2) - (left - (r.left - pad) > 0 ? left - (r.left - pad) : 0);
         const h = Math.min(vh - 8, r.height + pad * 2);
         Object.assign(spot.style, { display: "block", top: `${top}px`, left: `${left}px`, width: `${Math.max(24, w)}px`, height: `${Math.max(24, h)}px` });
-        const cardH = card.offsetHeight || 190;
+        const cardH = card2.offsetHeight || 190;
         const below = vh - (top + h);
-        card.style.top = below >= cardH + 16 ? `${top + h + 12}px` : `${Math.max(8, top - cardH - 12)}px`;
-        if (below < cardH + 16 && top < cardH + 20) card.style.top = `${Math.max(8, vh - cardH - 12)}px`;
+        card2.style.top = below >= cardH + 16 ? `${top + h + 12}px` : `${Math.max(8, top - cardH - 12)}px`;
+        if (below < cardH + 16 && top < cardH + 20) card2.style.top = `${Math.max(8, vh - cardH - 12)}px`;
       } else {
         spot.style.display = "none";
-        card.style.top = `${Math.max(8, (vh - (card.offsetHeight || 190)) / 2)}px`;
+        card2.style.top = `${Math.max(8, (vh - (card2.offsetHeight || 190)) / 2)}px`;
       }
     };
     const show = () => {
@@ -34624,7 +35832,7 @@ ${t}`;
       q2("#tour-jump").value = s.part;
       q2("#tour-t").textContent = s.title;
       q2("#tour-x").textContent = s.text;
-      card.scrollTop = 0;
+      card2.scrollTop = 0;
       q2("#tour-back").style.visibility = i === 0 ? "hidden" : "visible";
       q2("#tour-next").textContent = i === STEPS.length - 1 ? "Done" : "Next";
       requestAnimationFrame(() => requestAnimationFrame(place));
@@ -34767,20 +35975,20 @@ ${t}`;
       }
     }
     if (!best2) return null;
-    const chain4 = [];
+    const chain5 = [];
     let cur2 = [best2.f, best2.c];
     while (cur2) {
       const [f2, c] = cur2;
-      chain4.push({ t: frames[f2].t, lx: frames[f2].cands[c].lx, ly: frames[f2].cands[c].ly, q: frames[f2].cands[c].q });
+      chain5.push({ t: frames[f2].t, lx: frames[f2].cands[c].lx, ly: frames[f2].cands[c].ly, q: frames[f2].cands[c].q });
       cur2 = nodes[f2][c].prev;
     }
-    chain4.reverse();
-    if (chain4.length < 8) return null;
-    const span = chain4[chain4.length - 1].ly - chain4[0].ly;
-    const mph = span / Math.max(1e-6, chain4[chain4.length - 1].t - chain4[0].t) * (3600 / 5280);
+    chain5.reverse();
+    if (chain5.length < 8) return null;
+    const span = chain5[chain5.length - 1].ly - chain5[0].ly;
+    const mph = span / Math.max(1e-6, chain5[chain5.length - 1].t - chain5[0].t) * (3600 / 5280);
     if (span < 12 || mph < 6 || mph > 40) return null;
-    if (chain4.reduce((s, p) => s + p.q, 0) / chain4.length > 1) return null;
-    return chain4.map((p) => ({ t: p.t, x: p.lx, y: p.ly }));
+    if (chain5.reduce((s, p) => s + p.q, 0) / chain5.length > 1) return null;
+    return chain5.map((p) => ({ t: p.t, x: p.lx, y: p.ly }));
   }
 
   // camera/camera.ts
@@ -35673,9 +36881,9 @@ ${t}`;
       }
       return;
     }
-    const W2 = innerWidth, H3 = innerHeight;
-    const portrait = H3 >= W2;
-    const rw = portrait ? W2 : Math.floor(W2 / 2), rh = portrait ? Math.floor(H3 / 2) : H3;
+    const W3 = innerWidth, H3 = innerHeight;
+    const portrait = H3 >= W3;
+    const rw = portrait ? W3 : Math.floor(W3 / 2), rh = portrait ? Math.floor(H3 / 2) : H3;
     const par = parseFloat(stage.style.getPropertyValue("--par")) || 16 / 9;
     const w = Math.floor(Math.min(rw, rh * par)), h = Math.floor(w / par);
     const vals4 = { "--fw": `${w}px`, "--fh": `${h}px`, "--fl": `${Math.floor((rw - w) / 2)}px`, "--ft": `${Math.floor((rh - h) / 2)}px`, "--pt": portrait ? `${rh}px` : "0px", "--pl": portrait ? "0px" : `${rw}px` };
@@ -35714,6 +36922,54 @@ ${t}`;
   init_coachlive();
   init_oilview();
   init_pose();
+
+  // camera/spininfer.ts
+  init_reaction();
+  init_ballmodel();
+  init_live();
+  init_state();
+  var waiting4 = /* @__PURE__ */ new Set();
+  var chain4 = Promise.resolve();
+  function queueInfer(shot, opts = {}) {
+    if (shot.inf && !opts.force || waiting4.has(shot.id) || shot.m.entryAngle == null || shot.m.entryBoard == null && shot.m.breakpointBoard == null || shot.m.startBoard == null || shot.m.arrowsBoard == null) return Promise.resolve();
+    waiting4.add(shot.id);
+    const job = chain4.then(async () => {
+      try {
+        for (let i = 0; opts.busy?.() && i < 60; i++) await new Promise((r) => setTimeout(r, 1e3));
+        const bp = bowlerProfile();
+        const ball = ballModelFor(shot.ballId);
+        const oil = currentOil();
+        const m = shot.m;
+        const measured = { startBoard: m.startBoard, arrowsBoard: m.arrowsBoard, breakpointBoard: m.breakpointBoard, breakpointFt: m.breakpointFt, entryBoard: m.entryBoard, entryAngleDeg: m.entryAngle, entrySpeedMph: m.entrySpeed };
+        const inf = await inferSpin(ball ?? TYPICAL_BALL, { hand: bp.hand, revRpm: 350, speedMph: m.launchSpeed ?? bp.launchSpeed ?? 16.5, axisRotationDeg: 45, axisTiltDeg: bp.axisTilt ?? 12 }, oil.map, measured);
+        if (inf) {
+          shot.inf = { ...inf, tiltAssumed: bp.axisTilt === void 0, basis: `inferred from this shot's path on ${oil.label}${ball ? "" : ", with a typical ball (this ball has no published specs)"}` };
+          await updateShot(shot);
+          try {
+            refreshTiles(shot);
+          } catch {
+          }
+        }
+      } catch {
+      } finally {
+        waiting4.delete(shot.id);
+      }
+    });
+    chain4 = job;
+    return job;
+  }
+  function backfillInference(cameraOn, limit = 15) {
+    const todo = S.shots.filter((s) => !s.inf && s.m.entryAngle != null).slice(-limit).reverse();
+    void (async () => {
+      for (const s of todo) {
+        if (cameraOn()) break;
+        await queueInfer(s);
+      }
+    })();
+  }
+
+  // camera/camera.ts
+  init_camlink();
   init_db();
   init_tabs();
   init_scanlab();
@@ -36679,7 +37935,7 @@ ${t}`;
   }
   function drawScanner(now) {
     const s = overlay.width / 1280;
-    const W2 = overlay.width;
+    const W3 = overlay.width;
     const Hh = overlay.height;
     ctx.save();
     const y = now / 2200 % 1 * Hh;
@@ -36687,17 +37943,17 @@ ${t}`;
     grad.addColorStop(0, "rgba(70,230,255,0)");
     grad.addColorStop(1, "rgba(70,230,255,.28)");
     ctx.fillStyle = grad;
-    ctx.fillRect(0, y - 60 * s, W2, 66 * s);
+    ctx.fillRect(0, y - 60 * s, W3, 66 * s);
     ctx.fillStyle = "rgba(160,245,255,.9)";
     ctx.shadowColor = "rgba(70,230,255,.9)";
     ctx.shadowBlur = 14 * s;
-    ctx.fillRect(0, y, W2, 2.5 * s);
+    ctx.fillRect(0, y, W3, 2.5 * s);
     ctx.shadowBlur = 0;
     const pad = 22 * s;
     const len = 48 * s;
     ctx.strokeStyle = `rgba(70,230,255,${0.55 + 0.4 * Math.sin(now / 350)})`;
     ctx.lineWidth = 4 * s;
-    for (const [cx, cy, dx, dy] of [[pad, pad, 1, 1], [W2 - pad, pad, -1, 1], [pad, Hh - pad, 1, -1], [W2 - pad, Hh - pad, -1, -1]]) {
+    for (const [cx, cy, dx, dy] of [[pad, pad, 1, 1], [W3 - pad, pad, -1, 1], [pad, Hh - pad, 1, -1], [W3 - pad, Hh - pad, -1, -1]]) {
       ctx.beginPath();
       ctx.moveTo(cx, cy + dy * len);
       ctx.lineTo(cx, cy);
@@ -37162,6 +38418,8 @@ ${t}`;
     }, 1e3);
   }, () => !document.body.classList.contains("live"));
   $("guide-open").onclick = openGuide;
+  $("cams-open").onclick = () => openCameras();
+  $("framing-open").onclick = async () => (await Promise.resolve().then(() => (init_framing(), framing_exports))).openFraming();
   $("guide-hud").onclick = openGuide;
   $("confirm").onclick = () => {
     if (!pending) return;
@@ -37175,18 +38433,18 @@ ${t}`;
   $("manualbtn").onclick = () => openTrace();
   $("tracebtn").onclick = () => openTrace();
   function openTrace(from) {
-    const W2 = video.videoWidth;
+    const W3 = video.videoWidth;
     const Hh = video.videoHeight;
-    if (!W2 || tracing) return;
+    if (!W3 || tracing) return;
     const frame2 = document.createElement("canvas");
-    frame2.width = W2;
+    frame2.width = W3;
     frame2.height = Hh;
     frame2.getContext("2d").drawImage(video, 0, 0);
     const start2 = from ?? (H2 && corners.length === 4 ? corners.map((p) => ({ ...p })) : null) ?? lastCandidates[0]?.corners ?? [
-      { x: W2 * 0.22, y: Hh * 0.92 },
-      { x: W2 * 0.78, y: Hh * 0.92 },
-      { x: W2 * 0.55, y: Hh * 0.36 },
-      { x: W2 * 0.45, y: Hh * 0.36 }
+      { x: W3 * 0.22, y: Hh * 0.92 },
+      { x: W3 * 0.78, y: Hh * 0.92 },
+      { x: W3 * 0.55, y: Hh * 0.36 },
+      { x: W3 * 0.45, y: Hh * 0.36 }
     ];
     tracing = true;
     chooseList = [];
@@ -37202,9 +38460,9 @@ ${t}`;
       frame: frame2,
       start: start2,
       snap: (c) => {
-        const k2 = Math.min(1, 640 / Math.max(W2, Hh));
+        const k2 = Math.min(1, 640 / Math.max(W3, Hh));
         const tmp = document.createElement("canvas");
-        tmp.width = Math.round(W2 * k2);
+        tmp.width = Math.round(W3 * k2);
         tmp.height = Math.round(Hh * k2);
         const tctx = tmp.getContext("2d", { willReadFrequently: true });
         tctx.drawImage(frame2, 0, 0, tmp.width, tmp.height);
@@ -37354,10 +38612,10 @@ ${t}`;
   }
   function applyView() {
     const stage = $("stage");
-    const W2 = stage.clientWidth;
+    const W3 = stage.clientWidth;
     const Hh = stage.clientHeight;
     const z = zoomCaps ? 1 : zoomNow;
-    const mx = (z - 1) * W2 / 2;
+    const mx = (z - 1) * W3 / 2;
     const my = (z - 1) * Hh / 2;
     panX = Math.max(-mx, Math.min(mx, panX));
     panY = Math.max(-my, Math.min(my, panY));
@@ -37584,14 +38842,14 @@ ${t}`;
     renderBall(S.shots.at(-1));
   }
   var rec = null;
-  function pickMime2() {
+  function pickMime3() {
     for (const m of ["video/mp4", "video/webm;codecs=vp9", "video/webm"]) if (window.MediaRecorder?.isTypeSupported?.(m)) return m;
     return void 0;
   }
   function startRecording(startT) {
     if (!stream || !window.MediaRecorder || S.demo) return;
     try {
-      const mime = pickMime2();
+      const mime = pickMime3();
       const mr = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: cameraFps >= 100 ? 14e6 : 6e6 } : void 0);
       const chunks = [];
       mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
@@ -37751,15 +39009,19 @@ ${t}`;
   var prevMotion = null;
   var approachAfter = 0;
   var MOTION_STEP = 9;
+  var recId = "";
   function beginRecording(media) {
     if (recActive) return;
     recActive = true;
     recBeganAt = performance.now();
+    recId = newId();
+    camRecordStart(recId);
     startRecording(media);
-    logTrack("recording started", { recorder: !!rec, mime: pickMime2() ?? "default", hasMediaRecorder: !!window.MediaRecorder });
+    logTrack("recording started", { recorder: !!rec, mime: pickMime3() ?? "default", hasMediaRecorder: !!window.MediaRecorder });
   }
   function discardRecording() {
     recActive = false;
+    camRecordCancel(recId);
     void stopRecording(0);
   }
   async function attachClip() {
@@ -37767,9 +39029,11 @@ ${t}`;
     pendingClip = null;
     resetLooks = 0;
     recActive = false;
+    const rid2 = recId;
     const clip = await stopRecording(250);
     logTrack("recording stopped", { clip: !!clip, bytes: clip ? clip.blob.size : 0, type: clip ? clip.blob.type : null, forShot: !!p });
-    if (!p || !clip) return;
+    if (!p || !clip) return void camRecordCancel(rid2);
+    camRecordStop(rid2, p.shot, wallOfMedia(p.t0Abs));
     p.shot.recStartT = clip.startT - p.t0Abs;
     p.shot.hasClip = true;
     try {
@@ -37783,11 +39047,21 @@ ${t}`;
     if (p.shot.hasClip) {
       const busy = () => recActive || !!pendingClip;
       const sh = p.shot;
-      void queuePrecise(sh, { blob: clip.blob, busy }).then((r) => {
-        logTrack(r.ok ? "precise pass done" : "precise pass kept the live reading", { why: r.why ?? null, offset: sh.precise?.offset ?? null, frames: sh.precise?.frames ?? null });
-        void queueSpin(sh, { blob: clip.blob, busy });
-        void queueBody(sh, { blob: clip.blob, busy, auto: true });
-      });
+      void (async () => {
+        try {
+          const r = await queuePrecise(sh, { blob: clip.blob, busy });
+          logTrack(r.ok ? "precise pass done" : "precise pass kept the live reading", { why: r.why ?? null, offset: sh.precise?.offset ?? null, frames: sh.precise?.frames ?? null });
+        } catch (e) {
+          logTrack("precise pass failed", { error: String(e) });
+        }
+        void Promise.resolve(queueSpin(sh, { blob: clip.blob, busy })).catch((e) => logTrack("spin read failed", { error: String(e) }));
+        if (!bodyAutoOn()) return;
+        let why = "";
+        await queueBody(sh, { blob: clip.blob, busy, auto: true, onProgress: (m) => {
+          if (/couldn't|wouldn't|too long/i.test(m)) why = m;
+        } }).catch((e) => why = String(e));
+        if (!sh.skel) notify(`No skeleton for that shot${why ? `: ${why.replace(/^Couldn't read the approach: /, "")}` : ""}. Film from behind the bowler with the whole body in the picture (Framing guide on the start screen). Open the shot under Shots to try again.`, 9e3);
+      })();
     }
   }
   function approachWatch(g, media, now) {
@@ -37853,6 +39127,7 @@ ${t}`;
   }
   function onFrame(_now, meta) {
     schedule();
+    noteFrame(_now, meta.mediaTime);
     deliv.n++;
     {
       const t = performance.now();
@@ -38261,6 +39536,8 @@ ${t}`;
       if (fromFile) goHome();
     });
     setTimeout(() => backfillSpin(() => document.body.classList.contains("live")), 6e3);
+    setTimeout(() => backfillInference(() => document.body.classList.contains("live")), 9e3);
+    onShot((s) => void queueInfer(s, { busy: () => recActive || !!pendingClip }));
     initCoachLive();
     await loadReference();
     const dl = document.getElementById("catalog-list");
@@ -38271,6 +39548,7 @@ ${t}`;
     const has = await bootProfile();
     if (has) {
       maybeAutoBackup();
+      warmPose();
       renderBall(void 0);
       renderResult(void 0);
       renderLane();
