@@ -39764,8 +39764,17 @@ ${t}`;
     }, 1e3);
   }, () => !document.body.classList.contains("live"));
   $("guide-open").onclick = openGuide;
-  $("cams-open").onclick = () => openCameras();
-  $("screens-open").onclick = () => openScreens();
+  $("cams-open").onclick = $("cams-open2").onclick = () => openCameras();
+  $("screens-open").onclick = $("screens-open2").onclick = () => openScreens();
+  $("camoff").onclick = async () => {
+    try {
+      if (pendingClip) await attachClip();
+    } catch {
+    }
+    stream?.getTracks().forEach((t) => t.stop());
+    video.pause();
+    location.reload();
+  };
   $("framing-open").onclick = async () => (await Promise.resolve().then(() => (init_framing(), framing_exports))).openFraming();
   $("guide-hud").onclick = openGuide;
   $("confirm").onclick = () => {
@@ -40780,7 +40789,7 @@ ${t}`;
     $("ver").textContent = v ? `version ${v.split("?v=")[1]}` : "";
     initPatchNotes();
   })();
-  $("tour-open").onclick = () => startTour();
+  $("tour-open").onclick = $("tour-open2").onclick = () => startTour();
   {
     const b = $("spin-mode");
     const paint2 = () => (b.textContent = spinLabel(), b.setAttribute("aria-pressed", String(spinModeOn())));
