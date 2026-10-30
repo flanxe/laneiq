@@ -38559,12 +38559,19 @@ ${t}`;
       const b = applyHomography(this.s.Hinv, { x: laneX + r, y: laneY });
       return Math.max(1.2, Math.hypot(b.x - a.x, b.y - a.y) / 2 / this.s.scale);
     }
+    seenBuf = new Uint8Array(0);
+    fgBuf = new Uint8Array(0);
+    stackBuf = [];
     blobs(fg, chroma) {
       const { w, h } = this.s;
-      const seen2 = new Uint8Array(w * h);
+      if (this.seenBuf.length !== w * h) this.seenBuf = new Uint8Array(w * h);
+      const seen2 = this.seenBuf;
+      seen2.fill(0);
       const out = [];
-      const stack = [];
-      for (let i = 0; i < fg.length; i++) {
+      const stack = this.stackBuf;
+      stack.length = 0;
+      const n_ = fg.length;
+      for (let i = 0; i < n_; i++) {
         if (!fg[i] || seen2[i]) continue;
         let sx = 0, sy = 0, n = 0, sc = 0;
         let x0 = w, x1 = 0, y0 = h, y1 = 0;
@@ -38573,7 +38580,7 @@ ${t}`;
         while (stack.length) {
           const k2 = stack.pop();
           const x = k2 % w;
-          const y = k2 / w | 0;
+          const y = (k2 - x) / w;
           sx += x;
           sy += y;
           n++;
@@ -38582,12 +38589,10 @@ ${t}`;
           if (x > x1) x1 = x;
           if (y < y0) y0 = y;
           if (y > y1) y1 = y;
-          for (const q2 of [k2 - 1, k2 + 1, k2 - w, k2 + w]) {
-            if (q2 < 0 || q2 >= fg.length || !fg[q2] || seen2[q2]) continue;
-            if (q2 === k2 - 1 && x === 0 || q2 === k2 + 1 && x === w - 1) continue;
-            seen2[q2] = 1;
-            stack.push(q2);
-          }
+          if (x > 0 && fg[k2 - 1] && !seen2[k2 - 1]) seen2[k2 - 1] = 1, stack.push(k2 - 1);
+          if (x < w - 1 && fg[k2 + 1] && !seen2[k2 + 1]) seen2[k2 + 1] = 1, stack.push(k2 + 1);
+          if (k2 >= w && fg[k2 - w] && !seen2[k2 - w]) seen2[k2 - w] = 1, stack.push(k2 - w);
+          if (k2 + w < n_ && fg[k2 + w] && !seen2[k2 + w]) seen2[k2 + w] = 1, stack.push(k2 + w);
         }
         out.push({ x: sx / n, y: sy / n, area: n, w: x1 - x0 + 1, h: y1 - y0 + 1, c: chroma ? sc / n : 128 });
       }
@@ -38627,7 +38632,9 @@ ${t}`;
       const off = d.length ? d[d.length >> 1] : 0;
       const mad = d.length ? [...d].map((v) => Math.abs(v - off)).sort((a, b) => a - b)[d.length >> 1] * 1.4826 : 4;
       const thr = Math.max(18, 4.5 * mad);
-      const fg = new Uint8Array(w * h);
+      if (this.fgBuf.length !== w * h) this.fgBuf = new Uint8Array(w * h);
+      const fg = this.fgBuf;
+      fg.fill(0);
       let fgCount = 0;
       for (let i = 0; i < gray.length; i++) if (mask[i] && Math.abs(gray[i] - off - bg[i]) > thr) fg[i] = 1, fgCount++;
       let offC = 0;
@@ -40517,7 +40524,7 @@ ${t}`;
         } catch (e) {
           logTrack("precise pass failed", { error: String(e) });
         }
-        void Promise.resolve(queueSpin(sh, { blob: clip.blob, busy: busy2 })).catch((e) => logTrack("spin read failed", { error: String(e) }));
+        await Promise.resolve(queueSpin(sh, { blob: clip.blob, busy: busy2 })).catch((e) => logTrack("spin read failed", { error: String(e) }));
         if (!bodyAutoOn()) return;
         let why = "";
         await queueBody(sh, { blob: clip.blob, busy: busy2, auto: true, onProgress: (m) => {
