@@ -3252,6 +3252,7 @@
     createProfile: () => createProfile,
     insightGames: () => insightGames,
     insightShots: () => insightShots,
+    keepStorage: () => keepStorage,
     loadClip: () => loadClip,
     loadProfile: () => loadProfile,
     loadReference: () => loadReference,
@@ -3367,8 +3368,37 @@
     }
     changed();
   }
+  async function makeRoom(incoming) {
+    try {
+      const e = await navigator.storage?.estimate?.();
+      if (!e?.quota || e.usage == null || !S.profile) return;
+      let used = e.usage + incoming;
+      const limit = e.quota * 0.75;
+      if (used <= limit) return;
+      const old = S.shots.filter((s) => s.hasClip).sort((a, b) => a.at.localeCompare(b.at));
+      for (const s of old) {
+        if (used <= limit * 0.85 || S.shots.filter((x) => x.hasClip).length <= 3) break;
+        const blob = await loadClip(s.id).catch(() => void 0);
+        await dbDelete(S.profile.id, "clips", s.id).catch(() => {
+        });
+        s.hasClip = false;
+        await dbPut(S.profile.id, "shots", s).catch(() => {
+        });
+        used -= blob?.size ?? 15e6;
+      }
+    } catch {
+    }
+  }
   async function saveClip(id, blob) {
-    if (!S.demo && S.profile) await dbPut(S.profile.id, "clips", blob, id);
+    if (S.demo || !S.profile) return;
+    await makeRoom(blob.size);
+    await dbPut(S.profile.id, "clips", blob, id);
+  }
+  function keepStorage() {
+    try {
+      void navigator.storage?.persist?.();
+    } catch {
+    }
   }
   async function loadClip(id) {
     return S.profile ? dbGet(S.profile.id, "clips", id) : void 0;
@@ -36084,6 +36114,7 @@ ${t}`;
         "The skeleton model only runs while a shot is being set up, not all evening, and looks at the bowler enlarged, so it can find them from a distance.",
         "Fewer memory spikes in the camera loop and in the ball tracker; the spin read and the skeleton read no longer run at the same time.",
         "Shot review and Compare stop redrawing while a clip is paused.",
+        "When the phone is nearly out of space for videos, the oldest clips are removed to make room (the shots and numbers stay), instead of new clips failing to save. The app also asks the phone to keep its data.",
         "Quick QR and code pairing, Turn off camera and clearer close buttons are in."
       ]
     },
@@ -41038,6 +41069,7 @@ ${t}`;
     const has = await bootProfile();
     if (has) {
       maybeAutoBackup();
+      keepStorage();
       warmPose();
       setTimeout(() => void checkReleases(), 4e3);
       startScreens(() => stream);
