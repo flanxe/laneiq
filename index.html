@@ -185,7 +185,13 @@
   .note{font-size:12px;color:var(--dim);line-height:1.45}
   .opt{display:block;width:100%;text-align:left;padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--glass);color:var(--txt);margin:8px 0;cursor:pointer;font:inherit}
   .opt.sel{border-color:var(--cy);background:rgba(70,230,255,.12)}
-  .opt b{display:block}.opt span{font-size:12px;color:var(--dim)}
+  /* before the first shot: the empty result cards shrink to one quiet line each, so the page is not a wall of "waiting" */
+  #tab-live main .card:has(> .u:only-child){padding:9px 14px;background:transparent;border-style:dashed;box-shadow:none}
+  #tab-live main .card:has(> .u:only-child) .u{font-size:13px}
+  #tab-live main .card:has(> .lr-head:only-child){padding:9px 14px;background:transparent;border-style:dashed;box-shadow:none}
+  .opt b{display:block}.opt span{display:block;margin-top:4px;font-size:12px;line-height:1.4;color:var(--dim)}
+  .opt span.plan{display:inline-block;margin-top:9px;padding:2px 9px;border-radius:99px;border:1px solid rgba(70,230,255,.4);color:var(--cy);font-weight:600;font-size:11px;letter-spacing:.02em}
+  .opt:active{transform:scale(.99)}.opt:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
   #onboard.sheet{background:radial-gradient(900px 520px at 50% -10%,#1a2f58 0%,#0a1020 55%,#070a10 100%)}
   .welcome{text-align:center;margin:18px 0 6px}
   .welcome .logo{font-size:34px}
@@ -309,6 +315,6 @@
   <button class="tb" data-tab="proshop"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14.5 5.5a4 4 0 0 0-5 5L4 16l4 4 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5z"/></svg>Pro shop</button>
   <button class="tb" data-tab="learn"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 19V5.5M8.5 7.5h7M8.5 11h5"/></svg>Learn</button>
   <button class="tb" data-tab="me"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/></svg>Me</button></nav>
-<script src="camera.js?v=mvuy6r9b"></script>
+<script src="camera.js?v=mvvd7qbf"></script>
 </body>
 </html>

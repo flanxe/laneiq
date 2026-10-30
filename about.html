@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>LaneIQ for bowlers, coaches, pro shops and centers</title>
+<meta name="description" content="LaneIQ turns a phone on a tripod into a bowling coach: ball speed, path, breakpoint, pocket hit, spin and approach, read from the camera. Free, no install, nothing to put in the ball.">
+<meta name="theme-color" content="#070b14">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--bg:#070b14;--card:rgba(255,255,255,.05);--line:rgba(255,255,255,.12);--txt:#e8eefb;--dim:#9fb0cc;--cy:#46e6ff;--pk:#ff4fd8}
+@media (prefers-color-scheme:light){:root{--bg:#f4f7fc;--card:#fff;--line:rgba(10,20,40,.14);--txt:#0d1626;--dim:#4a5a76;--cy:#0a7fa1;--pk:#b0238f}.cta,.steps li::before{color:#fff!important}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(900px 480px at 50% -8%,rgba(70,230,255,.16),transparent 70%),radial-gradient(700px 400px at 90% 10%,rgba(255,79,216,.10),transparent 70%);pointer-events:none;z-index:-1}
+main{max-width:860px;margin:0 auto;padding:max(28px,env(safe-area-inset-top)) 18px 72px}
+.logo{font-weight:800;font-size:22px;letter-spacing:-.01em}.logo b{background:linear-gradient(90deg,var(--cy),var(--pk));-webkit-background-clip:text;background-clip:text;color:transparent}
+h1{font-size:clamp(30px,6vw,48px);line-height:1.08;letter-spacing:-.02em;margin:26px 0 12px}
+h2{font-size:22px;margin:44px 0 6px;letter-spacing:-.01em}
+.lead{font-size:clamp(17px,2.4vw,20px);color:var(--dim);max-width:640px;margin:0 0 22px}
+.dim{color:var(--dim)}.small{font-size:14px}
+a{color:var(--cy)}
+.cta{display:inline-block;padding:14px 24px;border-radius:14px;font-weight:700;font-size:17px;color:#04121c;text-decoration:none;background:linear-gradient(90deg,var(--cy),var(--pk));box-shadow:0 8px 30px rgba(70,230,255,.25)}
+.cta:focus-visible,a:focus-visible{outline:3px solid var(--cy);outline-offset:3px}
+.ghost{display:inline-block;margin-left:10px;padding:13px 20px;border-radius:14px;border:1px solid var(--line);color:var(--txt);text-decoration:none;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.card h3{margin:0 0 4px;font-size:17px}.card p{margin:0;color:var(--dim);font-size:15px}
+.steps{counter-reset:s;list-style:none;padding:0;margin:14px 0 0;display:grid;gap:10px}
+.steps li{counter-increment:s;display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.steps li::before{content:counter(s);flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#04121c;background:linear-gradient(135deg,var(--cy),var(--pk))}
+.pill{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--dim);margin-right:6px}
+table{width:100%;border-collapse:collapse;font-size:15px;margin-top:12px}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--dim);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.04em}
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--dim)}
+@media (max-width:520px){.ghost{margin:10px 0 0}}
+@media (prefers-reduced-motion:no-preference){.card,.steps li{transition:transform .15s}.card:hover{transform:translateY(-2px)}}
+</style></head>
+<body><main>
+<div class="logo">Lane<b>IQ</b></div>
+<span class="pill" style="margin-top:14px">Open beta</span><span class="pill">Free for bowlers</span>
+<h1>A bowling coach that fits in a phone stand.</h1>
+<p class="lead">Put an iPhone behind the approach with the whole lane in view. LaneIQ follows each ball and tells you what happened: speed, path, breakpoint, where it hit the pocket, spin, and how you moved. Nothing to put in the ball. Nothing to buy. No app store.</p>
+<p><a class="cta" href="./">Open LaneIQ</a><a class="ghost" href="#centers">For centers and pros</a></p>
+
+<h2>What it reads from the camera</h2>
+<p class="dim">Every number carries how far off it could be, and is marked when it was entered or estimated instead of measured.</p>
+<div class="grid">
+<div class="card"><h3>The lane</h3><p>Finds the lane by itself, from the foul line to the pins, in dim or uneven light, and from off to one side. If the lock is off, drag four dots to fix it.</p></div>
+<div class="card"><h3>The shot</h3><p>Speed, boards at the foul line, arrows and breakpoint, launch and entry angle, and where the ball hit the pocket.</p></div>
+<div class="card"><h3>Spin</h3><p>Rev rate, axis rotation and tilt, read from the shot's own video clip.</p></div>
+<div class="card"><h3>Your approach</h3><p>Steps, timing, drift, laydown and finish from a pose model that runs on the phone.</p></div>
+<div class="card"><h3>The pins</h3><p>Reads which pins fell and puts them straight on your scorecard. Tap the right number if it is wrong, and it learns.</p></div>
+<div class="card"><h3>The lane over time</h3><p>After a few shots with the same ball it says whether the lane looks stable, drying out, or carrying down, and suggests one move to try.</p></div>
+</div>
+
+<h2>Set up in a minute</h2>
+<ol class="steps">
+<li><div><b>Open LaneIQ in Safari</b> and tap Share, then Add to Home Screen. It opens like an app and works at a center with no signal.</div></li>
+<li><div><b>Put the phone where the whole lane is in view</b>, with both gutters, the foul line and the pins. A tripod or a stand on a table behind the approach works. The in-app guide has pictures.</div></li>
+<li><div><b>Tap Start camera.</b> It locks onto the lane and follows each ball. Tap Stop between your shots in league so it only keeps yours.</div></li>
+</ol>
+
+<h2 id="centers">For centers, coaches and pro shops</h2>
+<table>
+<tr><th>You are</th><th>What LaneIQ gives you</th></tr>
+<tr><td><b>A bowling center</b></td><td>League and event nights, a second screen for a display at the lanes, and pro shops near you. Bowlers bring their own phones: there is no hardware for you to install.</td></tr>
+<tr><td><b>A coach</b></td><td>Everything a bowler gets, plus practice plans you send to students, side-by-side shot review with drawing tools, and a packet for each student.</td></tr>
+<tr><td><b>A pro shop</b></td><td>Your stock, ball scanning, customer profiles, drill sheets and special orders, and a layout lab for talking through drilling.</td></tr>
+<tr><td><b>A ball maker</b></td><td>See your balls the way bowlers see them in LaneIQ, and send corrections.</td></tr>
+</table>
+<p class="dim small">Coaches and pro shop operators always have the final say. LaneIQ is a tool to use together, not a replacement for either.</p>
+
+<h2>Private by design</h2>
+<div class="grid">
+<div class="card"><h3>On the phone</h3><p>Shots, videos and scores stay on the phone unless you send something yourself. Videos are never uploaded.</p></div>
+<div class="card"><h3>No ads, no tracking</h3><p>There are no ads in the app. An account is optional and only backs up your shots and scores.</p></div>
+<div class="card"><h3>Works offline</h3><p>Once it has opened, the app runs with no signal. Updates arrive quietly the next time you are online.</p></div>
+</div>
+
+<h2>An honest note on accuracy</h2>
+<p class="dim">LaneIQ's lane finding and ball following have been tested on a large set of simulated lanes and deliveries, including dim, washed-out and uneven light, and in the tests it follows the ball down the lane reliably. It is still in open beta and it is being checked on real lanes: a phone's picture of a real center can differ from any test. If something is off at your center, the in-app Save frame and diagnostics tools let us fix it from a real example. Nothing is sent anywhere unless you send it.</p>
+
+<p style="margin-top:28px"><a class="cta" href="./">Open LaneIQ</a></p>
+
+<footer>
+<p>LaneIQ is not affiliated with, endorsed by or sponsored by the USBC, the PBA, or any ball maker. Names and marks belong to their owners.</p>
+<p><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="credits.html">Credits and data sources</a></p>
+</footer>
+</main></body></html>
