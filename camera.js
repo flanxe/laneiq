@@ -33575,6 +33575,9 @@ ${t}`;
     };
   }
   function trailLoop() {
+    const key3 = sides2.map((s) => s.v ? `${s.v.currentTime}${s.v.paused}` : "-").join("|");
+    if (key3 === lastLoopKey && sides2.every((s) => !s.v || s.v.paused)) return void (raf2 = requestAnimationFrame(trailLoop));
+    lastLoopKey = key3;
     for (const s of sides2) {
       if (!s.v || !s.ov || s.shot.cal.length !== 4) continue;
       const g = s.ov.getContext("2d");
@@ -33720,7 +33723,7 @@ ${t}`;
     $("cp-share").onclick = () => void sharePacket();
     trailLoop();
   }
-  var raf2, sides2, tool, rate2, lead, when3, ballName5;
+  var raf2, sides2, tool, rate2, lead, when3, ballName5, lastLoopKey;
   var init_compare = __esm({
     "camera/compare.ts"() {
       init_vision();
@@ -33738,6 +33741,7 @@ ${t}`;
       lead = 2.5;
       when3 = (iso2) => new Date(iso2).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
       ballName5 = (id) => S.arsenal.find((b) => b.id === id)?.name ?? "Unknown ball";
+      lastLoopKey = "";
     }
   });
 
@@ -35328,7 +35332,11 @@ ${t}`;
       const pat = patternById(s.pattern);
       const oilMap = canOverlay && pat && oilOn() ? mapOf(pat) : null;
       const oilCv = oilMap ? bakeOil(view3, s.vw, s.vh, oilMap) : null;
+      let drawnKey = "";
       const loop = () => {
+        const key3 = `${v.currentTime}|${modeSel}|${skelOn}|${v.paused}`;
+        if (v.paused && key3 === drawnKey) return void (reviewRaf = requestAnimationFrame(loop));
+        drawnKey = key3;
         cx.clearRect(0, 0, s.vw, s.vh);
         if (modeSel === "lane" && canOverlay) {
           drawLaneGrid(view3);
@@ -36074,7 +36082,8 @@ ${t}`;
       items: [
         "A quiet lane is now read about a third as often until someone steps up, and the picture is drawn at 30 a second instead of 60. Far less heat and battery.",
         "The skeleton model only runs while a shot is being set up, not all evening, and looks at the bowler enlarged, so it can find them from a distance.",
-        "Fewer memory spikes in the camera loop.",
+        "Fewer memory spikes in the camera loop and in the ball tracker; the spin read and the skeleton read no longer run at the same time.",
+        "Shot review and Compare stop redrawing while a clip is paused.",
         "Quick QR and code pairing, Turn off camera and clearer close buttons are in."
       ]
     },
@@ -38371,7 +38380,7 @@ ${t}`;
       try {
         for (let i = 0; opts.busy?.() && i < 60; i++) await new Promise((r) => setTimeout(r, 1e3));
         const bp = bowlerProfile();
-        const ball = ballModelFor(shot.ballId);
+        const ball = ballModelFor(shot.ballId ?? void 0);
         const oil = currentOil();
         const m = shot.m;
         const measured = { startBoard: m.startBoard, arrowsBoard: m.arrowsBoard, breakpointBoard: m.breakpointBoard, breakpointFt: m.breakpointFt, entryBoard: m.entryBoard, entryAngleDeg: m.entryAngle, entrySpeedMph: m.entrySpeed };
