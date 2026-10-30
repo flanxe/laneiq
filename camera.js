@@ -4074,7 +4074,7 @@
           url
         );
         const files = await mod.FilesetResolver.forVisionTasks(`${CDN}/wasm`);
-        const make = (delegate) => mod.PoseLandmarker.createFromOptions(files, { baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: "VIDEO", numPoses: 3, minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5 });
+        const make = (delegate) => mod.PoseLandmarker.createFromOptions(files, { baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: "VIDEO", numPoses: 3, minPoseDetectionConfidence: 0.3, minPosePresenceConfidence: 0.3, minTrackingConfidence: 0.3 });
         try {
           return await make("GPU");
         } catch {
@@ -4094,6 +4094,26 @@
       logTrack("pose model warm-up failed", { error: String(e) });
     }), 12e3);
   }
+  function bowlerCrop(corners2, vw, vh) {
+    if (corners2.length !== 4 || !vw || !vh) return { x: 0, y: 0, w: 1, h: 1 };
+    const fx = [corners2[0].x / vw, corners2[1].x / vw];
+    const fy = (corners2[0].y + corners2[1].y) / 2 / vh;
+    const x0 = Math.max(0, Math.min(...fx) - 0.3);
+    const x1 = Math.min(1, Math.max(...fx) + 0.3);
+    const y0 = Math.max(0, fy - 0.55);
+    return x1 - x0 < 0.3 || 1 - y0 < 0.3 ? { x: 0, y: 0, w: 1, h: 1 } : { x: x0, y: y0, w: x1 - x0, h: 1 - y0 };
+  }
+  function detectCropped(lm, v, box, ts) {
+    if (box.w >= 0.99 && box.h >= 0.99) return lm.detectForVideo(v, ts);
+    const W3 = v.videoWidth, H3 = v.videoHeight;
+    const sw = box.w * W3, sh = box.h * H3;
+    const k2 = Math.min(1, 960 / Math.max(sw, sh));
+    cropCanvas.width = Math.max(32, Math.round(sw * k2));
+    cropCanvas.height = Math.max(32, Math.round(sh * k2));
+    cropCtx.drawImage(v, box.x * W3, box.y * H3, sw, sh, 0, 0, cropCanvas.width, cropCanvas.height);
+    const res = lm.detectForVideo(cropCanvas, ts);
+    return { landmarks: (res.landmarks ?? []).map((p) => p.map((l) => ({ ...l, x: box.x + l.x * box.w, y: box.y + l.y * box.h }))) };
+  }
   function startLiveModel() {
     if (liveReady || liveFailed === "stop") return;
     getLandmarker().then(() => (liveReady = true, liveFailed = "")).catch((e) => {
@@ -4102,10 +4122,10 @@
       setTimeout(() => liveFailed = "", 2e4);
     });
   }
-  async function detectLive(v, near) {
+  async function detectLive(v, near, box) {
     if (!liveReady) return null;
     const lm = await getLandmarker();
-    const res = lm.detectForVideo(v, clock += 50);
+    const res = detectCropped(lm, v, box, clock += 50);
     const people = (res.landmarks ?? []).filter((p) => p.length > 24);
     if (!people.length) return { lm: [], people: 0 };
     const scored = people.map((p) => {
@@ -4150,7 +4170,7 @@
       const frames = [];
       for (let t = t0; t <= t1; t += t >= releaseT - 2.5 ? 1 / 30 : 1 / 10) {
         await seekTo(v, t);
-        const res = lm.detectForVideo(v, clock += 50);
+        const res = detectCropped(lm, v, bowlerCrop(s.cal, s.vw, s.vh), clock += 50);
         frames.push({ t, lm: pickBowler(res.landmarks ?? [], s) });
         if (frames.length % 10 === 0) {
           onProgress?.(`Reading the approach\u2026 ${Math.round((t - t0) / Math.max(0.1, t1 - t0) * 100)}%`);
@@ -4201,7 +4221,7 @@
     waiting2.set(shot.id, job);
     return job;
   }
-  var VER, CDN, MODEL, AUTO_KEY, bodyAutoOn, setBodyAuto, landmarker, warmed, clock, lastFrames, liveReady, liveFailed, liveModelState, sleep2, seekTo, waiting2, chain2, bodyPending;
+  var VER, CDN, MODEL, AUTO_KEY, bodyAutoOn, setBodyAuto, landmarker, warmed, clock, lastFrames, cropCanvas, cropCtx, liveReady, liveFailed, liveModelState, sleep2, seekTo, waiting2, chain2, bodyPending;
   var init_pose = __esm({
     "camera/pose.ts"() {
       init_approach();
@@ -4230,6 +4250,8 @@
       warmed = false;
       clock = 0;
       lastFrames = [];
+      cropCanvas = document.createElement("canvas");
+      cropCtx = cropCanvas.getContext("2d");
       liveReady = false;
       liveFailed = "";
       liveModelState = () => liveReady ? "ready" : liveFailed ? "failed" : "loading";
@@ -9190,7 +9212,7 @@ Shop notes: ${c.shopNotes}` : ""
       else break;
     }
     const all = [...inp.games.map((g) => g.at), ...inp.shots.map((s) => s.at)].map((t) => Date.parse(t)).filter(Number.isFinite);
-    const lastActive = all.length ? new Date(Math.max(...all)).toISOString().slice(0, 10) : null;
+    const lastActive2 = all.length ? new Date(Math.max(...all)).toISOString().slice(0, 10) : null;
     const avg3 = st2.completeGames >= 3 ? st2.average : null;
     const avgChange = st2.completeGames >= 3 && prevSt.completeGames >= 3 && st2.average !== null && prevSt.average !== null ? st2.average - prevSt.average : null;
     const card2 = {
@@ -9215,7 +9237,7 @@ Shop notes: ${c.shopNotes}` : ""
       drills: drillRuns.length,
       streakWeeks: streak,
       weeks,
-      lastActive,
+      lastActive: lastActive2,
       highlights: []
     };
     card2.highlights = highlightsFor(card2, prevSt.high);
@@ -36046,6 +36068,17 @@ ${t}`;
   // core/src/patchnotes.ts
   var PATCH_NOTES = [
     {
+      id: "2026-11-02-battery",
+      date: "2026-11-02",
+      title: "Easier on the battery, better skeleton",
+      items: [
+        "A quiet lane is now read about a third as often until someone steps up, and the picture is drawn at 30 a second instead of 60. Far less heat and battery.",
+        "The skeleton model only runs while a shot is being set up, not all evening, and looks at the bowler enlarged, so it can find them from a distance.",
+        "Fewer memory spikes in the camera loop.",
+        "Quick QR and code pairing, Turn off camera and clearer close buttons are in."
+      ]
+    },
+    {
       id: "2026-11-01-real-lane",
       date: "2026-11-01",
       title: "Fixes from a real bowling center",
@@ -38265,12 +38298,12 @@ ${t}`;
     if (!latest || performance.now() - latest.at > 2500) return "skeleton: waiting";
     return latest.lm.length ? "skeleton: tracking" : "skeleton: nobody in the picture";
   }
-  function tickLivePose(video2, now, clipClock, ballOut, laneAcross) {
-    if (!bodyAutoOn() || busy || now < nextAt || ballOut || !video2.videoWidth || video2.readyState < 2) return;
+  function tickLivePose(video2, now, clipClock, ballOut, laneAcross, box, active) {
+    if (!active || !bodyAutoOn() || busy || now < nextAt || ballOut || !video2.videoWidth || video2.readyState < 2) return;
     if (liveModelState() !== "ready") return void startLiveModel();
     busy = true;
     const began = performance.now();
-    void detectLive(video2, [laneAcross[0] - 0.3, laneAcross[1] + 0.3]).then((r) => {
+    void detectLive(video2, [laneAcross[0] - 0.3, laneAcross[1] + 0.3], box).then((r) => {
       if (!r) return;
       latest = { at: performance.now(), lm: r.lm, people: r.people };
       if (clipClock >= 0) {
@@ -38282,7 +38315,7 @@ ${t}`;
     }).catch(() => {
     }).finally(() => {
       busy = false;
-      every = Math.max(170, Math.min(900, (performance.now() - began) * 4));
+      every = Math.max(200, Math.min(900, (performance.now() - began) * 4));
       nextAt = performance.now() + every;
     });
   }
@@ -40206,12 +40239,12 @@ ${t}`;
   }
   var sigAcc = new Array(SIG_LEN).fill(0);
   var CROP = 24;
-  var cropCanvas = document.createElement("canvas");
-  cropCanvas.width = cropCanvas.height = CROP;
-  var cropCtx = cropCanvas.getContext("2d", { willReadFrequently: true });
+  var cropCanvas2 = document.createElement("canvas");
+  cropCanvas2.width = cropCanvas2.height = CROP;
+  var cropCtx2 = cropCanvas2.getContext("2d", { willReadFrequently: true });
   function circleCounts(cx, cy, r) {
-    cropCtx.drawImage(video, cx - r, cy - r, r * 2, r * 2, 0, 0, CROP, CROP);
-    return signatureCounts(cropCtx.getImageData(0, 0, CROP, CROP).data, CROP);
+    cropCtx2.drawImage(video, cx - r, cy - r, r * 2, r * 2, 0, 0, CROP, CROP);
+    return signatureCounts(cropCtx2.getImageData(0, 0, CROP, CROP).data, CROP);
   }
   function captureBall(cx, cy, radius) {
     const counts = circleCounts(cx, cy, Math.max(5, Math.min(60, radius * 1.2)));
@@ -40535,6 +40568,11 @@ ${t}`;
     }
   })();
   var skipCount = 0;
+  var idleSkip = 0;
+  var idleSaver = false;
+  var lastActive = 0;
+  var gBuf = null;
+  var cBuf = null;
   var lastOvDraw = 0;
   var lastFrameT = -1;
   var lastPres = -1;
@@ -40572,18 +40610,22 @@ ${t}`;
     if (tracing) return;
     const now = performance.now();
     diagTick(now, !!(H2 && laneMask && armed && !enrolling), !!lastBlob);
-    if (cameraFps <= 90 || now - lastOvDraw > 15) lastOvDraw = now, drawOverlay(now);
-    tickLivePose(video, now, H2 && armed && shotsOn && lastFrameT >= 0 ? lastFrameT : -1, confirmed || histActive, corners.length === 4 ? [Math.min(...corners.map((c) => c.x)) / video.videoWidth, Math.max(...corners.map((c) => c.x)) / video.videoWidth] : [0.2, 0.8]);
+    if (now - lastOvDraw > (idleSaver ? 60 : 30)) lastOvDraw = now, drawOverlay(now);
+    tickLivePose(video, now, H2 && armed && shotsOn && lastFrameT >= 0 ? lastFrameT : -1, confirmed || histActive, corners.length === 4 ? [Math.min(...corners.map((c) => c.x)) / video.videoWidth, Math.max(...corners.map((c) => c.x)) / video.videoWidth] : [0.2, 0.8], bowlerCrop(corners, video.videoWidth, video.videoHeight), recActive);
     enrollTick(now);
     if (!H2) autoDetectTick(now);
     else if (armed) driftCheck(now), pinWatch(now), pinRefineTick(now), arrowTick(now), resetWatch(now);
     if (!H2 || !laneMask || !armed || enrolling) return;
     if (!shotsOn) return;
     if (cameraFps > 90 && ++skipCount % Math.round(cameraFps / 60) !== 0) return;
+    if (recActive || pendingClip || lastBlob || tracker?.confirmed || motionRun > 0 || stab?.bad) lastActive = now;
+    idleSaver = now - lastActive > 2e4;
+    if (idleSaver && ++idleSkip % 3 !== 0) return;
     wctx.drawImage(video, 0, 0, GW, GH);
     const px = wctx.getImageData(0, 0, GW, GH).data;
-    const gray = new Float32Array(GW * GH);
-    const chroma = new Float32Array(GW * GH);
+    if (gBuf?.length !== GW * GH) gBuf = new Float32Array(GW * GH), cBuf = new Float32Array(GW * GH);
+    const gray = gBuf;
+    const chroma = cBuf;
     for (let i = 0; i < gray.length; i++) {
       gray[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
       chroma[i] = 128 + (px[i * 4] - px[i * 4 + 2]) * 0.6;
