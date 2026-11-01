@@ -1,6 +1,6 @@
 ﻿// Offline support: precache the shell on install, then network-first (fresh when online) with cache fallback.
 // Paths are relative to where this file is served, so the app works at a site root or in a subfolder.
-const CACHE = "laneiq-v12";
+const CACHE = "laneiq-v13";
 const SCOPE = self.registration.scope;
 const SHELL = ["./", "camera.js", "manifest.webmanifest", "balls.json", "icon-180.png", "icon-192.png", "icon-512.png"].map((u) => new URL(u, SCOPE).href);
 
@@ -65,16 +65,23 @@ self.addEventListener("fetch", (event) => {
     );
     return;
   }
+  // A page reached through a redirect (the address without its closing slash, or an old link) must not be handed to the browser as a redirected
+  // response: Safari on iPhone shows a blank white page for that. The same page is rebuilt as an ordinary response first.
+  const plain = async (res) =>(res.redirected ? new Response(await res.blob(), { status: res.status, statusText: res.statusText, headers: res.headers }) : res);
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE);
       try {
         const res = await Promise.race([fetch(req, { cache: "no-cache" }), new Promise((_, rej) => setTimeout(() => rej(new Error("slow")), 2500))]);
-        if (res.ok) cache.put(req, res.clone());
+        if (res.ok) {
+          const ok = await plain(res);
+          cache.put(req, ok.clone());
+          return ok;
+        }
         return res;
       } catch {
         const hit = (await cache.match(req)) || (req.mode === "navigate" ? await cache.match(SCOPE) : undefined);
-        return hit || new Response("Offline and not cached yet. Open the app once while connected.", { status: 503 });
+        return hit ? await plain(hit) : new Response("Offline and not cached yet. Open the app once while connected.", { status: 503 });
       }
     })(),
   );
