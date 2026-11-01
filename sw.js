@@ -1,6 +1,6 @@
 ﻿// Offline support: precache the shell on install, then network-first (fresh when online) with cache fallback.
 // Paths are relative to where this file is served, so the app works at a site root or in a subfolder.
-const CACHE = "laneiq-v11";
+const CACHE = "laneiq-v12";
 const SCOPE = self.registration.scope;
 const SHELL = ["./", "camera.js", "manifest.webmanifest", "balls.json", "icon-180.png", "icon-192.png", "icon-512.png"].map((u) => new URL(u, SCOPE).href);
 
