@@ -1,8 +1,8 @@
 ﻿// Offline support: precache the shell on install, then network-first (fresh when online) with cache fallback.
 // Paths are relative to where this file is served, so the app works at a site root or in a subfolder.
-const CACHE = "laneiq-v13";
+const CACHE = "laneiq-v14";
 const SCOPE = self.registration.scope;
-const SHELL = ["./", "camera.js", "manifest.webmanifest", "balls.json", "icon-180.png", "icon-192.png", "icon-512.png"].map((u) => new URL(u, SCOPE).href);
+const SHELL = ["./", "camera.js", "manifest.webmanifest", "balls.json", "patterns-bank.json", "icon-180.png", "icon-192.png", "icon-512.png"].map((u) => new URL(u, SCOPE).href);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -49,7 +49,7 @@ self.addEventListener("fetch", (event) => {
   // - the ball catalog (3 MB) is shown from the saved copy and refreshed behind it;
   // - the page itself, the version check and the news go to the network first (a short wait), so a new build is noticed, with the saved copy as the fallback.
   const fromSaved = (file === "camera.js" && url.search.includes("v=")) || /\.(png|webmanifest)$/.test(file);
-  const refreshBehind = file === "balls.json";
+  const refreshBehind = file === "balls.json" || file === "patterns-bank.json";
   if (fromSaved || refreshBehind) {
     event.respondWith(
       (async () => {
